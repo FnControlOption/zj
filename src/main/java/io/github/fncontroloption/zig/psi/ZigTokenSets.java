@@ -4,6 +4,8 @@ import com.intellij.psi.tree.TokenSet;
 
 public interface ZigTokenSets {
 
+  // *** Syntax highlighter ***
+
   TokenSet KEYWORDS = TokenSet.create(
           ZigTypes.KEYWORD_ADDRSPACE,
           ZigTypes.KEYWORD_ALIGN,
@@ -92,5 +94,8 @@ public interface ZigTokenSets {
 
   TokenSet BRACKETS = TokenSet.create(ZigTypes.L_BRACKET, ZigTypes.R_BRACKET);
 
+  // *** Parser ***
+
+  TokenSet COMMENTS = TokenSet.orSet(DOC_COMMENTS, TokenSet.create(ZigTypes.LINE_COMMENT));
 
 }
