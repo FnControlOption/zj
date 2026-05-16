@@ -68,6 +68,10 @@ public class ZigSyntaxHighlighter extends SyntaxHighlighterBase {
           createTextAttributesKey("ZIG_BRACKETS", DefaultLanguageHighlighterColors.BRACKETS);
   private static final TextAttributesKey[] BRACKETS_KEYS = new TextAttributesKey[]{BRACKETS};
 
+  public static final TextAttributesKey BUILTIN =
+          createTextAttributesKey("ZIG_BUILTIN", DefaultLanguageHighlighterColors.METADATA);
+  private static final TextAttributesKey[] BUILTIN_KEYS = new TextAttributesKey[]{BUILTIN};
+
   public static final TextAttributesKey BAD_CHARACTER =
           createTextAttributesKey("ZIG_BAD_CHARACTER", HighlighterColors.BAD_CHARACTER);
   private static final TextAttributesKey[] BAD_CHARACTER_KEYS = new TextAttributesKey[]{BAD_CHARACTER};
@@ -120,6 +124,9 @@ public class ZigSyntaxHighlighter extends SyntaxHighlighterBase {
     }
     if (tokenType.equals(ZigTypes.LINE_COMMENT)) {
       return LINE_COMMENT_KEYS;
+    }
+    if (tokenType.equals(ZigTypes.BUILTIN)) {
+      return BUILTIN_KEYS;
     }
     if (tokenType.equals(TokenType.BAD_CHARACTER)) {
       return BAD_CHARACTER_KEYS;

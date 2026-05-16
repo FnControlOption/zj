@@ -28,6 +28,7 @@ final class ZigColorSettingsPage implements ColorSettingsPage {
           new AttributesDescriptor("Comma", ZigSyntaxHighlighter.COMMA),
           new AttributesDescriptor("Parentheses", ZigSyntaxHighlighter.PARENTHESES),
           new AttributesDescriptor("Brackets", ZigSyntaxHighlighter.BRACKETS),
+          new AttributesDescriptor("Builtin function", ZigSyntaxHighlighter.BUILTIN),
           new AttributesDescriptor("Bad character", ZigSyntaxHighlighter.BAD_CHARACTER)
   };
 
@@ -59,6 +60,7 @@ final class ZigColorSettingsPage implements ColorSettingsPage {
         const sum = 12 + 34;
         const array: [2]i32 = .{ 12, 34 };
         const fn_call = func(12, 34);
+        const builtin = @foo();
         const bad = $$$;""";
   }
 
