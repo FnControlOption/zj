@@ -42,6 +42,10 @@
     <lang.syntaxHighlighterFactory language="Zig"
                                    implementationClass="io.github.fncontroloption.zig.ZigSyntaxHighlighterFactory"/>
     <colorSettingsPage implementation="io.github.fncontroloption.zig.ZigColorSettingsPage"/>
+    <codeStyleSettingsProvider implementation="io.github.fncontroloption.zig.codeStyle.ZigCodeStyleSettingsProvider"/>
+    <langCodeStyleSettingsProvider implementation="io.github.fncontroloption.zig.codeStyle.ZigLanguageCodeStyleSettingsProvider"/>
+    <lang.commenter language="Zig" implementationClass="io.github.fncontroloption.zig.ZigCommenter"/>
+    <spellchecker.support language="Zig" implementationClass="io.github.fncontroloption.zig.ZigSpellcheckingStrategy"/>
     <!--
     <fileType name="Simple File" implementationClass="org.intellij.sdk.language.SimpleFileType" fieldName="INSTANCE"
               language="Simple" extensions="simple"/>
