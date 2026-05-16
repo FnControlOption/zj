@@ -1,4 +1,4 @@
-package io.github.fncontroloption.zig;
+package io.github.fncontroloption.zig.parser;
 
 import com.intellij.lang.ASTNode;
 import com.intellij.lang.ParserDefinition;
@@ -10,12 +10,13 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.tree.IFileElementType;
 import com.intellij.psi.tree.TokenSet;
-import io.github.fncontroloption.zig.parser.ZigParser;
+import io.github.fncontroloption.zig.ZigLanguage;
+import io.github.fncontroloption.zig.lexer.ZigLexerAdapter;
 import io.github.fncontroloption.zig.psi.ZigFile;
 import io.github.fncontroloption.zig.psi.ZigTokenSets;
 import org.jetbrains.annotations.NotNull;
 
-final class ZigParserDefinition implements ParserDefinition {
+public final class ZigParserDefinition implements ParserDefinition {
 
   public static final IFileElementType FILE = new IFileElementType(ZigLanguage.INSTANCE);
 

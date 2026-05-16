@@ -1,4 +1,4 @@
-package io.github.fncontroloption.zig;
+package io.github.fncontroloption.zig.syntaxHighlighter;
 
 import com.intellij.lexer.Lexer;
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors;
@@ -7,6 +7,7 @@ import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.fileTypes.SyntaxHighlighterBase;
 import com.intellij.psi.TokenType;
 import com.intellij.psi.tree.IElementType;
+import io.github.fncontroloption.zig.lexer.ZigLexerAdapter;
 import io.github.fncontroloption.zig.psi.ZigTokenSets;
 import io.github.fncontroloption.zig.psi.ZigTypes;
 import org.jetbrains.annotations.NotNull;
