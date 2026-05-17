@@ -41,6 +41,7 @@
     <lang.parserDefinition language="Zig" implementationClass="io.github.fncontroloption.zig.parser.ZigParserDefinition"/>
     <lang.syntaxHighlighterFactory language="Zig"
                                    implementationClass="io.github.fncontroloption.zig.syntaxHighlighter.ZigSyntaxHighlighterFactory"/>
+    <highlightVisitor implementation="io.github.fncontroloption.zig.syntaxHighlighter.ZigHighlightVisitor"/>
     <colorSettingsPage implementation="io.github.fncontroloption.zig.syntaxHighlighter.ZigColorSettingsPage"/>
     <codeStyleSettingsProvider implementation="io.github.fncontroloption.zig.codeStyle.ZigCodeStyleSettingsProvider"/>
     <langCodeStyleSettingsProvider implementation="io.github.fncontroloption.zig.codeStyle.ZigLanguageCodeStyleSettingsProvider"/>

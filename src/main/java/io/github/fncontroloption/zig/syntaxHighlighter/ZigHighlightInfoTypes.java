@@ -1,0 +1,17 @@
+package io.github.fncontroloption.zig.syntaxHighlighter;
+
+import com.intellij.codeInsight.daemon.impl.HighlightInfoType;
+import com.intellij.openapi.editor.colors.TextAttributesKey;
+import org.jetbrains.annotations.NotNull;
+
+public interface ZigHighlightInfoTypes {
+
+    HighlightInfoType INSTANCE_METHOD = createSymbolTypeInfo(ZigHighlightingColors.INSTANCE_METHOD);
+    HighlightInfoType INSTANCE_FIELD = createSymbolTypeInfo(ZigHighlightingColors.INSTANCE_FIELD);
+    HighlightInfoType STATIC_METHOD = createSymbolTypeInfo(ZigHighlightingColors.STATIC_METHOD);
+    HighlightInfoType STATIC_FIELD = createSymbolTypeInfo(ZigHighlightingColors.STATIC_FIELD);
+
+    private static @NotNull HighlightInfoType createSymbolTypeInfo(@NotNull TextAttributesKey attributesKey) {
+        return new HighlightInfoType.HighlightInfoTypeImpl(HighlightInfoType.SYMBOL_TYPE_SEVERITY, attributesKey, false);
+    }
+}

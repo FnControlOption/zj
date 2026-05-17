@@ -6,6 +6,8 @@ import com.intellij.openapi.editor.colors.TextAttributesKey;
 
 public interface ZigHighlightingColors {
 
+    // *** Highlighter ***
+
     TextAttributesKey IDENTIFIER = TextAttributesKey.createTextAttributesKey("ZIG_IDENTIFIER", DefaultLanguageHighlighterColors.IDENTIFIER);
     TextAttributesKey NUMBER = TextAttributesKey.createTextAttributesKey("ZIG_NUMBER", DefaultLanguageHighlighterColors.NUMBER);
     TextAttributesKey KEYWORD = TextAttributesKey.createTextAttributesKey("ZIG_KEYWORD", DefaultLanguageHighlighterColors.KEYWORD);
@@ -22,4 +24,10 @@ public interface ZigHighlightingColors {
     TextAttributesKey BUILTIN = TextAttributesKey.createTextAttributesKey("ZIG_BUILTIN", DefaultLanguageHighlighterColors.METADATA);
     TextAttributesKey BAD_CHARACTER = TextAttributesKey.createTextAttributesKey("ZIG_BAD_CHARACTER", HighlighterColors.BAD_CHARACTER);
 
+    // *** Highlight visitor ***
+
+    TextAttributesKey INSTANCE_METHOD = TextAttributesKey.createTextAttributesKey("ZIG_INSTANCE_METHOD", DefaultLanguageHighlighterColors.INSTANCE_METHOD);
+    TextAttributesKey INSTANCE_FIELD = TextAttributesKey.createTextAttributesKey("ZIG_INSTANCE_FIELD", DefaultLanguageHighlighterColors.INSTANCE_FIELD);
+    TextAttributesKey STATIC_METHOD = TextAttributesKey.createTextAttributesKey("ZIG_STATIC_METHOD", DefaultLanguageHighlighterColors.STATIC_METHOD);
+    TextAttributesKey STATIC_FIELD = TextAttributesKey.createTextAttributesKey("ZIG_STATIC_FIELD", DefaultLanguageHighlighterColors.STATIC_FIELD);
 }
