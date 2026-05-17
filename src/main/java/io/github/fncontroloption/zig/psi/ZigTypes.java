@@ -1,8 +1,14 @@
 package io.github.fncontroloption.zig.psi;
 
+import com.intellij.extapi.psi.ASTWrapperPsiElement;
+import com.intellij.lang.ASTNode;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.tree.IElementType;
 
 public interface ZigTypes {
+
+  // *** Tokens ***
+
   IElementType AMPERSAND = new ZigElementType("&");
   IElementType AMPERSAND_EQUAL = new ZigElementType("&=");
   IElementType ANGLE_BRACKET_ANGLE_BRACKET_LEFT = new ZigElementType("<<");
@@ -119,4 +125,18 @@ public interface ZigTypes {
   IElementType SLASH_EQUAL = new ZigElementType("/=");
   IElementType STRING_LITERAL = new ZigElementType("a string literal");
   IElementType TILDE = new ZigElementType("~");
+
+  // *** AST ***
+
+  IElementType FN_PROTO = new ZigElementType("function prototype");
+
+  class Factory {
+    public static PsiElement createElement(ASTNode node) {
+      IElementType type = node.getElementType();
+      if (type == FN_PROTO) {
+        return new ZigFnProto(node);
+      }
+      throw new AssertionError("Unknown element type: " + type);
+    }
+  }
 }
