@@ -5,9 +5,9 @@ import io.github.fncontroloption.zig.ZigLanguage;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 
-public class ZigTokenType extends IElementType {
+public class ZigElementType extends IElementType {
 
-  public ZigTokenType(@NotNull @NonNls String debugName) {
+  public ZigElementType(@NotNull @NonNls String debugName) {
     super(debugName, ZigLanguage.INSTANCE);
   }
 
