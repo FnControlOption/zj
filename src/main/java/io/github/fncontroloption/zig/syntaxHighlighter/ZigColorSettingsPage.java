@@ -15,21 +15,21 @@ import java.util.Map;
 final class ZigColorSettingsPage implements ColorSettingsPage {
 
   private static final AttributesDescriptor[] DESCRIPTORS = new AttributesDescriptor[]{
-          new AttributesDescriptor("Identifier", ZigSyntaxHighlighter.IDENTIFIER),
-          new AttributesDescriptor("Number", ZigSyntaxHighlighter.NUMBER),
-          new AttributesDescriptor("Keyword", ZigSyntaxHighlighter.KEYWORD),
-          new AttributesDescriptor("String", ZigSyntaxHighlighter.STRING),
-          new AttributesDescriptor("Line comment", ZigSyntaxHighlighter.LINE_COMMENT),
-          new AttributesDescriptor("Doc comment", ZigSyntaxHighlighter.DOC_COMMENT),
-          new AttributesDescriptor("Operation sign", ZigSyntaxHighlighter.OPERATION_SIGN),
-          new AttributesDescriptor("Braces", ZigSyntaxHighlighter.BRACES),
-          new AttributesDescriptor("Dot", ZigSyntaxHighlighter.DOT),
-          new AttributesDescriptor("Semicolon", ZigSyntaxHighlighter.SEMICOLON),
-          new AttributesDescriptor("Comma", ZigSyntaxHighlighter.COMMA),
-          new AttributesDescriptor("Parentheses", ZigSyntaxHighlighter.PARENTHESES),
-          new AttributesDescriptor("Brackets", ZigSyntaxHighlighter.BRACKETS),
-          new AttributesDescriptor("Builtin function", ZigSyntaxHighlighter.BUILTIN),
-          new AttributesDescriptor("Bad character", ZigSyntaxHighlighter.BAD_CHARACTER)
+          new AttributesDescriptor("Identifier", ZigHighlightingColors.IDENTIFIER),
+          new AttributesDescriptor("Number", ZigHighlightingColors.NUMBER),
+          new AttributesDescriptor("Keyword", ZigHighlightingColors.KEYWORD),
+          new AttributesDescriptor("String", ZigHighlightingColors.STRING),
+          new AttributesDescriptor("Line comment", ZigHighlightingColors.LINE_COMMENT),
+          new AttributesDescriptor("Doc comment", ZigHighlightingColors.DOC_COMMENT),
+          new AttributesDescriptor("Operation sign", ZigHighlightingColors.OPERATION_SIGN),
+          new AttributesDescriptor("Braces", ZigHighlightingColors.BRACES),
+          new AttributesDescriptor("Dot", ZigHighlightingColors.DOT),
+          new AttributesDescriptor("Semicolon", ZigHighlightingColors.SEMICOLON),
+          new AttributesDescriptor("Comma", ZigHighlightingColors.COMMA),
+          new AttributesDescriptor("Parentheses", ZigHighlightingColors.PARENTHESES),
+          new AttributesDescriptor("Brackets", ZigHighlightingColors.BRACKETS),
+          new AttributesDescriptor("Builtin function", ZigHighlightingColors.BUILTIN),
+          new AttributesDescriptor("Bad character", ZigHighlightingColors.BAD_CHARACTER)
   };
 
   @Override
