@@ -115,10 +115,8 @@ public interface ZigTypes {
   IElementType R_BRACKET = new ZigTokenType("]");
   IElementType R_PAREN = new ZigTokenType(")");
   IElementType SEMICOLON = new ZigTokenType(";");
-  IElementType SEPARATOR = new ZigTokenType("SEPARATOR");
   IElementType SLASH = new ZigTokenType("/");
   IElementType SLASH_EQUAL = new ZigTokenType("/=");
   IElementType STRING_LITERAL = new ZigTokenType("a string literal");
   IElementType TILDE = new ZigTokenType("~");
-  IElementType VALUE = new ZigTokenType("VALUE");
 }
