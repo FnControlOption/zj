@@ -100,7 +100,7 @@ public interface ZigTypes {
   IElementType MINUS_PERCENT_EQUAL = new ZigElementType("-%=");
   IElementType MINUS_PIPE = new ZigElementType("-|");
   IElementType MINUS_PIPE_EQUAL = new ZigElementType("-|=");
-  IElementType MULTILINE_STRING_LITERAL_LINE = new ZigElementType("a multiline string literal");
+  IElementType MULTILINE_STRING_LITERAL_LINE = new ZigElementType("a multiline string literal line");
   IElementType NUMBER_LITERAL = new ZigElementType("a number literal");
   IElementType PERCENT = new ZigElementType("%");
   IElementType PERCENT_EQUAL = new ZigElementType("%=");
@@ -129,12 +129,16 @@ public interface ZigTypes {
   // *** AST ***
 
   IElementType FN_PROTO = new ZigElementType("function prototype");
+  IElementType MULTILINE_STRING_LITERAL = new ZigElementType("a multiline string literal");
 
   class Factory {
     public static PsiElement createElement(ASTNode node) {
       IElementType type = node.getElementType();
       if (type == FN_PROTO) {
         return new ZigFnProto(node);
+      }
+      if (type == MULTILINE_STRING_LITERAL) {
+        return new ZigMultilineStringLiteral(node);
       }
       if (type == STRING_LITERAL) {
         return new ZigStringLiteral(node);
