@@ -136,6 +136,9 @@ public interface ZigTypes {
       if (type == FN_PROTO) {
         return new ZigFnProto(node);
       }
+      if (type == STRING_LITERAL) {
+        return new ZigStringLiteral(node);
+      }
       throw new AssertionError("Unknown element type: " + type);
     }
   }

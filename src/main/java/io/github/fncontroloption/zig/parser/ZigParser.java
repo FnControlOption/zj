@@ -21,6 +21,10 @@ public class ZigParser implements PsiParser {
                     builder.advanceLexer();
                 }
                 varDeclProtoMarker.done(FN_PROTO);
+            } else if (builder.getTokenType() == STRING_LITERAL) {
+                var stringLiteralMarker = builder.mark();
+                builder.advanceLexer();
+                stringLiteralMarker.done(STRING_LITERAL);
             } else {
                 builder.advanceLexer();
             }
