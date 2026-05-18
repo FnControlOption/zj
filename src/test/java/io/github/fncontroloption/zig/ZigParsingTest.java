@@ -18,7 +18,7 @@ public class ZigParsingTest extends ParsingTestCase {
    */
   @Override
   protected String getTestDataPath() {
-    return "src/test/zig";
+    return "src/test/parsingTestData";
   }
 
   @Override
