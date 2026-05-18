@@ -32,6 +32,7 @@ public class ZigParser implements PsiParser {
                 builder.advanceLexer();
                 stringLiteralMarker.done(STRING_LITERAL);
             } else {
+                builder.error("Unexpected token: " + builder.getTokenType());
                 builder.advanceLexer();
             }
         }

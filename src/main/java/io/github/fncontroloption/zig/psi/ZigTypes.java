@@ -128,7 +128,7 @@ public interface ZigTypes {
 
   // *** AST ***
 
-  IElementType FN_PROTO = new ZigElementType("function prototype");
+  IElementType FN_PROTO = new ZigElementType("a function prototype");
   IElementType MULTILINE_STRING_LITERAL = new ZigElementType("a multiline string literal");
 
   class Factory {
