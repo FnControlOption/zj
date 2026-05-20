@@ -2,9 +2,6 @@ package io.github.fncontroloption.zig.psi;
 
 import com.intellij.psi.tree.TokenSet;
 
-import static io.github.fncontroloption.zig.psi.ZigTypes.IDENTIFIER;
-import static io.github.fncontroloption.zig.psi.ZigTypes.STRING_LITERAL;
-
 public interface ZigTokenSets {
 
   // *** Syntax highlighter ***
@@ -101,6 +98,6 @@ public interface ZigTokenSets {
 
   TokenSet COMMENTS = TokenSet.orSet(DOC_COMMENTS, TokenSet.create(ZigTypes.LINE_COMMENT));
 
-  TokenSet TEST_NAME = TokenSet.create(STRING_LITERAL, IDENTIFIER);
+  TokenSet TEST_NAME = TokenSet.create(ZigTypes.STRING_LITERAL, ZigTypes.IDENTIFIER);
 
 }
