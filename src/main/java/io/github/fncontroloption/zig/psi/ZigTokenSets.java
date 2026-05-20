@@ -100,4 +100,11 @@ public interface ZigTokenSets {
 
   TokenSet TEST_NAME = TokenSet.create(ZigTypes.STRING_LITERAL, ZigTypes.IDENTIFIER);
 
+  TokenSet CONTAINER = TokenSet.create(
+          ZigTypes.KEYWORD_ENUM,
+          ZigTypes.KEYWORD_OPAQUE,
+          ZigTypes.KEYWORD_STRUCT,
+          ZigTypes.KEYWORD_UNION
+  );
+
 }

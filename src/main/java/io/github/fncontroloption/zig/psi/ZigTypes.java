@@ -129,6 +129,7 @@ public interface ZigTypes {
   // *** AST ***
 
   IElementType BLOCK = new ZigElementType("a block");
+  IElementType CONTAINER_DECL = new ZigElementType("a container declaration");
   IElementType FN_PROTO = new ZigElementType("a function prototype");
   IElementType MULTILINE_STRING_LITERAL = new ZigElementType("a multiline string literal");
   IElementType TEST_DECL = new ZigElementType("a test declaration");
@@ -139,6 +140,9 @@ public interface ZigTypes {
       IElementType type = node.getElementType();
       if (type == BLOCK) {
         return new ZigBlock(node);
+      }
+      if (type == CONTAINER_DECL) {
+        return new ASTWrapperPsiElement(node); // TODO: create subclass
       }
       if (type == FN_PROTO) {
         return new ZigFnProto(node);

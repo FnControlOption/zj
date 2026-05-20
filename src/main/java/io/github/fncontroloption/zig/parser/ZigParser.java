@@ -72,6 +72,27 @@ public class ZigParser implements PsiParser {
         blockMarker.done(BLOCK);
     }
 
+    private void parseContainerDecl() {
+        if (!ZigTokenSets.CONTAINER.contains(builder.getTokenType())) {
+            return;
+        }
+        var containerDeclMarker = builder.mark();
+        builder.advanceLexer();
+        if (builder.getTokenType() == L_BRACE) {
+            builder.advanceLexer();
+        }
+        open(containerDeclMarker, R_BRACE);
+        while (!builder.eof()) {
+            if (builder.getTokenType() == R_BRACE) {
+                builder.advanceLexer();
+                break;
+            }
+            skipUnexpectedToken();
+        }
+        close(containerDeclMarker);
+        containerDeclMarker.done(CONTAINER_DECL);
+    }
+
     private void parseFn() {
         if (builder.getTokenType() != KEYWORD_FN) {
             return;
@@ -120,7 +141,9 @@ public class ZigParser implements PsiParser {
     }
 
     private void skipUnexpectedToken() {
-        if (builder.getTokenType() == KEYWORD_FN) {
+        if (ZigTokenSets.CONTAINER.contains(builder.getTokenType())) {
+            parseContainerDecl();
+        } else if (builder.getTokenType() == KEYWORD_FN) {
             parseFn();
         } else if (builder.getTokenType() == KEYWORD_TEST) {
             parseTestDecl();
