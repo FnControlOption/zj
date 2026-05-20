@@ -72,8 +72,10 @@ public class ZigParser implements PsiParser {
         blockMarker.done(BLOCK);
     }
 
-    private void expectFn() {
-        LOG.assertTrue(builder.getTokenType() == KEYWORD_FN);
+    private void parseFn() {
+        if (builder.getTokenType() != KEYWORD_FN) {
+            return;
+        }
         var fnProtoMarker = builder.mark();
         builder.advanceLexer();
         if (builder.getTokenType() == IDENTIFIER) {
@@ -82,8 +84,10 @@ public class ZigParser implements PsiParser {
         fnProtoMarker.done(FN_PROTO);
     }
 
-    private void expectTestDecl() {
-        LOG.assertTrue(builder.getTokenType() == KEYWORD_TEST);
+    private void parseTestDecl() {
+        if (builder.getTokenType() != KEYWORD_TEST) {
+            return;
+        }
         var testDeclMarker = builder.mark();
         builder.advanceLexer();
         if (ZigTokenSets.TEST_NAME.contains(builder.getTokenType())) {
@@ -95,8 +99,10 @@ public class ZigParser implements PsiParser {
         testDeclMarker.done(TEST_DECL);
     }
 
-    private void expectMultilineStringLiteral() {
-        LOG.assertTrue(builder.getTokenType() == MULTILINE_STRING_LITERAL_LINE);
+    private void parseMultilineStringLiteral() {
+        if (builder.getTokenType() != MULTILINE_STRING_LITERAL_LINE) {
+            return;
+        }
         var marker = builder.mark();
         while (builder.getTokenType() == MULTILINE_STRING_LITERAL_LINE) {
             builder.advanceLexer();
@@ -104,8 +110,10 @@ public class ZigParser implements PsiParser {
         marker.done(MULTILINE_STRING_LITERAL);
     }
 
-    private void expectStringLiteral() {
-        LOG.assertTrue(builder.getTokenType() == STRING_LITERAL);
+    private void parseStringLiteral() {
+        if (builder.getTokenType() != STRING_LITERAL) {
+            return;
+        }
         var marker = builder.mark();
         builder.advanceLexer();
         marker.done(STRING_LITERAL);
@@ -113,15 +121,15 @@ public class ZigParser implements PsiParser {
 
     private void skipUnexpectedToken() {
         if (builder.getTokenType() == KEYWORD_FN) {
-            expectFn();
+            parseFn();
         } else if (builder.getTokenType() == KEYWORD_TEST) {
-            expectTestDecl();
+            parseTestDecl();
         } else if (builder.getTokenType() == L_BRACE) {
             parseBlock();
         } else if (builder.getTokenType() == MULTILINE_STRING_LITERAL_LINE) {
-            expectMultilineStringLiteral();
+            parseMultilineStringLiteral();
         } else if (builder.getTokenType() == STRING_LITERAL) {
-            expectStringLiteral();
+            parseStringLiteral();
         } else {
             builder.advanceLexer();
         }
