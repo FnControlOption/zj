@@ -128,12 +128,18 @@ public interface ZigTypes {
 
   // *** AST ***
 
+  IElementType BLOCK = new ZigElementType("a block");
   IElementType FN_PROTO = new ZigElementType("a function prototype");
   IElementType MULTILINE_STRING_LITERAL = new ZigElementType("a multiline string literal");
+  IElementType TEST_DECL = new ZigElementType("a test declaration");
+  IElementType TEST_NAME = new ZigElementType("a test name");
 
   class Factory {
     public static PsiElement createElement(ASTNode node) {
       IElementType type = node.getElementType();
+      if (type == BLOCK) {
+        return new ZigBlock(node);
+      }
       if (type == FN_PROTO) {
         return new ZigFnProto(node);
       }
@@ -142,6 +148,12 @@ public interface ZigTypes {
       }
       if (type == STRING_LITERAL) {
         return new ZigStringLiteral(node);
+      }
+      if (type == TEST_DECL) {
+        return new ZigTestDecl(node);
+      }
+      if (type == TEST_NAME) {
+        return new ZigTestName(node);
       }
       throw new AssertionError("Unknown element type: " + type);
     }

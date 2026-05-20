@@ -5,7 +5,11 @@ import com.intellij.lang.PsiBuilder;
 import com.intellij.lang.PsiParser;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.tree.IElementType;
+import io.github.fncontroloption.zig.psi.ZigTokenSets;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.LinkedList;
 
 import static io.github.fncontroloption.zig.psi.ZigTypes.*;
 
@@ -13,17 +17,31 @@ import static io.github.fncontroloption.zig.psi.ZigTypes.*;
 public class ZigParser implements PsiParser {
     private static final Logger LOG = Logger.getInstance(ZigParser.class);
     private PsiBuilder builder;
+    private LinkedList<OpenNode> openNodes;
 
     @Override
     public @NotNull ASTNode parse(@NotNull IElementType root, @NotNull PsiBuilder builder) {
         this.builder = builder;
+        this.openNodes = new LinkedList<>();
         parseRoot(root);
+        LOG.assertTrue(openNodes.isEmpty());
         return builder.getTreeBuilt();
+    }
+
+    private void open(PsiBuilder.Marker marker, @Nullable IElementType closingToken) {
+        openNodes.addLast(new OpenNode(marker, closingToken));
+    }
+
+    private void close(PsiBuilder.Marker marker) {
+        var open = openNodes.removeLast();
+        LOG.assertTrue(open.marker == marker);
     }
 
     private void parseRoot(IElementType root) {
         var rootMarker = builder.mark();
+        open(rootMarker, null);
         parseContainerMembers(null);
+        close(rootMarker);
         rootMarker.done(root);
     }
 
@@ -36,6 +54,24 @@ public class ZigParser implements PsiParser {
         }
     }
 
+    private void parseBlock() {
+        if (builder.getTokenType() != L_BRACE) {
+            return;
+        }
+        var blockMarker = builder.mark();
+        open(blockMarker, R_BRACE);
+        builder.advanceLexer();
+        while (!builder.eof()) {
+            if (builder.getTokenType() == R_BRACE) {
+                builder.advanceLexer();
+                break;
+            }
+            skipUnexpectedToken();
+        }
+        close(blockMarker);
+        blockMarker.done(BLOCK);
+    }
+
     private void expectFn() {
         LOG.assertTrue(builder.getTokenType() == KEYWORD_FN);
         var fnProtoMarker = builder.mark();
@@ -44,6 +80,19 @@ public class ZigParser implements PsiParser {
             builder.advanceLexer();
         }
         fnProtoMarker.done(FN_PROTO);
+    }
+
+    private void expectTestDecl() {
+        LOG.assertTrue(builder.getTokenType() == KEYWORD_TEST);
+        var testDeclMarker = builder.mark();
+        builder.advanceLexer();
+        if (ZigTokenSets.TEST_NAME.contains(builder.getTokenType())) {
+            var testNameMarker = builder.mark();
+            builder.advanceLexer();
+            testNameMarker.done(TEST_NAME);
+        }
+        parseBlock();
+        testDeclMarker.done(TEST_DECL);
     }
 
     private void expectMultilineStringLiteral() {
@@ -65,6 +114,10 @@ public class ZigParser implements PsiParser {
     private void skipUnexpectedToken() {
         if (builder.getTokenType() == KEYWORD_FN) {
             expectFn();
+        } else if (builder.getTokenType() == KEYWORD_TEST) {
+            expectTestDecl();
+        } else if (builder.getTokenType() == L_BRACE) {
+            parseBlock();
         } else if (builder.getTokenType() == MULTILINE_STRING_LITERAL_LINE) {
             expectMultilineStringLiteral();
         } else if (builder.getTokenType() == STRING_LITERAL) {
@@ -73,4 +126,6 @@ public class ZigParser implements PsiParser {
             builder.advanceLexer();
         }
     }
+
+    private record OpenNode(PsiBuilder.Marker marker, @Nullable IElementType closingToken) {}
 }
