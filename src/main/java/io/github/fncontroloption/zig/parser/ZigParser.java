@@ -54,24 +54,6 @@ public class ZigParser implements PsiParser {
         }
     }
 
-    private void parseBlock() {
-        if (builder.getTokenType() != L_BRACE) {
-            return;
-        }
-        var blockMarker = builder.mark();
-        open(blockMarker, R_BRACE);
-        builder.advanceLexer();
-        while (!builder.eof()) {
-            if (builder.getTokenType() == R_BRACE) {
-                builder.advanceLexer();
-                break;
-            }
-            skipUnexpectedToken();
-        }
-        close(blockMarker);
-        blockMarker.done(BLOCK);
-    }
-
     private void parseContainerDecl() {
         if (!ZigTokenSets.CONTAINER.contains(builder.getTokenType())) {
             return;
@@ -120,6 +102,42 @@ public class ZigParser implements PsiParser {
         testDeclMarker.done(TEST_DECL);
     }
 
+    private void parseBlock() {
+        if (builder.getTokenType() != L_BRACE) {
+            return;
+        }
+        var blockMarker = builder.mark();
+        open(blockMarker, R_BRACE);
+        builder.advanceLexer();
+        while (!builder.eof()) {
+            if (builder.getTokenType() == R_BRACE) {
+                builder.advanceLexer();
+                break;
+            }
+            skipUnexpectedToken();
+        }
+        close(blockMarker);
+        blockMarker.done(BLOCK);
+    }
+
+    private void parseGroupedExpr() {
+        if (builder.getTokenType() != L_PAREN) {
+            return;
+        }
+        var groupedExprMarker = builder.mark();
+        open(groupedExprMarker, R_PAREN);
+        builder.advanceLexer();
+        while (!builder.eof()) {
+            if (builder.getTokenType() == R_PAREN) {
+                builder.advanceLexer();
+                break;
+            }
+            skipUnexpectedToken();
+        }
+        close(groupedExprMarker);
+        groupedExprMarker.done(GROUPED_EXPRESSION);
+    }
+
     private void parseMultilineStringLiteral() {
         if (builder.getTokenType() != MULTILINE_STRING_LITERAL_LINE) {
             return;
@@ -149,6 +167,8 @@ public class ZigParser implements PsiParser {
             parseTestDecl();
         } else if (builder.getTokenType() == L_BRACE) {
             parseBlock();
+        } else if (builder.getTokenType() == L_PAREN) {
+            parseGroupedExpr();
         } else if (builder.getTokenType() == MULTILINE_STRING_LITERAL_LINE) {
             parseMultilineStringLiteral();
         } else if (builder.getTokenType() == STRING_LITERAL) {

@@ -131,6 +131,7 @@ public interface ZigTypes {
   IElementType BLOCK = new ZigElementType("a block");
   IElementType CONTAINER_DECL = new ZigElementType("a container declaration");
   IElementType FN_PROTO = new ZigElementType("a function prototype");
+  IElementType GROUPED_EXPRESSION = new ZigElementType("a grouped expression");
   IElementType MULTILINE_STRING_LITERAL = new ZigElementType("a multiline string literal");
   IElementType TEST_DECL = new ZigElementType("a test declaration");
   IElementType TEST_NAME = new ZigElementType("a test name");
@@ -146,6 +147,9 @@ public interface ZigTypes {
       }
       if (type == FN_PROTO) {
         return new ZigFnProto(node);
+      }
+      if (type == GROUPED_EXPRESSION) {
+        return new ASTWrapperPsiElement(node); // TODO: create subclass
       }
       if (type == MULTILINE_STRING_LITERAL) {
         return new ZigMultilineStringLiteral(node);
