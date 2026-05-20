@@ -10,8 +10,16 @@ import static io.github.fncontroloption.zig.psi.ZigTypes.*;
 
 // Based on https://codeberg.org/ziglang/zig/src/commit/72d954e/lib/std/zig/Parse.zig
 public class ZigParser implements PsiParser {
+    private PsiBuilder builder;
+
     @Override
     public @NotNull ASTNode parse(@NotNull IElementType root, @NotNull PsiBuilder builder) {
+        this.builder = builder;
+        parseRoot(root);
+        return builder.getTreeBuilt();
+    }
+
+    private void parseRoot(IElementType root) {
         var rootMarker = builder.mark();
         while (!builder.eof()) {
             if (builder.getTokenType() == KEYWORD_FN) {
@@ -32,11 +40,9 @@ public class ZigParser implements PsiParser {
                 builder.advanceLexer();
                 stringLiteralMarker.done(STRING_LITERAL);
             } else {
-                builder.error("Unexpected token: " + builder.getTokenType());
                 builder.advanceLexer();
             }
         }
         rootMarker.done(root);
-        return builder.getTreeBuilt();
     }
 }
