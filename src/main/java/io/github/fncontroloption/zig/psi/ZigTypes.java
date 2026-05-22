@@ -1,8 +1,5 @@
 package io.github.fncontroloption.zig.psi;
 
-import com.intellij.extapi.psi.ASTWrapperPsiElement;
-import com.intellij.lang.ASTNode;
-import com.intellij.psi.PsiElement;
 import com.intellij.psi.tree.IElementType;
 
 public interface ZigTypes {
@@ -126,44 +123,4 @@ public interface ZigTypes {
   IElementType STRING_LITERAL = new ZigElementType("a string literal");
   IElementType TILDE = new ZigElementType("~");
 
-  // *** AST ***
-
-  IElementType BLOCK = new ZigElementType("a block");
-  IElementType CONTAINER_DECL = new ZigElementType("a container declaration");
-  IElementType FN_PROTO = new ZigElementType("a function prototype");
-  IElementType GROUPED_EXPRESSION = new ZigElementType("a grouped expression");
-  IElementType MULTILINE_STRING_LITERAL = new ZigElementType("a multiline string literal");
-  IElementType TEST_DECL = new ZigElementType("a test declaration");
-  IElementType TEST_NAME = new ZigElementType("a test name");
-
-  class Factory {
-    public static PsiElement createElement(ASTNode node) {
-      IElementType type = node.getElementType();
-      if (type == BLOCK) {
-        return new ZigBlock(node);
-      }
-      if (type == CONTAINER_DECL) {
-        return new ASTWrapperPsiElement(node); // TODO: create subclass
-      }
-      if (type == FN_PROTO) {
-        return new ZigFnProto(node);
-      }
-      if (type == GROUPED_EXPRESSION) {
-        return new ASTWrapperPsiElement(node); // TODO: create subclass
-      }
-      if (type == MULTILINE_STRING_LITERAL) {
-        return new ZigMultilineStringLiteral(node);
-      }
-      if (type == STRING_LITERAL) {
-        return new ZigStringLiteral(node);
-      }
-      if (type == TEST_DECL) {
-        return new ZigTestDecl(node);
-      }
-      if (type == TEST_NAME) {
-        return new ZigTestName(node);
-      }
-      throw new AssertionError("Unknown element type: " + type);
-    }
-  }
 }

@@ -60,7 +60,7 @@ public final class ZigParserDefinition implements ParserDefinition {
   @NotNull
   @Override
   public PsiElement createElement(ASTNode node) {
-    return ZigTypes.Factory.createElement(node);
+    return new com.intellij.extapi.psi.ASTWrapperPsiElement(node);
   }
 
 }

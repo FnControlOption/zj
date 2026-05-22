@@ -6,7 +6,6 @@ import com.intellij.codeInsight.daemon.impl.analysis.HighlightInfoHolder;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import io.github.fncontroloption.zig.psi.ZigFile;
-import io.github.fncontroloption.zig.psi.ZigFnProto;
 import org.jetbrains.annotations.NotNull;
 
 /** @see com.intellij.codeInsight.daemon.impl.analysis.JavaNamesHighlightVisitor */
@@ -20,12 +19,14 @@ public class ZigHighlightVisitor implements HighlightVisitor {
 
     @Override
     public void visit(@NotNull PsiElement element) {
+        /*
         if (element instanceof ZigFnProto proto) {
             var identifier = proto.getNameIdentifier();
             if (identifier != null) {
                 holder.add(HighlightInfo.newHighlightInfo(ZigHighlightInfoTypes.STATIC_METHOD).range(identifier).create());
             }
         }
+        */
     }
 
     @Override
