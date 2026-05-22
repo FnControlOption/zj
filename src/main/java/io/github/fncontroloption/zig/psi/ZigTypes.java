@@ -126,6 +126,7 @@ public interface ZigTypes {
   // *** AST ***
 
   IElementType TEST_DECL = new ZigElementType("test decl");
+  IElementType TEST_DECL_NAME = new ZigElementType("test decl name");
   IElementType GLOBAL_VAR_DECL = new ZigElementType("global var decl");
   IElementType LOCAL_VAR_DECL = new ZigElementType("local var decl");
   IElementType SIMPLE_VAR_DECL = new ZigElementType("simple var decl");
