@@ -9,6 +9,10 @@ public class ZigParsingTest extends ParsingTestCase {
     super("", "zig", new ZigParserDefinition());
   }
 
+  public void testAll() {
+    doTest(true);
+  }
+
   public void testParsingTestData() {
     doTest(true);
   }
