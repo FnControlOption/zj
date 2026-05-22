@@ -37,7 +37,10 @@ public class ZigParser implements PsiParser {
                 expectTestDecl();
             } else if (builder.getTokenType() == KEYWORD_COMPTIME) {
                 if (builder.lookAhead(1) == L_BRACE) {
-                    throw new UnsupportedOperationException(); // TODO
+                    var comptimeMarker = builder.mark();
+                    builder.advanceLexer();
+                    parseBlock();
+                    comptimeMarker.done(COMPTIME);
                 } else {
                     expectContainerField();
                     eatToken(COMMA);
