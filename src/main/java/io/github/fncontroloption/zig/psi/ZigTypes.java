@@ -270,9 +270,10 @@ public interface ZigTypes {
   IElementType TAGGED_UNION_TWO_TRAILING = new ZigElementType("tagged union two trailing");
   IElementType TAGGED_UNION_ENUM_TAG = new ZigElementType("tagged union enum tag");
   IElementType TAGGED_UNION_ENUM_TAG_TRAILING = new ZigElementType("tagged union enum tag trailing");
-  IElementType CONTAINER_FIELD_INIT = new ZigElementType("container field init");
-  IElementType CONTAINER_FIELD_ALIGN = new ZigElementType("container field align");
   IElementType CONTAINER_FIELD = new ZigElementType("container field");
+  IElementType CONTAINER_FIELD_NAME = new ZigElementType("container field name");
+  IElementType CONTAINER_FIELD_TYPE = new ZigElementType("container field type");
+  IElementType CONTAINER_FIELD_INIT = new ZigElementType("container field init");
   IElementType COMPTIME = new ZigElementType("comptime");
   IElementType NOSUSPEND = new ZigElementType("nosuspend");
   IElementType BLOCK_TWO = new ZigElementType("block two");

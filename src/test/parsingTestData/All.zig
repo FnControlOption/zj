@@ -5,3 +5,5 @@ var foo = bar;
 const foo = bar;
 pub threadlocal var foo: Foo = bar;
 pub threadlocal const foo: Foo = bar;
+foo: Foo,
+comptime foo: Foo = bar,

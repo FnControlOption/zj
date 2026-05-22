@@ -36,7 +36,12 @@ public class ZigParser implements PsiParser {
             if (builder.getTokenType() == KEYWORD_TEST) {
                 expectTestDecl();
             } else if (builder.getTokenType() == KEYWORD_COMPTIME) {
-                throw new UnsupportedOperationException(); // TODO
+                if (builder.lookAhead(1) == L_BRACE) {
+                    throw new UnsupportedOperationException(); // TODO
+                } else {
+                    expectContainerField();
+                    eatToken(COMMA);
+                }
             } else if (builder.getTokenType() == KEYWORD_PUB
                     || builder.getTokenType() == KEYWORD_CONST
                     || builder.getTokenType() == KEYWORD_VAR
@@ -48,9 +53,29 @@ public class ZigParser implements PsiParser {
                     || builder.getTokenType() == KEYWORD_FN) {
                 expectTopLevelDecl();
             } else {
-                break; // TODO
+                expectContainerField();
+                eatToken(COMMA);
             }
         }
+    }
+
+    private void expectContainerField() {
+        var marker = builder.mark();
+        eatToken(KEYWORD_COMPTIME);
+        var nameMarker = builder.mark();
+        eatToken(IDENTIFIER);
+        nameMarker.done(CONTAINER_FIELD_NAME);
+        eatToken(COLON);
+        var typeMarker = builder.mark();
+        expectTypeExpr();
+        typeMarker.done(CONTAINER_FIELD_TYPE);
+        parseByteAlign();
+        if (eatToken(EQUAL)) {
+            var initMarker = builder.mark();
+            expectExpr();
+            initMarker.done(CONTAINER_FIELD_INIT);
+        }
+        marker.done(CONTAINER_FIELD);
     }
 
     private void expectTopLevelDecl() {
