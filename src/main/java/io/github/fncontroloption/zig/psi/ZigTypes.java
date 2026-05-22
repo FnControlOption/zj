@@ -127,10 +127,13 @@ public interface ZigTypes {
 
   IElementType TEST_DECL = new ZigElementType("test decl");
   IElementType TEST_DECL_NAME = new ZigElementType("test decl name");
-  IElementType GLOBAL_VAR_DECL = new ZigElementType("global var decl");
-  IElementType LOCAL_VAR_DECL = new ZigElementType("local var decl");
-  IElementType SIMPLE_VAR_DECL = new ZigElementType("simple var decl");
-  IElementType ALIGNED_VAR_DECL = new ZigElementType("aligned var decl");
+  IElementType VAR_DECL = new ZigElementType("var decl");
+  IElementType VAR_DECL_NAME = new ZigElementType("var decl name");
+  IElementType VAR_DECL_TYPE = new ZigElementType("var decl type");
+  IElementType VAR_DECL_INIT = new ZigElementType("var decl init");
+  IElementType ALIGN_EXPR = new ZigElementType("align expr");
+  IElementType ADDRSPACE_EXPR = new ZigElementType("addrspace expr");
+  IElementType SECTION_EXPR = new ZigElementType("section expr");
   IElementType ERRDEFER = new ZigElementType("errdefer");
   IElementType DEFER = new ZigElementType("defer");
   IElementType CATCH = new ZigElementType("catch");

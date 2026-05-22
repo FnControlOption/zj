@@ -36,7 +36,7 @@ public class ZigParser implements PsiParser {
             if (builder.getTokenType() == KEYWORD_TEST) {
                 expectTestDecl();
             } else if (builder.getTokenType() == KEYWORD_COMPTIME) {
-                builder.advanceLexer(); // TODO
+                throw new UnsupportedOperationException(); // TODO
             } else if (builder.getTokenType() == KEYWORD_PUB
                     || builder.getTokenType() == KEYWORD_CONST
                     || builder.getTokenType() == KEYWORD_VAR
@@ -46,11 +46,60 @@ public class ZigParser implements PsiParser {
                     || builder.getTokenType() == KEYWORD_INLINE
                     || builder.getTokenType() == KEYWORD_NOINLINE
                     || builder.getTokenType() == KEYWORD_FN) {
-                builder.advanceLexer(); // TODO
+                expectTopLevelDecl();
             } else {
-                builder.advanceLexer(); // TODO
+                break; // TODO
             }
         }
+    }
+
+    private void expectTopLevelDecl() {
+        var marker = builder.mark();
+        if (builder.getTokenType() == KEYWORD_PUB) {
+            builder.advanceLexer();
+        }
+        var externExportInlineToken = builder.getTokenType();
+        if (externExportInlineToken == KEYWORD_EXTERN
+                || externExportInlineToken == KEYWORD_EXPORT
+                || externExportInlineToken == KEYWORD_INLINE
+                || externExportInlineToken == KEYWORD_NOINLINE) {
+            throw new UnsupportedOperationException(); // TODO
+        }
+        builder.rawTokenIndex();
+        if (tryParse(this::parseFnProto)) {
+            throw new UnsupportedOperationException(); // TODO
+        }
+        eatToken(KEYWORD_THREADLOCAL);
+        if (!tryParse(this::parseVarDeclProto)) {
+            marker.drop();
+            return;
+        }
+        if (eatToken(EQUAL)) {
+            var initMarker = builder.mark();
+            expectExpr();
+            initMarker.done(VAR_DECL_INIT);
+        }
+        eatToken(SEMICOLON);
+        marker.done(VAR_DECL);
+    }
+
+    private void parseVarDeclProto() {
+        if (!eatToken(KEYWORD_CONST) && !eatToken(KEYWORD_VAR)) {
+            return;
+        }
+        if (builder.getTokenType() == IDENTIFIER) {
+            var nameMarker = builder.mark();
+            builder.advanceLexer();
+            nameMarker.done(VAR_DECL_NAME);
+        }
+        if (eatToken(COLON)) {
+            var typeMarker = builder.mark();
+            expectTypeExpr();
+            typeMarker.done(VAR_DECL_TYPE);
+        }
+        parseByteAlign();
+        parseAddrSpace();
+        parseLinkSection();
     }
 
     private void expectTestDecl() {
@@ -70,8 +119,50 @@ public class ZigParser implements PsiParser {
         if (!eatToken(L_BRACE)) {
             return;
         }
-        // TODO
-        eatToken(R_BRACE);
+        if (!eatToken(R_BRACE)) throw new UnsupportedOperationException(); // TODO
+    }
+
+    private void expectExpr() {
+        assertToken(IDENTIFIER); // TODO
+    }
+
+    private void expectTypeExpr() {
+        assertToken(IDENTIFIER); // TODO
+    }
+
+    private void parseByteAlign() {
+        if (!eatToken(KEYWORD_ALIGN)) {
+            return;
+        }
+        throw new UnsupportedOperationException(); // TODO
+    }
+
+    private void parseAddrSpace() {
+        if (!eatToken(KEYWORD_ADDRSPACE)) {
+            return;
+        }
+        throw new UnsupportedOperationException(); // TODO
+    }
+
+    private void parseLinkSection() {
+        if (!eatToken(KEYWORD_LINKSECTION)) {
+            return;
+        }
+        throw new UnsupportedOperationException(); // TODO
+    }
+
+    private void parseFnProto() {
+        if (!eatToken(KEYWORD_FN)) {
+            return;
+        }
+        throw new UnsupportedOperationException(); // TODO
+    }
+
+    private boolean tryParse(Runnable parse) {
+        var oldTokenIndex = builder.rawTokenIndex();
+        parse.run();
+        var newTokenIndex = builder.rawTokenIndex();
+        return oldTokenIndex != newTokenIndex;
     }
 
     private void assertToken(IElementType tokenType) {

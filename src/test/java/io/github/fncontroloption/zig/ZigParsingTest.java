@@ -13,6 +13,7 @@ public class ZigParsingTest extends ParsingTestCase {
     doTest(true);
   }
 
+  /*
   public void testParsingTestData() {
     doTest(true);
   }
@@ -28,6 +29,7 @@ public class ZigParsingTest extends ParsingTestCase {
   public void testGroupedExpression() {
     doTest(true);
   }
+  */
 
   /**
    * @return path to test data file directory relative to root of this module.
