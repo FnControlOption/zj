@@ -10,3 +10,4 @@ comptime foo: Foo = bar,
 comptime {}
 const foo = a or b or c;
 const foo = a or b and c == d & e << f + g * h;
+const foo = !~--%&try bar;

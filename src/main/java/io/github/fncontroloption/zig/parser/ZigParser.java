@@ -244,7 +244,35 @@ public class ZigParser implements PsiParser {
         return true;
     }
 
+    private static final Map<IElementType, IElementType> prefixTable = Map.ofEntries(
+            Map.entry(BANG, BOOL_NOT),
+            Map.entry(TILDE, BIT_NOT),
+            Map.entry(MINUS, NEGATION),
+            Map.entry(MINUS_PERCENT, NEGATION_WRAP),
+            Map.entry(AMPERSAND, ADDRESS_OF),
+            Map.entry(KEYWORD_TRY, TRY)
+    );
+
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     private boolean parsePrefixExpr() {
+        var nodeType = prefixTable.get(builder.getTokenType());
+        if (nodeType == null) {
+            return parsePrimaryExpr();
+        }
+        var marker = builder.mark();
+        builder.advanceLexer();
+        expectPrefixExpr();
+        marker.done(nodeType);
+        return true;
+    }
+
+    private void expectPrefixExpr() {
+        if (!parsePrefixExpr()) {
+            builder.error("Expected prefix expression, found " + builder.getTokenType());
+        }
+    }
+
+    private boolean parsePrimaryExpr() {
         return eatToken(IDENTIFIER); // TODO
     }
 
