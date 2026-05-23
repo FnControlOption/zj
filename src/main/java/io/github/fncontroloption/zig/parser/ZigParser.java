@@ -298,8 +298,35 @@ public class ZigParser implements PsiParser {
         return parsePrimaryTypeExpr(); // TODO
     }
 
+    private static final Map<IElementType, IElementType> primaryTypeExprTable = Map.ofEntries(
+            Map.entry(CHAR_LITERAL, CHAR_LITERAL),
+            Map.entry(NUMBER_LITERAL, NUMBER_LITERAL),
+            Map.entry(KEYWORD_UNREACHABLE, UNREACHABLE_LITERAL),
+            Map.entry(KEYWORD_ANYFRAME, ANYFRAME_LITERAL),
+            Map.entry(STRING_LITERAL, STRING_LITERAL)
+    );
+
     private boolean parsePrimaryTypeExpr() {
-        return eatToken(IDENTIFIER); // TODO
+        var tokenType = builder.getTokenType();
+        var nodeType = primaryTypeExprTable.get(tokenType);
+        if (nodeType != null) {
+            var marker = builder.mark();
+            builder.advanceLexer();
+            marker.done(nodeType);
+            return true;
+        } else if (tokenType == IDENTIFIER) {
+            if (builder.lookAhead(1) == COLON) {
+                throw new UnsupportedOperationException(); // TODO
+            } else {
+                var marker = builder.mark();
+                builder.advanceLexer();
+                marker.done(IDENTIFIER);
+                return true;
+            }
+        } else {
+            // TODO
+            return false;
+        }
     }
 
     private boolean parseByteAlign() {

@@ -11,3 +11,8 @@ comptime {}
 const foo = a or b or c;
 const foo = a or b and c == d & e << f + g * h;
 const foo = !~--%&try bar;
+const foo = 'a';
+const foo = 42;
+const foo = unreachable;
+const foo = anyframe;
+const foo = "foo";
