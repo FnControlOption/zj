@@ -8,3 +8,5 @@ pub threadlocal const foo: Foo = bar;
 foo: Foo,
 comptime foo: Foo = bar,
 comptime {}
+const foo = a or b or c;
+const foo = a or b and c == d & e << f + g * h;

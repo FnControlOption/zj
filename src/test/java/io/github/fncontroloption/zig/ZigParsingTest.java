@@ -13,6 +13,10 @@ public class ZigParsingTest extends ParsingTestCase {
     doTest(true);
   }
 
+  public void testErrors() {
+    doTest(true);
+  }
+
   /*
   public void testParsingTestData() {
     doTest(true);

@@ -7,6 +7,8 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.tree.IElementType;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Map;
+
 import static io.github.fncontroloption.zig.psi.ZigTypes.*;
 
 // Based on https://codeberg.org/ziglang/zig/src/commit/72d954e/lib/std/zig/Parse.zig
@@ -94,11 +96,11 @@ public class ZigParser implements PsiParser {
             throw new UnsupportedOperationException(); // TODO
         }
         builder.rawTokenIndex();
-        if (tryParse(this::parseFnProto)) {
+        if (parseFnProto()) {
             throw new UnsupportedOperationException(); // TODO
         }
         eatToken(KEYWORD_THREADLOCAL);
-        if (!tryParse(this::parseVarDeclProto)) {
+        if (!parseVarDeclProto()) {
             marker.drop();
             return;
         }
@@ -111,9 +113,9 @@ public class ZigParser implements PsiParser {
         marker.done(VAR_DECL);
     }
 
-    private void parseVarDeclProto() {
+    private boolean parseVarDeclProto() {
         if (!eatToken(KEYWORD_CONST) && !eatToken(KEYWORD_VAR)) {
-            return;
+            return false;
         }
         if (builder.getTokenType() == IDENTIFIER) {
             var nameMarker = builder.mark();
@@ -128,6 +130,7 @@ public class ZigParser implements PsiParser {
         parseByteAlign();
         parseAddrSpace();
         parseLinkSection();
+        return true;
     }
 
     private void expectTestDecl() {
@@ -151,46 +154,130 @@ public class ZigParser implements PsiParser {
     }
 
     private void expectExpr() {
-        assertToken(IDENTIFIER); // TODO
+        LOG.assertTrue(parseExpr()); // TODO
+    }
+
+    private boolean parseExpr() {
+        return parseExprPrecedence(0);
+    }
+
+    private enum Assoc {
+        LEFT,
+        NONE,
+    }
+
+    private record OperInfo(int prec, IElementType nodeType, Assoc assoc) {
+        OperInfo(int prec, IElementType nodeType) {
+            this(prec, nodeType, Assoc.LEFT);
+        }
+    }
+
+    private static final Map<IElementType, OperInfo> operTable = Map.ofEntries(
+            Map.entry(KEYWORD_OR, new OperInfo(10, BOOL_OR)),
+
+            Map.entry(KEYWORD_AND, new OperInfo(20, BOOL_AND)),
+
+            Map.entry(EQUAL_EQUAL, new OperInfo(30, EQUAL_EQUAL, Assoc.NONE)),
+            Map.entry(BANG_EQUAL, new OperInfo(30, BANG_EQUAL, Assoc.NONE)),
+            Map.entry(ANGLE_BRACKET_LEFT, new OperInfo(30, LESS_THAN, Assoc.NONE)),
+            Map.entry(ANGLE_BRACKET_RIGHT, new OperInfo(30, GREATER_THAN, Assoc.NONE)),
+            Map.entry(ANGLE_BRACKET_LEFT_EQUAL, new OperInfo(30, LESS_OR_EQUAL, Assoc.NONE)),
+            Map.entry(ANGLE_BRACKET_RIGHT_EQUAL, new OperInfo(30, GREATER_OR_EQUAL, Assoc.NONE)),
+
+            Map.entry(AMPERSAND, new OperInfo(40, BIT_AND)),
+            Map.entry(CARET, new OperInfo(40, BIT_XOR)),
+            Map.entry(PIPE, new OperInfo(40, BIT_OR)),
+            Map.entry(KEYWORD_ORELSE, new OperInfo(40, ORELSE)),
+            Map.entry(KEYWORD_CATCH, new OperInfo(40, CATCH)),
+
+            Map.entry(ANGLE_BRACKET_ANGLE_BRACKET_LEFT, new OperInfo(50, SHL)),
+            Map.entry(ANGLE_BRACKET_ANGLE_BRACKET_LEFT_PIPE, new OperInfo(50, SHL_SAT)),
+            Map.entry(ANGLE_BRACKET_ANGLE_BRACKET_RIGHT, new OperInfo(50, SHR)),
+
+            Map.entry(PLUS, new OperInfo(60, ADD)),
+            Map.entry(MINUS, new OperInfo(60, SUB)),
+            Map.entry(PLUS_PLUS, new OperInfo(60, ARRAY_CAT)),
+            Map.entry(PLUS_PERCENT, new OperInfo(60, ADD_WRAP)),
+            Map.entry(MINUS_PERCENT, new OperInfo(60, SUB_WRAP)),
+            Map.entry(PLUS_PIPE, new OperInfo(60, ADD_SAT)),
+            Map.entry(MINUS_PIPE, new OperInfo(60, SUB_SAT)),
+
+            Map.entry(PIPE_PIPE, new OperInfo(70, MERGE_ERROR_SETS)),
+            Map.entry(ASTERISK, new OperInfo(70, MUL)),
+            Map.entry(SLASH, new OperInfo(70, DIV)),
+            Map.entry(PERCENT, new OperInfo(70, MOD)),
+            Map.entry(ASTERISK_PERCENT, new OperInfo(70, MUL_WRAP)),
+            Map.entry(ASTERISK_PIPE, new OperInfo(70, MUL_SAT))
+    );
+
+    private boolean parseExprPrecedence(int minPrec) {
+        LOG.assertTrue(minPrec >= 0);
+        var exprMarker = builder.mark();
+        if (!parsePrefixExpr()) {
+            exprMarker.drop();
+            return false;
+        }
+        var bannedPrec = -1;
+        while (!builder.eof()) {
+            var operToken = builder.getTokenType();
+            var info = operTable.get(operToken);
+            if (info == null || info.prec < minPrec) {
+                break;
+            }
+            if (info.prec == bannedPrec) {
+                builder.error("Comparison operators cannot be chained");
+            }
+            builder.advanceLexer();
+            if (operToken == KEYWORD_CATCH) {
+                throw new UnsupportedOperationException(); // TODO
+            }
+            if (!parseExprPrecedence(info.prec + 1)) {
+                builder.error("Expected expression, found " + builder.getTokenType());
+            }
+            exprMarker.done(info.nodeType);
+            exprMarker = exprMarker.precede();
+            if (info.assoc == Assoc.NONE) {
+                bannedPrec = info.prec;
+            }
+        }
+        exprMarker.drop();
+        return true;
+    }
+
+    private boolean parsePrefixExpr() {
+        return eatToken(IDENTIFIER); // TODO
     }
 
     private void expectTypeExpr() {
         assertToken(IDENTIFIER); // TODO
     }
 
-    private void parseByteAlign() {
+    private boolean parseByteAlign() {
         if (!eatToken(KEYWORD_ALIGN)) {
-            return;
+            return false;
         }
         throw new UnsupportedOperationException(); // TODO
     }
 
-    private void parseAddrSpace() {
+    private boolean parseAddrSpace() {
         if (!eatToken(KEYWORD_ADDRSPACE)) {
-            return;
+            return false;
         }
         throw new UnsupportedOperationException(); // TODO
     }
 
-    private void parseLinkSection() {
+    private boolean parseLinkSection() {
         if (!eatToken(KEYWORD_LINKSECTION)) {
-            return;
+            return false;
         }
         throw new UnsupportedOperationException(); // TODO
     }
 
-    private void parseFnProto() {
+    private boolean parseFnProto() {
         if (!eatToken(KEYWORD_FN)) {
-            return;
+            return false;
         }
         throw new UnsupportedOperationException(); // TODO
-    }
-
-    private boolean tryParse(Runnable parse) {
-        var oldTokenIndex = builder.rawTokenIndex();
-        parse.run();
-        var newTokenIndex = builder.rawTokenIndex();
-        return oldTokenIndex != newTokenIndex;
     }
 
     private void assertToken(IElementType tokenType) {
