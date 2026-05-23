@@ -273,11 +273,33 @@ public class ZigParser implements PsiParser {
     }
 
     private boolean parsePrimaryExpr() {
-        return eatToken(IDENTIFIER); // TODO
+        return parseCurlySuffixExpr(); // TODO
+    }
+
+    private boolean parseCurlySuffixExpr() {
+        return parseTypeExpr(); // TODO
+    }
+
+    private boolean parseTypeExpr() {
+        return parseErrorUnionExpr(); // TODO
     }
 
     private void expectTypeExpr() {
-        assertToken(IDENTIFIER); // TODO
+        if (!parseTypeExpr()) {
+            builder.error("Expected type expression, found " + builder.getTokenType());
+        }
+    }
+
+    private boolean parseErrorUnionExpr() {
+        return parseSuffixExpr(); // TODO
+    }
+
+    private boolean parseSuffixExpr() {
+        return parsePrimaryTypeExpr(); // TODO
+    }
+
+    private boolean parsePrimaryTypeExpr() {
+        return eatToken(IDENTIFIER); // TODO
     }
 
     private boolean parseByteAlign() {
