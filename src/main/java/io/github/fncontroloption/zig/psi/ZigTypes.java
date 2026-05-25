@@ -253,10 +253,7 @@ public interface ZigTypes {
   IElementType ENUM_LITERAL = new ZigElementType("enum literal");
   IElementType MULTILINE_STRING_LITERAL = new ZigElementType("multiline string literal");
   IElementType GROUPED_EXPRESSION = new ZigElementType("grouped expression");
-  IElementType BUILTIN_CALL_TWO = new ZigElementType("builtin call two");
-  IElementType BUILTIN_CALL_TWO_COMMA = new ZigElementType("builtin call two comma");
   IElementType BUILTIN_CALL = new ZigElementType("builtin call");
-  IElementType BUILTIN_CALL_COMMA = new ZigElementType("builtin call comma");
   IElementType ERROR_SET_DECL = new ZigElementType("error set decl");
   IElementType CONTAINER_DECL = new ZigElementType("container decl");
   IElementType CONTAINER_DECL_TRAILING = new ZigElementType("container decl trailing");

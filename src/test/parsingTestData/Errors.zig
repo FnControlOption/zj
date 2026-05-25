@@ -4,3 +4,5 @@ const foo = try ;
 foo: ,
 foo: Foo = ,
 const foo = (bar ;
+const foo = @foo ;
+const foo = @foo(bar baz);

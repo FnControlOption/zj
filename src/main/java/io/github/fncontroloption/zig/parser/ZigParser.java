@@ -109,7 +109,9 @@ public class ZigParser implements PsiParser {
             expectExpr();
             initMarker.done(VAR_DECL_INIT);
         }
-        expectToken(SEMICOLON);
+        if (!eatToken(SEMICOLON)) {
+            builder.error("Expected ';' after declaration");
+        }
         marker.done(VAR_DECL);
     }
 
@@ -316,6 +318,8 @@ public class ZigParser implements PsiParser {
             builder.advanceLexer();
             marker.done(nodeType);
             return true;
+        } else if (tokenType == BUILTIN) {
+            return parseBuiltinCall();
         } else if (tokenType == IDENTIFIER) {
             if (builder.lookAhead(1) == COLON) {
                 throw new UnsupportedOperationException(); // TODO
@@ -336,6 +340,32 @@ public class ZigParser implements PsiParser {
             // TODO
             return false;
         }
+    }
+
+    @SuppressWarnings("SameReturnValue")
+    private boolean parseBuiltinCall() {
+        var marker = builder.mark();
+        assertToken(BUILTIN);
+        if (!eatToken(L_PAREN)) {
+            builder.error("Expected parameter list, found " + builder.getTokenType());
+            marker.done(IDENTIFIER);
+            return true;
+        }
+        while (!builder.eof()) {
+            if (eatToken(R_PAREN)) {
+                break;
+            }
+            expectExpr();
+            if (eatToken(COMMA)) {
+                continue;
+            }
+            if (eatToken(R_PAREN)) {
+                break;
+            }
+            builder.error("Expected ',' after argument");
+        }
+        marker.done(BUILTIN_CALL);
+        return true;
     }
 
     private boolean parseByteAlign() {

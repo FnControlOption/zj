@@ -17,3 +17,5 @@ const foo = unreachable;
 const foo = anyframe;
 const foo = "foo";
 const foo = (bar);
+const foo = @foo(bar, baz);
+const foo = @foo(bar, baz, );
