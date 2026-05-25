@@ -25,3 +25,4 @@ const foo =
     \\Bar
 ;
 const foo = Foo!Bar;
+const foo: Foo align(a) addrspace(b) linksection(c) = d;

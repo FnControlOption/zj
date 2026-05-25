@@ -418,24 +418,42 @@ public class ZigParser implements PsiParser {
     }
 
     private boolean parseByteAlign() {
+        var marker = builder.mark();
         if (!eatToken(KEYWORD_ALIGN)) {
+            marker.drop();
             return false;
         }
-        throw new UnsupportedOperationException(); // TODO
+        expectToken(L_PAREN);
+        expectExpr();
+        expectToken(R_PAREN);
+        marker.done(ALIGN);
+        return true;
     }
 
     private boolean parseAddrSpace() {
+        var marker = builder.mark();
         if (!eatToken(KEYWORD_ADDRSPACE)) {
+            marker.drop();
             return false;
         }
-        throw new UnsupportedOperationException(); // TODO
+        expectToken(L_PAREN);
+        expectExpr();
+        expectToken(R_PAREN);
+        marker.done(ADDRSPACE);
+        return true;
     }
 
     private boolean parseLinkSection() {
+        var marker = builder.mark();
         if (!eatToken(KEYWORD_LINKSECTION)) {
+            marker.drop();
             return false;
         }
-        throw new UnsupportedOperationException(); // TODO
+        expectToken(L_PAREN);
+        expectExpr();
+        expectToken(R_PAREN);
+        marker.done(LINKSECTION);
+        return true;
     }
 
     private boolean parseFnProto() {

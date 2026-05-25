@@ -131,9 +131,9 @@ public interface ZigTypes {
   IElementType VAR_DECL_NAME = new ZigElementType("var decl name");
   IElementType VAR_DECL_TYPE = new ZigElementType("var decl type");
   IElementType VAR_DECL_INIT = new ZigElementType("var decl init");
-  IElementType ALIGN_EXPR = new ZigElementType("align expr");
-  IElementType ADDRSPACE_EXPR = new ZigElementType("addrspace expr");
-  IElementType SECTION_EXPR = new ZigElementType("section expr");
+  IElementType ALIGN = new ZigElementType("align");
+  IElementType ADDRSPACE = new ZigElementType("addrspace");
+  IElementType LINKSECTION = new ZigElementType("linksection");
   IElementType ERRDEFER = new ZigElementType("errdefer");
   IElementType DEFER = new ZigElementType("defer");
   IElementType CATCH = new ZigElementType("catch");
