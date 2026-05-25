@@ -27,6 +27,9 @@ public class ZigParser implements PsiParser {
     private void parseRoot(IElementType root) {
         var rootMarker = builder.mark();
         parseContainerMembers();
+        if (!builder.eof()) {
+            builder.error("Expected EOF, found " + builder.getTokenType());
+        }
         while (!builder.eof()) {
             builder.advanceLexer();
         }
