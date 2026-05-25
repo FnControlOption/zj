@@ -323,6 +323,32 @@ public class ZigParser implements PsiParser {
             return true;
         } else if (tokenType == BUILTIN) {
             return parseBuiltinCall();
+        } else if (tokenType == KEYWORD_FN) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == KEYWORD_IF) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == KEYWORD_SWITCH) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == KEYWORD_EXTERN
+                || tokenType == KEYWORD_PACKED) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == KEYWORD_STRUCT
+                || tokenType == KEYWORD_OPAQUE
+                || tokenType == KEYWORD_ENUM
+                || tokenType == KEYWORD_UNION) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == KEYWORD_COMPTIME) {
+            var marker = builder.mark();
+            builder.advanceLexer();
+            expectTypeExpr();
+            marker.done(COMPTIME);
+            return true;
+        } else if (tokenType == MULTILINE_STRING_LITERAL_LINE) {
+            var marker = builder.mark();
+            //noinspection StatementWithEmptyBody
+            while (eatToken(MULTILINE_STRING_LITERAL_LINE)) {}
+            marker.done(MULTILINE_STRING_LITERAL);
+            return true;
         } else if (tokenType == IDENTIFIER) {
             if (builder.lookAhead(1) == COLON) {
                 throw new UnsupportedOperationException(); // TODO
@@ -332,6 +358,16 @@ public class ZigParser implements PsiParser {
                 marker.done(IDENTIFIER);
                 return true;
             }
+        } else if (tokenType == KEYWORD_INLINE) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == KEYWORD_FOR) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == KEYWORD_WHILE) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == PERIOD) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == KEYWORD_ERROR) {
+            throw new UnsupportedOperationException(); // TODO
         } else if (tokenType == L_PAREN) {
             var marker = builder.mark();
             builder.advanceLexer();
@@ -340,7 +376,6 @@ public class ZigParser implements PsiParser {
             marker.done(GROUPED_EXPRESSION);
             return true;
         } else {
-            // TODO
             return false;
         }
     }

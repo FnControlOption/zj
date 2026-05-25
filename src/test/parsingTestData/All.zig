@@ -19,3 +19,8 @@ const foo = "foo";
 const foo = (bar);
 const foo = @foo(bar, baz);
 const foo = @foo(bar, baz, );
+const foo = comptime bar;
+const foo =
+    \\Foo
+    \\Bar
+;
