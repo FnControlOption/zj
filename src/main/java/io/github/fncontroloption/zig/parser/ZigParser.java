@@ -153,12 +153,14 @@ public class ZigParser implements PsiParser {
         if (!eatToken(R_BRACE)) throw new UnsupportedOperationException(); // TODO
     }
 
-    private void expectExpr() {
-        LOG.assertTrue(parseExpr()); // TODO
-    }
-
     private boolean parseExpr() {
         return parseExprPrecedence(0);
+    }
+
+    private void expectExpr() {
+        if (!parseExpr()) {
+            builder.error("Expected expression, found " + builder.getTokenType());
+        }
     }
 
     private enum Assoc {
