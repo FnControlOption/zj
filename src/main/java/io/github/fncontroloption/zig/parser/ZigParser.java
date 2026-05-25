@@ -109,7 +109,7 @@ public class ZigParser implements PsiParser {
             expectExpr();
             initMarker.done(VAR_DECL_INIT);
         }
-        eatToken(SEMICOLON);
+        expectToken(SEMICOLON);
         marker.done(VAR_DECL);
     }
 
@@ -325,6 +325,13 @@ public class ZigParser implements PsiParser {
                 marker.done(IDENTIFIER);
                 return true;
             }
+        } else if (tokenType == L_PAREN) {
+            var marker = builder.mark();
+            builder.advanceLexer();
+            expectExpr();
+            expectToken(R_PAREN);
+            marker.done(GROUPED_EXPRESSION);
+            return true;
         } else {
             // TODO
             return false;
@@ -362,6 +369,14 @@ public class ZigParser implements PsiParser {
     private void assertToken(IElementType tokenType) {
         LOG.assertTrue(builder.getTokenType() == tokenType);
         builder.advanceLexer();
+    }
+
+    private void expectToken(IElementType tokenType) {
+        if (builder.getTokenType() == tokenType) {
+            builder.advanceLexer();
+        } else {
+            builder.error("Expected " + tokenType + ", found " + builder.getTokenType());
+        }
     }
 
     private boolean eatToken(IElementType tokenType) {
