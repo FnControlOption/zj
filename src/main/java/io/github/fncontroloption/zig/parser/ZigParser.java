@@ -298,7 +298,18 @@ public class ZigParser implements PsiParser {
     }
 
     private boolean parseErrorUnionExpr() {
-        return parseSuffixExpr(); // TODO
+        var marker = builder.mark();
+        if (!parseSuffixExpr()) {
+            marker.drop();
+            return false;
+        }
+        if (!eatToken(BANG)) {
+            marker.drop();
+            return true;
+        }
+        expectTypeExpr();
+        marker.done(ERROR_UNION);
+        return true;
     }
 
     private boolean parseSuffixExpr() {

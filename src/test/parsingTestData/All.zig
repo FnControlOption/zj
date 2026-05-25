@@ -24,3 +24,4 @@ const foo =
     \\Foo
     \\Bar
 ;
+const foo = Foo!Bar;
