@@ -1,5 +1,6 @@
 package io.github.fncontroloption.zig.parser;
 
+import com.intellij.ide.script.IDE;
 import com.intellij.lang.ASTNode;
 import com.intellij.lang.PsiBuilder;
 import com.intellij.lang.PsiParser;
@@ -71,10 +72,12 @@ public class ZigParser implements PsiParser {
     private void expectContainerField() {
         var marker = builder.mark();
         eatToken(KEYWORD_COMPTIME);
-        var nameMarker = builder.mark();
-        eatToken(IDENTIFIER);
-        nameMarker.done(CONTAINER_FIELD_NAME);
-        eatToken(COLON);
+        if (builder.getTokenType() == IDENTIFIER && builder.lookAhead(1) == COLON) {
+            var nameMarker = builder.mark();
+            builder.advanceLexer();
+            nameMarker.done(CONTAINER_FIELD_NAME);
+            builder.advanceLexer();
+        }
         var typeMarker = builder.mark();
         expectTypeExpr();
         typeMarker.done(CONTAINER_FIELD_TYPE);
