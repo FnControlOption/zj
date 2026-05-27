@@ -100,7 +100,18 @@ public class ZigParser implements PsiParser {
         }
         builder.rawTokenIndex();
         if (parseFnProto()) {
-            throw new UnsupportedOperationException(); // TODO
+            marker.done(FN_PROTO);
+            if (eatToken(SEMICOLON)) {
+                return;
+            } else if (builder.getTokenType() == L_BRACE) {
+                marker = marker.precede();
+                parseBlock();
+                marker.done(FN_DECL);
+                return;
+            } else {
+                builder.error("Expected ';' or block after function prototype");
+                return;
+            }
         }
         eatToken(KEYWORD_THREADLOCAL);
         if (!parseVarDeclProto()) {
@@ -112,10 +123,10 @@ public class ZigParser implements PsiParser {
             expectExpr();
             initMarker.done(VAR_DECL_INIT);
         }
+        marker.done(VAR_DECL);
         if (!eatToken(SEMICOLON)) {
             builder.error("Expected ';' after declaration");
         }
-        marker.done(VAR_DECL);
     }
 
     private boolean parseVarDeclProto() {
@@ -152,10 +163,13 @@ public class ZigParser implements PsiParser {
     }
 
     private boolean parseBlock() {
+        var marker = builder.mark();
         if (!eatToken(L_BRACE)) {
+            marker.drop();
             return false;
         }
         if (!eatToken(R_BRACE)) throw new UnsupportedOperationException(); // TODO
+        marker.done(BLOCK);
         return true;
     }
 
@@ -503,6 +517,11 @@ public class ZigParser implements PsiParser {
         return true;
     }
 
+    private void expectParamDeclList() {
+        expectToken(L_PAREN);
+        if (!eatToken(R_PAREN)) throw new UnsupportedOperationException(); // TODO
+    }
+
     private boolean parseByteAlign() {
         var marker = builder.mark();
         if (!eatToken(KEYWORD_ALIGN)) {
@@ -542,11 +561,36 @@ public class ZigParser implements PsiParser {
         return true;
     }
 
+    private boolean parseCallconv() {
+        var marker = builder.mark();
+        if (!eatToken(KEYWORD_CALLCONV)) {
+            marker.drop();
+            return false;
+        }
+        expectToken(L_PAREN);
+        expectExpr();
+        expectToken(R_PAREN);
+        marker.done(CALLCONV);
+        return true;
+    }
+
     private boolean parseFnProto() {
         if (!eatToken(KEYWORD_FN)) {
             return false;
         }
-        throw new UnsupportedOperationException(); // TODO
+        eatToken(IDENTIFIER);
+        expectParamDeclList();
+        parseByteAlign();
+        parseAddrSpace();
+        parseLinkSection();
+        parseCallconv();
+        var returnTypeMarker = builder.mark();
+        eatToken(BANG);
+        if (!parseTypeExpr()) {
+            builder.error("Expected return type expression, found " + builder.getTokenType());
+        }
+        returnTypeMarker.done(RETURN_TYPE);
+        return true;
     }
 
     private void assertToken(IElementType tokenType) {

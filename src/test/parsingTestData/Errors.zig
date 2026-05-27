@@ -16,3 +16,4 @@ const foo = anyframe-> ;
 const foo = comptime ;
 const foo = nosuspend ;
 const foo = resume ;
+fn foo() Foo

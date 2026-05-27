@@ -239,9 +239,6 @@ public interface ZigTypes {
   IElementType CONTINUE = new ZigElementType("continue");
   IElementType BREAK = new ZigElementType("break");
   IElementType RETURN = new ZigElementType("return");
-  IElementType FN_PROTO_SIMPLE = new ZigElementType("fn proto simple");
-  IElementType FN_PROTO_MULTI = new ZigElementType("fn proto multi");
-  IElementType FN_PROTO_ONE = new ZigElementType("fn proto one");
   IElementType FN_PROTO = new ZigElementType("fn proto");
   IElementType FN_DECL = new ZigElementType("fn decl");
   IElementType ANYFRAME_TYPE = new ZigElementType("anyframe type");
@@ -270,10 +267,7 @@ public interface ZigTypes {
   IElementType CONTAINER_FIELD_INIT = new ZigElementType("container field init");
   IElementType COMPTIME = new ZigElementType("comptime");
   IElementType NOSUSPEND = new ZigElementType("nosuspend");
-  IElementType BLOCK_TWO = new ZigElementType("block two");
-  IElementType BLOCK_TWO_SEMICOLON = new ZigElementType("block two semicolon");
   IElementType BLOCK = new ZigElementType("block");
-  IElementType BLOCK_SEMICOLON = new ZigElementType("block semicolon");
   IElementType ASM_SIMPLE = new ZigElementType("asm simple");
   IElementType ASM = new ZigElementType("asm");
   IElementType ASM_OUTPUT = new ZigElementType("asm output");
@@ -284,6 +278,8 @@ public interface ZigTypes {
   IElementType ALIGN = new ZigElementType("align");
   IElementType ADDRSPACE = new ZigElementType("addrspace");
   IElementType LINKSECTION = new ZigElementType("linksection");
+  IElementType CALLCONV = new ZigElementType("callconv");
+  IElementType RETURN_TYPE = new ZigElementType("return type");
   IElementType PAYLOAD = new ZigElementType("payload");
 
 }

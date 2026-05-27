@@ -34,3 +34,6 @@ const foo = nosuspend bar;
 const foo = resume bar;
 const foo = return;
 const foo = return bar;
+fn foo() Foo;
+fn foo() Foo {}
+fn foo() align(a) addrspace(b) linksection(c) callconv(d) !Foo {}
