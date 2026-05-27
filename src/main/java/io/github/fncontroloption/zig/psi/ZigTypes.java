@@ -131,9 +131,6 @@ public interface ZigTypes {
   IElementType VAR_DECL_NAME = new ZigElementType("var decl name");
   IElementType VAR_DECL_TYPE = new ZigElementType("var decl type");
   IElementType VAR_DECL_INIT = new ZigElementType("var decl init");
-  IElementType ALIGN = new ZigElementType("align");
-  IElementType ADDRSPACE = new ZigElementType("addrspace");
-  IElementType LINKSECTION = new ZigElementType("linksection");
   IElementType ERRDEFER = new ZigElementType("errdefer");
   IElementType DEFER = new ZigElementType("defer");
   IElementType CATCH = new ZigElementType("catch");
@@ -283,5 +280,9 @@ public interface ZigTypes {
   IElementType ASM_INPUT = new ZigElementType("asm input");
   IElementType ERROR_VALUE = new ZigElementType("error value");
   IElementType ERROR_UNION = new ZigElementType("error union");
+
+  IElementType ALIGN = new ZigElementType("align");
+  IElementType ADDRSPACE = new ZigElementType("addrspace");
+  IElementType LINKSECTION = new ZigElementType("linksection");
 
 }
