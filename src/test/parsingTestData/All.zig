@@ -28,3 +28,4 @@ const foo = Foo!Bar;
 const foo: Foo align(a) addrspace(b) linksection(c) = d;
 const foo = a catch |b| c;
 const foo = ?Foo;
+const foo = anyframe->Foo;

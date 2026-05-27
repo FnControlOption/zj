@@ -309,7 +309,12 @@ public class ZigParser implements PsiParser {
             return true;
         } else if (tokenType == KEYWORD_ANYFRAME) {
             if (builder.lookAhead(1) == ARROW) {
-                throw new UnsupportedOperationException(); // TODO
+                var marker = builder.mark();
+                builder.advanceLexer();
+                builder.advanceLexer();
+                expectTypeExpr();
+                marker.done(ANYFRAME_TYPE);
+                return true;
             } else {
                 return parseErrorUnionExpr();
             }
