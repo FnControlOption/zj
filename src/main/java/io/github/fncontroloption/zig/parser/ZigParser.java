@@ -236,7 +236,7 @@ public class ZigParser implements PsiParser {
             }
             builder.advanceLexer();
             if (operToken == KEYWORD_CATCH) {
-                throw new UnsupportedOperationException(); // TODO
+                parsePayload();
             }
             if (!parseExprPrecedence(info.prec + 1)) {
                 builder.error("Expected expression, found " + builder.getTokenType());
@@ -249,6 +249,18 @@ public class ZigParser implements PsiParser {
         }
         exprMarker.drop();
         return true;
+    }
+
+    private boolean parsePayload() {
+        var marker = builder.mark();
+        if (!eatToken(PIPE)) {
+            marker.drop();
+            return false;
+        }
+        expectToken(IDENTIFIER);
+        expectToken(PIPE);
+        marker.done(PAYLOAD);
+        return false;
     }
 
     private static final Map<IElementType, IElementType> prefixTable = Map.ofEntries(

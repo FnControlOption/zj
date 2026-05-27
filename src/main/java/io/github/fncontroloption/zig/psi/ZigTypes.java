@@ -284,5 +284,6 @@ public interface ZigTypes {
   IElementType ALIGN = new ZigElementType("align");
   IElementType ADDRSPACE = new ZigElementType("addrspace");
   IElementType LINKSECTION = new ZigElementType("linksection");
+  IElementType PAYLOAD = new ZigElementType("payload");
 
 }
