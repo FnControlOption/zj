@@ -300,7 +300,26 @@ public class ZigParser implements PsiParser {
     }
 
     private boolean parseTypeExpr() {
-        return parseErrorUnionExpr(); // TODO
+        var tokenType = builder.getTokenType();
+        if (tokenType == QUESTION_MARK) {
+            var marker = builder.mark();
+            builder.advanceLexer();
+            expectTypeExpr();
+            marker.done(OPTIONAL_TYPE);
+            return true;
+        } else if (tokenType == KEYWORD_ANYFRAME) {
+            if (builder.lookAhead(1) == ARROW) {
+                throw new UnsupportedOperationException(); // TODO
+            } else {
+                return parseErrorUnionExpr();
+            }
+        } else if (tokenType == ASTERISK) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == L_BRACKET) {
+            throw new UnsupportedOperationException(); // TODO
+        } else {
+            return parseErrorUnionExpr();
+        }
     }
 
     private void expectTypeExpr() {

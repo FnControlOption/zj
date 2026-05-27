@@ -11,3 +11,4 @@ const foo = Foo! ;
 const foo = a catch | ;
 const foo = a catch |b ;
 const foo = a catch |b| ;
+const foo = ? ;
