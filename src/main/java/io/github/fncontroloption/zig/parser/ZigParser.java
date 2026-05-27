@@ -151,11 +151,12 @@ public class ZigParser implements PsiParser {
         marker.done(TEST_DECL);
     }
 
-    private void parseBlock() {
+    private boolean parseBlock() {
         if (!eatToken(L_BRACE)) {
-            return;
+            return false;
         }
         if (!eatToken(R_BRACE)) throw new UnsupportedOperationException(); // TODO
+        return true;
     }
 
     private boolean parseExpr() {
@@ -292,7 +293,56 @@ public class ZigParser implements PsiParser {
     }
 
     private boolean parsePrimaryExpr() {
-        return parseCurlySuffixExpr(); // TODO
+        var tokenType = builder.getTokenType();
+        if (tokenType == KEYWORD_ASM) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == KEYWORD_IF) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == KEYWORD_BREAK) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == KEYWORD_CONTINUE) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == KEYWORD_COMPTIME) {
+            var marker = builder.mark();
+            builder.advanceLexer();
+            expectExpr();
+            marker.done(COMPTIME);
+            return true;
+        } else if (tokenType == KEYWORD_NOSUSPEND) {
+            var marker = builder.mark();
+            builder.advanceLexer();
+            expectExpr();
+            marker.done(NOSUSPEND);
+            return true;
+        } else if (tokenType == KEYWORD_RESUME) {
+            var marker = builder.mark();
+            builder.advanceLexer();
+            expectExpr();
+            marker.done(RESUME);
+            return true;
+        } else if (tokenType == KEYWORD_RETURN) {
+            var marker = builder.mark();
+            builder.advanceLexer();
+            parseExpr();
+            marker.done(RETURN);
+            return true;
+        } else if (tokenType == IDENTIFIER) {
+            if (builder.lookAhead(1) == COLON) {
+                throw new UnsupportedOperationException(); // TODO
+            } else {
+                return parseCurlySuffixExpr();
+            }
+        } else if (tokenType == KEYWORD_INLINE) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == KEYWORD_FOR) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == KEYWORD_WHILE) {
+            throw new UnsupportedOperationException(); // TODO
+        } else if (tokenType == L_BRACE) {
+            return parseBlock();
+        } else {
+            return parseCurlySuffixExpr();
+        }
     }
 
     private boolean parseCurlySuffixExpr() {
