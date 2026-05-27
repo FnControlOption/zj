@@ -91,12 +91,17 @@ public class ZigParser implements PsiParser {
         if (builder.getTokenType() == KEYWORD_PUB) {
             builder.advanceLexer();
         }
-        var externExportInlineToken = builder.getTokenType();
-        if (externExportInlineToken == KEYWORD_EXTERN
-                || externExportInlineToken == KEYWORD_EXPORT
-                || externExportInlineToken == KEYWORD_INLINE
-                || externExportInlineToken == KEYWORD_NOINLINE) {
-            throw new UnsupportedOperationException(); // TODO
+        var isExtern = false;
+        var expectFn = false;
+        var expectVarOrFn = false;
+        if (eatToken(KEYWORD_EXTERN)) {
+            eatToken(STRING_LITERAL);
+            isExtern = true;
+            expectVarOrFn = true;
+        } else if (eatToken(KEYWORD_EXPORT)) {
+            expectVarOrFn = true;
+        } else if (eatToken(KEYWORD_INLINE) || eatToken(KEYWORD_NOINLINE)) {
+            expectFn = true;
         }
         builder.rawTokenIndex();
         if (parseFnProto()) {
@@ -104,6 +109,10 @@ public class ZigParser implements PsiParser {
             if (eatToken(SEMICOLON)) {
                 return;
             } else if (builder.getTokenType() == L_BRACE) {
+                if (isExtern) {
+                    builder.error("Extern functions have no body");
+                    return;
+                }
                 marker = marker.precede();
                 parseBlock();
                 marker.done(FN_DECL);
@@ -113,8 +122,20 @@ public class ZigParser implements PsiParser {
                 return;
             }
         }
-        eatToken(KEYWORD_THREADLOCAL);
+        if (expectFn) {
+            builder.error("Expected function, found " + builder.getTokenType());
+            marker.drop();
+            return;
+        }
+        var isThreadLocal = eatToken(KEYWORD_THREADLOCAL);
         if (!parseVarDeclProto()) {
+            if (isThreadLocal) {
+                builder.error("Expected variable declaration, found " + builder.getTokenType());
+            } else if (expectVarOrFn) {
+                builder.error("Expected variable declaration or function, found " + builder.getTokenType());
+            } else {
+                builder.error("Expected function or variable declaration after pub");
+            }
             marker.drop();
             return;
         }

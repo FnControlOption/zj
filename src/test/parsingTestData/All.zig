@@ -37,3 +37,10 @@ const foo = return bar;
 fn foo() Foo;
 fn foo() Foo {}
 fn foo() align(a) addrspace(b) linksection(c) callconv(d) !Foo {}
+extern var foo: Foo;
+extern "foo" var foo: Foo;
+extern "foo" fn foo() Foo;
+export var foo: Foo;
+export fn foo() Foo;
+inline fn foo() Foo {}
+noinline fn foo() Foo {}
