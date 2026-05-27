@@ -17,3 +17,11 @@ const foo = comptime ;
 const foo = nosuspend ;
 const foo = resume ;
 fn foo() Foo
+foo: Foo
+pub ;
+threadlocal ;
+export ;
+extern ;
+extern "foo" ;
+inline ;
+noinline ;

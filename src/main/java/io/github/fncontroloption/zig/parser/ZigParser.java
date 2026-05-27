@@ -30,9 +30,6 @@ public class ZigParser implements PsiParser {
         if (!builder.eof()) {
             builder.error("Expected EOF, found " + builder.getTokenType());
         }
-        while (!builder.eof()) {
-            builder.advanceLexer();
-        }
         rootMarker.done(root);
     }
 
@@ -40,16 +37,6 @@ public class ZigParser implements PsiParser {
         while (!builder.eof() && builder.getTokenType() != R_BRACE) {
             if (builder.getTokenType() == KEYWORD_TEST) {
                 expectTestDecl();
-            } else if (builder.getTokenType() == KEYWORD_COMPTIME) {
-                if (builder.lookAhead(1) == L_BRACE) {
-                    var comptimeMarker = builder.mark();
-                    builder.advanceLexer();
-                    parseBlock();
-                    comptimeMarker.done(COMPTIME);
-                } else {
-                    expectContainerField();
-                    eatToken(COMMA);
-                }
             } else if (builder.getTokenType() == KEYWORD_PUB
                     || builder.getTokenType() == KEYWORD_CONST
                     || builder.getTokenType() == KEYWORD_VAR
@@ -60,9 +47,23 @@ public class ZigParser implements PsiParser {
                     || builder.getTokenType() == KEYWORD_NOINLINE
                     || builder.getTokenType() == KEYWORD_FN) {
                 expectTopLevelDecl();
-            } else {
+            } else if (builder.getTokenType() == KEYWORD_COMPTIME
+                    && builder.lookAhead(1) == L_BRACE) {
+                var comptimeMarker = builder.mark();
+                builder.advanceLexer();
+                parseBlock();
+                comptimeMarker.done(COMPTIME);
+            } else if (builder.getTokenType() == KEYWORD_COMPTIME
+                    || builder.getTokenType() == IDENTIFIER) {
                 expectContainerField();
-                eatToken(COMMA);
+                if (builder.eof() || builder.getTokenType() == R_BRACE) {
+                    break;
+                }
+                if (!eatToken(COMMA)) {
+                    builder.error("Expected ',' after field");
+                }
+            } else {
+                builder.advanceLexer(); // TODO
             }
         }
     }
