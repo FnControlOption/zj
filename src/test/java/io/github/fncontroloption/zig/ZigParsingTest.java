@@ -9,6 +9,11 @@ public class ZigParsingTest extends ParsingTestCase {
     super("", "zig", new ZigParserDefinition());
   }
 
+  public void testAllKt() {
+    doTest(true);
+  }
+
+  /*
   public void testAll() {
     doTest(true);
   }
@@ -17,7 +22,6 @@ public class ZigParsingTest extends ParsingTestCase {
     doTest(true);
   }
 
-  /*
   public void testParsingTestData() {
     doTest(true);
   }

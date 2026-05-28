@@ -42,7 +42,7 @@ public final class ZigParserDefinition implements ParserDefinition {
   @NotNull
   @Override
   public PsiParser createParser(final Project project) {
-    return new ZigParser();
+    return new ZigParserKt();
   }
 
   @NotNull

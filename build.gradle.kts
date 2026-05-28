@@ -3,6 +3,7 @@ import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 plugins {
   id("java")
   id("org.jetbrains.intellij.platform")
+  kotlin("jvm")
 }
 
 // Include the generated files in the source set
