@@ -21,11 +21,13 @@ public class ZigParsingTest extends ParsingTestCase {
   public void testErrors() {
     doTest(true);
   }
+  */
 
   public void testParsingTestData() {
     doTest(true);
   }
 
+  /*
   public void testMultilineStringLiteral() {
     doTest(true);
   }

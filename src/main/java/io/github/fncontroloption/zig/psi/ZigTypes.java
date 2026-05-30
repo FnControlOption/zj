@@ -123,4 +123,17 @@ public interface ZigTypes {
   IElementType STRING_LITERAL = new ZigElementType("a string literal");
   IElementType TILDE = new ZigElementType("~");
 
+  // *** AST ***
+
+  IElementType CONTAINER_DECL = new ZigElementType("CONTAINER_DECL");
+  IElementType CONTAINER_DECL_ARG = new ZigElementType("CONTAINER_DECL_ARG");
+  IElementType CONTAINER_DECL_BODY = new ZigElementType("CONTAINER_DECL_BODY");
+  IElementType BLOCK = new ZigElementType("BLOCK");
+  IElementType BUILTIN_CALL = new ZigElementType("BUILTIN_CALL");
+  IElementType CALL_ARGS = new ZigElementType("CALL_ARGS");
+  IElementType VAR_DECL = new ZigElementType("VAR_DECL");
+  IElementType ALIGN = new ZigElementType("ALIGN");
+  IElementType ADDRSPACE = new ZigElementType("ADDRSPACE");
+  IElementType LINKSECTION = new ZigElementType("LINKSECTION");
+
 }

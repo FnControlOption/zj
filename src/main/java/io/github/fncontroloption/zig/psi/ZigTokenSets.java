@@ -98,4 +98,8 @@ public interface ZigTokenSets {
 
   TokenSet COMMENTS = TokenSet.orSet(DOC_COMMENTS, TokenSet.create(ZigTypes.LINE_COMMENT));
 
+  TokenSet CONTAINERS = TokenSet.create(ZigTypes.KEYWORD_STRUCT, ZigTypes.KEYWORD_OPAQUE, ZigTypes.KEYWORD_ENUM, ZigTypes.KEYWORD_UNION);
+
+  TokenSet MUT_TOKENS = TokenSet.create(ZigTypes.KEYWORD_VAR, ZigTypes.KEYWORD_CONST);
+
 }
