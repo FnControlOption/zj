@@ -132,8 +132,13 @@ public interface ZigTypes {
   IElementType BUILTIN_CALL = new ZigElementType("BUILTIN_CALL");
   IElementType CALL_ARGS = new ZigElementType("CALL_ARGS");
   IElementType VAR_DECL = new ZigElementType("VAR_DECL");
+  IElementType VAR_DECL_INIT = new ZigElementType("VAR_DECL_INIT");
   IElementType ALIGN = new ZigElementType("ALIGN");
   IElementType ADDRSPACE = new ZigElementType("ADDRSPACE");
   IElementType LINKSECTION = new ZigElementType("LINKSECTION");
+  IElementType CALLCONV = new ZigElementType("CALLCONV");
+  IElementType FN_DECL = new ZigElementType("FN_DECL");
+  IElementType FN_PARAMS = new ZigElementType("FN_PARAMS");
+  IElementType FN_RETURN_TYPE = new ZigElementType("FN_RETURN_TYPE");
 
 }

@@ -102,4 +102,8 @@ public interface ZigTokenSets {
 
   TokenSet MUT_TOKENS = TokenSet.create(ZigTypes.KEYWORD_VAR, ZigTypes.KEYWORD_CONST);
 
+  TokenSet EXPORT_INLINE = TokenSet.create(ZigTypes.KEYWORD_EXPORT, ZigTypes.KEYWORD_INLINE, ZigTypes.KEYWORD_NOINLINE);
+
+  TokenSet SEMICOLON_BRACE = TokenSet.create(ZigTypes.SEMICOLON, ZigTypes.L_BRACE);
+
 }
