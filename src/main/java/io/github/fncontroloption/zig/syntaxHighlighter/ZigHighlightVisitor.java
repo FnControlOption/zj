@@ -10,8 +10,55 @@ import com.intellij.psi.util.PsiTreeUtil;
 import io.github.fncontroloption.zig.psi.*;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Set;
+
 /** @see com.intellij.codeInsight.daemon.impl.analysis.JavaNamesHighlightVisitor */
 public class ZigHighlightVisitor implements HighlightVisitor {
+    private static final Set<String> PRIMITIVES = Set.of(
+            "anyerror",
+            "anyframe",
+            "anyopaque",
+            "bool",
+            "c_int",
+            "c_long",
+            "c_longdouble",
+            "c_longlong",
+            "c_char",
+            "c_short",
+            "c_uint",
+            "c_ulong",
+            "c_ulonglong",
+            "c_ushort",
+            "comptime_float",
+            "comptime_int",
+            "f128",
+            "f16",
+            "f32",
+            "f64",
+            "f80",
+            "false",
+            "i16",
+            "i32",
+            "i64",
+            "i128",
+            "i8",
+            "isize",
+            "noreturn",
+            "null",
+            "true",
+            "type",
+            "u16",
+            "u29",
+            "u32",
+            "u64",
+            "u128",
+            "u1",
+            "u8",
+            "undefined",
+            "usize",
+            "void"
+    );
+
     private HighlightInfoHolder holder;
 
     @Override
@@ -28,8 +75,7 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                     return;
                 }
 
-                HighlightInfoType type = ZigHighlightInfoTypes.STATIC_METHOD;
-                holder.add(HighlightInfo.newHighlightInfo(type).range(identifier).create());
+                addHighlight(identifier, ZigHighlightInfoTypes.STATIC_METHOD);
             }
 
             case ZigVarDecl decl -> {
@@ -43,21 +89,28 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                     return parent instanceof ZigBlock || parent instanceof ZigContainerDecl;
                 });
 
-                HighlightInfoType type;
                 if (scope instanceof ZigBlock) {
                     if (decl.isVar()) {
-                        type = ZigHighlightInfoTypes.REASSIGNED_LOCAL_VARIABLE;
+                        addHighlight(identifier, ZigHighlightInfoTypes.REASSIGNED_LOCAL_VARIABLE);
                     } else {
-                        type = ZigHighlightInfoTypes.LOCAL_VARIABLE;
+                        addHighlight(identifier, ZigHighlightInfoTypes.LOCAL_VARIABLE);
                     }
                 } else {
-                    type = ZigHighlightInfoTypes.STATIC_FIELD;
+                    addHighlight(identifier, ZigHighlightInfoTypes.STATIC_FIELD);
                 }
-
-                holder.add(HighlightInfo.newHighlightInfo(type).range(identifier).create());
             }
 
-            default -> {}
+            default -> {
+                var node = element.getNode();
+                if (node == null) {
+                    return;
+                }
+
+                var nodeType = node.getElementType();
+                if (nodeType == ZigTypes.IDENTIFIER && PRIMITIVES.contains(node.getText())) {
+                    addHighlight(element, ZigHighlightInfoTypes.KEYWORD);
+                }
+            }
         }
     }
 
@@ -76,5 +129,9 @@ public class ZigHighlightVisitor implements HighlightVisitor {
     @SuppressWarnings("MethodDoesntCallSuperMethod")
     public @NotNull HighlightVisitor clone() {
         return new ZigHighlightVisitor();
+    }
+
+    private void addHighlight(PsiElement element, HighlightInfoType type) {
+        holder.add(HighlightInfo.newHighlightInfo(type).range(element).create());
     }
 }

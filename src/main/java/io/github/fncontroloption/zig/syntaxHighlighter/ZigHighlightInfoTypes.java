@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 
 public interface ZigHighlightInfoTypes {
 
+    HighlightInfoType KEYWORD = createSymbolTypeInfo(ZigHighlightingColors.KEYWORD);
     HighlightInfoType INSTANCE_METHOD = createSymbolTypeInfo(ZigHighlightingColors.INSTANCE_METHOD);
     HighlightInfoType INSTANCE_FIELD = createSymbolTypeInfo(ZigHighlightingColors.INSTANCE_FIELD);
     HighlightInfoType STATIC_METHOD = createSymbolTypeInfo(ZigHighlightingColors.STATIC_METHOD);
