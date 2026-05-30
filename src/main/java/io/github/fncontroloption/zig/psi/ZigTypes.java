@@ -1,5 +1,7 @@
 package io.github.fncontroloption.zig.psi;
 
+import com.intellij.lang.ASTNode;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.tree.IElementType;
 
 public interface ZigTypes {
@@ -141,4 +143,22 @@ public interface ZigTypes {
   IElementType FN_PARAMS = new ZigElementType("FN_PARAMS");
   IElementType FN_RETURN_TYPE = new ZigElementType("FN_RETURN_TYPE");
 
+  class Factory {
+    public static PsiElement createElement(ASTNode node) {
+      IElementType type = node.getElementType();
+      if (type == CONTAINER_DECL) {
+        return new ZigContainerDecl(node);
+      }
+      if (type == BLOCK) {
+        return new ZigBlock(node);
+      }
+      if (type == VAR_DECL) {
+        return new ZigVarDecl(node);
+      }
+      if (type == FN_DECL) {
+        return new ZigFnDecl(node);
+      }
+      return new ZigPsiElement(node); // TODO
+    }
+  }
 }

@@ -86,7 +86,7 @@ class ZigParserKt : PsiParser {
             return null
         }
         parseUntil(builder, ZigTypes.VAR_DECL_INIT, ZigTypes.SEMICOLON)
-        assert(expect(builder, ZigTypes.SEMICOLON))
+        expect(builder, ZigTypes.SEMICOLON)
         decl.done(ZigTypes.VAR_DECL)
         return decl
     }
