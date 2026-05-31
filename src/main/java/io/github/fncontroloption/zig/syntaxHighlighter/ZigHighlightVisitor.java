@@ -6,7 +6,6 @@ import com.intellij.codeInsight.daemon.impl.HighlightVisitor;
 import com.intellij.codeInsight.daemon.impl.analysis.HighlightInfoHolder;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.PsiTreeUtil;
 import io.github.fncontroloption.zig.psi.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -84,20 +83,13 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                     return;
                 }
 
-                var scope = PsiTreeUtil.findFirstParent(decl, true, (parent) -> {
-                    //noinspection CodeBlock2Expr
-                    return parent instanceof ZigBlock || parent instanceof ZigContainerDecl;
-                });
-
-                if (scope instanceof ZigBlock) {
-                    if (decl.isVar()) {
-                        addHighlight(identifier, ZigHighlightInfoTypes.REASSIGNED_LOCAL_VARIABLE);
-                    } else {
-                        addHighlight(identifier, ZigHighlightInfoTypes.LOCAL_VARIABLE);
-                    }
-                } else {
-                    addHighlight(identifier, ZigHighlightInfoTypes.STATIC_FIELD);
-                }
+                var type = switch (decl.getDeclType()) {
+                    case LOCAL_CONST -> ZigHighlightInfoTypes.LOCAL_VARIABLE;
+                    case LOCAL_VAR ->  ZigHighlightInfoTypes.REASSIGNED_LOCAL_VARIABLE;
+                    case GLOBAL_CONST -> ZigHighlightInfoTypes.CONSTANT;
+                    case GLOBAL_VAR -> ZigHighlightInfoTypes.STATIC_FIELD;
+                };
+                addHighlight(identifier, type);
             }
 
             default -> {

@@ -30,6 +30,7 @@ public interface ZigHighlightingColors {
     TextAttributesKey INSTANCE_FIELD = TextAttributesKey.createTextAttributesKey("ZIG_INSTANCE_FIELD", DefaultLanguageHighlighterColors.INSTANCE_FIELD);
     TextAttributesKey STATIC_METHOD = TextAttributesKey.createTextAttributesKey("ZIG_STATIC_METHOD", DefaultLanguageHighlighterColors.STATIC_METHOD);
     TextAttributesKey STATIC_FIELD = TextAttributesKey.createTextAttributesKey("ZIG_STATIC_FIELD", DefaultLanguageHighlighterColors.STATIC_FIELD);
+    TextAttributesKey CONSTANT = TextAttributesKey.createTextAttributesKey("ZIG_CONSTANT", DefaultLanguageHighlighterColors.CONSTANT);
     TextAttributesKey LOCAL_VARIABLE = TextAttributesKey.createTextAttributesKey("ZIG_LOCAL_VARIABLE", DefaultLanguageHighlighterColors.LOCAL_VARIABLE);
     TextAttributesKey REASSIGNED_LOCAL_VARIABLE = TextAttributesKey.createTextAttributesKey("ZIG_REASSIGNED_LOCAL_VARIABLE", DefaultLanguageHighlighterColors.REASSIGNED_LOCAL_VARIABLE);
 }
