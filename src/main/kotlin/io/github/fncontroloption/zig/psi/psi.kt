@@ -31,6 +31,10 @@ sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdenti
         return findChildByType(ZigTypes.IDENTIFIER)
     }
 
+    override fun getName(): String? {
+        return nameIdentifier?.text
+    }
+
     override fun setName(name: @NlsSafe String): PsiElement? {
         throw IncorrectOperationException()
     }
