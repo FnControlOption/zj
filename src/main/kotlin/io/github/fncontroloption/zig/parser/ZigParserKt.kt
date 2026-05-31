@@ -28,6 +28,7 @@ class ZigParserKt : PsiParser {
             ?: parseBuiltinCall(builder)
             ?: parseVarDecl(builder)
             ?: parseFnDecl(builder)
+            ?: parseStringLiteral(builder)
     }
 
     private fun parseContainerDecl(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -117,6 +118,16 @@ class ZigParserKt : PsiParser {
         }
         decl.done(ZigTypes.FN_DECL)
         return decl
+    }
+
+    private fun parseStringLiteral(builder: PsiBuilder): PsiBuilder.Marker? {
+        val literal = builder.mark()
+        if (!expect(builder, ZigTypes.STRING_LITERAL)) {
+            literal.drop()
+            return null
+        }
+        literal.done(ZigTypes.STRING_LITERAL)
+        return literal
     }
 
     private fun parseUntil(

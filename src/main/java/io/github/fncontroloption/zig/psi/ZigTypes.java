@@ -152,6 +152,12 @@ public interface ZigTypes {
       if (type == BLOCK) {
         return new ZigBlock(node);
       }
+      if (type == BUILTIN_CALL) {
+        return new ZigBuiltinCall(node);
+      }
+      if (type == CALL_ARGS) {
+        return new ZigCallArgs(node);
+      }
       if (type == VAR_DECL) {
         return new ZigVarDecl(node);
       }

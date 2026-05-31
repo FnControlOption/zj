@@ -43,6 +43,8 @@
                                    implementationClass="io.github.fncontroloption.zig.syntaxHighlighter.ZigSyntaxHighlighterFactory"/>
     <highlightVisitor implementation="io.github.fncontroloption.zig.syntaxHighlighter.ZigHighlightVisitor"/>
     <colorSettingsPage implementation="io.github.fncontroloption.zig.syntaxHighlighter.ZigColorSettingsPage"/>
+    <psi.referenceContributor language="Zig"
+                              implementation="io.github.fncontroloption.zig.ZigReferenceContributor"/>
     <codeStyleSettingsProvider implementation="io.github.fncontroloption.zig.codeStyle.ZigCodeStyleSettingsProvider"/>
     <langCodeStyleSettingsProvider implementation="io.github.fncontroloption.zig.codeStyle.ZigLanguageCodeStyleSettingsProvider"/>
     <lang.commenter language="Zig" implementationClass="io.github.fncontroloption.zig.ZigCommenter"/>
