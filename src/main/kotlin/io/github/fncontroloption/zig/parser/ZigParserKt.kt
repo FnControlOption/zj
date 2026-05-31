@@ -30,6 +30,7 @@ class ZigParserKt : PsiParser {
             ?: parseFnDecl(builder)
             ?: parseStringLiteral(builder)
             ?: parseErrorSetDecl(builder)
+            ?: parseTestDecl(builder)
     }
 
     private fun parseContainerDecl(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -133,6 +134,18 @@ class ZigParserKt : PsiParser {
 
     private fun parseErrorSetDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         return parseEnclosed(builder, ZigTypes.KEYWORD_ERROR, ZigTypes.L_BRACE, ZigTypes.R_BRACE, ZigTypes.ERROR_SET_DECL)
+    }
+
+    private fun parseTestDecl(builder: PsiBuilder): PsiBuilder.Marker? {
+        val decl = builder.mark()
+        if (!expect(builder, ZigTypes.KEYWORD_TEST)) {
+            decl.drop()
+            return null
+        }
+        expect(builder, ZigTokenSets.TEST_NAME)
+        parseBlock(builder)
+        decl.done(ZigTypes.TEST_DECL)
+        return decl
     }
 
     private fun parseUntil(

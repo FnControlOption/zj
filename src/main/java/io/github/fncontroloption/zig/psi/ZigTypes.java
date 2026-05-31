@@ -143,6 +143,7 @@ public interface ZigTypes {
   IElementType FN_PARAMS = new ZigElementType("FN_PARAMS");
   IElementType FN_RETURN_TYPE = new ZigElementType("FN_RETURN_TYPE");
   IElementType ERROR_SET_DECL = new ZigElementType("ERROR_SET_DECL");
+  IElementType TEST_DECL = new ZigElementType("TEST_DECL");
 
   class Factory {
     public static PsiElement createElement(ASTNode node) {

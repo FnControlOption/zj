@@ -106,4 +106,6 @@ public interface ZigTokenSets {
 
   TokenSet SEMICOLON_BRACE = TokenSet.create(ZigTypes.SEMICOLON, ZigTypes.L_BRACE);
 
+  TokenSet TEST_NAME = TokenSet.create(ZigTypes.STRING_LITERAL, ZigTypes.IDENTIFIER);
+
 }
