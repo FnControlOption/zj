@@ -29,6 +29,7 @@ class ZigParserKt : PsiParser {
             ?: parseVarDecl(builder)
             ?: parseFnDecl(builder)
             ?: parseStringLiteral(builder)
+            ?: parseErrorSetDecl(builder)
     }
 
     private fun parseContainerDecl(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -128,6 +129,10 @@ class ZigParserKt : PsiParser {
         }
         literal.done(ZigTypes.STRING_LITERAL)
         return literal
+    }
+
+    private fun parseErrorSetDecl(builder: PsiBuilder): PsiBuilder.Marker? {
+        return parseEnclosed(builder, ZigTypes.KEYWORD_ERROR, ZigTypes.L_BRACE, ZigTypes.R_BRACE, ZigTypes.ERROR_SET_DECL)
     }
 
     private fun parseUntil(
