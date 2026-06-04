@@ -25,6 +25,8 @@ public interface ZigElementTypes {
     IElementType ERROR_SET_DECL = new ZigElementType("ERROR_SET_DECL");
     IElementType TEST_DECL = new ZigElementType("TEST_DECL");
     IElementType STRING_LITERAL = new ZigElementType("STRING_LITERAL");
+    IElementType IDENTIFIER = new ZigElementType("IDENTIFIER");
+    IElementType FIELD_ACCESS = new ZigElementType("FIELD_ACCESS");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

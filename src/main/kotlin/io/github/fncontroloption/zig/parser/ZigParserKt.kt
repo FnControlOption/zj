@@ -78,9 +78,9 @@ class ZigParserKt : PsiParser {
             return null
         }
         if (expect(builder, ZigTokenTypes.COLON)) {
-            // TODO: parse type expressions
-            decl.rollbackTo()
-            return null
+            val type = builder.mark()
+            parseTypeExpr(builder)
+            type.done(ZigElementTypes.VAR_DECL_TYPE)
         }
         parseEnclosed(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.ALIGN)
         parseEnclosed(builder, ZigTokenTypes.KEYWORD_ADDRSPACE, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.ADDRSPACE)
@@ -147,6 +147,68 @@ class ZigParserKt : PsiParser {
         parseBlock(builder)
         decl.done(ZigElementTypes.TEST_DECL)
         return decl
+    }
+
+    private fun parseTypeExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+        // TODO
+        return parseErrorUnionExpr(builder)
+    }
+
+    private fun parseErrorUnionExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+        // TODO
+        return parseSuffixExpr(builder)
+    }
+
+    private fun parseSuffixExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+        var res = parsePrimaryTypeExpr(builder) ?: return null
+        while (!builder.eof()) {
+            val suffixOp = parseSuffixOp(builder)
+            if (suffixOp != null) {
+                res = res.precede()
+                res.done(suffixOp)
+                continue
+            }
+            res = parseCall(builder, res) ?: return res
+        }
+        return res
+    }
+
+    private fun parseCall(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker? {
+        val call = lhs.precede()
+        val callArgs = parseEnclosed(builder, null, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.CALL_ARGS)
+        if (callArgs == null) {
+            call.drop()
+            return null
+        }
+        call.done(ZigElementTypes.CALL)
+        return call
+    }
+
+    private fun parseSuffixOp(builder: PsiBuilder): IElementType? {
+        val marker = builder.mark()
+        if (expect(builder, ZigTokenTypes.PERIOD)) {
+            if (expect(builder, ZigTokenTypes.IDENTIFIER)) {
+                marker.drop()
+                return ZigElementTypes.FIELD_ACCESS
+            }
+        }
+        // TODO
+        marker.rollbackTo()
+        return null
+    }
+
+    private fun parsePrimaryTypeExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+        val marker = builder.mark()
+        if (expect(builder, ZigTokenTypes.IDENTIFIER)) {
+            if (builder.tokenType === ZigTokenTypes.COLON) {
+                TODO()
+            }
+            marker.done(ZigElementTypes.IDENTIFIER)
+            return marker
+        }
+        // TODO
+        marker.rollbackTo()
+        return null
     }
 
     private fun parseUntil(
