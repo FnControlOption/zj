@@ -5,8 +5,9 @@ import com.intellij.lang.PsiBuilder
 import com.intellij.lang.PsiParser
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
+import io.github.fncontroloption.zig.psi.ZigElementTypes
 import io.github.fncontroloption.zig.psi.ZigTokenSets
-import io.github.fncontroloption.zig.psi.ZigTypes
+import io.github.fncontroloption.zig.psi.ZigTokenTypes
 
 // Based on https://codeberg.org/ziglang/zig/src/commit/72d954e/lib/std/zig/Parse.zig
 /** @see com.intellij.java.syntax.parser.JavaParser */
@@ -39,112 +40,112 @@ class ZigParserKt : PsiParser {
             container.drop()
             return null
         }
-        parseEnclosed(builder, null, ZigTypes.L_PAREN, ZigTypes.R_PAREN, ZigTypes.CONTAINER_DECL_ARG)
-        parseEnclosed(builder, null, ZigTypes.L_BRACE, ZigTypes.R_BRACE, ZigTypes.CONTAINER_DECL_BODY)
-        container.done(ZigTypes.CONTAINER_DECL)
+        parseEnclosed(builder, null, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.CONTAINER_DECL_ARG)
+        parseEnclosed(builder, null, ZigTokenTypes.L_BRACE, ZigTokenTypes.R_BRACE, ZigElementTypes.CONTAINER_DECL_BODY)
+        container.done(ZigElementTypes.CONTAINER_DECL)
         return container
     }
 
     private fun parseBlock(builder: PsiBuilder): PsiBuilder.Marker? {
-        return parseEnclosed(builder, null, ZigTypes.L_BRACE, ZigTypes.R_BRACE, ZigTypes.BLOCK)
+        return parseEnclosed(builder, null, ZigTokenTypes.L_BRACE, ZigTokenTypes.R_BRACE, ZigElementTypes.BLOCK)
     }
 
     private fun parseBuiltinCall(builder: PsiBuilder): PsiBuilder.Marker? {
         val call = builder.mark()
-        if (!expect(builder, ZigTypes.BUILTIN)) {
+        if (!expect(builder, ZigTokenTypes.BUILTIN)) {
             call.drop()
             return null
         }
-        parseEnclosed(builder, null, ZigTypes.L_PAREN, ZigTypes.R_PAREN, ZigTypes.CALL_ARGS)
-        call.done(ZigTypes.BUILTIN_CALL)
+        parseEnclosed(builder, null, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.CALL_ARGS)
+        call.done(ZigElementTypes.BUILTIN_CALL)
         return call
     }
 
     private fun parseVarDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         val decl = builder.mark()
-        if (expect(builder, ZigTypes.KEYWORD_EXTERN)) {
-            expect(builder, ZigTypes.STRING_LITERAL)
+        if (expect(builder, ZigTokenTypes.KEYWORD_EXTERN)) {
+            expect(builder, ZigTokenTypes.STRING_LITERAL)
         } else {
-            expect(builder, ZigTypes.KEYWORD_EXPORT)
+            expect(builder, ZigTokenTypes.KEYWORD_EXPORT)
         }
-        expect(builder, ZigTypes.KEYWORD_THREADLOCAL)
+        expect(builder, ZigTokenTypes.KEYWORD_THREADLOCAL)
         if (!expect(builder, ZigTokenSets.MUT_TOKENS)) {
             decl.rollbackTo()
             return null
         }
-        if (!expect(builder, ZigTypes.IDENTIFIER)) {
+        if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
             decl.rollbackTo()
             return null
         }
-        if (expect(builder, ZigTypes.COLON)) {
+        if (expect(builder, ZigTokenTypes.COLON)) {
             // TODO: parse type expressions
             decl.rollbackTo()
             return null
         }
-        parseEnclosed(builder, ZigTypes.KEYWORD_ALIGN, ZigTypes.L_PAREN, ZigTypes.R_PAREN, ZigTypes.ALIGN)
-        parseEnclosed(builder, ZigTypes.KEYWORD_ADDRSPACE, ZigTypes.L_PAREN, ZigTypes.R_PAREN, ZigTypes.ADDRSPACE)
-        parseEnclosed(builder, ZigTypes.KEYWORD_LINKSECTION, ZigTypes.L_PAREN, ZigTypes.R_PAREN, ZigTypes.LINKSECTION)
-        if (!expect(builder, ZigTypes.EQUAL)) {
+        parseEnclosed(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.ALIGN)
+        parseEnclosed(builder, ZigTokenTypes.KEYWORD_ADDRSPACE, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.ADDRSPACE)
+        parseEnclosed(builder, ZigTokenTypes.KEYWORD_LINKSECTION, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.LINKSECTION)
+        if (!expect(builder, ZigTokenTypes.EQUAL)) {
             decl.rollbackTo()
             return null
         }
-        parseUntil(builder, ZigTypes.VAR_DECL_INIT, ZigTypes.SEMICOLON)
-        expect(builder, ZigTypes.SEMICOLON)
-        decl.done(ZigTypes.VAR_DECL)
+        parseUntil(builder, ZigElementTypes.VAR_DECL_INIT, ZigTokenTypes.SEMICOLON)
+        expect(builder, ZigTokenTypes.SEMICOLON)
+        decl.done(ZigElementTypes.VAR_DECL)
         return decl
     }
 
     private fun parseFnDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         val decl = builder.mark()
-        if (expect(builder, ZigTypes.KEYWORD_EXTERN)) {
-            expect(builder, ZigTypes.STRING_LITERAL)
+        if (expect(builder, ZigTokenTypes.KEYWORD_EXTERN)) {
+            expect(builder, ZigTokenTypes.STRING_LITERAL)
         } else {
             expect(builder, ZigTokenSets.EXPORT_INLINE)
         }
-        if (!expect(builder, ZigTypes.KEYWORD_FN)) {
+        if (!expect(builder, ZigTokenTypes.KEYWORD_FN)) {
             decl.rollbackTo()
             return null
         }
-        if (!expect(builder, ZigTypes.IDENTIFIER)) {
+        if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
             decl.rollbackTo()
             return null
         }
-        parseEnclosed(builder, null, ZigTypes.L_PAREN, ZigTypes.R_PAREN, ZigTypes.FN_PARAMS)
-        parseEnclosed(builder, ZigTypes.KEYWORD_ALIGN, ZigTypes.L_PAREN, ZigTypes.R_PAREN, ZigTypes.ALIGN)
-        parseEnclosed(builder, ZigTypes.KEYWORD_ADDRSPACE, ZigTypes.L_PAREN, ZigTypes.R_PAREN, ZigTypes.ADDRSPACE)
-        parseEnclosed(builder, ZigTypes.KEYWORD_LINKSECTION, ZigTypes.L_PAREN, ZigTypes.R_PAREN, ZigTypes.LINKSECTION)
-        parseEnclosed(builder, ZigTypes.KEYWORD_CALLCONV, ZigTypes.L_PAREN, ZigTypes.R_PAREN, ZigTypes.CALLCONV)
-        parseUntil(builder, ZigTypes.FN_RETURN_TYPE, ZigTokenSets.SEMICOLON_BRACE)
-        if (!expect(builder, ZigTypes.SEMICOLON)) {
+        parseEnclosed(builder, null, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.FN_PARAMS)
+        parseEnclosed(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.ALIGN)
+        parseEnclosed(builder, ZigTokenTypes.KEYWORD_ADDRSPACE, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.ADDRSPACE)
+        parseEnclosed(builder, ZigTokenTypes.KEYWORD_LINKSECTION, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.LINKSECTION)
+        parseEnclosed(builder, ZigTokenTypes.KEYWORD_CALLCONV, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.CALLCONV)
+        parseUntil(builder, ZigElementTypes.FN_RETURN_TYPE, ZigTokenSets.SEMICOLON_BRACE)
+        if (!expect(builder, ZigTokenTypes.SEMICOLON)) {
             parseBlock(builder)
         }
-        decl.done(ZigTypes.FN_DECL)
+        decl.done(ZigElementTypes.FN_DECL)
         return decl
     }
 
     private fun parseStringLiteral(builder: PsiBuilder): PsiBuilder.Marker? {
         val literal = builder.mark()
-        if (!expect(builder, ZigTypes.STRING_LITERAL)) {
+        if (!expect(builder, ZigTokenTypes.STRING_LITERAL)) {
             literal.drop()
             return null
         }
-        literal.done(ZigTypes.STRING_LITERAL)
+        literal.done(ZigElementTypes.STRING_LITERAL)
         return literal
     }
 
     private fun parseErrorSetDecl(builder: PsiBuilder): PsiBuilder.Marker? {
-        return parseEnclosed(builder, ZigTypes.KEYWORD_ERROR, ZigTypes.L_BRACE, ZigTypes.R_BRACE, ZigTypes.ERROR_SET_DECL)
+        return parseEnclosed(builder, ZigTokenTypes.KEYWORD_ERROR, ZigTokenTypes.L_BRACE, ZigTokenTypes.R_BRACE, ZigElementTypes.ERROR_SET_DECL)
     }
 
     private fun parseTestDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         val decl = builder.mark()
-        if (!expect(builder, ZigTypes.KEYWORD_TEST)) {
+        if (!expect(builder, ZigTokenTypes.KEYWORD_TEST)) {
             decl.drop()
             return null
         }
         expect(builder, ZigTokenSets.TEST_NAME)
         parseBlock(builder)
-        decl.done(ZigTypes.TEST_DECL)
+        decl.done(ZigElementTypes.TEST_DECL)
         return decl
     }
 
@@ -178,17 +179,17 @@ class ZigParserKt : PsiParser {
                 break
             } else if (parse(builder) != null) {
                 continue
-            } else if (builder.tokenType === ZigTypes.L_BRACE) {
+            } else if (builder.tokenType === ZigTokenTypes.L_BRACE) {
                 braces++
-            } else if (builder.tokenType === ZigTypes.R_BRACE) {
+            } else if (builder.tokenType === ZigTokenTypes.R_BRACE) {
                 braces--
-            } else if (builder.tokenType === ZigTypes.L_BRACKET) {
+            } else if (builder.tokenType === ZigTokenTypes.L_BRACKET) {
                 brackets++
-            } else if (builder.tokenType === ZigTypes.R_BRACKET) {
+            } else if (builder.tokenType === ZigTokenTypes.R_BRACKET) {
                 brackets--
-            } else if (builder.tokenType === ZigTypes.L_PAREN) {
+            } else if (builder.tokenType === ZigTokenTypes.L_PAREN) {
                 parens++
-            } else if (builder.tokenType === ZigTypes.R_PAREN) {
+            } else if (builder.tokenType === ZigTokenTypes.R_PAREN) {
                 parens--
             }
             builder.advanceLexer()

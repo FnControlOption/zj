@@ -11,27 +11,28 @@ import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiRecursiveVisitor
 import com.intellij.psi.PsiWalkingState
 import com.intellij.psi.tree.TokenSet
-import io.github.fncontroloption.zig.psi.ZigTypes
+import io.github.fncontroloption.zig.psi.ZigElementTypes
+import io.github.fncontroloption.zig.psi.ZigTokenTypes
 
 private val BRACE_ENCLOSED = TokenSet.create(
-    ZigTypes.BLOCK,
-    ZigTypes.CONTAINER_DECL_BODY,
-    ZigTypes.ERROR_SET_DECL,
+    ZigElementTypes.BLOCK,
+    ZigElementTypes.CONTAINER_DECL_BODY,
+    ZigElementTypes.ERROR_SET_DECL,
 )
 
 private val PAREN_ENCLOSED = TokenSet.create(
-    ZigTypes.ADDRSPACE,
-    ZigTypes.ALIGN,
-    ZigTypes.CALL_ARGS,
-    ZigTypes.CALLCONV,
-    ZigTypes.CONTAINER_DECL_ARG,
-    ZigTypes.FN_PARAMS,
-    ZigTypes.LINKSECTION,
+    ZigElementTypes.ADDRSPACE,
+    ZigElementTypes.ALIGN,
+    ZigElementTypes.CALL_ARGS,
+    ZigElementTypes.CALLCONV,
+    ZigElementTypes.CONTAINER_DECL_ARG,
+    ZigElementTypes.FN_PARAMS,
+    ZigElementTypes.LINKSECTION,
 )
 
 private val BLOCKS_COLLAPSED_BY_DEFAULT = TokenSet.create(
-    ZigTypes.FN_DECL,
-    ZigTypes.TEST_DECL,
+    ZigElementTypes.FN_DECL,
+    ZigElementTypes.TEST_DECL,
 )
 
 class ZigFoldingBuilder : FoldingBuilderEx(), DumbAware {
@@ -48,12 +49,12 @@ class ZigFoldingBuilder : FoldingBuilderEx(), DumbAware {
                 val node = element.node ?: return
                 when (node.elementType) {
                     in BRACE_ENCLOSED -> {
-                        val lbrace = node.findChildByType(ZigTypes.L_BRACE) ?: return
+                        val lbrace = node.findChildByType(ZigTokenTypes.L_BRACE) ?: return
                         val range = TextRange(lbrace.textRange.startOffset, node.textRange.endOffset)
                         descriptors.add(FoldingDescriptor(element, range))
                     }
                     in PAREN_ENCLOSED -> {
-                        val lparen = node.findChildByType(ZigTypes.L_PAREN) ?: return
+                        val lparen = node.findChildByType(ZigTokenTypes.L_PAREN) ?: return
                         val range = TextRange(lparen.textRange.startOffset, node.textRange.endOffset)
                         descriptors.add(FoldingDescriptor(element, range))
                     }
@@ -64,7 +65,7 @@ class ZigFoldingBuilder : FoldingBuilderEx(), DumbAware {
     }
 
     override fun isCollapsedByDefault(node: ASTNode): Boolean {
-        return node.elementType == ZigTypes.BLOCK && node.treeParent?.elementType in BLOCKS_COLLAPSED_BY_DEFAULT
+        return node.elementType == ZigElementTypes.BLOCK && node.treeParent?.elementType in BLOCKS_COLLAPSED_BY_DEFAULT
     }
 
     override fun getPlaceholderText(node: ASTNode): String? {

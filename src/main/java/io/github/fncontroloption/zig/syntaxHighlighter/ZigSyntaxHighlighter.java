@@ -7,7 +7,7 @@ import com.intellij.psi.TokenType;
 import com.intellij.psi.tree.IElementType;
 import io.github.fncontroloption.zig.lexer.ZigLexerAdapter;
 import io.github.fncontroloption.zig.psi.ZigTokenSets;
-import io.github.fncontroloption.zig.psi.ZigTypes;
+import io.github.fncontroloption.zig.psi.ZigTokenTypes;
 import org.jetbrains.annotations.NotNull;
 
 public class ZigSyntaxHighlighter extends SyntaxHighlighterBase {
@@ -37,10 +37,10 @@ public class ZigSyntaxHighlighter extends SyntaxHighlighterBase {
 
   @Override
   public TextAttributesKey @NotNull [] getTokenHighlights(IElementType tokenType) {
-    if (tokenType.equals(ZigTypes.IDENTIFIER)) {
+    if (tokenType.equals(ZigTokenTypes.IDENTIFIER)) {
       return IDENTIFIER_KEYS;
     }
-    if (tokenType.equals(ZigTypes.NUMBER_LITERAL)) {
+    if (tokenType.equals(ZigTokenTypes.NUMBER_LITERAL)) {
       return NUMBER_KEYS;
     }
     if (ZigTokenSets.KEYWORDS.contains(tokenType)) {
@@ -58,13 +58,13 @@ public class ZigSyntaxHighlighter extends SyntaxHighlighterBase {
     if (ZigTokenSets.OPERATION_SIGNS.contains(tokenType)) {
       return OPERATION_SIGN_KEYS;
     }
-    if (tokenType.equals(ZigTypes.PERIOD)) {
+    if (tokenType.equals(ZigTokenTypes.PERIOD)) {
       return DOT_KEYS;
     }
-    if (tokenType.equals(ZigTypes.SEMICOLON)) {
+    if (tokenType.equals(ZigTokenTypes.SEMICOLON)) {
       return SEMICOLON_KEYS;
     }
-    if (tokenType.equals(ZigTypes.COMMA)) {
+    if (tokenType.equals(ZigTokenTypes.COMMA)) {
       return COMMA_KEYS;
     }
     if (ZigTokenSets.PARENTHESES.contains(tokenType)) {
@@ -73,10 +73,10 @@ public class ZigSyntaxHighlighter extends SyntaxHighlighterBase {
     if (ZigTokenSets.BRACKETS.contains(tokenType)) {
       return BRACKETS_KEYS;
     }
-    if (tokenType.equals(ZigTypes.LINE_COMMENT)) {
+    if (tokenType.equals(ZigTokenTypes.LINE_COMMENT)) {
       return LINE_COMMENT_KEYS;
     }
-    if (tokenType.equals(ZigTypes.BUILTIN)) {
+    if (tokenType.equals(ZigTokenTypes.BUILTIN)) {
       return BUILTIN_KEYS;
     }
     if (tokenType.equals(TokenType.BAD_CHARACTER)) {

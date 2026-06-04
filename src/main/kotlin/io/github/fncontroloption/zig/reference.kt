@@ -11,12 +11,12 @@ import com.intellij.psi.PsiReferenceRegistrar
 import com.intellij.util.ProcessingContext
 import io.github.fncontroloption.zig.psi.ZigBuiltinCall
 import io.github.fncontroloption.zig.psi.ZigCallArgs
-import io.github.fncontroloption.zig.psi.ZigTypes
+import io.github.fncontroloption.zig.psi.ZigElementTypes
 
 class ZigReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
         registrar.registerReferenceProvider(
-            PlatformPatterns.psiElement(ZigTypes.STRING_LITERAL),
+            PlatformPatterns.psiElement(ZigElementTypes.STRING_LITERAL),
             object : PsiReferenceProvider() {
                 override fun getReferencesByElement(
                     element: PsiElement,

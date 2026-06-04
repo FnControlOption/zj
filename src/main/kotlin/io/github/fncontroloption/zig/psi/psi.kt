@@ -24,12 +24,12 @@ class ZigCallArgs(node: ASTNode) : ZigPsiElement(node)
 
 class ZigBuiltinCall(node: ASTNode) : ZigPsiElement(node) {
     val builtin: PsiElement
-        get() = findNotNullChildByType(ZigTypes.BUILTIN)
+        get() = findNotNullChildByType(ZigTokenTypes.BUILTIN)
 }
 
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {
-        return findChildByType(ZigTypes.IDENTIFIER)
+        return findChildByType(ZigTokenTypes.IDENTIFIER)
     }
 
     override fun getName(): String? {
@@ -67,9 +67,9 @@ class ZigVarDecl(node: ASTNode) : ZigNamedElement(node) {
             }
         }
 
-    fun isVar() = findChildByType<PsiElement?>(ZigTypes.KEYWORD_VAR) != null
+    fun isVar() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_VAR) != null
 
-    fun isConst() = findChildByType<PsiElement?>(ZigTypes.KEYWORD_CONST) != null
+    fun isConst() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_CONST) != null
 }
 
 class ZigFnDecl(node: ASTNode) : ZigNamedElement(node)

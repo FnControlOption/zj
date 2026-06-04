@@ -12,9 +12,9 @@ import com.intellij.psi.tree.IFileElementType;
 import com.intellij.psi.tree.TokenSet;
 import io.github.fncontroloption.zig.ZigLanguage;
 import io.github.fncontroloption.zig.lexer.ZigLexerAdapter;
+import io.github.fncontroloption.zig.psi.ZigElementTypes;
 import io.github.fncontroloption.zig.psi.ZigFile;
 import io.github.fncontroloption.zig.psi.ZigTokenSets;
-import io.github.fncontroloption.zig.psi.ZigTypes;
 import org.jetbrains.annotations.NotNull;
 
 public final class ZigParserDefinition implements ParserDefinition {
@@ -60,7 +60,7 @@ public final class ZigParserDefinition implements ParserDefinition {
   @NotNull
   @Override
   public PsiElement createElement(ASTNode node) {
-    return ZigTypes.Factory.createElement(node);
+    return ZigElementTypes.Factory.createElement(node);
   }
 
 }

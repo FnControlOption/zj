@@ -3,7 +3,7 @@ package io.github.fncontroloption.zig.lexer;
 import com.intellij.lexer.FlexLexer;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.TokenType;
-import io.github.fncontroloption.zig.psi.ZigTypes;
+import io.github.fncontroloption.zig.psi.ZigTokenTypes;
 
 // Based on https://codeberg.org/ziglang/zig/src/commit/72d954e/lib/std/zig/tokenizer.zig
 %%
@@ -26,133 +26,133 @@ import io.github.fncontroloption.zig.psi.ZigTypes;
 %%
 
 <YYINITIAL> {
-  "!"    { return ZigTypes.BANG; }
-  "|"    { return ZigTypes.PIPE; }
-  "||"   { return ZigTypes.PIPE_PIPE; }
-  "|="   { return ZigTypes.PIPE_EQUAL; }
-  "="    { return ZigTypes.EQUAL; }
-  "=="   { return ZigTypes.EQUAL_EQUAL; }
-  "=>"   { return ZigTypes.EQUAL_ANGLE_BRACKET_RIGHT; }
-  "!="   { return ZigTypes.BANG_EQUAL; }
-  "("    { return ZigTypes.L_PAREN; }
-  ")"    { return ZigTypes.R_PAREN; }
-  ";"    { return ZigTypes.SEMICOLON; }
-  "%"    { return ZigTypes.PERCENT; }
-  "%="   { return ZigTypes.PERCENT_EQUAL; }
-  "{"    { return ZigTypes.L_BRACE; }
-  "}"    { return ZigTypes.R_BRACE; }
-  "["    { return ZigTypes.L_BRACKET; }
-  "]"    { return ZigTypes.R_BRACKET; }
-  "."    { return ZigTypes.PERIOD; }
-  ".*"   { return ZigTypes.PERIOD_ASTERISK; }
-  ".."   { return ZigTypes.ELLIPSIS2; }
-  "..."  { return ZigTypes.ELLIPSIS3; }
-  "^"    { return ZigTypes.CARET; }
-  "^="   { return ZigTypes.CARET_EQUAL; }
-  "+"    { return ZigTypes.PLUS; }
-  "++"   { return ZigTypes.PLUS_PLUS; }
-  "+="   { return ZigTypes.PLUS_EQUAL; }
-  "+%"   { return ZigTypes.PLUS_PERCENT; }
-  "+%="  { return ZigTypes.PLUS_PERCENT_EQUAL; }
-  "+|"   { return ZigTypes.PLUS_PIPE; }
-  "+|="  { return ZigTypes.PLUS_PIPE_EQUAL; }
-  "-"    { return ZigTypes.MINUS; }
-  "-="   { return ZigTypes.MINUS_EQUAL; }
-  "-%"   { return ZigTypes.MINUS_PERCENT; }
-  "-%="  { return ZigTypes.MINUS_PERCENT_EQUAL; }
-  "-|"   { return ZigTypes.MINUS_PIPE; }
-  "-|="  { return ZigTypes.MINUS_PIPE_EQUAL; }
-  "*"    { return ZigTypes.ASTERISK; }
-  "*="   { return ZigTypes.ASTERISK_EQUAL; }
-  "*%"   { return ZigTypes.ASTERISK_PERCENT; }
-  "*%="  { return ZigTypes.ASTERISK_PERCENT_EQUAL; }
-  "*|"   { return ZigTypes.ASTERISK_PIPE; }
-  "*|="  { return ZigTypes.ASTERISK_PIPE_EQUAL; }
-  "->"   { return ZigTypes.ARROW; }
-  ":"    { return ZigTypes.COLON; }
-  "/"    { return ZigTypes.SLASH; }
-  "/="   { return ZigTypes.SLASH_EQUAL; }
-  ","    { return ZigTypes.COMMA; }
-  "&"    { return ZigTypes.AMPERSAND; }
-  "&="   { return ZigTypes.AMPERSAND_EQUAL; }
-  "?"    { return ZigTypes.QUESTION_MARK; }
-  "<"    { return ZigTypes.ANGLE_BRACKET_LEFT; }
-  "<="   { return ZigTypes.ANGLE_BRACKET_LEFT_EQUAL; }
-  "<<"   { return ZigTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT; }
-  "<<="  { return ZigTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_EQUAL; }
-  "<<|"  { return ZigTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_PIPE; }
-  "<<|=" { return ZigTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_PIPE_EQUAL; }
-  ">"    { return ZigTypes.ANGLE_BRACKET_RIGHT; }
-  ">="   { return ZigTypes.ANGLE_BRACKET_RIGHT_EQUAL; }
-  ">>"   { return ZigTypes.ANGLE_BRACKET_ANGLE_BRACKET_RIGHT; }
-  ">>="  { return ZigTypes.ANGLE_BRACKET_ANGLE_BRACKET_RIGHT_EQUAL; }
-  "~"    { return ZigTypes.TILDE; }
+  "!"    { return ZigTokenTypes.BANG; }
+  "|"    { return ZigTokenTypes.PIPE; }
+  "||"   { return ZigTokenTypes.PIPE_PIPE; }
+  "|="   { return ZigTokenTypes.PIPE_EQUAL; }
+  "="    { return ZigTokenTypes.EQUAL; }
+  "=="   { return ZigTokenTypes.EQUAL_EQUAL; }
+  "=>"   { return ZigTokenTypes.EQUAL_ANGLE_BRACKET_RIGHT; }
+  "!="   { return ZigTokenTypes.BANG_EQUAL; }
+  "("    { return ZigTokenTypes.L_PAREN; }
+  ")"    { return ZigTokenTypes.R_PAREN; }
+  ";"    { return ZigTokenTypes.SEMICOLON; }
+  "%"    { return ZigTokenTypes.PERCENT; }
+  "%="   { return ZigTokenTypes.PERCENT_EQUAL; }
+  "{"    { return ZigTokenTypes.L_BRACE; }
+  "}"    { return ZigTokenTypes.R_BRACE; }
+  "["    { return ZigTokenTypes.L_BRACKET; }
+  "]"    { return ZigTokenTypes.R_BRACKET; }
+  "."    { return ZigTokenTypes.PERIOD; }
+  ".*"   { return ZigTokenTypes.PERIOD_ASTERISK; }
+  ".."   { return ZigTokenTypes.ELLIPSIS2; }
+  "..."  { return ZigTokenTypes.ELLIPSIS3; }
+  "^"    { return ZigTokenTypes.CARET; }
+  "^="   { return ZigTokenTypes.CARET_EQUAL; }
+  "+"    { return ZigTokenTypes.PLUS; }
+  "++"   { return ZigTokenTypes.PLUS_PLUS; }
+  "+="   { return ZigTokenTypes.PLUS_EQUAL; }
+  "+%"   { return ZigTokenTypes.PLUS_PERCENT; }
+  "+%="  { return ZigTokenTypes.PLUS_PERCENT_EQUAL; }
+  "+|"   { return ZigTokenTypes.PLUS_PIPE; }
+  "+|="  { return ZigTokenTypes.PLUS_PIPE_EQUAL; }
+  "-"    { return ZigTokenTypes.MINUS; }
+  "-="   { return ZigTokenTypes.MINUS_EQUAL; }
+  "-%"   { return ZigTokenTypes.MINUS_PERCENT; }
+  "-%="  { return ZigTokenTypes.MINUS_PERCENT_EQUAL; }
+  "-|"   { return ZigTokenTypes.MINUS_PIPE; }
+  "-|="  { return ZigTokenTypes.MINUS_PIPE_EQUAL; }
+  "*"    { return ZigTokenTypes.ASTERISK; }
+  "*="   { return ZigTokenTypes.ASTERISK_EQUAL; }
+  "*%"   { return ZigTokenTypes.ASTERISK_PERCENT; }
+  "*%="  { return ZigTokenTypes.ASTERISK_PERCENT_EQUAL; }
+  "*|"   { return ZigTokenTypes.ASTERISK_PIPE; }
+  "*|="  { return ZigTokenTypes.ASTERISK_PIPE_EQUAL; }
+  "->"   { return ZigTokenTypes.ARROW; }
+  ":"    { return ZigTokenTypes.COLON; }
+  "/"    { return ZigTokenTypes.SLASH; }
+  "/="   { return ZigTokenTypes.SLASH_EQUAL; }
+  ","    { return ZigTokenTypes.COMMA; }
+  "&"    { return ZigTokenTypes.AMPERSAND; }
+  "&="   { return ZigTokenTypes.AMPERSAND_EQUAL; }
+  "?"    { return ZigTokenTypes.QUESTION_MARK; }
+  "<"    { return ZigTokenTypes.ANGLE_BRACKET_LEFT; }
+  "<="   { return ZigTokenTypes.ANGLE_BRACKET_LEFT_EQUAL; }
+  "<<"   { return ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT; }
+  "<<="  { return ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_EQUAL; }
+  "<<|"  { return ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_PIPE; }
+  "<<|=" { return ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_PIPE_EQUAL; }
+  ">"    { return ZigTokenTypes.ANGLE_BRACKET_RIGHT; }
+  ">="   { return ZigTokenTypes.ANGLE_BRACKET_RIGHT_EQUAL; }
+  ">>"   { return ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_RIGHT; }
+  ">>="  { return ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_RIGHT_EQUAL; }
+  "~"    { return ZigTokenTypes.TILDE; }
 
-  "addrspace"   { return ZigTypes.KEYWORD_ADDRSPACE; }
-  "align"       { return ZigTypes.KEYWORD_ALIGN; }
-  "allowzero"   { return ZigTypes.KEYWORD_ALLOWZERO; }
-  "and"         { return ZigTypes.KEYWORD_AND; }
-  "anyframe"    { return ZigTypes.KEYWORD_ANYFRAME; }
-  "anytype"     { return ZigTypes.KEYWORD_ANYTYPE; }
-  "asm"         { return ZigTypes.KEYWORD_ASM; }
-  "break"       { return ZigTypes.KEYWORD_BREAK; }
-  "callconv"    { return ZigTypes.KEYWORD_CALLCONV; }
-  "catch"       { return ZigTypes.KEYWORD_CATCH; }
-  "comptime"    { return ZigTypes.KEYWORD_COMPTIME; }
-  "const"       { return ZigTypes.KEYWORD_CONST; }
-  "continue"    { return ZigTypes.KEYWORD_CONTINUE; }
-  "defer"       { return ZigTypes.KEYWORD_DEFER; }
-  "else"        { return ZigTypes.KEYWORD_ELSE; }
-  "enum"        { return ZigTypes.KEYWORD_ENUM; }
-  "errdefer"    { return ZigTypes.KEYWORD_ERRDEFER; }
-  "error"       { return ZigTypes.KEYWORD_ERROR; }
-  "export"      { return ZigTypes.KEYWORD_EXPORT; }
-  "extern"      { return ZigTypes.KEYWORD_EXTERN; }
-  "fn"          { return ZigTypes.KEYWORD_FN; }
-  "for"         { return ZigTypes.KEYWORD_FOR; }
-  "if"          { return ZigTypes.KEYWORD_IF; }
-  "inline"      { return ZigTypes.KEYWORD_INLINE; }
-  "noalias"     { return ZigTypes.KEYWORD_NOALIAS; }
-  "noinline"    { return ZigTypes.KEYWORD_NOINLINE; }
-  "nosuspend"   { return ZigTypes.KEYWORD_NOSUSPEND; }
-  "opaque"      { return ZigTypes.KEYWORD_OPAQUE; }
-  "or"          { return ZigTypes.KEYWORD_OR; }
-  "orelse"      { return ZigTypes.KEYWORD_ORELSE; }
-  "packed"      { return ZigTypes.KEYWORD_PACKED; }
-  "pub"         { return ZigTypes.KEYWORD_PUB; }
-  "resume"      { return ZigTypes.KEYWORD_RESUME; }
-  "return"      { return ZigTypes.KEYWORD_RETURN; }
-  "linksection" { return ZigTypes.KEYWORD_LINKSECTION; }
-  "struct"      { return ZigTypes.KEYWORD_STRUCT; }
-  "suspend"     { return ZigTypes.KEYWORD_SUSPEND; }
-  "switch"      { return ZigTypes.KEYWORD_SWITCH; }
-  "test"        { return ZigTypes.KEYWORD_TEST; }
-  "threadlocal" { return ZigTypes.KEYWORD_THREADLOCAL; }
-  "try"         { return ZigTypes.KEYWORD_TRY; }
-  "union"       { return ZigTypes.KEYWORD_UNION; }
-  "unreachable" { return ZigTypes.KEYWORD_UNREACHABLE; }
-  "var"         { return ZigTypes.KEYWORD_VAR; }
-  "volatile"    { return ZigTypes.KEYWORD_VOLATILE; }
-  "while"       { return ZigTypes.KEYWORD_WHILE; }
+  "addrspace"   { return ZigTokenTypes.KEYWORD_ADDRSPACE; }
+  "align"       { return ZigTokenTypes.KEYWORD_ALIGN; }
+  "allowzero"   { return ZigTokenTypes.KEYWORD_ALLOWZERO; }
+  "and"         { return ZigTokenTypes.KEYWORD_AND; }
+  "anyframe"    { return ZigTokenTypes.KEYWORD_ANYFRAME; }
+  "anytype"     { return ZigTokenTypes.KEYWORD_ANYTYPE; }
+  "asm"         { return ZigTokenTypes.KEYWORD_ASM; }
+  "break"       { return ZigTokenTypes.KEYWORD_BREAK; }
+  "callconv"    { return ZigTokenTypes.KEYWORD_CALLCONV; }
+  "catch"       { return ZigTokenTypes.KEYWORD_CATCH; }
+  "comptime"    { return ZigTokenTypes.KEYWORD_COMPTIME; }
+  "const"       { return ZigTokenTypes.KEYWORD_CONST; }
+  "continue"    { return ZigTokenTypes.KEYWORD_CONTINUE; }
+  "defer"       { return ZigTokenTypes.KEYWORD_DEFER; }
+  "else"        { return ZigTokenTypes.KEYWORD_ELSE; }
+  "enum"        { return ZigTokenTypes.KEYWORD_ENUM; }
+  "errdefer"    { return ZigTokenTypes.KEYWORD_ERRDEFER; }
+  "error"       { return ZigTokenTypes.KEYWORD_ERROR; }
+  "export"      { return ZigTokenTypes.KEYWORD_EXPORT; }
+  "extern"      { return ZigTokenTypes.KEYWORD_EXTERN; }
+  "fn"          { return ZigTokenTypes.KEYWORD_FN; }
+  "for"         { return ZigTokenTypes.KEYWORD_FOR; }
+  "if"          { return ZigTokenTypes.KEYWORD_IF; }
+  "inline"      { return ZigTokenTypes.KEYWORD_INLINE; }
+  "noalias"     { return ZigTokenTypes.KEYWORD_NOALIAS; }
+  "noinline"    { return ZigTokenTypes.KEYWORD_NOINLINE; }
+  "nosuspend"   { return ZigTokenTypes.KEYWORD_NOSUSPEND; }
+  "opaque"      { return ZigTokenTypes.KEYWORD_OPAQUE; }
+  "or"          { return ZigTokenTypes.KEYWORD_OR; }
+  "orelse"      { return ZigTokenTypes.KEYWORD_ORELSE; }
+  "packed"      { return ZigTokenTypes.KEYWORD_PACKED; }
+  "pub"         { return ZigTokenTypes.KEYWORD_PUB; }
+  "resume"      { return ZigTokenTypes.KEYWORD_RESUME; }
+  "return"      { return ZigTokenTypes.KEYWORD_RETURN; }
+  "linksection" { return ZigTokenTypes.KEYWORD_LINKSECTION; }
+  "struct"      { return ZigTokenTypes.KEYWORD_STRUCT; }
+  "suspend"     { return ZigTokenTypes.KEYWORD_SUSPEND; }
+  "switch"      { return ZigTokenTypes.KEYWORD_SWITCH; }
+  "test"        { return ZigTokenTypes.KEYWORD_TEST; }
+  "threadlocal" { return ZigTokenTypes.KEYWORD_THREADLOCAL; }
+  "try"         { return ZigTokenTypes.KEYWORD_TRY; }
+  "union"       { return ZigTokenTypes.KEYWORD_UNION; }
+  "unreachable" { return ZigTokenTypes.KEYWORD_UNREACHABLE; }
+  "var"         { return ZigTokenTypes.KEYWORD_VAR; }
+  "volatile"    { return ZigTokenTypes.KEYWORD_VOLATILE; }
+  "while"       { return ZigTokenTypes.KEYWORD_WHILE; }
 
-  [a-zA-Z_][a-zA-Z_0-9]* { return ZigTypes.IDENTIFIER; }
+  [a-zA-Z_][a-zA-Z_0-9]* { return ZigTokenTypes.IDENTIFIER; }
 
   [0-9][_a-zA-Z0-9]*("."[_a-zA-Z0-9]*[eEpP][-+]?[_a-zA-Z0-9]*)?
-  { return ZigTypes.NUMBER_LITERAL; }
+  { return ZigTokenTypes.NUMBER_LITERAL; }
 
   ' { yybegin(CHAR); }
 
-  \" { type = ZigTypes.STRING_LITERAL; yybegin(STRING); }
-  @\" { type = ZigTypes.IDENTIFIER; yybegin(STRING); }
+  \" { type = ZigTokenTypes.STRING_LITERAL; yybegin(STRING); }
+  @\" { type = ZigTokenTypes.IDENTIFIER; yybegin(STRING); }
 
-  @[a-zA-Z_][a-zA-Z_0-9]* { return ZigTypes.BUILTIN; }
+  @[a-zA-Z_][a-zA-Z_0-9]* { return ZigTokenTypes.BUILTIN; }
 
   \\\\ { yybegin(MULTILINE_STRING); }
 
-  "//" { type = ZigTypes.LINE_COMMENT; yybegin(COMMENT); }
-  "///" { type = ZigTypes.DOC_COMMENT; yybegin(COMMENT); }
-  "//!" { type = ZigTypes.CONTAINER_DOC_COMMENT; yybegin(COMMENT); }
-  "////" { type = ZigTypes.LINE_COMMENT; yybegin(COMMENT); }
+  "//" { type = ZigTokenTypes.LINE_COMMENT; yybegin(COMMENT); }
+  "///" { type = ZigTokenTypes.DOC_COMMENT; yybegin(COMMENT); }
+  "//!" { type = ZigTokenTypes.CONTAINER_DOC_COMMENT; yybegin(COMMENT); }
+  "////" { type = ZigTokenTypes.LINE_COMMENT; yybegin(COMMENT); }
 
   [\ \n\t\r]+ { return TokenType.WHITE_SPACE; }
 
@@ -162,7 +162,7 @@ import io.github.fncontroloption.zig.psi.ZigTypes;
 <CHAR> {
   [\n\x01-\x09\x0b-\x1f\x7f] { yybegin(YYINITIAL); return TokenType.BAD_CHARACTER; }
   <<EOF>> { yybegin(YYINITIAL); return TokenType.BAD_CHARACTER; }
-  ' { yybegin(YYINITIAL); return ZigTypes.CHAR_LITERAL; }
+  ' { yybegin(YYINITIAL); return ZigTokenTypes.CHAR_LITERAL; }
   [^] {}
   \\' {}
 }
@@ -177,8 +177,8 @@ import io.github.fncontroloption.zig.psi.ZigTypes;
 
 <MULTILINE_STRING> {
   [\r\x01-\x09\x0b-\x0c\x0e-\x1f\x7f] { yybegin(YYINITIAL); return TokenType.BAD_CHARACTER; }
-  <<EOF>> { yybegin(YYINITIAL); return ZigTypes.MULTILINE_STRING_LITERAL_LINE; }
-  \r?\n { yybegin(YYINITIAL); return ZigTypes.MULTILINE_STRING_LITERAL_LINE; }
+  <<EOF>> { yybegin(YYINITIAL); return ZigTokenTypes.MULTILINE_STRING_LITERAL_LINE; }
+  \r?\n { yybegin(YYINITIAL); return ZigTokenTypes.MULTILINE_STRING_LITERAL_LINE; }
   [^] {}
 }
 

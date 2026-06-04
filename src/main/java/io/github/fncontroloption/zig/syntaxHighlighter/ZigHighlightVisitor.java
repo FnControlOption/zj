@@ -99,7 +99,7 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                 }
 
                 var nodeType = node.getElementType();
-                if (nodeType == ZigTypes.IDENTIFIER && PRIMITIVES.contains(node.getText())) {
+                if (nodeType == ZigTokenTypes.IDENTIFIER && PRIMITIVES.contains(node.getText())) {
                     addHighlight(element, ZigHighlightInfoTypes.KEYWORD);
                 }
             }
