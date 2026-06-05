@@ -28,6 +28,7 @@ public interface ZigElementTypes {
     IElementType STRING_LITERAL = new ZigElementType("STRING_LITERAL");
     IElementType IDENTIFIER = new ZigElementType("IDENTIFIER");
     IElementType FIELD_ACCESS = new ZigElementType("FIELD_ACCESS");
+    IElementType PTR_TYPE = new ZigElementType("PTR_TYPE");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

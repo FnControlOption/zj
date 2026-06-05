@@ -192,8 +192,25 @@ class ZigParserKt : PsiParser {
     }
 
     private fun parseTypeExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+        val expr = builder.mark()
+        if (expect(builder, ZigTokenTypes.ASTERISK)) {
+            parsePtrModifiers(builder)
+            if (parseTypeExpr(builder) != null) {
+                expr.done(ZigElementTypes.PTR_TYPE)
+                return expr
+            } else {
+                expr.rollbackTo()
+                return null
+            }
+        }
         // TODO
+        expr.drop()
         return parseErrorUnionExpr(builder)
+    }
+
+    private fun parsePtrModifiers(builder: PsiBuilder) {
+        // TODO
+        expect(builder, ZigTokenTypes.KEYWORD_CONST)
     }
 
     private fun parseErrorUnionExpr(builder: PsiBuilder): PsiBuilder.Marker? {
