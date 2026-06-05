@@ -89,7 +89,9 @@ class ZigParserKt : PsiParser {
             decl.rollbackTo()
             return null
         }
-        parseUntil(builder, ZigElementTypes.VAR_DECL_INIT, ZigTokenTypes.SEMICOLON)
+        val init = builder.mark()
+        parseUntil(builder, ZigTokenTypes.SEMICOLON)
+        init.done(ZigElementTypes.VAR_DECL_INIT)
         expect(builder, ZigTokenTypes.SEMICOLON)
         decl.done(ZigElementTypes.VAR_DECL)
         return decl
@@ -117,7 +119,12 @@ class ZigParserKt : PsiParser {
         parseEnclosed(builder, ZigTokenTypes.KEYWORD_ADDRSPACE, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.ADDRSPACE)
         parseEnclosed(builder, ZigTokenTypes.KEYWORD_LINKSECTION, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.LINKSECTION)
         parseEnclosed(builder, ZigTokenTypes.KEYWORD_CALLCONV, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.CALLCONV)
-        parseUntil(builder, ZigElementTypes.FN_RETURN_TYPE, ZigTokenSets.SEMICOLON_BRACE)
+        val returnType = builder.mark()
+        expect(builder, ZigTokenTypes.BANG)
+        if (parseTypeExpr(builder) == null) {
+            parseUntil(builder, ZigTokenSets.SEMICOLON_BRACE)
+        }
+        returnType.done(ZigElementTypes.FN_RETURN_TYPE)
         if (!expect(builder, ZigTokenTypes.SEMICOLON)) {
             parseBlock(builder)
         }
@@ -246,28 +253,15 @@ class ZigParserKt : PsiParser {
         return null
     }
 
-    private fun parseUntil(
-        builder: PsiBuilder,
-        type: IElementType,
-        terminator: IElementType,
-    ) {
-        parseUntil(builder, type) { it === terminator }
+    private fun parseUntil(builder: PsiBuilder, terminator: IElementType) {
+        parseUntil(builder) { it === terminator }
     }
 
-    private fun parseUntil(
-        builder: PsiBuilder,
-        type: IElementType,
-        terminators: TokenSet,
-    ) {
-        parseUntil(builder, type) { it in terminators }
+    private fun parseUntil(builder: PsiBuilder, terminators: TokenSet) {
+        parseUntil(builder) { it in terminators }
     }
 
-    private inline fun parseUntil(
-        builder: PsiBuilder,
-        type: IElementType,
-        terminator: (IElementType?) -> Boolean,
-    ) {
-        val marker = builder.mark()
+    private inline fun parseUntil(builder: PsiBuilder, terminator: (IElementType?) -> Boolean) {
         var braces = 0
         var brackets = 0
         var parens = 0
@@ -291,7 +285,6 @@ class ZigParserKt : PsiParser {
             }
             builder.advanceLexer()
         }
-        marker.done(type)
     }
 
     private fun parseEnclosed(
