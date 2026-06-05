@@ -56,7 +56,9 @@ class ZigParserKt : PsiParser {
             call.drop()
             return null
         }
-        parseEnclosed(builder, null, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.CALL_ARGS)
+        if (parseCallArgs(builder) == null) {
+            parseEnclosed(builder, null, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.CALL_ARGS)
+        }
         call.done(ZigElementTypes.BUILTIN_CALL)
         return call
     }
@@ -286,13 +288,39 @@ class ZigParserKt : PsiParser {
 
     private fun parseCall(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker? {
         val call = lhs.precede()
-        val callArgs = parseEnclosed(builder, null, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.CALL_ARGS)
+        var callArgs = parseCallArgs(builder)
+        if (callArgs == null) {
+            callArgs = parseEnclosed(builder, null, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.CALL_ARGS)
+        }
         if (callArgs == null) {
             call.drop()
             return null
         }
         call.done(ZigElementTypes.CALL)
         return call
+    }
+
+    private fun parseCallArgs(builder: PsiBuilder): PsiBuilder.Marker? {
+        val args = builder.mark()
+        if (!expect(builder, ZigTokenTypes.L_PAREN)) {
+            args.drop()
+            return null
+        }
+        while (!builder.eof()) {
+            if (expect(builder, ZigTokenTypes.R_PAREN)) {
+                break
+            }
+            if (parseExpr(builder) == null) {
+                args.rollbackTo()
+                return null
+            }
+            if (expect(builder, ZigTokenTypes.R_PAREN)) {
+                break
+            }
+            expect(builder, ZigTokenTypes.COMMA)
+        }
+        args.done(ZigElementTypes.CALL_ARGS)
+        return args
     }
 
     private fun parseSuffixOp(builder: PsiBuilder): IElementType? {
