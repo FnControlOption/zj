@@ -218,10 +218,24 @@ class ZigParserKt : PsiParser {
                 expr.rollbackTo()
                 return null
             }
+        } else if (expect(builder, ZigTokenTypes.L_BRACKET)) {
+            if (!expect(builder, ZigTokenTypes.R_BRACKET)) {
+                // TODO
+                expr.rollbackTo()
+                return null
+            }
+            parsePtrModifiers(builder)
+            if (parseTypeExpr(builder) != null) {
+                expr.done(ZigElementTypes.SLICE_TYPE)
+                return expr
+            } else {
+                expr.rollbackTo()
+                return null
+            }
+        } else {
+            expr.drop()
+            return parseErrorUnionExpr(builder)
         }
-        // TODO
-        expr.drop()
-        return parseErrorUnionExpr(builder)
     }
 
     private fun parsePtrModifiers(builder: PsiBuilder) {

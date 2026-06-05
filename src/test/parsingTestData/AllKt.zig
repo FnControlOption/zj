@@ -11,3 +11,5 @@ const foo: *Foo = bar;
 const foo: *const Foo = bar;
 const foo: ?Foo = bar;
 const foo: anyframe->Foo = bar;
+const foo: []Foo = bar;
+const foo: []const Foo = bar;
