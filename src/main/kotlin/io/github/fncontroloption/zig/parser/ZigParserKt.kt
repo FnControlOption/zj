@@ -193,7 +193,23 @@ class ZigParserKt : PsiParser {
 
     private fun parseTypeExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         val expr = builder.mark()
-        if (expect(builder, ZigTokenTypes.ASTERISK)) {
+        if (expect(builder, ZigTokenTypes.QUESTION_MARK)) {
+            if (parseTypeExpr(builder) != null) {
+                expr.done(ZigElementTypes.OPTIONAL_TYPE)
+                return expr
+            } else {
+                expr.rollbackTo()
+                return null
+            }
+        } else if (expect(builder, ZigTokenTypes.KEYWORD_ANYFRAME, ZigTokenTypes.ARROW)) {
+            if (parseTypeExpr(builder) != null) {
+                expr.done(ZigElementTypes.ANYFRAME_TYPE)
+                return expr
+            } else {
+                expr.rollbackTo()
+                return null
+            }
+        } else if (expect(builder, ZigTokenTypes.ASTERISK)) {
             parsePtrModifiers(builder)
             if (parseTypeExpr(builder) != null) {
                 expr.done(ZigElementTypes.PTR_TYPE)
