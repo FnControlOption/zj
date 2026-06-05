@@ -20,6 +20,7 @@ public interface ZigElementTypes {
     IElementType LINKSECTION = new ZigElementType("LINKSECTION");
     IElementType CALLCONV = new ZigElementType("CALLCONV");
     IElementType FN_DECL = new ZigElementType("FN_DECL");
+    IElementType FN_PROTO = new ZigElementType("FN_PROTO");
     IElementType FN_PARAMS = new ZigElementType("FN_PARAMS");
     IElementType FN_PARAM_DECL = new ZigElementType("FN_PARAM_DECL");
     IElementType FN_RETURN_TYPE = new ZigElementType("FN_RETURN_TYPE");

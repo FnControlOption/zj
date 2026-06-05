@@ -97,22 +97,23 @@ class ZigParserKt : PsiParser {
         return decl
     }
 
-    private fun parseFnDecl(builder: PsiBuilder): PsiBuilder.Marker? {
-        val decl = builder.mark()
+    private fun parseFnProto(builder: PsiBuilder, requireNames: Boolean): PsiBuilder.Marker? {
+        val proto = builder.mark()
         if (expect(builder, ZigTokenTypes.KEYWORD_EXTERN)) {
             expect(builder, ZigTokenTypes.STRING_LITERAL)
         } else {
             expect(builder, ZigTokenSets.EXPORT_INLINE)
         }
         if (!expect(builder, ZigTokenTypes.KEYWORD_FN)) {
-            decl.rollbackTo()
+            proto.rollbackTo()
             return null
         }
-        if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
-            decl.rollbackTo()
+        val hasName = expect(builder, ZigTokenTypes.IDENTIFIER)
+        if (!hasName && requireNames) {
+            proto.rollbackTo()
             return null
         }
-        if (parseFnParams(builder, true) == null) {
+        if (parseFnParams(builder, requireNames) == null) {
             parseEnclosed(builder, null, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.FN_PARAMS)
         }
         parseEnclosed(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.ALIGN)
@@ -125,6 +126,16 @@ class ZigParserKt : PsiParser {
             parseUntil(builder, ZigTokenSets.SEMICOLON_BRACE)
         }
         returnType.done(ZigElementTypes.FN_RETURN_TYPE)
+        proto.done(ZigElementTypes.FN_PROTO)
+        return proto
+    }
+
+    private fun parseFnDecl(builder: PsiBuilder): PsiBuilder.Marker? {
+        val decl = builder.mark()
+        if (parseFnProto(builder, true) == null) {
+            decl.drop()
+            return null
+        }
         if (!expect(builder, ZigTokenTypes.SEMICOLON)) {
             parseBlock(builder)
         }
@@ -294,6 +305,9 @@ class ZigParserKt : PsiParser {
             }
             marker.done(ZigElementTypes.IDENTIFIER)
             return marker
+        } else if (builder.tokenType === ZigTokenTypes.KEYWORD_FN) {
+            marker.drop()
+            return parseFnProto(builder, false)
         }
         // TODO
         marker.rollbackTo()
