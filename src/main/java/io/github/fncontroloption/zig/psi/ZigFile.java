@@ -23,7 +23,7 @@ public class ZigFile extends PsiFileBase {
 
   @Override
   public String toString() {
-    return "Zig File";
+    return "ZigFile:" + getName();
   }
 
   @Override

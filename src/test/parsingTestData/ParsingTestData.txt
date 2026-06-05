@@ -1,4 +1,4 @@
-Zig File(0,790)
+ZigFile:ParsingTestData.zig(0,790)
   ZigVarDecl(VAR_DECL)(0,27)
     PsiElement(const)('const')(0,5)
     PsiWhiteSpace(' ')(5,6)

@@ -16,7 +16,7 @@ public final class ZigFileType extends LanguageFileType {
   @NotNull
   @Override
   public String getName() {
-    return "Zig File";
+    return "Zig";
   }
 
   @NotNull

@@ -36,7 +36,7 @@
   <vendor url="https://github.com/FnControlOption">fn ⌃ ⌥</vendor>
 
   <extensions defaultExtensionNs="com.intellij">
-    <fileType name="Zig File" implementationClass="io.github.fncontroloption.zig.ZigFileType" fieldName="INSTANCE"
+    <fileType name="Zig" implementationClass="io.github.fncontroloption.zig.ZigFileType" fieldName="INSTANCE"
               language="Zig" extensions="zig"/>
     <lang.parserDefinition language="Zig" implementationClass="io.github.fncontroloption.zig.parser.ZigParserDefinition"/>
     <lang.syntaxHighlighterFactory language="Zig"

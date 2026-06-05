@@ -1,4 +1,4 @@
-Zig File(0,77)
+ZigFile:AllKt.zig(0,77)
   ZigVarDecl(VAR_DECL)(0,37)
     PsiElement(const)('const')(0,5)
     PsiWhiteSpace(' ')(5,6)
