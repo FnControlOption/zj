@@ -81,7 +81,11 @@ class ZigParserKt : PsiParser {
         }
         if (expect(builder, ZigTokenTypes.COLON)) {
             val type = builder.mark()
-            tryTypeExpr(builder)
+            if (tryTypeExpr(builder) == null) {
+                type.drop()
+                decl.rollbackTo()
+                return null
+            }
             type.done(ZigElementTypes.VAR_DECL_TYPE)
         }
         parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigElementTypes.ALIGN)
