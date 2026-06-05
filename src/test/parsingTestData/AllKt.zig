@@ -15,3 +15,4 @@ const foo: []Foo = bar;
 const foo: []const Foo = bar;
 const foo: fn () Foo = bar;
 const foo: fn (Bar, Baz) Foo = bar;
+const foo: Foo!Bar = bar

@@ -255,8 +255,17 @@ class ZigParserKt : PsiParser {
     }
 
     private fun parseErrorUnionExpr(builder: PsiBuilder): PsiBuilder.Marker? {
-        // TODO
-        return parseSuffixExpr(builder)
+        var expr = parseSuffixExpr(builder) ?: return null
+        if (!expect(builder, ZigTokenTypes.BANG)) {
+            return expr
+        }
+        expr = expr.precede()
+        if (parseTypeExpr(builder) == null) {
+            expr.rollbackTo()
+            return null
+        }
+        expr.done(ZigElementTypes.ERROR_UNION)
+        return expr
     }
 
     private fun parseSuffixExpr(builder: PsiBuilder): PsiBuilder.Marker? {

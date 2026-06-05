@@ -33,6 +33,7 @@ public interface ZigElementTypes {
     IElementType ANYFRAME_TYPE = new ZigElementType("ANYFRAME_TYPE");
     IElementType PTR_TYPE = new ZigElementType("PTR_TYPE");
     IElementType SLICE_TYPE = new ZigElementType("SLICE_TYPE");
+    IElementType ERROR_UNION = new ZigElementType("ERROR_UNION");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {
