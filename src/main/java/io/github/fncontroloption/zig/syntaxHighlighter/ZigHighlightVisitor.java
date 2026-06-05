@@ -68,8 +68,8 @@ public class ZigHighlightVisitor implements HighlightVisitor {
     @Override
     public void visit(@NotNull PsiElement element) {
         switch (element) {
-            case ZigFnDecl decl -> {
-                var identifier = decl.getNameIdentifier();
+            case ZigFnProto proto -> {
+                var identifier = proto.getNameIdentifier();
                 if (identifier == null) {
                     return;
                 }

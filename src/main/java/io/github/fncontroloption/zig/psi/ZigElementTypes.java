@@ -53,8 +53,8 @@ public interface ZigElementTypes {
             if (type == VAR_DECL) {
                 return new ZigVarDecl(node);
             }
-            if (type == FN_DECL) {
-                return new ZigFnDecl(node);
+            if (type == FN_PROTO) {
+                return new ZigFnProto(node);
             }
             return new ZigPsiElement(node); // TODO
         }

@@ -72,4 +72,4 @@ class ZigVarDecl(node: ASTNode) : ZigNamedElement(node) {
     fun isConst() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_CONST) != null
 }
 
-class ZigFnDecl(node: ASTNode) : ZigNamedElement(node)
+class ZigFnProto(node: ASTNode) : ZigNamedElement(node)
