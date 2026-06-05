@@ -26,6 +26,10 @@ public interface ZigElementTypes {
     IElementType FN_RETURN_TYPE = new ZigElementType("FN_RETURN_TYPE");
     IElementType ERROR_SET_DECL = new ZigElementType("ERROR_SET_DECL");
     IElementType TEST_DECL = new ZigElementType("TEST_DECL");
+    IElementType CHAR_LITERAL = new ZigElementType("CHAR_LITERAL");
+    IElementType NUMBER_LITERAL = new ZigElementType("NUMBER_LITERAL");
+    IElementType UNREACHABLE_LITERAL = new ZigElementType("UNREACHABLE_LITERAL");
+    IElementType ANYFRAME_LITERAL = new ZigElementType("ANYFRAME_LITERAL");
     IElementType STRING_LITERAL = new ZigElementType("STRING_LITERAL");
     IElementType IDENTIFIER = new ZigElementType("IDENTIFIER");
     IElementType FIELD_ACCESS = new ZigElementType("FIELD_ACCESS");

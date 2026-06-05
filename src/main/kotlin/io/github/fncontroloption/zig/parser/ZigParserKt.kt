@@ -310,7 +310,22 @@ class ZigParserKt : PsiParser {
 
     private fun parsePrimaryTypeExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         val marker = builder.mark()
-        if (expect(builder, ZigTokenTypes.IDENTIFIER)) {
+        if (expect(builder, ZigTokenTypes.CHAR_LITERAL)) {
+            marker.done(ZigElementTypes.CHAR_LITERAL)
+            return marker
+        } else if (expect(builder, ZigTokenTypes.NUMBER_LITERAL)) {
+            marker.done(ZigElementTypes.NUMBER_LITERAL)
+            return marker
+        } else if (expect(builder, ZigTokenTypes.KEYWORD_UNREACHABLE)) {
+            marker.done(ZigElementTypes.UNREACHABLE_LITERAL)
+            return marker
+        } else if (expect(builder, ZigTokenTypes.KEYWORD_ANYFRAME)) {
+            marker.done(ZigElementTypes.ANYFRAME_LITERAL)
+            return marker
+        } else if (expect(builder, ZigTokenTypes.STRING_LITERAL)) {
+            marker.done(ZigElementTypes.STRING_LITERAL)
+            return marker
+        } else if (expect(builder, ZigTokenTypes.IDENTIFIER)) {
             if (builder.tokenType === ZigTokenTypes.COLON) {
                 // TODO
                 marker.rollbackTo()
