@@ -101,7 +101,7 @@ class ZigParserKt : PsiParser {
         return decl
     }
 
-    private fun tryFnProto(builder: PsiBuilder, requireNames: Boolean): PsiBuilder.Marker? {
+    private fun tryFnProto(builder: PsiBuilder, requireNames: Boolean, terminators: TokenSet?): PsiBuilder.Marker? {
         val proto = builder.mark()
         if (expect(builder, ZigTokenTypes.KEYWORD_EXTERN)) {
             expect(builder, ZigTokenTypes.STRING_LITERAL)
@@ -127,7 +127,11 @@ class ZigParserKt : PsiParser {
         val returnType = builder.mark()
         expect(builder, ZigTokenTypes.BANG)
         if (tryTypeExpr(builder) == null) {
-            parseUntil(builder, ZigTokenSets.SEMICOLON_BRACE)
+            if (terminators == null) {
+                proto.rollbackTo()
+                return null
+            }
+            parseUntil(builder, terminators)
         }
         returnType.done(ZigElementTypes.FN_RETURN_TYPE)
         proto.done(ZigElementTypes.FN_PROTO)
@@ -136,7 +140,7 @@ class ZigParserKt : PsiParser {
 
     private fun parseFnDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         val decl = builder.mark()
-        if (tryFnProto(builder, true) == null) {
+        if (tryFnProto(builder, true, ZigTokenSets.SEMICOLON_BRACE) == null) {
             decl.drop()
             return null
         }
@@ -363,7 +367,7 @@ class ZigParserKt : PsiParser {
             return marker
         } else if (builder.tokenType === ZigTokenTypes.KEYWORD_FN) {
             marker.drop()
-            return tryFnProto(builder, false)
+            return tryFnProto(builder, false, null)
         }
         // TODO
         marker.rollbackTo()
