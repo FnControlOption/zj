@@ -108,4 +108,6 @@ public interface ZigTokenSets {
 
   TokenSet TEST_NAME = TokenSet.create(ZigTokenTypes.STRING_LITERAL, ZigTokenTypes.IDENTIFIER);
 
+  TokenSet NOALIAS_COMPTIME = TokenSet.create(ZigTokenTypes.KEYWORD_NOALIAS, ZigTokenTypes.KEYWORD_COMPTIME);
+
 }

@@ -5,3 +5,4 @@ const Foo = error{
     Foo,
     Bar,
 };
+fn foo(bar: Bar, baz: Baz) Foo {}

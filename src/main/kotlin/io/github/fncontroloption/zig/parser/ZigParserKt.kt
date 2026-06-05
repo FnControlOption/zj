@@ -110,7 +110,9 @@ class ZigParserKt : PsiParser {
             decl.rollbackTo()
             return null
         }
-        parseEnclosed(builder, null, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.FN_PARAMS)
+        if (parseFnParams(builder, true) == null) {
+            parseEnclosed(builder, null, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.FN_PARAMS)
+        }
         parseEnclosed(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.ALIGN)
         parseEnclosed(builder, ZigTokenTypes.KEYWORD_ADDRSPACE, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.ADDRSPACE)
         parseEnclosed(builder, ZigTokenTypes.KEYWORD_LINKSECTION, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, ZigElementTypes.LINKSECTION)
@@ -121,6 +123,39 @@ class ZigParserKt : PsiParser {
         }
         decl.done(ZigElementTypes.FN_DECL)
         return decl
+    }
+
+    private fun parseFnParams(builder: PsiBuilder, requireNames: Boolean): PsiBuilder.Marker? {
+        val params = builder.mark()
+        if (!expect(builder, ZigTokenTypes.L_PAREN)) {
+            params.drop()
+            return null
+        }
+        while (!builder.eof()) {
+            if (expect(builder, ZigTokenTypes.R_PAREN)) {
+                break
+            }
+            val decl = builder.mark()
+            expect(builder, ZigTokenSets.NOALIAS_COMPTIME)
+            val hasName = expect(builder, ZigTokenTypes.IDENTIFIER, ZigTokenTypes.COLON)
+            if (!hasName && requireNames) {
+                decl.drop()
+                params.rollbackTo()
+                return null
+            }
+            if (parseTypeExpr(builder) == null) {
+                decl.drop()
+                params.rollbackTo()
+                return null
+            }
+            decl.done(ZigElementTypes.FN_PARAM_DECL)
+            if (expect(builder, ZigTokenTypes.R_PAREN)) {
+                break
+            }
+            expect(builder, ZigTokenTypes.COMMA)
+        }
+        params.done(ZigElementTypes.FN_PARAMS)
+        return params
     }
 
     private fun parseStringLiteral(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -296,6 +331,18 @@ class ZigParserKt : PsiParser {
             return true
         }
         return false
+    }
+
+    private fun expect(builder: PsiBuilder, vararg expectedTypes: IElementType?): Boolean {
+        for (i in expectedTypes.indices) {
+            if (builder.lookAhead(i) != expectedTypes[i]) {
+                return false
+            }
+        }
+        repeat(expectedTypes.size) {
+            builder.advanceLexer()
+        }
+        return true
     }
 
     private fun expect(builder: PsiBuilder, expectedTypes: TokenSet): Boolean {
