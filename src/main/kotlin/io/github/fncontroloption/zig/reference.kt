@@ -13,6 +13,7 @@ import io.github.fncontroloption.zig.psi.ZigBuiltinCall
 import io.github.fncontroloption.zig.psi.ZigCallArgs
 import io.github.fncontroloption.zig.psi.ZigContainer
 import io.github.fncontroloption.zig.psi.ZigElementTypes
+import io.github.fncontroloption.zig.psi.ZigFnDecl
 
 class ZigReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
@@ -73,11 +74,13 @@ class ZigIdentifierReference(element: PsiElement) : PsiReferenceBase<PsiElement>
         val name = myElement.text
         var parent = myElement.parent
         while (parent != null) {
-            if (parent is ZigContainer) {
-                val decl = parent.decls[name]
-                if (decl != null) {
-                    return decl
-                }
+            val decl = when (parent) {
+                is ZigContainer -> parent.decls[name]
+                is ZigFnDecl -> parent.fnProto.fnParams?.fnParamDecls[name]
+                else -> null
+            }
+            if (decl != null) {
+                return decl
             }
             parent = parent.parent
         }

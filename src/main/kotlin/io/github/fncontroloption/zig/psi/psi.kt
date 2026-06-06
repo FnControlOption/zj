@@ -137,6 +137,38 @@ class ZigFnDecl(node: ASTNode) : ZigPsiElement(node) {
     override fun getTextOffset() = fnProto.textOffset
 }
 
-class ZigFnProto(node: ASTNode) : ZigNamedElement(node)
+class ZigFnProto(node: ASTNode) : ZigNamedElement(node) {
+    val fnParams: ZigFnParams?
+        get() = findChildByClass(ZigFnParams::class.java)
+}
+
+class ZigFnParams(node: ASTNode) : ZigPsiElement(node) {
+    private var cachedFnParamDecls: Map<String, ZigFnParamDecl>? = null
+
+    val fnParamDecls: Map<String, PsiElement>
+        get() {
+            var decls = cachedFnParamDecls
+            if (decls != null) {
+                return decls
+            }
+            decls = mutableMapOf()
+            var child = firstChild
+            while (child != null) {
+                if (child is ZigFnParamDecl) {
+                    val name = child.name
+                    if (name != null) {
+                        decls[name] = child
+                    }
+                }
+                child = child.nextSibling
+            }
+            cachedFnParamDecls = decls
+            return decls
+        }
+
+    override fun subtreeChanged() {
+        cachedFnParamDecls = null
+    }
+}
 
 class ZigFnParamDecl(node: ASTNode) : ZigNamedElement(node)
