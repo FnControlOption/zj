@@ -107,17 +107,16 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                     yield createHighlightInfo(element, ZigHighlightInfoTypes.KEYWORD);
                 }
 
-                for (var reference : identifier.getReferences()) {
-                    var resolved = reference.resolve();
-                    if (resolved != null) {
-                        var info = createHighlightInfo(resolved);
-                        if (info != null) {
-                            yield createHighlightInfo(identifier, info.type);
-                        }
-                    }
+                yield createHighlightInfoFromReference(identifier, identifier);
+            }
+
+            case ZigTestDecl decl -> {
+                var name = decl.getTestName();
+                if (name == null) {
+                    yield null;
                 }
 
-                yield null;
+                yield createHighlightInfoFromReference(decl, name);
             }
 
             default -> null;
@@ -143,5 +142,18 @@ public class ZigHighlightVisitor implements HighlightVisitor {
 
     private HighlightInfo createHighlightInfo(PsiElement element, HighlightInfoType type) {
         return HighlightInfo.newHighlightInfo(type).range(element).create();
+    }
+
+    private @Nullable HighlightInfo createHighlightInfoFromReference(PsiElement element, PsiElement range) {
+        for (var reference : element.getReferences()) {
+            var resolved = reference.resolve();
+            if (resolved != null) {
+                var info = createHighlightInfo(resolved);
+                if (info != null) {
+                    return createHighlightInfo(range, info.type);
+                }
+            }
+        }
+        return null;
     }
 }
