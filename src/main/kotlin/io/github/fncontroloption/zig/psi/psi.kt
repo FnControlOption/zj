@@ -108,6 +108,11 @@ class ZigBuiltinCall(node: ASTNode) : ZigPsiElement(node) {
 
 class ZigIdentifier(node: ASTNode) : ZigPsiElement(node)
 
+class ZigTestDecl(node: ASTNode) : ZigPsiElement(node) {
+    val testName: PsiElement?
+        get() = findChildByType(ZigTokenSets.TEST_NAME)
+}
+
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {
         return findChildByType(ZigTokenTypes.IDENTIFIER)

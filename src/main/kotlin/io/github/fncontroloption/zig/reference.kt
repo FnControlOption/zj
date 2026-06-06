@@ -15,6 +15,8 @@ import io.github.fncontroloption.zig.psi.ZigCallArgs
 import io.github.fncontroloption.zig.psi.ZigContainer
 import io.github.fncontroloption.zig.psi.ZigElementTypes
 import io.github.fncontroloption.zig.psi.ZigFnDecl
+import io.github.fncontroloption.zig.psi.ZigTestDecl
+import io.github.fncontroloption.zig.psi.ZigTokenTypes
 
 class ZigReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
@@ -25,6 +27,10 @@ class ZigReferenceContributor : PsiReferenceContributor() {
         registrar.registerReferenceProvider(
             PlatformPatterns.psiElement(ZigElementTypes.IDENTIFIER),
             ZigIdentifierReferenceProvider,
+        )
+        registrar.registerReferenceProvider(
+            PlatformPatterns.psiElement(ZigTestDecl::class.java),
+            ZigTestDeclReferenceProvider,
         )
     }
 }
@@ -39,11 +45,13 @@ object ZigStringLiteralReferenceProvider : PsiReferenceProvider() {
         if (builtinCall.builtin.textMatches("@import")) {
             return arrayOf(ZigImportReference(element))
         }
-        return arrayOf()
+        return emptyArray()
     }
 }
 
-class ZigImportReference(element: PsiElement) : PsiReferenceBase<PsiElement>(element, TextRange(1, element.textLength - 1)) {
+class ZigImportReference(element: PsiElement) :
+    PsiReferenceBase<PsiElement>(element, TextRange(1, element.textLength - 1), true) {
+
     // TODO: unescape string literal
     val parts = element.text.substring(1, element.text.length - 1).split("/")
 
@@ -70,7 +78,9 @@ object ZigIdentifierReferenceProvider : PsiReferenceProvider() {
     }
 }
 
-class ZigIdentifierReference(element: PsiElement) : PsiReferenceBase<PsiElement>(element, TextRange(0, element.textLength)) {
+class ZigIdentifierReference(element: PsiElement) :
+    PsiReferenceBase<PsiElement>(element, TextRange(0, element.textLength), true) {
+
     override fun resolve(): PsiElement? {
         val name = myElement.text
         var parent = myElement.parent
@@ -88,4 +98,26 @@ class ZigIdentifierReference(element: PsiElement) : PsiReferenceBase<PsiElement>
         }
         return null
     }
+}
+
+object ZigTestDeclReferenceProvider : PsiReferenceProvider() {
+    override fun getReferencesByElement(
+        element: PsiElement,
+        context: ProcessingContext
+    ): Array<out PsiReference> {
+        val decl = element as ZigTestDecl
+        val name = decl.testName
+        if (name?.node?.elementType === ZigTokenTypes.IDENTIFIER) {
+            return arrayOf(ZigTestReference(decl, name))
+        }
+        return emptyArray()
+    }
+}
+
+class ZigTestReference(decl: ZigTestDecl, val name: PsiElement) :
+    PsiReferenceBase<ZigTestDecl>(decl, name.textRangeInParent, true) {
+
+    private val ref = ZigIdentifierReference(name)
+
+    override fun resolve() = ref.resolve()
 }

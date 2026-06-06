@@ -73,6 +73,9 @@ public interface ZigElementTypes {
             if (type == IDENTIFIER) {
                 return new ZigIdentifier(node);
             }
+            if (type == TEST_DECL) {
+                return new ZigTestDecl(node);
+            }
             return new ZigPsiElement(node); // TODO
         }
     }
