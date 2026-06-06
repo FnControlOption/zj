@@ -17,20 +17,22 @@ class ZigReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
         registrar.registerReferenceProvider(
             PlatformPatterns.psiElement(ZigElementTypes.STRING_LITERAL),
-            object : PsiReferenceProvider() {
-                override fun getReferencesByElement(
-                    element: PsiElement,
-                    context: ProcessingContext
-                ): Array<out PsiReference> {
-                    val callArgs = element.parent as? ZigCallArgs ?: return emptyArray()
-                    val builtinCall = callArgs.parent as? ZigBuiltinCall ?: return emptyArray()
-                    if (builtinCall.builtin.textMatches("@import")) {
-                        return arrayOf(ZigImportReference(element))
-                    }
-                    return arrayOf()
-                }
-            }
+            ZigStringLiteralReferenceProvider,
         )
+    }
+}
+
+object ZigStringLiteralReferenceProvider : PsiReferenceProvider() {
+    override fun getReferencesByElement(
+        element: PsiElement,
+        context: ProcessingContext
+    ): Array<out PsiReference> {
+        val callArgs = element.parent as? ZigCallArgs ?: return emptyArray()
+        val builtinCall = callArgs.parent as? ZigBuiltinCall ?: return emptyArray()
+        if (builtinCall.builtin.textMatches("@import")) {
+            return arrayOf(ZigImportReference(element))
+        }
+        return arrayOf()
     }
 }
 
