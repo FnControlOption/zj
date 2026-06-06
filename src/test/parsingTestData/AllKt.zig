@@ -24,3 +24,18 @@ const foo = "foo";
 const foo = bar.baz;
 const foo = bar. ;
 const foo = bar.?;
+
+/// Foo
+///
+/// Bar
+const foo = bar;
+
+/// Foo
+///
+/// Bar
+fn foo(
+    /// Foo
+    ///
+    /// Bar
+    bar: Bar,
+) void {}

@@ -138,3 +138,5 @@ class ZigFnDecl(node: ASTNode) : ZigPsiElement(node) {
 }
 
 class ZigFnProto(node: ASTNode) : ZigNamedElement(node)
+
+class ZigFnParamDecl(node: ASTNode) : ZigNamedElement(node)

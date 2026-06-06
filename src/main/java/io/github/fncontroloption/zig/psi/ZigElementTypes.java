@@ -64,6 +64,9 @@ public interface ZigElementTypes {
             if (type == FN_PROTO) {
                 return new ZigFnProto(node);
             }
+            if (type == FN_PARAM_DECL) {
+                return new ZigFnParamDecl(node);
+            }
             return new ZigPsiElement(node); // TODO
         }
     }
