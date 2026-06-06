@@ -29,7 +29,6 @@ class ZigParserKt : PsiParser {
             ?: parseBuiltinCall(builder)
             ?: parseVarDecl(builder)
             ?: parseFnDecl(builder)
-            ?: parseStringLiteral(builder)
             ?: parseErrorSetDecl(builder)
             ?: parseTestDecl(builder)
     }
@@ -186,16 +185,6 @@ class ZigParserKt : PsiParser {
         }
         params.done(ZigElementTypes.FN_PARAMS)
         return params
-    }
-
-    private fun parseStringLiteral(builder: PsiBuilder): PsiBuilder.Marker? {
-        val literal = builder.mark()
-        if (!expect(builder, ZigTokenTypes.STRING_LITERAL)) {
-            literal.drop()
-            return null
-        }
-        literal.done(ZigElementTypes.STRING_LITERAL)
-        return literal
     }
 
     private fun parseErrorSetDecl(builder: PsiBuilder): PsiBuilder.Marker? {
