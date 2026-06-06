@@ -11,6 +11,7 @@ import com.intellij.psi.PsiReferenceRegistrar
 import com.intellij.util.ProcessingContext
 import io.github.fncontroloption.zig.psi.ZigBuiltinCall
 import io.github.fncontroloption.zig.psi.ZigCallArgs
+import io.github.fncontroloption.zig.psi.ZigContainer
 import io.github.fncontroloption.zig.psi.ZigElementTypes
 
 class ZigReferenceContributor : PsiReferenceContributor() {
@@ -18,6 +19,10 @@ class ZigReferenceContributor : PsiReferenceContributor() {
         registrar.registerReferenceProvider(
             PlatformPatterns.psiElement(ZigElementTypes.STRING_LITERAL),
             ZigStringLiteralReferenceProvider,
+        )
+        registrar.registerReferenceProvider(
+            PlatformPatterns.psiElement(ZigElementTypes.IDENTIFIER),
+            ZigIdentifierReferenceProvider,
         )
     }
 }
@@ -51,5 +56,31 @@ class ZigImportReference(element: PsiElement) : PsiReferenceBase<PsiElement>(ele
             }
         }
         return directory.findFile(fileName)
+    }
+}
+
+object ZigIdentifierReferenceProvider : PsiReferenceProvider() {
+    override fun getReferencesByElement(
+        element: PsiElement,
+        context: ProcessingContext
+    ): Array<out PsiReference> {
+        return arrayOf(ZigIdentifierReference(element))
+    }
+}
+
+class ZigIdentifierReference(element: PsiElement) : PsiReferenceBase<PsiElement>(element, TextRange(0, element.textLength)) {
+    override fun resolve(): PsiElement? {
+        val name = myElement.text
+        var parent = myElement.parent
+        while (parent != null) {
+            if (parent is ZigContainer) {
+                val decl = parent.decls[name]
+                if (decl != null) {
+                    return decl
+                }
+            }
+            parent = parent.parent
+        }
+        return null
     }
 }
