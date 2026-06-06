@@ -33,6 +33,7 @@ public interface ZigElementTypes {
     IElementType STRING_LITERAL = new ZigElementType("STRING_LITERAL");
     IElementType IDENTIFIER = new ZigElementType("IDENTIFIER");
     IElementType FIELD_ACCESS = new ZigElementType("FIELD_ACCESS");
+    IElementType UNWRAP_OPTIONAL = new ZigElementType("UNWRAP_OPTIONAL");
     IElementType OPTIONAL_TYPE = new ZigElementType("OPTIONAL_TYPE");
     IElementType ANYFRAME_TYPE = new ZigElementType("ANYFRAME_TYPE");
     IElementType PTR_TYPE = new ZigElementType("PTR_TYPE");

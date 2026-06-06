@@ -21,3 +21,6 @@ const foo = 42;
 const foo = unreachable;
 const foo = anyframe;
 const foo = "foo";
+const foo = bar.baz;
+const foo = bar. ;
+const foo = bar.?;

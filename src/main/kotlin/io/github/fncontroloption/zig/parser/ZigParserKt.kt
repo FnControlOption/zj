@@ -334,7 +334,11 @@ class ZigParserKt : PsiParser {
     private fun parseSuffixOp(builder: PsiBuilder): IElementType? {
         val marker = builder.mark()
         if (expect(builder, ZigTokenTypes.PERIOD)) {
-            if (expect(builder, ZigTokenTypes.IDENTIFIER)) {
+            if (expect(builder, ZigTokenTypes.QUESTION_MARK)) {
+                marker.drop()
+                return ZigElementTypes.UNWRAP_OPTIONAL
+            } else {
+                expect(builder, ZigTokenTypes.IDENTIFIER)
                 marker.drop()
                 return ZigElementTypes.FIELD_ACCESS
             }
