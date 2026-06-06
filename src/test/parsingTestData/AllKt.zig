@@ -39,3 +39,8 @@ fn foo(
     /// Bar
     bar: Bar,
 ) void {}
+
+fn foo() void {
+    var bar = baz;
+    const qux = bar;
+}

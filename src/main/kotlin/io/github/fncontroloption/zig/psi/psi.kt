@@ -62,7 +62,34 @@ open class ZigPsiElement(node: ASTNode) : ASTWrapperPsiElement(node) {
     }
 }
 
-class ZigBlock(node: ASTNode) : ZigPsiElement(node)
+class ZigBlock(node: ASTNode) : ZigPsiElement(node) {
+    private var cachedVarDecls: Map<String, ZigVarDecl>? = null
+
+    val varDecls: Map<String, PsiElement>
+        get() {
+            var decls = cachedVarDecls
+            if (decls != null) {
+                return decls
+            }
+            decls = mutableMapOf()
+            var child = firstChild
+            while (child != null) {
+                if (child is ZigVarDecl) {
+                    val name = child.name
+                    if (name != null) {
+                        decls[name] = child
+                    }
+                }
+                child = child.nextSibling
+            }
+            cachedVarDecls = decls
+            return decls
+        }
+
+    override fun subtreeChanged() {
+        cachedVarDecls = null
+    }
+}
 
 class ZigContainerDecl(node: ASTNode) : ZigPsiElement(node), ZigContainer {
     override var cachedDecls: Map<String, PsiElement>? = null

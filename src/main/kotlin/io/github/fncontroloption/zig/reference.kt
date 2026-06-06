@@ -9,6 +9,7 @@ import com.intellij.psi.PsiReferenceContributor
 import com.intellij.psi.PsiReferenceProvider
 import com.intellij.psi.PsiReferenceRegistrar
 import com.intellij.util.ProcessingContext
+import io.github.fncontroloption.zig.psi.ZigBlock
 import io.github.fncontroloption.zig.psi.ZigBuiltinCall
 import io.github.fncontroloption.zig.psi.ZigCallArgs
 import io.github.fncontroloption.zig.psi.ZigContainer
@@ -77,6 +78,7 @@ class ZigIdentifierReference(element: PsiElement) : PsiReferenceBase<PsiElement>
             val decl = when (parent) {
                 is ZigContainer -> parent.decls[name]
                 is ZigFnDecl -> parent.fnProto.fnParams?.fnParamDecls[name]
+                is ZigBlock -> parent.varDecls[name]
                 else -> null
             }
             if (decl != null) {
