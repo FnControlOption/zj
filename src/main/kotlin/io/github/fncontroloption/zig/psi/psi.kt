@@ -57,7 +57,7 @@ class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLan
 }
 
 open class ZigPsiElement(node: ASTNode) : ASTWrapperPsiElement(node) {
-    override fun getReferences(): Array<out PsiReference?> {
+    override fun getReferences(): Array<out PsiReference> {
         return ReferenceProvidersRegistry.getReferencesFromProviders(this)
     }
 }
@@ -105,6 +105,8 @@ class ZigBuiltinCall(node: ASTNode) : ZigPsiElement(node) {
     val builtin: PsiElement
         get() = findNotNullChildByType(ZigTokenTypes.BUILTIN)
 }
+
+class ZigIdentifier(node: ASTNode) : ZigPsiElement(node)
 
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {

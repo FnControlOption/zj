@@ -70,6 +70,9 @@ public interface ZigElementTypes {
             if (type == FN_PARAM_DECL) {
                 return new ZigFnParamDecl(node);
             }
+            if (type == IDENTIFIER) {
+                return new ZigIdentifier(node);
+            }
             return new ZigPsiElement(node); // TODO
         }
     }

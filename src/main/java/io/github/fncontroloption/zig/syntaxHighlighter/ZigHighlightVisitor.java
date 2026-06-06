@@ -8,6 +8,7 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import io.github.fncontroloption.zig.psi.*;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 
@@ -67,43 +68,60 @@ public class ZigHighlightVisitor implements HighlightVisitor {
 
     @Override
     public void visit(@NotNull PsiElement element) {
-        switch (element) {
-            case ZigFnProto proto -> {
-                var identifier = proto.getNameIdentifier();
+        var info = createHighlightInfo(element);
+        if (info != null) {
+            holder.add(info);
+        }
+    }
+
+    private @Nullable HighlightInfo createHighlightInfo(@NotNull PsiElement element) {
+        return switch (element) {
+            case ZigFnDecl decl -> {
+                var identifier = decl.getFnProto().getNameIdentifier();
                 if (identifier == null) {
-                    return;
+                    yield null;
                 }
 
-                addHighlight(identifier, ZigHighlightInfoTypes.STATIC_METHOD);
+                yield createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD);
             }
 
             case ZigVarDecl decl -> {
                 var identifier = decl.getNameIdentifier();
                 if (identifier == null) {
-                    return;
+                    yield null;
                 }
 
                 var type = switch (decl.getDeclType()) {
                     case LOCAL_CONST -> ZigHighlightInfoTypes.LOCAL_VARIABLE;
-                    case LOCAL_VAR ->  ZigHighlightInfoTypes.REASSIGNED_LOCAL_VARIABLE;
+                    case LOCAL_VAR -> ZigHighlightInfoTypes.REASSIGNED_LOCAL_VARIABLE;
                     case GLOBAL_CONST -> ZigHighlightInfoTypes.CONSTANT;
                     case GLOBAL_VAR -> ZigHighlightInfoTypes.STATIC_FIELD;
                 };
-                addHighlight(identifier, type);
+                yield createHighlightInfo(identifier, type);
             }
 
-            default -> {
-                var node = element.getNode();
-                if (node == null) {
-                    return;
+            case ZigIdentifier identifier -> {
+                var text = identifier.getText();
+
+                if (PRIMITIVES.contains(text)) {
+                    yield createHighlightInfo(element, ZigHighlightInfoTypes.KEYWORD);
                 }
 
-                var nodeType = node.getElementType();
-                if (nodeType == ZigTokenTypes.IDENTIFIER && PRIMITIVES.contains(node.getText())) {
-                    addHighlight(element, ZigHighlightInfoTypes.KEYWORD);
+                for (var reference : identifier.getReferences()) {
+                    var resolved = reference.resolve();
+                    if (resolved != null) {
+                        var info = createHighlightInfo(resolved);
+                        if (info != null) {
+                            yield createHighlightInfo(identifier, info.type);
+                        }
+                    }
                 }
+
+                yield null;
             }
-        }
+
+            default -> null;
+        };
     }
 
     @Override
@@ -123,7 +141,7 @@ public class ZigHighlightVisitor implements HighlightVisitor {
         return new ZigHighlightVisitor();
     }
 
-    private void addHighlight(PsiElement element, HighlightInfoType type) {
-        holder.add(HighlightInfo.newHighlightInfo(type).range(element).create());
+    private HighlightInfo createHighlightInfo(PsiElement element, HighlightInfoType type) {
+        return HighlightInfo.newHighlightInfo(type).range(element).create();
     }
 }
