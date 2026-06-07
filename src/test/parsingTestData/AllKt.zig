@@ -49,3 +49,7 @@ test {
     var foo = bar;
     foo = baz;
 }
+
+fn foo(comptime T: type) Foo {
+    _ = T;
+}

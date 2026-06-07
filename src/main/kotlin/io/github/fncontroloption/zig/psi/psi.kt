@@ -217,4 +217,7 @@ class ZigFnParams(node: ASTNode) : ZigPsiElement(node) {
     }
 }
 
-class ZigFnParamDecl(node: ASTNode) : ZigNamedElement(node)
+class ZigFnParamDecl(node: ASTNode) : ZigNamedElement(node) {
+    val fnParamType: ZigPsiElement?
+        get() = findChildByClass(ZigPsiElement::class.java)
+}

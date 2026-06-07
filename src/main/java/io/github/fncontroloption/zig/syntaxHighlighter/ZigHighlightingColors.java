@@ -1,5 +1,6 @@
 package io.github.fncontroloption.zig.syntaxHighlighter;
 
+import com.intellij.ide.highlighter.JavaHighlightingColors;
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors;
 import com.intellij.openapi.editor.HighlighterColors;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
@@ -33,4 +34,7 @@ public interface ZigHighlightingColors {
     TextAttributesKey CONSTANT = TextAttributesKey.createTextAttributesKey("ZIG_CONSTANT", DefaultLanguageHighlighterColors.CONSTANT);
     TextAttributesKey LOCAL_VARIABLE = TextAttributesKey.createTextAttributesKey("ZIG_LOCAL_VARIABLE", DefaultLanguageHighlighterColors.LOCAL_VARIABLE);
     TextAttributesKey REASSIGNED_LOCAL_VARIABLE = TextAttributesKey.createTextAttributesKey("ZIG_REASSIGNED_LOCAL_VARIABLE", DefaultLanguageHighlighterColors.REASSIGNED_LOCAL_VARIABLE);
+    TextAttributesKey PARAMETER = TextAttributesKey.createTextAttributesKey("ZIG_PARAMETER", DefaultLanguageHighlighterColors.PARAMETER);
+    TextAttributesKey TYPE_PARAMETER = TextAttributesKey.createTextAttributesKey("ZIG_TYPE_PARAMETER", JavaHighlightingColors.TYPE_PARAMETER_NAME_ATTRIBUTES);
+
 }

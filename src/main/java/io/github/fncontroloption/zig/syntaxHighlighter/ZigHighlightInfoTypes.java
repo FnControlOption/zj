@@ -14,6 +14,8 @@ public interface ZigHighlightInfoTypes {
     HighlightInfoType CONSTANT = createSymbolTypeInfo(ZigHighlightingColors.CONSTANT);
     HighlightInfoType LOCAL_VARIABLE = createSymbolTypeInfo(ZigHighlightingColors.LOCAL_VARIABLE);
     HighlightInfoType REASSIGNED_LOCAL_VARIABLE = createSymbolTypeInfo(ZigHighlightingColors.REASSIGNED_LOCAL_VARIABLE);
+    HighlightInfoType PARAMETER = createSymbolTypeInfo(ZigHighlightingColors.PARAMETER);
+    HighlightInfoType TYPE_PARAMETER = createSymbolTypeInfo(ZigHighlightingColors.TYPE_PARAMETER);
 
     private static @NotNull HighlightInfoType createSymbolTypeInfo(@NotNull TextAttributesKey attributesKey) {
         return new HighlightInfoType.HighlightInfoTypeImpl(HighlightInfoType.SYMBOL_TYPE_SEVERITY, attributesKey, false);

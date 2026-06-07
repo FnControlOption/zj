@@ -85,6 +85,20 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                 yield createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD);
             }
 
+            case ZigFnParamDecl decl -> {
+                var identifier = decl.getNameIdentifier();
+                if (identifier == null) {
+                    yield null;
+                }
+
+                var paramType = decl.getFnParamType();
+                if (paramType instanceof ZigIdentifier && paramType.textMatches("type")) {
+                    yield createHighlightInfo(identifier, ZigHighlightInfoTypes.TYPE_PARAMETER);
+                }
+
+                yield createHighlightInfo(identifier, ZigHighlightInfoTypes.PARAMETER);
+            }
+
             case ZigVarDeclProto proto -> {
                 var identifier = proto.getNameIdentifier();
                 if (identifier == null) {
