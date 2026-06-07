@@ -35,8 +35,9 @@ class ZigParserKt : PsiParser {
 
     private fun parseContainerDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         val container = builder.mark()
+        expect(builder, ZigTokenSets.EXTERN_PACKED)
         if (!expect(builder, ZigTokenSets.CONTAINERS)) {
-            container.drop()
+            container.rollbackTo()
             return null
         }
         parseParenEnclosed(builder, null, ZigElementTypes.CONTAINER_DECL_ARG)

@@ -59,3 +59,9 @@ extern fn foo(...) Foo;
 
 const foo: comptime Foo = bar;
 const foo: (Foo) = bar;
+const foo = extern struct {
+    bar: Bar,
+};
+const foo = packed struct {
+    bar: Bar,
+};
