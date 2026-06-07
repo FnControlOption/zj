@@ -48,6 +48,9 @@ public interface ZigElementTypes {
             if (type == CONTAINER_DECL) {
                 return new ZigContainerDecl(node);
             }
+            if (type == CONTAINER_DECL_BODY) {
+                return new ZigContainerDeclBody(node);
+            }
             if (type == BLOCK) {
                 return new ZigBlock(node);
             }

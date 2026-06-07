@@ -94,7 +94,9 @@ class ZigBlock(node: ASTNode) : ZigPsiElement(node) {
     }
 }
 
-class ZigContainerDecl(node: ASTNode) : ZigPsiElement(node), ZigContainer {
+class ZigContainerDecl(node: ASTNode) : ZigPsiElement(node)
+
+class ZigContainerDeclBody(node: ASTNode) : ZigPsiElement(node), ZigContainer {
     override var cachedDeclProtos: Map<String, ZigNamedElement>? = null
 
     override fun subtreeChanged() {
@@ -145,7 +147,7 @@ class ZigVarDeclProto(node: ASTNode) : ZigNamedElement(node) {
     val declType: Type
         get() {
             val scope = PsiTreeUtil.findFirstParent(this, true) {
-                it is ZigBlock || it is ZigContainerDecl
+                it is ZigBlock || it is ZigContainerDeclBody
             }
 
             return when (scope) {
