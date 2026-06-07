@@ -45,6 +45,12 @@ public interface ZigElementTypes {
     IElementType ASSIGN = new ZigElementType("ASSIGN");
     IElementType COMPTIME = new ZigElementType("COMPTIME");
     IElementType GROUPED_EXPRESSION = new ZigElementType("GROUPED_EXPRESSION");
+    IElementType IF = new ZigElementType("IF");
+    IElementType CONDITION_EXPR = new ZigElementType("CONDITION_EXPR");
+    IElementType THEN_PAYLOAD = new ZigElementType("THEN_PAYLOAD");
+    IElementType THEN_EXPR = new ZigElementType("THEN_EXPR");
+    IElementType ELSE_PAYLOAD = new ZigElementType("ELSE_PAYLOAD");
+    IElementType ELSE_EXPR = new ZigElementType("ELSE_EXPR");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

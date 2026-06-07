@@ -68,3 +68,4 @@ const foo = packed struct {
 
 const foo = error.Foo;
 const foo = error. ;
+const foo: if (a) Foo else Bar = bar;

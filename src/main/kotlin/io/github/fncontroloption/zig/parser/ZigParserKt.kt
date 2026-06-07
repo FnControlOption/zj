@@ -418,9 +418,8 @@ class ZigParserKt : PsiParser {
             marker.drop()
             return tryFnProto(builder, false, null)
         } else if (builder.tokenType === ZigTokenTypes.KEYWORD_IF) {
-            // TODO
             marker.rollbackTo()
-            return null
+            return tryIf(builder, this::tryTypeExpr)
         } else if (builder.tokenType === ZigTokenTypes.KEYWORD_SWITCH) {
             // TODO
             marker.rollbackTo()
@@ -578,6 +577,53 @@ class ZigParserKt : PsiParser {
 
         statement.done(ZigElementTypes.ASSIGN)
         return statement
+    }
+
+    private fun tryIf(builder: PsiBuilder, bodyParseFn: (PsiBuilder) -> PsiBuilder.Marker?): PsiBuilder.Marker? {
+        val marker = builder.mark()
+        if (!expect(builder, ZigTokenTypes.KEYWORD_IF)) {
+            marker.drop()
+            return null
+        }
+        if (tryConditionExpr(builder) == null) {
+            parseParenEnclosed(builder, null, ZigElementTypes.CONDITION_EXPR)
+        }
+        // TODO: parsePtrPayload
+        val thenExpr = bodyParseFn(builder)
+        if (thenExpr == null) {
+            marker.rollbackTo()
+            return null
+        }
+        thenExpr.precede().done(ZigElementTypes.THEN_EXPR)
+        if (expect(builder, ZigTokenTypes.KEYWORD_ELSE)) {
+            // TODO: parsePayload
+            val elseExpr = bodyParseFn(builder)
+            if (elseExpr == null) {
+                marker.rollbackTo()
+                return null
+            }
+            elseExpr.precede().done(ZigElementTypes.ELSE_EXPR)
+        }
+        marker.done(ZigElementTypes.IF)
+        return marker
+    }
+
+    private fun tryConditionExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+        val condition = builder.mark()
+        if (!expect(builder, ZigTokenTypes.L_PAREN)) {
+            condition.drop()
+            return null
+        }
+        if (tryExpr(builder) == null) {
+            condition.rollbackTo()
+            return null
+        }
+        if (!expect(builder, ZigTokenTypes.R_PAREN)) {
+            condition.rollbackTo()
+            return null
+        }
+        condition.done(ZigElementTypes.CONDITION_EXPR)
+        return condition
     }
 
     private fun parseUntil(builder: PsiBuilder, terminator: IElementType) {
