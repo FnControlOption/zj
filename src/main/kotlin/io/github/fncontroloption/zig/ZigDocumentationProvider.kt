@@ -1,23 +1,30 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.lang.documentation.AbstractDocumentationProvider
+import com.intellij.lang.documentation.DocumentationMarkup
 import com.intellij.markdown.utils.convertMarkdownToHtml
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
-import io.github.fncontroloption.zig.psi.ZigFnDecl
-import io.github.fncontroloption.zig.psi.ZigFnParamDecl
-import io.github.fncontroloption.zig.psi.ZigFnProto
-import io.github.fncontroloption.zig.psi.ZigTokenTypes
-import io.github.fncontroloption.zig.psi.ZigVarDecl
-import io.github.fncontroloption.zig.psi.ZigVarDeclProto
+import io.github.fncontroloption.zig.psi.*
 import org.jetbrains.annotations.Nls
 
 class ZigDocumentationProvider : AbstractDocumentationProvider() {
     override fun generateDoc(element: PsiElement, originalElement: PsiElement?): @Nls String? {
         val docHolder = findDocHolder(element) ?: return null
-        val doc = findDoc(docHolder) ?: return null
-        return convertMarkdownToHtml(doc)
+        val sb = StringBuilder()
+        HtmlChunk.text(element.text)
+            .wrapWith(DocumentationMarkup.PRE_ELEMENT)
+            .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
+            .appendTo(sb)
+        val doc = findDoc(docHolder)
+        if (doc != null) {
+            HtmlChunk.raw(convertMarkdownToHtml(doc))
+                .wrapWith(DocumentationMarkup.CONTENT_ELEMENT)
+                .appendTo(sb)
+        }
+        return sb.toString()
     }
 }
 
