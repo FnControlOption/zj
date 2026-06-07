@@ -51,6 +51,35 @@ public interface ZigElementTypes {
     IElementType THEN_EXPR = new ZigElementType("THEN_EXPR");
     IElementType ELSE_PAYLOAD = new ZigElementType("ELSE_PAYLOAD");
     IElementType ELSE_EXPR = new ZigElementType("ELSE_EXPR");
+    IElementType EQUAL_EQUAL = new ZigElementType("EQUAL_EQUAL");
+    IElementType BANG_EQUAL = new ZigElementType("BANG_EQUAL");
+    IElementType LESS_THAN = new ZigElementType("LESS_THAN");
+    IElementType GREATER_THAN = new ZigElementType("GREATER_THAN");
+    IElementType LESS_OR_EQUAL = new ZigElementType("LESS_OR_EQUAL");
+    IElementType GREATER_OR_EQUAL = new ZigElementType("GREATER_OR_EQUAL");
+    IElementType MERGE_ERROR_SETS = new ZigElementType("MERGE_ERROR_SETS");
+    IElementType MUL = new ZigElementType("MUL");
+    IElementType DIV = new ZigElementType("DIV");
+    IElementType MOD = new ZigElementType("MOD");
+    IElementType MUL_WRAP = new ZigElementType("MUL_WRAP");
+    IElementType MUL_SAT = new ZigElementType("MUL_SAT");
+    IElementType ADD = new ZigElementType("ADD");
+    IElementType SUB = new ZigElementType("SUB");
+    IElementType ARRAY_CAT = new ZigElementType("ARRAY_CAT");
+    IElementType ADD_WRAP = new ZigElementType("ADD_WRAP");
+    IElementType SUB_WRAP = new ZigElementType("SUB_WRAP");
+    IElementType ADD_SAT = new ZigElementType("ADD_SAT");
+    IElementType SUB_SAT = new ZigElementType("SUB_SAT");
+    IElementType SHL = new ZigElementType("SHL");
+    IElementType SHL_SAT = new ZigElementType("SHL_SAT");
+    IElementType SHR = new ZigElementType("SHR");
+    IElementType BIT_AND = new ZigElementType("BIT_AND");
+    IElementType BIT_XOR = new ZigElementType("BIT_XOR");
+    IElementType BIT_OR = new ZigElementType("BIT_OR");
+    IElementType ORELSE = new ZigElementType("ORELSE");
+    IElementType CATCH = new ZigElementType("CATCH");
+    IElementType BOOL_AND = new ZigElementType("BOOL_AND");
+    IElementType BOOL_OR = new ZigElementType("BOOL_OR");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

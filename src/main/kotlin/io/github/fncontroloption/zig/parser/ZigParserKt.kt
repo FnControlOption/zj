@@ -490,9 +490,76 @@ class ZigParserKt : PsiParser {
         return tryExprPrecedence(builder, 0)
     }
 
+    private enum class Assoc { LEFT, NONE }
+
+    private class OperInfo(val prec: Int, val nodeType: IElementType, val assoc: Assoc = Assoc.LEFT)
+
+    private val operTable = mapOf(
+        Pair(ZigTokenTypes.KEYWORD_OR, OperInfo(10, ZigElementTypes.BOOL_OR)),
+
+        Pair(ZigTokenTypes.KEYWORD_AND, OperInfo(20, ZigElementTypes.BOOL_AND)),
+
+        Pair(ZigTokenTypes.EQUAL_EQUAL, OperInfo(30, ZigElementTypes.EQUAL_EQUAL, Assoc.NONE)),
+        Pair(ZigTokenTypes.BANG_EQUAL, OperInfo(30, ZigElementTypes.BANG_EQUAL, Assoc.NONE)),
+        Pair(ZigTokenTypes.ANGLE_BRACKET_LEFT, OperInfo(30, ZigElementTypes.LESS_THAN, Assoc.NONE)),
+        Pair(ZigTokenTypes.ANGLE_BRACKET_RIGHT, OperInfo(30, ZigElementTypes.GREATER_THAN, Assoc.NONE)),
+        Pair(ZigTokenTypes.ANGLE_BRACKET_LEFT_EQUAL, OperInfo(30, ZigElementTypes.LESS_OR_EQUAL, Assoc.NONE)),
+        Pair(ZigTokenTypes.ANGLE_BRACKET_RIGHT_EQUAL, OperInfo(30, ZigElementTypes.GREATER_OR_EQUAL, Assoc.NONE)),
+
+        Pair(ZigTokenTypes.AMPERSAND, OperInfo(40, ZigElementTypes.BIT_AND)),
+        Pair(ZigTokenTypes.CARET, OperInfo(40, ZigElementTypes.BIT_XOR)),
+        Pair(ZigTokenTypes.PIPE, OperInfo(40, ZigElementTypes.BIT_OR)),
+        Pair(ZigTokenTypes.KEYWORD_ORELSE, OperInfo(40, ZigElementTypes.ORELSE)),
+        Pair(ZigTokenTypes.KEYWORD_CATCH, OperInfo(40, ZigElementTypes.CATCH)),
+
+        Pair(ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT, OperInfo(50, ZigElementTypes.SHL)),
+        Pair(ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_PIPE, OperInfo(50, ZigElementTypes.SHL_SAT)),
+        Pair(ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_RIGHT, OperInfo(50, ZigElementTypes.SHR)),
+
+        Pair(ZigTokenTypes.PLUS, OperInfo(60, ZigElementTypes.ADD)),
+        Pair(ZigTokenTypes.MINUS, OperInfo(60, ZigElementTypes.SUB)),
+        Pair(ZigTokenTypes.PLUS_PLUS, OperInfo(60, ZigElementTypes.ARRAY_CAT)),
+        Pair(ZigTokenTypes.PLUS_PERCENT, OperInfo(60, ZigElementTypes.ADD_WRAP)),
+        Pair(ZigTokenTypes.MINUS_PERCENT, OperInfo(60, ZigElementTypes.SUB_WRAP)),
+        Pair(ZigTokenTypes.PLUS_PIPE, OperInfo(60, ZigElementTypes.ADD_SAT)),
+        Pair(ZigTokenTypes.MINUS_PIPE, OperInfo(60, ZigElementTypes.SUB_SAT)),
+
+        Pair(ZigTokenTypes.PIPE_PIPE, OperInfo(70, ZigElementTypes.MERGE_ERROR_SETS)),
+        Pair(ZigTokenTypes.ASTERISK, OperInfo(70, ZigElementTypes.MUL)),
+        Pair(ZigTokenTypes.SLASH, OperInfo(70, ZigElementTypes.DIV)),
+        Pair(ZigTokenTypes.PERCENT, OperInfo(70, ZigElementTypes.MOD)),
+        Pair(ZigTokenTypes.ASTERISK_PERCENT, OperInfo(70, ZigElementTypes.MUL_WRAP)),
+        Pair(ZigTokenTypes.ASTERISK_PIPE, OperInfo(70, ZigElementTypes.MUL_SAT)),
+    )
+
     private fun tryExprPrecedence(builder: PsiBuilder, minPrec: Int): PsiBuilder.Marker? {
-        // TODO
-        return tryPrefixExpr(builder)
+        assert(minPrec >= 0)
+        var expr = tryPrefixExpr(builder) ?: return null
+        var bannedPrec = -1
+        while (!builder.eof()) {
+            val operToken = builder.tokenType
+            val info = operTable[operToken]
+            if (info == null || info.prec < minPrec) {
+                break
+            }
+            if (info.prec == bannedPrec) {
+                builder.error("Comparison operators cannot be chained");
+            }
+            builder.advanceLexer()
+            if (operToken == ZigTokenTypes.KEYWORD_CATCH) {
+                // TODO: parsePayload
+            }
+            if (tryExprPrecedence(builder, info.prec + 1) == null) {
+                expr.rollbackTo()
+                return null
+            }
+            expr = expr.precede()
+            expr.done(info.nodeType)
+            if (info.assoc == Assoc.NONE) {
+                bannedPrec = info.prec
+            }
+        }
+        return expr
     }
 
     private fun tryPrefixExpr(builder: PsiBuilder): PsiBuilder.Marker? {

@@ -69,3 +69,5 @@ const foo = packed struct {
 const foo = error.Foo;
 const foo = error. ;
 const foo: if (a) Foo else Bar = bar;
+const foo = a or b or c;
+const foo = a or b and c == d & e << f + g * h;
