@@ -13,6 +13,7 @@ public interface ZigElementTypes {
     IElementType CALL = new ZigElementType("CALL");
     IElementType CALL_ARGS = new ZigElementType("CALL_ARGS");
     IElementType VAR_DECL = new ZigElementType("VAR_DECL");
+    IElementType VAR_DECL_PROTO = new ZigElementType("VAR_DECL_PROTO");
     IElementType VAR_DECL_TYPE = new ZigElementType("VAR_DECL_TYPE");
     IElementType VAR_DECL_INIT = new ZigElementType("VAR_DECL_INIT");
     IElementType ALIGN = new ZigElementType("ALIGN");
@@ -57,6 +58,9 @@ public interface ZigElementTypes {
             }
             if (type == VAR_DECL) {
                 return new ZigVarDecl(node);
+            }
+            if (type == VAR_DECL_PROTO) {
+                return new ZigVarDeclProto(node);
             }
             if (type == FN_DECL) {
                 return new ZigFnDecl(node);

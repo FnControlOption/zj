@@ -16,37 +16,40 @@ import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigLanguage
 
 interface ZigContainer : PsiElement {
-    var cachedDecls: Map<String, PsiElement>?
+    var cachedDeclProtos: Map<String, ZigNamedElement>?
 
-    val decls: Map<String, PsiElement>
+    val declProtos: Map<String, ZigNamedElement>
         get() {
-            var decls = cachedDecls
-            if (decls != null) {
-                return decls
+            var protos = cachedDeclProtos
+            if (protos != null) {
+                return protos
             }
-            decls = mutableMapOf()
+            protos = mutableMapOf()
             var child = firstChild
             while (child != null) {
-                val name = when (child) {
-                    is ZigVarDecl -> child.name
-                    is ZigFnDecl -> child.name
+                val proto = when (child) {
+                    is ZigVarDecl -> child.varDeclProto
+                    is ZigFnDecl -> child.fnProto
                     else -> null
                 }
-                if (name != null) {
-                    decls[name] = child
+                if (proto != null) {
+                    val name = proto.name
+                    if (name != null) {
+                        protos[name] = proto
+                    }
                 }
                 child = child.nextSibling
             }
-            cachedDecls = decls
-            return decls
+            cachedDeclProtos = protos
+            return protos
         }
 }
 
 class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage.INSTANCE), ZigContainer {
-    override var cachedDecls: Map<String, PsiElement>? = null
+    override var cachedDeclProtos: Map<String, ZigNamedElement>? = null
 
     override fun subtreeChanged() {
-        cachedDecls = null
+        cachedDeclProtos = null
     }
 
     override fun getFileType(): FileType = ZigFileType.INSTANCE
@@ -63,11 +66,11 @@ open class ZigPsiElement(node: ASTNode) : ASTWrapperPsiElement(node) {
 }
 
 class ZigBlock(node: ASTNode) : ZigPsiElement(node) {
-    private var cachedVarDecls: Map<String, ZigVarDecl>? = null
+    private var cachedVarDeclProtos: Map<String, ZigVarDeclProto>? = null
 
-    val varDecls: Map<String, PsiElement>
+    val varDeclProtos: Map<String, PsiElement>
         get() {
-            var decls = cachedVarDecls
+            var decls = cachedVarDeclProtos
             if (decls != null) {
                 return decls
             }
@@ -77,25 +80,25 @@ class ZigBlock(node: ASTNode) : ZigPsiElement(node) {
                 if (child is ZigVarDecl) {
                     val name = child.name
                     if (name != null) {
-                        decls[name] = child
+                        decls[name] = child.varDeclProto
                     }
                 }
                 child = child.nextSibling
             }
-            cachedVarDecls = decls
+            cachedVarDeclProtos = decls
             return decls
         }
 
     override fun subtreeChanged() {
-        cachedVarDecls = null
+        cachedVarDeclProtos = null
     }
 }
 
 class ZigContainerDecl(node: ASTNode) : ZigPsiElement(node), ZigContainer {
-    override var cachedDecls: Map<String, PsiElement>? = null
+    override var cachedDeclProtos: Map<String, ZigNamedElement>? = null
 
     override fun subtreeChanged() {
-        cachedDecls = null
+        cachedDeclProtos = null
     }
 }
 
@@ -131,7 +134,7 @@ sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdenti
     }
 }
 
-class ZigVarDecl(node: ASTNode) : ZigNamedElement(node) {
+class ZigVarDeclProto(node: ASTNode) : ZigNamedElement(node) {
     enum class Type {
         LOCAL_CONST,
         LOCAL_VAR,
@@ -160,6 +163,15 @@ class ZigVarDecl(node: ASTNode) : ZigNamedElement(node) {
     fun isVar() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_VAR) != null
 
     fun isConst() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_CONST) != null
+}
+
+class ZigVarDecl(node: ASTNode) : ZigPsiElement(node) {
+    val varDeclProto: ZigVarDeclProto
+        get() = findNotNullChildByClass(ZigVarDeclProto::class.java)
+
+    override fun getName() = varDeclProto.name
+
+    override fun getTextOffset() = varDeclProto.textOffset
 }
 
 class ZigFnDecl(node: ASTNode) : ZigPsiElement(node) {

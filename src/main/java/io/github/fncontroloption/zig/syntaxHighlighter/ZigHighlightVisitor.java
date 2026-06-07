@@ -76,8 +76,8 @@ public class ZigHighlightVisitor implements HighlightVisitor {
 
     private @Nullable HighlightInfo createHighlightInfo(@NotNull PsiElement element) {
         return switch (element) {
-            case ZigFnDecl decl -> {
-                var identifier = decl.getFnProto().getNameIdentifier();
+            case ZigFnProto proto -> {
+                var identifier = proto.getNameIdentifier();
                 if (identifier == null) {
                     yield null;
                 }
@@ -85,13 +85,13 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                 yield createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD);
             }
 
-            case ZigVarDecl decl -> {
-                var identifier = decl.getNameIdentifier();
+            case ZigVarDeclProto proto -> {
+                var identifier = proto.getNameIdentifier();
                 if (identifier == null) {
                     yield null;
                 }
 
-                var type = switch (decl.getDeclType()) {
+                var type = switch (proto.getDeclType()) {
                     case LOCAL_CONST -> ZigHighlightInfoTypes.LOCAL_VARIABLE;
                     case LOCAL_VAR -> ZigHighlightInfoTypes.REASSIGNED_LOCAL_VARIABLE;
                     case GLOBAL_CONST -> ZigHighlightInfoTypes.CONSTANT;

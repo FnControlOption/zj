@@ -70,26 +70,10 @@ class ZigParserKt : PsiParser {
             expect(builder, ZigTokenTypes.KEYWORD_EXPORT)
         }
         expect(builder, ZigTokenTypes.KEYWORD_THREADLOCAL)
-        if (!expect(builder, ZigTokenSets.MUT_TOKENS)) {
+        if (parseVarDeclProto(builder) == null) {
             decl.rollbackTo()
             return null
         }
-        if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
-            decl.rollbackTo()
-            return null
-        }
-        if (expect(builder, ZigTokenTypes.COLON)) {
-            val type = builder.mark()
-            if (tryTypeExpr(builder) == null) {
-                type.drop()
-                decl.rollbackTo()
-                return null
-            }
-            type.done(ZigElementTypes.VAR_DECL_TYPE)
-        }
-        parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigElementTypes.ALIGN)
-        parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ADDRSPACE, ZigElementTypes.ADDRSPACE)
-        parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_LINKSECTION, ZigElementTypes.LINKSECTION)
         if (!expect(builder, ZigTokenTypes.EQUAL)) {
             decl.rollbackTo()
             return null
@@ -102,6 +86,32 @@ class ZigParserKt : PsiParser {
         expect(builder, ZigTokenTypes.SEMICOLON)
         decl.done(ZigElementTypes.VAR_DECL)
         return decl
+    }
+
+    private fun parseVarDeclProto(builder: PsiBuilder): PsiBuilder.Marker? {
+        val proto = builder.mark()
+        if (!expect(builder, ZigTokenSets.MUT_TOKENS)) {
+            proto.drop()
+            return null
+        }
+        if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
+            proto.rollbackTo()
+            return null
+        }
+        if (expect(builder, ZigTokenTypes.COLON)) {
+            val type = builder.mark()
+            if (tryTypeExpr(builder) == null) {
+                type.drop()
+                proto.rollbackTo()
+                return null
+            }
+            type.done(ZigElementTypes.VAR_DECL_TYPE)
+        }
+        parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigElementTypes.ALIGN)
+        parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ADDRSPACE, ZigElementTypes.ADDRSPACE)
+        parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_LINKSECTION, ZigElementTypes.LINKSECTION)
+        proto.done(ZigElementTypes.VAR_DECL_PROTO)
+        return proto
     }
 
     private fun tryFnProto(builder: PsiBuilder, requireNames: Boolean, terminators: TokenSet?): PsiBuilder.Marker? {

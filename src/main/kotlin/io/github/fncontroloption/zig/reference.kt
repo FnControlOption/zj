@@ -85,14 +85,14 @@ class ZigIdentifierReference(element: PsiElement) :
         val name = myElement.text
         var parent = myElement.parent
         while (parent != null) {
-            val decl = when (parent) {
-                is ZigContainer -> parent.decls[name]
+            val target = when (parent) {
+                is ZigContainer -> parent.declProtos[name]
                 is ZigFnDecl -> parent.fnProto.fnParams?.fnParamDecls[name]
-                is ZigBlock -> parent.varDecls[name]
+                is ZigBlock -> parent.varDeclProtos[name]
                 else -> null
             }
-            if (decl != null) {
-                return decl
+            if (target != null) {
+                return target
             }
             parent = parent.parent
         }

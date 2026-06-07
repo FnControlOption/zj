@@ -10,6 +10,7 @@ import io.github.fncontroloption.zig.psi.ZigFnParamDecl
 import io.github.fncontroloption.zig.psi.ZigFnProto
 import io.github.fncontroloption.zig.psi.ZigTokenTypes
 import io.github.fncontroloption.zig.psi.ZigVarDecl
+import io.github.fncontroloption.zig.psi.ZigVarDeclProto
 import org.jetbrains.annotations.Nls
 
 class ZigDocumentationProvider : AbstractDocumentationProvider() {
@@ -22,7 +23,11 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
 
 private fun findDocHolder(element: PsiElement): PsiElement? {
     return when (element) {
-        is ZigVarDecl, is ZigFnParamDecl -> element
+        is ZigFnParamDecl -> element
+        is ZigVarDeclProto -> when (val parent = element.parent) {
+            is ZigVarDecl -> parent
+            else -> null
+        }
         is ZigFnProto -> when (val parent = element.parent) {
             is ZigFnDecl -> parent
             else -> null
