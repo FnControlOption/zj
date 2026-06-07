@@ -454,10 +454,20 @@ class ZigParserKt : PsiParser {
             // TODO
             marker.rollbackTo()
             return null
-        } else if (expect(builder, ZigTokenTypes.KEYWORD_ERROR)) {
-            // TODO
-            marker.rollbackTo()
-            return null
+        } else if (builder.tokenType === ZigTokenTypes.KEYWORD_ERROR) {
+            val decl = parseErrorSetDecl(builder)
+            if (decl != null) {
+                marker.drop()
+                return decl
+            }
+            expect(builder, ZigTokenTypes.KEYWORD_ERROR)
+            if (!expect(builder, ZigTokenTypes.PERIOD)) {
+                marker.rollbackTo()
+                return null
+            }
+            expect(builder, ZigTokenTypes.IDENTIFIER)
+            marker.done(ZigElementTypes.ERROR_VALUE)
+            return marker
         } else if (expect(builder, ZigTokenTypes.L_PAREN)) {
             if (tryExpr(builder) == null) {
                 marker.rollbackTo()

@@ -65,3 +65,6 @@ const foo = extern struct {
 const foo = packed struct {
     bar: Bar,
 };
+
+const foo = error.Foo;
+const foo = error. ;

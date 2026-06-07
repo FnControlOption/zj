@@ -27,6 +27,7 @@ public interface ZigElementTypes {
     IElementType FN_VARARGS = new ZigElementType("FN_VARARGS");
     IElementType FN_RETURN_TYPE = new ZigElementType("FN_RETURN_TYPE");
     IElementType ERROR_SET_DECL = new ZigElementType("ERROR_SET_DECL");
+    IElementType ERROR_VALUE = new ZigElementType("ERROR_VALUE");
     IElementType TEST_DECL = new ZigElementType("TEST_DECL");
     IElementType CHAR_LITERAL = new ZigElementType("CHAR_LITERAL");
     IElementType NUMBER_LITERAL = new ZigElementType("NUMBER_LITERAL");
