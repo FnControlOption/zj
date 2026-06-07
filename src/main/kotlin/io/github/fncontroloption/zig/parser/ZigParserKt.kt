@@ -197,20 +197,10 @@ class ZigParserKt : PsiParser {
             if (expect(builder, ZigTokenTypes.R_PAREN)) {
                 break
             }
-            val decl = builder.mark()
-            expect(builder, ZigTokenSets.NOALIAS_COMPTIME)
-            val hasName = expect(builder, ZigTokenTypes.IDENTIFIER, ZigTokenTypes.COLON)
-            if (!hasName && requireNames) {
-                decl.drop()
+            if (tryFnParamDecl(builder, requireNames) == null) {
                 params.rollbackTo()
                 return null
             }
-            if (tryTypeExpr(builder) == null) {
-                decl.drop()
-                params.rollbackTo()
-                return null
-            }
-            decl.done(ZigElementTypes.FN_PARAM_DECL)
             if (expect(builder, ZigTokenTypes.R_PAREN)) {
                 break
             }
@@ -218,6 +208,26 @@ class ZigParserKt : PsiParser {
         }
         params.done(ZigElementTypes.FN_PARAMS)
         return params
+    }
+
+    private fun tryFnParamDecl(builder: PsiBuilder, requireNames: Boolean): PsiBuilder.Marker? {
+        val decl = builder.mark()
+        if (expect(builder, ZigTokenTypes.ELLIPSIS3)) {
+            decl.done(ZigElementTypes.FN_VARARGS)
+            return decl
+        }
+        expect(builder, ZigTokenSets.NOALIAS_COMPTIME)
+        val hasName = expect(builder, ZigTokenTypes.IDENTIFIER, ZigTokenTypes.COLON)
+        if (!hasName && requireNames) {
+            decl.rollbackTo()
+            return null
+        }
+        if (!expect(builder, ZigTokenTypes.KEYWORD_ANYTYPE) && tryTypeExpr(builder) == null) {
+            decl.rollbackTo()
+            return null
+        }
+        decl.done(ZigElementTypes.FN_PARAM_DECL)
+        return decl
     }
 
     private fun parseErrorSetDecl(builder: PsiBuilder): PsiBuilder.Marker? {

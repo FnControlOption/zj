@@ -222,4 +222,6 @@ class ZigFnParams(node: ASTNode) : ZigPsiElement(node) {
 class ZigFnParamDecl(node: ASTNode) : ZigNamedElement(node) {
     val fnParamType: ZigPsiElement?
         get() = findChildByClass(ZigPsiElement::class.java)
+
+    fun isAnytype() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_ANYTYPE) != null
 }

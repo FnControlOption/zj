@@ -24,6 +24,7 @@ public interface ZigElementTypes {
     IElementType FN_PROTO = new ZigElementType("FN_PROTO");
     IElementType FN_PARAMS = new ZigElementType("FN_PARAMS");
     IElementType FN_PARAM_DECL = new ZigElementType("FN_PARAM_DECL");
+    IElementType FN_VARARGS = new ZigElementType("FN_VARARGS");
     IElementType FN_RETURN_TYPE = new ZigElementType("FN_RETURN_TYPE");
     IElementType ERROR_SET_DECL = new ZigElementType("ERROR_SET_DECL");
     IElementType TEST_DECL = new ZigElementType("TEST_DECL");

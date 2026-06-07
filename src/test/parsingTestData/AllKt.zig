@@ -53,3 +53,6 @@ test {
 fn foo(comptime T: type) Foo {
     _ = T;
 }
+
+fn foo(bar: anytype) Foo {}
+extern fn foo(...) Foo;
