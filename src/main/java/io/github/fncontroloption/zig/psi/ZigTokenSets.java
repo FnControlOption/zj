@@ -110,4 +110,6 @@ public interface ZigTokenSets {
 
   TokenSet NOALIAS_COMPTIME = TokenSet.create(ZigTokenTypes.KEYWORD_NOALIAS, ZigTokenTypes.KEYWORD_COMPTIME);
 
+  TokenSet EXTERN_PACKED = TokenSet.create(ZigTokenTypes.KEYWORD_EXTERN, ZigTokenTypes.KEYWORD_PACKED);
+
 }

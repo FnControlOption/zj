@@ -42,6 +42,8 @@ public interface ZigElementTypes {
     IElementType SLICE_TYPE = new ZigElementType("SLICE_TYPE");
     IElementType ERROR_UNION = new ZigElementType("ERROR_UNION");
     IElementType ASSIGN = new ZigElementType("ASSIGN");
+    IElementType COMPTIME = new ZigElementType("COMPTIME");
+    IElementType GROUPED_EXPRESSION = new ZigElementType("GROUPED_EXPRESSION");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

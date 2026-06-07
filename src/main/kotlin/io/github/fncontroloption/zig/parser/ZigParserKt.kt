@@ -69,13 +69,18 @@ class ZigParserKt : PsiParser {
     }
 
     private fun parseBuiltinCall(builder: PsiBuilder): PsiBuilder.Marker? {
+        return tryBuiltinCall(builder) ?: parseParenEnclosed(builder, ZigTokenTypes.BUILTIN, ZigElementTypes.CALL_ARGS)
+    }
+
+    private fun tryBuiltinCall(builder: PsiBuilder): PsiBuilder.Marker? {
         val call = builder.mark()
         if (!expect(builder, ZigTokenTypes.BUILTIN)) {
             call.drop()
             return null
         }
         if (tryCallArgs(builder) == null) {
-            parseParenEnclosed(builder, null, ZigElementTypes.CALL_ARGS)
+            call.rollbackTo()
+            return null
         }
         call.done(ZigElementTypes.BUILTIN_CALL)
         return call
@@ -405,13 +410,69 @@ class ZigParserKt : PsiParser {
             }
             marker.done(ZigElementTypes.IDENTIFIER)
             return marker
+        } else if (builder.tokenType === ZigTokenTypes.BUILTIN) {
+            marker.drop()
+            return tryBuiltinCall(builder)
         } else if (builder.tokenType === ZigTokenTypes.KEYWORD_FN) {
             marker.drop()
             return tryFnProto(builder, false, null)
+        } else if (builder.tokenType === ZigTokenTypes.KEYWORD_IF) {
+            // TODO
+            marker.rollbackTo()
+            return null
+        } else if (builder.tokenType === ZigTokenTypes.KEYWORD_SWITCH) {
+            // TODO
+            marker.rollbackTo()
+            return null
+        } else if (builder.tokenType in ZigTokenSets.EXTERN_PACKED || builder.tokenType in ZigTokenSets.CONTAINERS) {
+            marker.drop()
+            return parseContainerDecl(builder)
+        } else if (expect(builder, ZigTokenTypes.KEYWORD_COMPTIME)) {
+            if (tryTypeExpr(builder) == null) {
+                return null
+            }
+            marker.done(ZigElementTypes.COMPTIME)
+            return marker
+        } else if (expect(builder, ZigTokenTypes.MULTILINE_STRING_LITERAL_LINE)) {
+            // TODO
+            marker.rollbackTo()
+            return null
+        } else if (expect(builder, ZigTokenTypes.KEYWORD_INLINE)) {
+            // TODO
+            marker.rollbackTo()
+            return null
+        } else if (expect(builder, ZigTokenTypes.KEYWORD_FOR)) {
+            // TODO
+            marker.rollbackTo()
+            return null
+        } else if (expect(builder, ZigTokenTypes.KEYWORD_WHILE)) {
+            // TODO
+            marker.rollbackTo()
+            return null
+        } else if (expect(builder, ZigTokenTypes.PERIOD)) {
+            // TODO
+            marker.rollbackTo()
+            return null
+        } else if (expect(builder, ZigTokenTypes.KEYWORD_ERROR)) {
+            // TODO
+            marker.rollbackTo()
+            return null
+        } else if (expect(builder, ZigTokenTypes.L_PAREN)) {
+            if (tryExpr(builder) == null) {
+                marker.rollbackTo()
+                return null
+            }
+            if (!expect(builder, ZigTokenTypes.R_PAREN)) {
+                marker.rollbackTo()
+                return null
+            }
+            marker.done(ZigElementTypes.GROUPED_EXPRESSION)
+            return marker
+        } else {
+            marker.drop()
+            return null
+
         }
-        // TODO
-        marker.rollbackTo()
-        return null
     }
 
     private fun tryExpr(builder: PsiBuilder): PsiBuilder.Marker? {

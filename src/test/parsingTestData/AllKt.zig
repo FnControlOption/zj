@@ -56,3 +56,6 @@ fn foo(comptime T: type) Foo {
 
 fn foo(bar: anytype) Foo {}
 extern fn foo(...) Foo;
+
+const foo: comptime Foo = bar;
+const foo: (Foo) = bar;
