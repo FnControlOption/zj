@@ -45,8 +45,27 @@ class ZigParserKt : PsiParser {
         return container
     }
 
+    private fun tryBlock(builder: PsiBuilder): PsiBuilder.Marker? {
+        val block = builder.mark()
+        if (!expect(builder, ZigTokenTypes.L_BRACE)) {
+            block.drop()
+            return null
+        }
+        while (!builder.eof()) {
+            if (expect(builder, ZigTokenTypes.R_BRACE)) {
+                break
+            }
+            if (tryStatement(builder, true) == null) {
+                block.rollbackTo()
+                return null
+            }
+        }
+        block.done(ZigElementTypes.BLOCK)
+        return block
+    }
+
     private fun parseBlock(builder: PsiBuilder): PsiBuilder.Marker? {
-        return parseBraceEnclosed(builder, null, ZigElementTypes.BLOCK)
+        return tryBlock(builder) ?: parseBraceEnclosed(builder, null, ZigElementTypes.BLOCK)
     }
 
     private fun parseBuiltinCall(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -78,12 +97,7 @@ class ZigParserKt : PsiParser {
             decl.rollbackTo()
             return null
         }
-        val init = builder.mark()
-        if (tryExpr(builder) == null) {
-            parseUntil(builder, ZigTokenTypes.SEMICOLON)
-        }
-        init.done(ZigElementTypes.VAR_DECL_INIT)
-        expect(builder, ZigTokenTypes.SEMICOLON)
+        parseInitExpr(builder, ZigTokenTypes.SEMICOLON)
         decl.done(ZigElementTypes.VAR_DECL)
         return decl
     }
@@ -112,6 +126,15 @@ class ZigParserKt : PsiParser {
         parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_LINKSECTION, ZigElementTypes.LINKSECTION)
         proto.done(ZigElementTypes.VAR_DECL_PROTO)
         return proto
+    }
+
+    private fun parseInitExpr(builder: PsiBuilder, terminator: IElementType) {
+        val init = builder.mark()
+        if (tryExpr(builder) == null) {
+            parseUntil(builder, terminator)
+        }
+        init.done(ZigElementTypes.INIT_EXPR)
+        expect(builder, terminator)
     }
 
     private fun tryFnProto(builder: PsiBuilder, requireNames: Boolean, terminators: TokenSet?): PsiBuilder.Marker? {
@@ -404,6 +427,75 @@ class ZigParserKt : PsiParser {
     private fun tryCurlySuffixExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         // TODO
         return tryTypeExpr(builder)
+    }
+
+    private fun tryStatement(builder: PsiBuilder, isBlockLevel: Boolean): PsiBuilder.Marker? {
+        val statement = builder.mark()
+        if (expect(builder, ZigTokenTypes.KEYWORD_COMPTIME)) {
+            // TODO
+            statement.drop()
+            return null
+        }
+        // TODO
+        if (isBlockLevel) {
+            statement.drop()
+            return tryVarDeclExprStatement(builder)
+        } else {
+            // TODO
+            statement.drop()
+            return null
+        }
+    }
+
+    private fun tryVarDeclExprStatement(builder: PsiBuilder): PsiBuilder.Marker? {
+        val statement = builder.mark()
+        val scratch = mutableListOf<PsiBuilder.Marker>()
+
+        while (true) {
+            val varDeclProto = parseVarDeclProto(builder)
+            if (varDeclProto != null) {
+                scratch.add(varDeclProto)
+            } else {
+                val expr = tryExpr(builder)
+                if (expr == null) {
+                    statement.rollbackTo()
+                    return null
+                }
+                scratch.add(expr)
+            }
+            if (!expect(builder, ZigTokenTypes.COMMA)) {
+                break
+            }
+        }
+
+        assert(scratch.isNotEmpty())
+
+        if (!expect(builder, ZigTokenTypes.EQUAL)) {
+            if (scratch.size > 1) {
+                // TODO
+                statement.rollbackTo()
+                return null
+            }
+            val lhs = scratch[0]
+            if (lhs.tokenType === ZigElementTypes.VAR_DECL_PROTO) {
+                // TODO
+                statement.rollbackTo()
+                return null
+            }
+            // TODO
+            statement.rollbackTo()
+            return null
+        }
+
+        parseInitExpr(builder, ZigTokenTypes.SEMICOLON)
+
+        if (scratch.size == 1 && scratch[0].tokenType === ZigElementTypes.VAR_DECL_PROTO) {
+            statement.done(ZigElementTypes.VAR_DECL)
+            return statement
+        }
+
+        statement.done(ZigElementTypes.ASSIGN)
+        return statement
     }
 
     private fun parseUntil(builder: PsiBuilder, terminator: IElementType) {

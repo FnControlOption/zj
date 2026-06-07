@@ -15,11 +15,11 @@ public interface ZigElementTypes {
     IElementType VAR_DECL = new ZigElementType("VAR_DECL");
     IElementType VAR_DECL_PROTO = new ZigElementType("VAR_DECL_PROTO");
     IElementType VAR_DECL_TYPE = new ZigElementType("VAR_DECL_TYPE");
-    IElementType VAR_DECL_INIT = new ZigElementType("VAR_DECL_INIT");
     IElementType ALIGN = new ZigElementType("ALIGN");
     IElementType ADDRSPACE = new ZigElementType("ADDRSPACE");
     IElementType LINKSECTION = new ZigElementType("LINKSECTION");
     IElementType CALLCONV = new ZigElementType("CALLCONV");
+    IElementType INIT_EXPR = new ZigElementType("INIT_EXPR");
     IElementType FN_DECL = new ZigElementType("FN_DECL");
     IElementType FN_PROTO = new ZigElementType("FN_PROTO");
     IElementType FN_PARAMS = new ZigElementType("FN_PARAMS");
@@ -40,6 +40,7 @@ public interface ZigElementTypes {
     IElementType PTR_TYPE = new ZigElementType("PTR_TYPE");
     IElementType SLICE_TYPE = new ZigElementType("SLICE_TYPE");
     IElementType ERROR_UNION = new ZigElementType("ERROR_UNION");
+    IElementType ASSIGN = new ZigElementType("ASSIGN");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

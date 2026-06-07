@@ -44,3 +44,8 @@ fn foo() void {
     var bar = baz;
     const qux = bar;
 }
+
+test {
+    var foo = bar;
+    foo = baz;
+}
