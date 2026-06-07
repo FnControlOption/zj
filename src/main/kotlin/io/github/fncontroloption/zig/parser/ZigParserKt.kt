@@ -431,6 +431,7 @@ class ZigParserKt : PsiParser {
             return parseContainerDecl(builder)
         } else if (expect(builder, ZigTokenTypes.KEYWORD_COMPTIME)) {
             if (tryTypeExpr(builder) == null) {
+                marker.rollbackTo()
                 return null
             }
             marker.done(ZigElementTypes.COMPTIME)
