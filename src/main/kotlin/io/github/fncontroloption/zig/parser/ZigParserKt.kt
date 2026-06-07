@@ -89,6 +89,7 @@ class ZigParserKt : PsiParser {
 
     private fun parseVarDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         val decl = builder.mark()
+        expect(builder, ZigTokenTypes.KEYWORD_PUB)
         if (expect(builder, ZigTokenTypes.KEYWORD_EXTERN)) {
             expect(builder, ZigTokenTypes.STRING_LITERAL)
         } else {
@@ -145,11 +146,6 @@ class ZigParserKt : PsiParser {
 
     private fun tryFnProto(builder: PsiBuilder, requireNames: Boolean, terminators: TokenSet?): PsiBuilder.Marker? {
         val proto = builder.mark()
-        if (expect(builder, ZigTokenTypes.KEYWORD_EXTERN)) {
-            expect(builder, ZigTokenTypes.STRING_LITERAL)
-        } else {
-            expect(builder, ZigTokenSets.EXPORT_INLINE)
-        }
         if (!expect(builder, ZigTokenTypes.KEYWORD_FN)) {
             proto.rollbackTo()
             return null
@@ -182,6 +178,12 @@ class ZigParserKt : PsiParser {
 
     private fun parseFnDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         val decl = builder.mark()
+        expect(builder, ZigTokenTypes.KEYWORD_PUB)
+        if (expect(builder, ZigTokenTypes.KEYWORD_EXTERN)) {
+            expect(builder, ZigTokenTypes.STRING_LITERAL)
+        } else {
+            expect(builder, ZigTokenSets.EXPORT_INLINE)
+        }
         if (tryFnProto(builder, true, ZigTokenSets.SEMICOLON_BRACE) == null) {
             decl.drop()
             return null
