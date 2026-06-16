@@ -112,4 +112,6 @@ public interface ZigTokenSets {
 
   TokenSet EXTERN_PACKED = TokenSet.create(ZigTokenTypes.KEYWORD_EXTERN, ZigTokenTypes.KEYWORD_PACKED);
 
+  TokenSet ASTERISK_BRACKET_PAREN = TokenSet.create(ZigTokenTypes.ASTERISK, ZigTokenTypes.R_BRACKET, ZigTokenTypes.R_PAREN);
+
 }

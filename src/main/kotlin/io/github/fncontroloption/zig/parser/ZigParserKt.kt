@@ -110,6 +110,11 @@ class ZigParserKt : PsiParser {
     }
 
     private fun parseVarDeclProto(builder: PsiBuilder): PsiBuilder.Marker? {
+        val prevToken = builder.rawLookup(-1)
+        if (prevToken in ZigTokenSets.ASTERISK_BRACKET_PAREN) {
+            // e.g. *const Foo, []const Foo, *align(16) const Foo
+            return null
+        }
         val proto = builder.mark()
         if (!expect(builder, ZigTokenSets.MUT_TOKENS)) {
             proto.drop()
