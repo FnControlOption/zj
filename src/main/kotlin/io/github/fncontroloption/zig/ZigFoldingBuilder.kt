@@ -49,11 +49,17 @@ class ZigFoldingBuilder : FoldingBuilderEx(), DumbAware {
                 val node = element.node ?: return
                 when (node.elementType) {
                     in BRACE_ENCLOSED -> {
+                        if (!node.textContains('\n')) {
+                            return
+                        }
                         val lbrace = node.findChildByType(ZigTokenTypes.L_BRACE) ?: return
                         val range = TextRange(lbrace.textRange.startOffset, node.textRange.endOffset)
                         descriptors.add(FoldingDescriptor(element, range))
                     }
                     in PAREN_ENCLOSED -> {
+                        if (!node.textContains('\n')) {
+                            return
+                        }
                         val lparen = node.findChildByType(ZigTokenTypes.L_PAREN) ?: return
                         val range = TextRange(lparen.textRange.startOffset, node.textRange.endOffset)
                         descriptors.add(FoldingDescriptor(element, range))
