@@ -132,6 +132,11 @@ class ZigFieldAccess(node: ASTNode) : ZigPsiElement(node) {
         get() = findChildByType(ZigTokenTypes.IDENTIFIER)
 }
 
+class ZigTypeExpr(node: ASTNode) : ZigPsiElement(node) {
+    val expr: ZigPsiElement?
+        get() = firstChild as? ZigPsiElement
+}
+
 class ZigInitExpr(node: ASTNode) : ZigPsiElement(node) {
     val expr: ZigPsiElement?
         get() = firstChild as? ZigPsiElement
@@ -242,8 +247,8 @@ class ZigFnParams(node: ASTNode) : ZigPsiElement(node) {
 }
 
 class ZigFnParamDecl(node: ASTNode) : ZigNamedElement(node) {
-    val fnParamType: ZigPsiElement?
-        get() = findChildByClass(ZigPsiElement::class.java)
+    val fnParamTypeExpr: ZigTypeExpr?
+        get() = findChildByClass(ZigTypeExpr::class.java)
 
     fun isAnytype() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_ANYTYPE) != null
 }

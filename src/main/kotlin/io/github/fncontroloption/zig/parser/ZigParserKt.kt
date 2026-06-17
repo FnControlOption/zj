@@ -180,8 +180,8 @@ class ZigParserKt : PsiParser {
         parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ADDRSPACE, ZigElementTypes.ADDRSPACE)
         parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_LINKSECTION, ZigElementTypes.LINKSECTION)
         parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_CALLCONV, ZigElementTypes.CALLCONV)
-        val returnType = builder.mark()
         expect(builder, ZigTokenTypes.BANG)
+        val returnType = builder.mark()
         if (tryTypeExpr(builder) == null) {
             if (terminators == null) {
                 proto.rollbackTo()
@@ -248,13 +248,15 @@ class ZigParserKt : PsiParser {
             decl.rollbackTo()
             return null
         }
-        val type = builder.mark()
-        if (!expect(builder, ZigTokenTypes.KEYWORD_ANYTYPE) && tryTypeExpr(builder) == null) {
-            type.drop()
-            decl.rollbackTo()
-            return null
+        if (!expect(builder, ZigTokenTypes.KEYWORD_ANYTYPE)) {
+            val type = builder.mark()
+            if (tryTypeExpr(builder) == null) {
+                type.drop()
+                decl.rollbackTo()
+                return null
+            }
+            type.done(ZigElementTypes.TYPE_EXPR)
         }
-        type.done(ZigElementTypes.TYPE_EXPR)
         decl.done(ZigElementTypes.FN_PARAM_DECL)
         return decl
     }

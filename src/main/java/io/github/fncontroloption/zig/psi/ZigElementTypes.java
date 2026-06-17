@@ -126,6 +126,9 @@ public interface ZigElementTypes {
             if (type == FIELD_ACCESS) {
                 return new ZigFieldAccess(node);
             }
+            if (type == TYPE_EXPR) {
+                return new ZigTypeExpr(node);
+            }
             if (type == INIT_EXPR) {
                 return new ZigInitExpr(node);
             }

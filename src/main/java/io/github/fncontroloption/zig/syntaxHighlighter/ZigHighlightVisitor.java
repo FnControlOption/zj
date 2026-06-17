@@ -91,7 +91,12 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                     yield null;
                 }
 
-                var paramType = decl.getFnParamType();
+                var paramTypeExpr = decl.getFnParamTypeExpr();
+                if (paramTypeExpr == null) {
+                    yield null;
+                }
+
+                var paramType = paramTypeExpr.getExpr();
                 if (paramType instanceof ZigIdentifier && paramType.textMatches("type")) {
                     yield createHighlightInfo(identifier, ZigHighlightInfoTypes.TYPE_PARAMETER);
                 }
