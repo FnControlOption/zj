@@ -15,7 +15,7 @@ import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigLanguage
 
-interface ZigContainer : PsiElement {
+interface ZigContainerBody : PsiElement {
     var cachedDeclProtos: Map<String, ZigNamedElement>?
 
     val declProtos: Map<String, ZigNamedElement>
@@ -45,7 +45,7 @@ interface ZigContainer : PsiElement {
         }
 }
 
-class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage.INSTANCE), ZigContainer {
+class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage.INSTANCE), ZigContainerBody {
     override var cachedDeclProtos: Map<String, ZigNamedElement>? = null
 
     override fun subtreeChanged() {
@@ -96,7 +96,7 @@ class ZigBlock(node: ASTNode) : ZigPsiElement(node) {
 
 class ZigContainerDecl(node: ASTNode) : ZigPsiElement(node)
 
-class ZigContainerDeclBody(node: ASTNode) : ZigPsiElement(node), ZigContainer {
+class ZigContainerDeclBody(node: ASTNode) : ZigPsiElement(node), ZigContainerBody {
     override var cachedDeclProtos: Map<String, ZigNamedElement>? = null
 
     override fun subtreeChanged() {

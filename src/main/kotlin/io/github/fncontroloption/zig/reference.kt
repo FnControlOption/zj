@@ -12,7 +12,7 @@ import com.intellij.util.ProcessingContext
 import io.github.fncontroloption.zig.psi.ZigBlock
 import io.github.fncontroloption.zig.psi.ZigBuiltinCall
 import io.github.fncontroloption.zig.psi.ZigCallArgs
-import io.github.fncontroloption.zig.psi.ZigContainer
+import io.github.fncontroloption.zig.psi.ZigContainerBody
 import io.github.fncontroloption.zig.psi.ZigElementTypes
 import io.github.fncontroloption.zig.psi.ZigFnDecl
 import io.github.fncontroloption.zig.psi.ZigTestDecl
@@ -86,7 +86,7 @@ class ZigIdentifierReference(element: PsiElement) :
         var parent = myElement.parent
         while (parent != null) {
             val target = when (parent) {
-                is ZigContainer -> parent.declProtos[name]
+                is ZigContainerBody -> parent.declProtos[name]
                 is ZigFnDecl -> parent.fnProto.fnParams?.fnParamDecls[name]
                 is ZigBlock -> parent.varDeclProtos[name]
                 else -> null
