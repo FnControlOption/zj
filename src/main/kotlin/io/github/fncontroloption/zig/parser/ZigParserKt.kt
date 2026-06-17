@@ -137,7 +137,7 @@ class ZigParserKt : PsiParser {
                 proto.rollbackTo()
                 return null
             }
-            type.done(ZigElementTypes.VAR_DECL_TYPE)
+            type.done(ZigElementTypes.TYPE_EXPR)
         }
         parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigElementTypes.ALIGN)
         parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ADDRSPACE, ZigElementTypes.ADDRSPACE)
@@ -189,7 +189,7 @@ class ZigParserKt : PsiParser {
             }
             parseUntil(builder, terminators)
         }
-        returnType.done(ZigElementTypes.FN_RETURN_TYPE)
+        returnType.done(ZigElementTypes.TYPE_EXPR)
         proto.done(ZigElementTypes.FN_PROTO)
         return proto
     }
@@ -248,10 +248,13 @@ class ZigParserKt : PsiParser {
             decl.rollbackTo()
             return null
         }
+        val type = builder.mark()
         if (!expect(builder, ZigTokenTypes.KEYWORD_ANYTYPE) && tryTypeExpr(builder) == null) {
+            type.drop()
             decl.rollbackTo()
             return null
         }
+        type.done(ZigElementTypes.TYPE_EXPR)
         decl.done(ZigElementTypes.FN_PARAM_DECL)
         return decl
     }
@@ -296,7 +299,7 @@ class ZigParserKt : PsiParser {
             field.rollbackTo()
             return null
         }
-        type.done(ZigElementTypes.CONTAINER_FIELD_TYPE)
+        type.done(ZigElementTypes.TYPE_EXPR)
         parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigElementTypes.ALIGN)
         if (expect(builder, ZigTokenTypes.EQUAL)) {
             parseInitExpr(builder, ZigTokenSets.COMMA_BRACE)

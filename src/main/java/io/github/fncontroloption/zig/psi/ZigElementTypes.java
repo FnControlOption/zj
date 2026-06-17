@@ -14,7 +14,7 @@ public interface ZigElementTypes {
     IElementType CALL_ARGS = new ZigElementType("CALL_ARGS");
     IElementType VAR_DECL = new ZigElementType("VAR_DECL");
     IElementType VAR_DECL_PROTO = new ZigElementType("VAR_DECL_PROTO");
-    IElementType VAR_DECL_TYPE = new ZigElementType("VAR_DECL_TYPE");
+    IElementType TYPE_EXPR = new ZigElementType("TYPE_EXPR");
     IElementType ALIGN = new ZigElementType("ALIGN");
     IElementType ADDRSPACE = new ZigElementType("ADDRSPACE");
     IElementType LINKSECTION = new ZigElementType("LINKSECTION");
@@ -25,7 +25,6 @@ public interface ZigElementTypes {
     IElementType FN_PARAMS = new ZigElementType("FN_PARAMS");
     IElementType FN_PARAM_DECL = new ZigElementType("FN_PARAM_DECL");
     IElementType FN_VARARGS = new ZigElementType("FN_VARARGS");
-    IElementType FN_RETURN_TYPE = new ZigElementType("FN_RETURN_TYPE");
     IElementType ERROR_SET_DECL = new ZigElementType("ERROR_SET_DECL");
     IElementType ERROR_VALUE = new ZigElementType("ERROR_VALUE");
     IElementType TEST_DECL = new ZigElementType("TEST_DECL");
@@ -81,7 +80,6 @@ public interface ZigElementTypes {
     IElementType BOOL_AND = new ZigElementType("BOOL_AND");
     IElementType BOOL_OR = new ZigElementType("BOOL_OR");
     IElementType CONTAINER_FIELD = new ZigElementType("CONTAINER_FIELD");
-    IElementType CONTAINER_FIELD_TYPE = new ZigElementType("CONTAINER_FIELD_TYPE");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {
