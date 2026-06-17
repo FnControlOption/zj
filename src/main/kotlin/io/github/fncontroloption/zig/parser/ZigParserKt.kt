@@ -12,7 +12,10 @@ import io.github.fncontroloption.zig.psi.ZigTokenTypes
 // Based on https://codeberg.org/ziglang/zig/src/commit/72d954e/lib/std/zig/Parse.zig
 /** @see com.intellij.java.syntax.parser.JavaParser */
 class ZigParserKt : PsiParser {
+    private val enclosureStack = ArrayDeque<IElementType>()
+
     override fun parse(root: IElementType, builder: PsiBuilder): ASTNode {
+        enclosureStack.addLast(root)
         val rootMarker = builder.mark()
         while (!builder.eof()) {
             if (parse(builder) == null) {
@@ -20,6 +23,7 @@ class ZigParserKt : PsiParser {
             }
         }
         rootMarker.done(root)
+        enclosureStack.removeLast()
         return builder.treeBuilt
     }
 
@@ -31,6 +35,7 @@ class ZigParserKt : PsiParser {
             ?: parseFnDecl(builder)
             ?: parseErrorSetDecl(builder)
             ?: parseTestDecl(builder)
+            ?: parseContainerField(builder)
     }
 
     private fun parseContainerDecl(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -105,6 +110,7 @@ class ZigParserKt : PsiParser {
             return null
         }
         parseInitExpr(builder, ZigTokenTypes.SEMICOLON)
+        expect(builder, ZigTokenTypes.SEMICOLON)
         decl.done(ZigElementTypes.VAR_DECL)
         return decl
     }
@@ -141,12 +147,19 @@ class ZigParserKt : PsiParser {
     }
 
     private fun parseInitExpr(builder: PsiBuilder, terminator: IElementType) {
+        parseInitExpr(builder) { it === terminator }
+    }
+
+    private fun parseInitExpr(builder: PsiBuilder, terminator: TokenSet) {
+        parseInitExpr(builder) { it in terminator }
+    }
+
+    private fun parseInitExpr(builder: PsiBuilder, terminator: (IElementType?) -> Boolean) {
         val init = builder.mark()
         if (tryExpr(builder) == null) {
             parseUntil(builder, terminator)
         }
         init.done(ZigElementTypes.INIT_EXPR)
-        expect(builder, terminator)
     }
 
     private fun tryFnProto(builder: PsiBuilder, requireNames: Boolean, terminators: TokenSet?): PsiBuilder.Marker? {
@@ -257,6 +270,40 @@ class ZigParserKt : PsiParser {
         parseBlock(builder)
         decl.done(ZigElementTypes.TEST_DECL)
         return decl
+    }
+
+    private fun parseContainerField(builder: PsiBuilder): PsiBuilder.Marker? {
+        val enclosure = enclosureStack.last()
+        when (enclosure) {
+            ZigParserDefinition.FILE, ZigElementTypes.CONTAINER_DECL_BODY -> {}
+            else -> return null
+        }
+
+        val prevToken = builder.rawLookup(-1)
+        if (prevToken in ZigTokenSets.MUT_TOKENS) {
+            return null
+        }
+
+        val field = builder.mark()
+        expect(builder, ZigTokenTypes.KEYWORD_COMPTIME)
+        if (!expect(builder, ZigTokenTypes.IDENTIFIER, ZigTokenTypes.COLON)) {
+            field.rollbackTo()
+            return null
+        }
+        val type = builder.mark()
+        if (tryTypeExpr(builder) == null) {
+            type.drop()
+            field.rollbackTo()
+            return null
+        }
+        type.done(ZigElementTypes.CONTAINER_FIELD_TYPE)
+        parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigElementTypes.ALIGN)
+        if (expect(builder, ZigTokenTypes.EQUAL)) {
+            parseInitExpr(builder, ZigTokenSets.COMMA_BRACE)
+        }
+        expect(builder, ZigTokenTypes.COMMA)
+        field.done(ZigElementTypes.CONTAINER_FIELD)
+        return field
     }
 
     private fun tryTypeExpr(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -644,6 +691,7 @@ class ZigParserKt : PsiParser {
         }
 
         parseInitExpr(builder, ZigTokenTypes.SEMICOLON)
+        expect(builder, ZigTokenTypes.SEMICOLON)
 
         if (scratch.size == 1 && scratch[0].tokenType === ZigElementTypes.VAR_DECL_PROTO) {
             statement.done(ZigElementTypes.VAR_DECL)
@@ -759,6 +807,7 @@ class ZigParserKt : PsiParser {
             marker.rollbackTo()
             return null
         }
+        enclosureStack.addLast(type)
         var depth = 1
         while (!builder.eof() && depth > 0) {
             if (parse(builder) != null) {
@@ -770,16 +819,13 @@ class ZigParserKt : PsiParser {
             }
             builder.advanceLexer()
         }
+        enclosureStack.removeLast()
         marker.done(type)
         return marker
     }
 
     private fun expect(builder: PsiBuilder, expectedType: IElementType?): Boolean {
-        if (builder.tokenType === expectedType) {
-            builder.advanceLexer()
-            return true
-        }
-        return false
+        return expect(builder) { it === expectedType }
     }
 
     private fun expect(builder: PsiBuilder, vararg expectedTypes: IElementType?): Boolean {
@@ -795,7 +841,11 @@ class ZigParserKt : PsiParser {
     }
 
     private fun expect(builder: PsiBuilder, expectedTypes: TokenSet): Boolean {
-        if (builder.tokenType in expectedTypes) {
+        return expect(builder) { it in expectedTypes }
+    }
+
+    private inline fun expect(builder: PsiBuilder, expectedType: (IElementType?) -> Boolean): Boolean {
+        if (expectedType(builder.tokenType)) {
             builder.advanceLexer()
             return true
         }

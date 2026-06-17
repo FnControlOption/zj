@@ -73,3 +73,4 @@ const foo = a or b or c;
 const foo = a or b and c == d & e << f + g * h;
 pub const foo = bar;
 pub fn foo() Foo {}
+foo: Foo,

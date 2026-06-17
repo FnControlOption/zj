@@ -80,6 +80,8 @@ public interface ZigElementTypes {
     IElementType CATCH = new ZigElementType("CATCH");
     IElementType BOOL_AND = new ZigElementType("BOOL_AND");
     IElementType BOOL_OR = new ZigElementType("BOOL_OR");
+    IElementType CONTAINER_FIELD = new ZigElementType("CONTAINER_FIELD");
+    IElementType CONTAINER_FIELD_TYPE = new ZigElementType("CONTAINER_FIELD_TYPE");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

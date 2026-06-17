@@ -114,4 +114,6 @@ public interface ZigTokenSets {
 
   TokenSet ASTERISK_BRACKET_PAREN = TokenSet.create(ZigTokenTypes.ASTERISK, ZigTokenTypes.R_BRACKET, ZigTokenTypes.R_PAREN);
 
+  TokenSet COMMA_BRACE = TokenSet.create(ZigTokenTypes.COMMA, ZigTokenTypes.R_BRACE);
+
 }
