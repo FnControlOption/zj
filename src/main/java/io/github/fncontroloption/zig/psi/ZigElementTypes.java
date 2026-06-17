@@ -123,6 +123,12 @@ public interface ZigElementTypes {
             if (type == TEST_DECL) {
                 return new ZigTestDecl(node);
             }
+            if (type == FIELD_ACCESS) {
+                return new ZigFieldAccess(node);
+            }
+            if (type == INIT_EXPR) {
+                return new ZigInitExpr(node);
+            }
             return new ZigPsiElement(node); // TODO
         }
     }

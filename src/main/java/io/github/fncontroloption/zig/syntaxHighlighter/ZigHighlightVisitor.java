@@ -124,6 +124,15 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                 yield createHighlightInfoFromReference(identifier, identifier);
             }
 
+            case ZigFieldAccess access -> {
+                var name = access.getFieldName();
+                if (name == null) {
+                    yield null;
+                }
+
+                yield createHighlightInfoFromReference(access, name);
+            }
+
             case ZigTestDecl decl -> {
                 var name = decl.getTestName();
                 if (name == null) {

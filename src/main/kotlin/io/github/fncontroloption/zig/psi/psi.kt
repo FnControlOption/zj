@@ -94,7 +94,10 @@ class ZigBlock(node: ASTNode) : ZigPsiElement(node) {
     }
 }
 
-class ZigContainerDecl(node: ASTNode) : ZigPsiElement(node)
+class ZigContainerDecl(node: ASTNode) : ZigPsiElement(node) {
+    val containerDeclBody: ZigContainerDeclBody?
+        get() = findChildByClass(ZigContainerDeclBody::class.java)
+}
 
 class ZigContainerDeclBody(node: ASTNode) : ZigPsiElement(node), ZigContainerBody {
     override var cachedDeclProtos: Map<String, ZigNamedElement>? = null
@@ -109,6 +112,9 @@ class ZigCallArgs(node: ASTNode) : ZigPsiElement(node)
 class ZigBuiltinCall(node: ASTNode) : ZigPsiElement(node) {
     val builtin: PsiElement
         get() = findNotNullChildByType(ZigTokenTypes.BUILTIN)
+
+    val builtinCallArgs: ZigCallArgs?
+        get() = findChildByClass(ZigCallArgs::class.java)
 }
 
 class ZigIdentifier(node: ASTNode) : ZigPsiElement(node)
@@ -116,6 +122,19 @@ class ZigIdentifier(node: ASTNode) : ZigPsiElement(node)
 class ZigTestDecl(node: ASTNode) : ZigPsiElement(node) {
     val testName: PsiElement?
         get() = findChildByType(ZigTokenSets.TEST_NAME)
+}
+
+class ZigFieldAccess(node: ASTNode) : ZigPsiElement(node) {
+    val lhs: ZigPsiElement?
+        get() = firstChild as? ZigPsiElement
+
+    val fieldName: PsiElement?
+        get() = findChildByType(ZigTokenTypes.IDENTIFIER)
+}
+
+class ZigInitExpr(node: ASTNode) : ZigPsiElement(node) {
+    val expr: ZigPsiElement?
+        get() = firstChild as? ZigPsiElement
 }
 
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
@@ -170,6 +189,9 @@ class ZigVarDeclProto(node: ASTNode) : ZigNamedElement(node) {
 class ZigVarDecl(node: ASTNode) : ZigPsiElement(node) {
     val varDeclProto: ZigVarDeclProto
         get() = findNotNullChildByClass(ZigVarDeclProto::class.java)
+
+    val varDeclInitExpr: ZigInitExpr?
+        get() = findChildByClass(ZigInitExpr::class.java)
 
     override fun getName() = varDeclProto.name
 

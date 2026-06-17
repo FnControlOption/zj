@@ -3,20 +3,30 @@ package io.github.fncontroloption.zig
 import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiElementResolveResult
+import com.intellij.psi.PsiPolyVariantReferenceBase
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.PsiReferenceContributor
 import com.intellij.psi.PsiReferenceProvider
 import com.intellij.psi.PsiReferenceRegistrar
+import com.intellij.psi.ResolveResult
+import com.intellij.psi.util.elementType
 import com.intellij.util.ProcessingContext
 import io.github.fncontroloption.zig.psi.ZigBlock
 import io.github.fncontroloption.zig.psi.ZigBuiltinCall
 import io.github.fncontroloption.zig.psi.ZigCallArgs
 import io.github.fncontroloption.zig.psi.ZigContainerBody
+import io.github.fncontroloption.zig.psi.ZigContainerDecl
 import io.github.fncontroloption.zig.psi.ZigElementTypes
+import io.github.fncontroloption.zig.psi.ZigFieldAccess
+import io.github.fncontroloption.zig.psi.ZigFile
 import io.github.fncontroloption.zig.psi.ZigFnDecl
+import io.github.fncontroloption.zig.psi.ZigIdentifier
 import io.github.fncontroloption.zig.psi.ZigTestDecl
 import io.github.fncontroloption.zig.psi.ZigTokenTypes
+import io.github.fncontroloption.zig.psi.ZigVarDecl
+import io.github.fncontroloption.zig.psi.ZigVarDeclProto
 
 class ZigReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
@@ -25,12 +35,16 @@ class ZigReferenceContributor : PsiReferenceContributor() {
             ZigStringLiteralReferenceProvider,
         )
         registrar.registerReferenceProvider(
-            PlatformPatterns.psiElement(ZigElementTypes.IDENTIFIER),
+            PlatformPatterns.psiElement(ZigIdentifier::class.java),
             ZigIdentifierReferenceProvider,
         )
         registrar.registerReferenceProvider(
             PlatformPatterns.psiElement(ZigTestDecl::class.java),
             ZigTestDeclReferenceProvider,
+        )
+        registrar.registerReferenceProvider(
+            PlatformPatterns.psiElement(ZigFieldAccess::class.java),
+            ZigFieldAccessReferenceProvider,
         )
     }
 }
@@ -57,6 +71,10 @@ class ZigImportReference(element: PsiElement) :
 
     override fun resolve(): PsiElement? {
         val fileName = parts.lastOrNull() ?: return null
+        if (!fileName.endsWith(".zig")) {
+            // TODO: resolve imported modules
+            return null
+        }
         var directory = myElement.containingFile?.containingDirectory ?: return null
         parts.subList(0, parts.size - 1).forEach { dirName ->
             if (dirName == "..") {
@@ -120,4 +138,67 @@ class ZigTestReference(decl: ZigTestDecl, val name: PsiElement) :
     private val ref = ZigIdentifierReference(name)
 
     override fun resolve() = ref.resolve()
+}
+
+object ZigFieldAccessReferenceProvider : PsiReferenceProvider() {
+    override fun getReferencesByElement(
+        element: PsiElement,
+        context: ProcessingContext
+    ): Array<out PsiReference> {
+        val access = element as ZigFieldAccess
+        val name = access.fieldName ?: return emptyArray()
+        return arrayOf(ZigFieldAccessReference(access, name))
+    }
+}
+
+class ZigFieldAccessReference(val access: ZigFieldAccess, val name: PsiElement) :
+    PsiPolyVariantReferenceBase<ZigFieldAccess>(access, name.textRangeInParent, true) {
+
+    override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
+        val lhs = access.lhs ?: return emptyArray()
+        val results = mutableListOf<ResolveResult>()
+        resolveMember(lhs, name.text, results)
+        return results.toTypedArray()
+    }
+
+    private fun resolveMember(lhs: PsiElement, name: String, results: MutableList<ResolveResult>) {
+        when (lhs) {
+            is ZigContainerDecl -> {
+                val containerBody = lhs.containerDeclBody ?: return
+                val declProto = containerBody.declProtos[name] ?: return
+                results.addLast(PsiElementResolveResult(declProto))
+            }
+            is ZigBuiltinCall -> {
+                if (lhs.builtin.textMatches("@import")) {
+                    val callArgs = lhs.builtinCallArgs ?: return
+                    var child = callArgs.firstChild ?: return
+                    if (child.elementType !== ZigTokenTypes.L_PAREN) {
+                        return
+                    }
+                    child = child.nextSibling ?: return
+                    if (child.elementType === ZigElementTypes.STRING_LITERAL) {
+                        val importRef = ZigImportReference(child)
+                        val file = importRef.resolve() as? ZigFile ?: return
+                        val declProto = file.declProtos[name] ?: return
+                        results.addLast(PsiElementResolveResult(declProto))
+                    }
+                }
+            }
+            is ZigIdentifier, is ZigFieldAccess -> {
+                for (reference in lhs.references) {
+                    val target = reference.resolve() ?: continue
+                    when (target) {
+                        is ZigVarDeclProto -> {
+                            if (target.isVar()) {
+                                continue
+                            }
+                            val varDecl = target.parent as? ZigVarDecl ?: continue
+                            val initExpr = varDecl.varDeclInitExpr?.expr ?: continue
+                            resolveMember(initExpr, name, results)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

@@ -74,3 +74,9 @@ const foo = a or b and c == d & e << f + g * h;
 pub const foo = bar;
 pub fn foo() Foo {}
 foo: Foo,
+const Foo2 = struct {
+    const foo2 = "foo2";
+    fn foo2Fn() void {}
+};
+const foo = Foo2.foo2;
+const foo = Foo2.foo2Fn;
