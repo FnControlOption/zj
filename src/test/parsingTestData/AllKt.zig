@@ -112,3 +112,4 @@ test {
     errdefer {}
     errdefer foo: {}
 }
+comptime {}

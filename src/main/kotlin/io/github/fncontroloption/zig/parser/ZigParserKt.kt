@@ -29,6 +29,7 @@ class ZigParserKt : PsiParser {
 
     private fun parseContainerMember(builder: PsiBuilder): PsiBuilder.Marker? {
         return parseTestDecl(builder)
+            ?: parseComptimeBlock(builder)
             ?: parseVarDecl(builder)
             ?: parseFnDecl(builder)
             ?: parseContainerField(builder)
@@ -310,6 +311,17 @@ class ZigParserKt : PsiParser {
         parseBlock(builder)
         decl.done(ZigElementTypes.TEST_DECL)
         return decl
+    }
+
+    private fun parseComptimeBlock(builder: PsiBuilder): PsiBuilder.Marker? {
+        val comptime = builder.mark()
+        if (!expect(builder, ZigTokenTypes.KEYWORD_COMPTIME)) {
+            comptime.drop()
+            return null
+        }
+        parseBlock(builder)
+        comptime.done(ZigElementTypes.COMPTIME)
+        return comptime
     }
 
     private fun parseContainerField(builder: PsiBuilder): PsiBuilder.Marker? {
