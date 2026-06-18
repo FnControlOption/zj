@@ -41,7 +41,12 @@ public interface ZigElementTypes {
     IElementType PTR_TYPE = new ZigElementType("PTR_TYPE");
     IElementType ERROR_UNION = new ZigElementType("ERROR_UNION");
     IElementType ASSIGN = new ZigElementType("ASSIGN");
+    IElementType BREAK = new ZigElementType("BREAK");
+    IElementType CONTINUE = new ZigElementType("CONTINUE");
     IElementType COMPTIME = new ZigElementType("COMPTIME");
+    IElementType NOSUSPEND = new ZigElementType("NOSUSPEND");
+    IElementType RESUME = new ZigElementType("RESUME");
+    IElementType RETURN = new ZigElementType("RETURN");
     IElementType GROUPED_EXPRESSION = new ZigElementType("GROUPED_EXPRESSION");
     IElementType IF = new ZigElementType("IF");
     IElementType CONDITION_EXPR = new ZigElementType("CONDITION_EXPR");

@@ -640,8 +640,52 @@ class ZigParserKt : PsiParser {
     }
 
     private fun tryPrimaryExpr(builder: PsiBuilder): PsiBuilder.Marker? {
-        // TODO
-        return tryCurlySuffixExpr(builder)
+        val expr = builder.mark()
+        when (builder.tokenType) {
+            // TODO
+            ZigTokenTypes.KEYWORD_BREAK -> {
+                builder.advanceLexer()
+                expect(builder, ZigTokenTypes.COLON, ZigTokenTypes.IDENTIFIER)
+                tryExpr(builder)
+                expr.done(ZigElementTypes.BREAK)
+            }
+            ZigTokenTypes.KEYWORD_CONTINUE -> {
+                builder.advanceLexer()
+                expect(builder, ZigTokenTypes.COLON, ZigTokenTypes.IDENTIFIER)
+                tryExpr(builder)
+                expr.done(ZigElementTypes.CONTINUE)
+            }
+            ZigTokenTypes.KEYWORD_COMPTIME -> {
+                builder.advanceLexer()
+                tryExpr(builder)
+                expr.done(ZigElementTypes.COMPTIME)
+            }
+            ZigTokenTypes.KEYWORD_NOSUSPEND -> {
+                builder.advanceLexer()
+                tryExpr(builder)
+                expr.done(ZigElementTypes.NOSUSPEND)
+            }
+            ZigTokenTypes.KEYWORD_RESUME -> {
+                builder.advanceLexer()
+                tryExpr(builder)
+                expr.done(ZigElementTypes.RESUME)
+            }
+            ZigTokenTypes.KEYWORD_RETURN -> {
+                builder.advanceLexer()
+                tryExpr(builder)
+                expr.done(ZigElementTypes.RETURN)
+            }
+            // TODO
+            ZigTokenTypes.L_BRACE -> {
+                expr.drop()
+                return parseBlock(builder)
+            }
+            else -> {
+                expr.drop()
+                return tryCurlySuffixExpr(builder)
+            }
+        }
+        return expr
     }
 
     private fun tryCurlySuffixExpr(builder: PsiBuilder): PsiBuilder.Marker? {

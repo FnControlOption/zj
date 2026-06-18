@@ -92,3 +92,15 @@ const foo = try ;
 test {
     foo();
 }
+const foo = break;
+const foo = break bar;
+const foo = break :bar baz;
+const foo = continue;
+const foo = continue bar;
+const foo = continue :bar baz;
+const foo = comptime bar;
+const foo = nosuspend bar;
+const foo = resume bar;
+const foo = return;
+const foo = return bar;
+const foo = {};
