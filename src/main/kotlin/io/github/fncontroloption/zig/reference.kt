@@ -166,8 +166,8 @@ class ZigFieldAccessReference(val access: ZigFieldAccess, val name: PsiElement) 
         when (lhs) {
             is ZigContainerDecl -> {
                 val containerBody = lhs.containerDeclBody ?: return
-                val declProto = containerBody.containerMembers[name] ?: return
-                results.addLast(PsiElementResolveResult(declProto))
+                val member = containerBody.containerMembers[name] ?: return
+                results.addLast(PsiElementResolveResult(member))
             }
             is ZigBuiltinCall -> {
                 if (lhs.builtin.textMatches("@import")) {
@@ -180,8 +180,8 @@ class ZigFieldAccessReference(val access: ZigFieldAccess, val name: PsiElement) 
                     if (child.elementType === ZigElementTypes.STRING_LITERAL) {
                         val importRef = ZigImportReference(child)
                         val file = importRef.resolve() as? ZigFile ?: return
-                        val declProto = file.containerMembers[name] ?: return
-                        results.addLast(PsiElementResolveResult(declProto))
+                        val member = file.containerMembers[name] ?: return
+                        results.addLast(PsiElementResolveResult(member))
                     }
                 }
             }
