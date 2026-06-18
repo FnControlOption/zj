@@ -34,19 +34,6 @@ class ZigParserKt : PsiParser {
             ?: parseContainerField(builder)
     }
 
-    /*
-    private fun parse(builder: PsiBuilder): PsiBuilder.Marker? {
-        return parseContainerDecl(builder)
-            ?: parseBlock(builder)
-            ?: parseBuiltinCall(builder)
-            ?: parseVarDecl(builder)
-            ?: parseFnDecl(builder)
-            ?: parseErrorSetDecl(builder)
-            ?: parseTestDecl(builder)
-            ?: parseContainerField(builder)
-    }
-    */
-
     private fun parseContainerDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         val container = builder.mark()
         expect(builder, ZigTokenSets.EXTERN_PACKED)
@@ -61,27 +48,6 @@ class ZigParserKt : PsiParser {
         container.done(ZigElementTypes.CONTAINER_DECL)
         return container
     }
-
-    /*
-    private fun tryBlock(builder: PsiBuilder): PsiBuilder.Marker? {
-        val block = builder.mark()
-        if (!expect(builder, ZigTokenTypes.L_BRACE)) {
-            block.drop()
-            return null
-        }
-        while (!builder.eof()) {
-            if (expect(builder, ZigTokenTypes.R_BRACE)) {
-                break
-            }
-            if (tryStatement(builder, true) == null) {
-                block.rollbackTo()
-                return null
-            }
-        }
-        block.done(ZigElementTypes.BLOCK)
-        return block
-    }
-    */
 
     private fun parseBlock(builder: PsiBuilder): PsiBuilder.Marker? {
         return parseBraceEnclosed(builder, null, ZigElementTypes.BLOCK) {
@@ -860,7 +826,7 @@ class ZigParserKt : PsiParser {
             ZigTokenTypes.L_BRACE -> braces++
             ZigTokenTypes.L_BRACKET -> brackets++
             ZigTokenTypes.L_PAREN -> parens++
-            else -> throw IllegalArgumentException()
+            else -> throw IllegalArgumentException("Unexpected token type $left")
         }
         while (!builder.eof()) {
             val depth = braces + brackets + parens
