@@ -18,7 +18,7 @@ class ZigParserKt : PsiParser {
         enclosureStack.addLast(root)
         val rootMarker = builder.mark()
         while (!builder.eof()) {
-            if (parse(builder) == null) {
+            if (parseContainerMember(builder) == null) {
                 builder.advanceLexer()
             }
         }
@@ -27,6 +27,14 @@ class ZigParserKt : PsiParser {
         return builder.treeBuilt
     }
 
+    private fun parseContainerMember(builder: PsiBuilder): PsiBuilder.Marker? {
+        return parseTestDecl(builder)
+            ?: parseVarDecl(builder)
+            ?: parseFnDecl(builder)
+            ?: parseContainerField(builder)
+    }
+
+    /*
     private fun parse(builder: PsiBuilder): PsiBuilder.Marker? {
         return parseContainerDecl(builder)
             ?: parseBlock(builder)
@@ -37,6 +45,7 @@ class ZigParserKt : PsiParser {
             ?: parseTestDecl(builder)
             ?: parseContainerField(builder)
     }
+    */
 
     private fun parseContainerDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         val container = builder.mark()
@@ -46,11 +55,14 @@ class ZigParserKt : PsiParser {
             return null
         }
         parseParenEnclosed(builder, null, ZigElementTypes.CONTAINER_DECL_ARG)
-        parseBraceEnclosed(builder, null, ZigElementTypes.CONTAINER_DECL_BODY)
+        parseBraceEnclosed(builder, null, ZigElementTypes.CONTAINER_DECL_BODY) {
+            parseContainerMember(builder)
+        }
         container.done(ZigElementTypes.CONTAINER_DECL)
         return container
     }
 
+    /*
     private fun tryBlock(builder: PsiBuilder): PsiBuilder.Marker? {
         val block = builder.mark()
         if (!expect(builder, ZigTokenTypes.L_BRACE)) {
@@ -69,9 +81,12 @@ class ZigParserKt : PsiParser {
         block.done(ZigElementTypes.BLOCK)
         return block
     }
+    */
 
     private fun parseBlock(builder: PsiBuilder): PsiBuilder.Marker? {
-        return tryBlock(builder) ?: parseBraceEnclosed(builder, null, ZigElementTypes.BLOCK)
+        return parseBraceEnclosed(builder, null, ZigElementTypes.BLOCK) {
+            tryStatement(builder, true)
+        }
     }
 
     private fun parseBuiltinCall(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -262,7 +277,20 @@ class ZigParserKt : PsiParser {
     }
 
     private fun parseErrorSetDecl(builder: PsiBuilder): PsiBuilder.Marker? {
-        return parseBraceEnclosed(builder, ZigTokenTypes.KEYWORD_ERROR, ZigElementTypes.ERROR_SET_DECL)
+        return parseBraceEnclosed(builder, ZigTokenTypes.KEYWORD_ERROR, ZigElementTypes.ERROR_SET_DECL) {
+            parseErrorSetMember(builder)
+        }
+    }
+
+    private fun parseErrorSetMember(builder: PsiBuilder): PsiBuilder.Marker? {
+        val field = builder.mark()
+        if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
+            field.drop()
+            return null
+        }
+        expect(builder, ZigTokenTypes.COMMA)
+        field.drop()
+        return field
     }
 
     private fun parseTestDecl(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -472,7 +500,7 @@ class ZigParserKt : PsiParser {
             return marker
         } else if (builder.tokenType === ZigTokenTypes.BUILTIN) {
             marker.drop()
-            return tryBuiltinCall(builder)
+            return parseBuiltinCall(builder)
         } else if (builder.tokenType === ZigTokenTypes.KEYWORD_FN) {
             marker.drop()
             return tryFnProto(builder, false, null)
@@ -656,6 +684,14 @@ class ZigParserKt : PsiParser {
     }
 
     private fun tryVarDeclExprStatement(builder: PsiBuilder): PsiBuilder.Marker? {
+        /*
+        val prevToken = builder.rawLookup(-1)
+        if (prevToken === ZigTokenTypes.EQUAL_ANGLE_BRACKET_RIGHT) {
+            // e.g. `switch (a) { .b => c = d, ... }`
+            return null
+        }
+        */
+
         val statement = builder.mark()
         val scratch = mutableListOf<PsiBuilder.Marker>()
 
@@ -767,41 +803,45 @@ class ZigParserKt : PsiParser {
         var brackets = 0
         var parens = 0
         while (!builder.eof()) {
-            if (terminator(builder.tokenType) && braces == 0 && brackets == 0 && parens == 0) {
+            if (braces == 0 && brackets == 0 && parens == 0 && terminator(builder.tokenType)) {
                 break
-            } else if (parse(builder) != null) {
-                continue
-            } else if (builder.tokenType === ZigTokenTypes.L_BRACE) {
-                braces++
-            } else if (builder.tokenType === ZigTokenTypes.R_BRACE) {
-                braces--
-            } else if (builder.tokenType === ZigTokenTypes.L_BRACKET) {
-                brackets++
-            } else if (builder.tokenType === ZigTokenTypes.R_BRACKET) {
-                brackets--
-            } else if (builder.tokenType === ZigTokenTypes.L_PAREN) {
-                parens++
-            } else if (builder.tokenType === ZigTokenTypes.R_PAREN) {
-                parens--
+            }
+            when (builder.tokenType) {
+                ZigTokenTypes.L_BRACE -> braces++
+                ZigTokenTypes.R_BRACE -> braces--
+                ZigTokenTypes.L_BRACKET -> brackets++
+                ZigTokenTypes.R_BRACKET -> brackets--
+                ZigTokenTypes.L_PAREN -> parens++
+                ZigTokenTypes.R_PAREN -> parens--
             }
             builder.advanceLexer()
         }
     }
 
-    private fun parseParenEnclosed(builder: PsiBuilder, prefix: IElementType?, type: IElementType): PsiBuilder.Marker? {
-        return parseEnclosed(builder, prefix, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, type)
+    private fun parseParenEnclosed(
+        builder: PsiBuilder,
+        prefix: IElementType?,
+        type: IElementType,
+        parseMember: () -> PsiBuilder.Marker? = { null },
+    ): PsiBuilder.Marker? {
+        return parseEnclosed(builder, prefix, ZigTokenTypes.L_PAREN, type, parseMember)
     }
 
-    private fun parseBraceEnclosed(builder: PsiBuilder, prefix: IElementType?, type: IElementType): PsiBuilder.Marker? {
-        return parseEnclosed(builder, prefix, ZigTokenTypes.L_BRACE, ZigTokenTypes.R_BRACE, type)
+    private fun parseBraceEnclosed(
+        builder: PsiBuilder,
+        prefix: IElementType?,
+        type: IElementType,
+        parseMember: () -> PsiBuilder.Marker?,
+    ): PsiBuilder.Marker? {
+        return parseEnclosed(builder, prefix, ZigTokenTypes.L_BRACE, type, parseMember)
     }
 
     private fun parseEnclosed(
         builder: PsiBuilder,
         prefix: IElementType?,
         left: IElementType,
-        right: IElementType,
         type: IElementType,
+        parseMember: () -> PsiBuilder.Marker?,
     ): PsiBuilder.Marker? {
         val marker = builder.mark()
         if (prefix != null && !expect(builder, prefix)) {
@@ -813,14 +853,30 @@ class ZigParserKt : PsiParser {
             return null
         }
         enclosureStack.addLast(type)
-        var depth = 1
-        while (!builder.eof() && depth > 0) {
-            if (parse(builder) != null) {
+        var braces = 0
+        var brackets = 0
+        var parens = 0
+        when (left) {
+            ZigTokenTypes.L_BRACE -> braces++
+            ZigTokenTypes.L_BRACKET -> brackets++
+            ZigTokenTypes.L_PAREN -> parens++
+            else -> throw IllegalArgumentException()
+        }
+        while (!builder.eof()) {
+            val depth = braces + brackets + parens
+            if (depth == 0) {
+                break
+            }
+            if (depth == 1 && parseMember() != null) {
                 continue
-            } else if (builder.tokenType === left) {
-                depth += 1
-            } else if (builder.tokenType === right) {
-                depth -= 1
+            }
+            when (builder.tokenType) {
+                ZigTokenTypes.L_BRACE -> braces++
+                ZigTokenTypes.R_BRACE -> braces--
+                ZigTokenTypes.L_BRACKET -> brackets++
+                ZigTokenTypes.R_BRACKET -> brackets--
+                ZigTokenTypes.L_PAREN -> parens++
+                ZigTokenTypes.R_PAREN -> parens--
             }
             builder.advanceLexer()
         }
