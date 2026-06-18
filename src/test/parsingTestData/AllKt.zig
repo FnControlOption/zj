@@ -104,3 +104,11 @@ const foo = resume bar;
 const foo = return;
 const foo = return bar;
 const foo = {};
+test {
+    defer foo;
+    defer {}
+    defer foo: {}
+    errdefer foo;
+    errdefer {}
+    errdefer foo: {}
+}

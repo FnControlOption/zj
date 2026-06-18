@@ -55,6 +55,40 @@ class ZigParserKt : PsiParser {
         }
     }
 
+    private fun parseBlockExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+        val expr = builder.mark()
+        expect(builder, ZigTokenTypes.IDENTIFIER, ZigTokenTypes.COLON)
+        if (builder.tokenType !== ZigTokenTypes.L_BRACE) {
+            expr.rollbackTo()
+            return null
+        }
+        parseBlock(builder)
+        expr.done(ZigElementTypes.BLOCK_EXPR)
+        return expr
+    }
+
+    private fun parseBlockExprStatement(builder: PsiBuilder): PsiBuilder.Marker? {
+        // If block found, don't require semicolon
+        val blockExpr = parseBlockExpr(builder)
+        if (blockExpr != null) {
+            return blockExpr
+        }
+        // Otherwise, require semicolon after expression
+        val statement = builder.mark()
+        val assignExpr = parseAssignExpr(builder)
+        if (assignExpr != null) {
+            if (!expect(builder, ZigTokenTypes.SEMICOLON)) {
+                // TODO
+                statement.rollbackTo()
+                return null
+            }
+            statement.done(ZigElementTypes.EXPR_STATEMENT)
+            return statement
+        }
+        statement.drop()
+        return null
+    }
+
     private fun parseBuiltinCall(builder: PsiBuilder): PsiBuilder.Marker? {
         return tryBuiltinCall(builder) ?: parseParenEnclosed(builder, ZigTokenTypes.BUILTIN, ZigElementTypes.CALL_ARGS)
     }
@@ -700,6 +734,26 @@ class ZigParserKt : PsiParser {
             statement.drop()
             return null
         }
+        when (builder.tokenType) {
+            // TODO
+            ZigTokenTypes.KEYWORD_DEFER -> {
+                if (isBlockLevel) {
+                    builder.advanceLexer()
+                    parseBlockExprStatement(builder)
+                    statement.done(ZigElementTypes.DEFER)
+                    return statement
+                }
+            }
+            ZigTokenTypes.KEYWORD_ERRDEFER -> {
+                if (isBlockLevel) {
+                    builder.advanceLexer()
+                    parseBlockExprStatement(builder)
+                    statement.done(ZigElementTypes.ERRDEFER)
+                    return statement
+                }
+            }
+            // TODO
+        }
         // TODO
         if (isBlockLevel) {
             statement.drop()
@@ -778,11 +832,6 @@ class ZigParserKt : PsiParser {
         return statement
     }
 
-    private fun finishAssignExpr(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker {
-        // TODO
-        return lhs
-    }
-
     private fun tryIf(builder: PsiBuilder, bodyParseFn: (PsiBuilder) -> PsiBuilder.Marker?): PsiBuilder.Marker? {
         val marker = builder.mark()
         if (!expect(builder, ZigTokenTypes.KEYWORD_IF)) {
@@ -828,6 +877,16 @@ class ZigParserKt : PsiParser {
         }
         condition.done(ZigElementTypes.CONDITION_EXPR)
         return condition
+    }
+
+    private fun parseAssignExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+        val expr = tryExpr(builder) ?: return null
+        return finishAssignExpr(builder, expr)
+    }
+
+    private fun finishAssignExpr(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker {
+        // TODO
+        return lhs
     }
 
     private fun parseUntil(builder: PsiBuilder, terminator: IElementType) {

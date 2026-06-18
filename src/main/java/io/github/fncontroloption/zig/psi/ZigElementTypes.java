@@ -9,6 +9,7 @@ public interface ZigElementTypes {
     IElementType CONTAINER_DECL_ARG = new ZigElementType("CONTAINER_DECL_ARG");
     IElementType CONTAINER_DECL_BODY = new ZigElementType("CONTAINER_DECL_BODY");
     IElementType BLOCK = new ZigElementType("BLOCK");
+    IElementType BLOCK_EXPR = new ZigElementType("BLOCK_EXPR");
     IElementType BUILTIN_CALL = new ZigElementType("BUILTIN_CALL");
     IElementType CALL = new ZigElementType("CALL");
     IElementType CALL_ARGS = new ZigElementType("CALL_ARGS");
@@ -91,6 +92,8 @@ public interface ZigElementTypes {
     IElementType TRY = new ZigElementType("TRY");
     IElementType CONTAINER_FIELD = new ZigElementType("CONTAINER_FIELD");
     IElementType EXPR_STATEMENT = new ZigElementType("EXPR_STATEMENT");
+    IElementType DEFER = new ZigElementType("DEFER");
+    IElementType ERRDEFER = new ZigElementType("ERRDEFER");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {
