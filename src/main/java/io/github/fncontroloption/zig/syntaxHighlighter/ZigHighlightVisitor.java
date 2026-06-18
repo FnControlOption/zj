@@ -119,6 +119,15 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                 yield createHighlightInfo(identifier, type);
             }
 
+            case ZigContainerField field -> {
+                var identifier = field.getNameIdentifier();
+                if (identifier == null) {
+                    yield null;
+                }
+
+                yield createHighlightInfo(identifier, ZigHighlightInfoTypes.INSTANCE_FIELD);
+            }
+
             case ZigIdentifier identifier -> {
                 var text = identifier.getText();
 

@@ -132,6 +132,9 @@ public interface ZigElementTypes {
             if (type == INIT_EXPR) {
                 return new ZigInitExpr(node);
             }
+            if (type == CONTAINER_FIELD) {
+                return new ZigContainerField(node);
+            }
             return new ZigPsiElement(node); // TODO
         }
     }

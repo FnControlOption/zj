@@ -252,3 +252,5 @@ class ZigFnParamDecl(node: ASTNode) : ZigNamedElement(node) {
 
     fun isAnytype() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_ANYTYPE) != null
 }
+
+class ZigContainerField(node: ASTNode) : ZigNamedElement(node)
