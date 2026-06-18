@@ -50,6 +50,11 @@ class ZigParserKt : PsiParser {
     }
 
     private fun parseBlock(builder: PsiBuilder): PsiBuilder.Marker? {
+        val prevToken = builder.rawLookup(-1)
+        if (prevToken === ZigTokenTypes.PERIOD) {
+            return null
+        }
+
         return parseBraceEnclosed(builder, null, ZigElementTypes.BLOCK) {
             tryStatement(builder, true)
         }
