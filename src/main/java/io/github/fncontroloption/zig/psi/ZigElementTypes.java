@@ -78,6 +78,12 @@ public interface ZigElementTypes {
     IElementType CATCH = new ZigElementType("CATCH");
     IElementType BOOL_AND = new ZigElementType("BOOL_AND");
     IElementType BOOL_OR = new ZigElementType("BOOL_OR");
+    IElementType BOOL_NOT = new ZigElementType("BOOL_NOT");
+    IElementType NEGATION = new ZigElementType("NEGATION");
+    IElementType BIT_NOT = new ZigElementType("BIT_NOT");
+    IElementType NEGATION_WRAP = new ZigElementType("NEGATION_WRAP");
+    IElementType ADDRESS_OF = new ZigElementType("ADDRESS_OF");
+    IElementType TRY = new ZigElementType("TRY");
     IElementType CONTAINER_FIELD = new ZigElementType("CONTAINER_FIELD");
 
     class Factory {

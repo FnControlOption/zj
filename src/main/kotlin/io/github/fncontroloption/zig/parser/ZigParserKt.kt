@@ -91,7 +91,9 @@ class ZigParserKt : PsiParser {
             return null
         }
         parseInitExpr(builder, ZigTokenTypes.SEMICOLON)
-        expect(builder, ZigTokenTypes.SEMICOLON)
+        if (!expect(builder, ZigTokenTypes.SEMICOLON)) {
+            // TODO: mark error
+        }
         decl.done(ZigElementTypes.VAR_DECL)
         return decl
     }
@@ -429,7 +431,9 @@ class ZigParserKt : PsiParser {
                 marker.drop()
                 return ZigElementTypes.UNWRAP_OPTIONAL
             } else {
-                expect(builder, ZigTokenTypes.IDENTIFIER)
+                if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
+                    // TODO: mark error
+                }
                 marker.drop()
                 return ZigElementTypes.FIELD_ACCESS
             }
@@ -604,8 +608,7 @@ class ZigParserKt : PsiParser {
                 // TODO: parsePayload
             }
             if (tryExprPrecedence(builder, info.prec + 1) == null) {
-                expr.rollbackTo()
-                return null
+                // TODO: mark error
             }
             expr = expr.precede()
             expr.done(info.nodeType)
@@ -616,9 +619,24 @@ class ZigParserKt : PsiParser {
         return expr
     }
 
+    private val prefixTable = mapOf(
+        Pair(ZigTokenTypes.BANG, ZigElementTypes.BOOL_NOT),
+        Pair(ZigTokenTypes.MINUS, ZigElementTypes.NEGATION),
+        Pair(ZigTokenTypes.TILDE, ZigElementTypes.BIT_NOT),
+        Pair(ZigTokenTypes.MINUS_PERCENT, ZigElementTypes.NEGATION_WRAP),
+        Pair(ZigTokenTypes.AMPERSAND, ZigElementTypes.ADDRESS_OF),
+        Pair(ZigTokenTypes.KEYWORD_TRY, ZigElementTypes.TRY),
+    )
+
     private fun tryPrefixExpr(builder: PsiBuilder): PsiBuilder.Marker? {
-        // TODO
-        return tryPrimaryExpr(builder)
+        val nodeType = prefixTable[builder.tokenType] ?: return tryPrimaryExpr(builder)
+        val expr = builder.mark()
+        builder.advanceLexer()
+        if (tryPrefixExpr(builder) == null) {
+            // TODO: mark error
+        }
+        expr.done(nodeType)
+        return expr
     }
 
     private fun tryPrimaryExpr(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -698,7 +716,9 @@ class ZigParserKt : PsiParser {
         }
 
         parseInitExpr(builder, ZigTokenTypes.SEMICOLON)
-        expect(builder, ZigTokenTypes.SEMICOLON)
+        if (!expect(builder, ZigTokenTypes.SEMICOLON)) {
+            // TODO: mark error
+        }
 
         if (scratch.size == 1 && scratch[0].tokenType === ZigElementTypes.VAR_DECL_PROTO) {
             statement.done(ZigElementTypes.VAR_DECL)

@@ -86,3 +86,6 @@ const foo = @This();
 const Foo3 = struct {
     const Self = @This();
 };
+const foo = bar + ;
+const foo = !~--%&try bar;
+const foo = try ;
