@@ -39,7 +39,6 @@ public interface ZigElementTypes {
     IElementType OPTIONAL_TYPE = new ZigElementType("OPTIONAL_TYPE");
     IElementType ANYFRAME_TYPE = new ZigElementType("ANYFRAME_TYPE");
     IElementType PTR_TYPE = new ZigElementType("PTR_TYPE");
-    IElementType SLICE_TYPE = new ZigElementType("SLICE_TYPE");
     IElementType ERROR_UNION = new ZigElementType("ERROR_UNION");
     IElementType ASSIGN = new ZigElementType("ASSIGN");
     IElementType COMPTIME = new ZigElementType("COMPTIME");
@@ -134,6 +133,9 @@ public interface ZigElementTypes {
             }
             if (type == CONTAINER_FIELD) {
                 return new ZigContainerField(node);
+            }
+            if (type == PTR_TYPE) {
+                return new ZigPtrType(node);
             }
             return new ZigPsiElement(node); // TODO
         }

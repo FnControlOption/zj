@@ -11,6 +11,7 @@ import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiReference
 import com.intellij.psi.impl.source.resolve.reference.ReferenceProvidersRegistry
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.elementType
 import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigLanguage
@@ -141,6 +142,39 @@ class ZigTypeExpr(node: ASTNode) : ZigPsiElement(node) {
 class ZigInitExpr(node: ASTNode) : ZigPsiElement(node) {
     val expr: ZigPsiElement?
         get() = firstChild as? ZigPsiElement
+}
+
+class ZigPtrType(node: ASTNode) : ZigPsiElement(node) {
+    enum class Size {
+        ONE,
+        MANY,
+        SLICE,
+        C,
+    }
+
+    val size: Size?
+        get() {
+            var child = firstChild ?: return null
+            return when (child.elementType) {
+                ZigTokenTypes.ASTERISK -> Size.ONE
+                ZigTokenTypes.L_BRACKET -> {
+                    child = child.nextSibling ?: return null
+                    when (child.elementType) {
+                        ZigTokenTypes.ASTERISK -> {
+                            child = child.nextSibling ?: return Size.MANY
+                            if (child.textMatches("c")) Size.C else Size.MANY
+                        }
+                        else -> Size.SLICE
+                    }
+                }
+                else -> null
+            }
+        }
+
+    val child: ZigPsiElement?
+        get() = lastChild as? ZigPsiElement
+
+    fun isConst() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_CONST) != null
 }
 
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {

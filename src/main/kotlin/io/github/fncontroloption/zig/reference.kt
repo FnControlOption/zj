@@ -25,6 +25,7 @@ import io.github.fncontroloption.zig.psi.ZigFile
 import io.github.fncontroloption.zig.psi.ZigFnDecl
 import io.github.fncontroloption.zig.psi.ZigFnParamDecl
 import io.github.fncontroloption.zig.psi.ZigIdentifier
+import io.github.fncontroloption.zig.psi.ZigPtrType
 import io.github.fncontroloption.zig.psi.ZigTestDecl
 import io.github.fncontroloption.zig.psi.ZigTokenTypes
 import io.github.fncontroloption.zig.psi.ZigVarDecl
@@ -183,6 +184,13 @@ class ZigFieldAccessReference(val access: ZigFieldAccess, val name: PsiElement) 
                         results.addLast(PsiElementResolveResult(declProto))
                     }
                 }
+            }
+            is ZigPtrType -> {
+                if (lhs.size != ZigPtrType.Size.ONE) {
+                    return
+                }
+                val child = lhs.child ?: return
+                resolveMember(child, name, results)
             }
             is ZigIdentifier, is ZigFieldAccess -> {
                 for (reference in lhs.references) {

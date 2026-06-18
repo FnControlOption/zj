@@ -340,7 +340,7 @@ class ZigParserKt : PsiParser {
             }
             parsePtrModifiers(builder)
             if (tryTypeExpr(builder) != null) {
-                expr.done(ZigElementTypes.SLICE_TYPE)
+                expr.done(ZigElementTypes.PTR_TYPE)
                 return expr
             } else {
                 expr.rollbackTo()
