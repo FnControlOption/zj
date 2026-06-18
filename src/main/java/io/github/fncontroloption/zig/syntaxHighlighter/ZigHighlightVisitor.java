@@ -11,6 +11,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /** @see com.intellij.codeInsight.daemon.impl.analysis.JavaNamesHighlightVisitor */
 public class ZigHighlightVisitor implements HighlightVisitor {
@@ -37,27 +38,17 @@ public class ZigHighlightVisitor implements HighlightVisitor {
             "f64",
             "f80",
             "false",
-            "i16",
-            "i32",
-            "i64",
-            "i128",
-            "i8",
             "isize",
             "noreturn",
             "null",
             "true",
             "type",
-            "u16",
-            "u29",
-            "u32",
-            "u64",
-            "u128",
-            "u1",
-            "u8",
             "undefined",
             "usize",
             "void"
     );
+
+    private static final Pattern INT_PATTERN = Pattern.compile("\\A[iu]\\d+\\Z");
 
     private HighlightInfoHolder holder;
 
@@ -131,7 +122,7 @@ public class ZigHighlightVisitor implements HighlightVisitor {
             case ZigIdentifier identifier -> {
                 var text = identifier.getText();
 
-                if (PRIMITIVES.contains(text)) {
+                if (PRIMITIVES.contains(text) || INT_PATTERN.matcher(text).matches()) {
                     yield createHighlightInfo(element, ZigHighlightInfoTypes.KEYWORD);
                 }
 
