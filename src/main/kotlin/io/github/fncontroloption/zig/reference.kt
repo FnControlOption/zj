@@ -18,10 +18,12 @@ import io.github.fncontroloption.zig.psi.ZigBuiltinCall
 import io.github.fncontroloption.zig.psi.ZigCallArgs
 import io.github.fncontroloption.zig.psi.ZigContainerBody
 import io.github.fncontroloption.zig.psi.ZigContainerDecl
+import io.github.fncontroloption.zig.psi.ZigContainerField
 import io.github.fncontroloption.zig.psi.ZigElementTypes
 import io.github.fncontroloption.zig.psi.ZigFieldAccess
 import io.github.fncontroloption.zig.psi.ZigFile
 import io.github.fncontroloption.zig.psi.ZigFnDecl
+import io.github.fncontroloption.zig.psi.ZigFnParamDecl
 import io.github.fncontroloption.zig.psi.ZigIdentifier
 import io.github.fncontroloption.zig.psi.ZigTestDecl
 import io.github.fncontroloption.zig.psi.ZigTokenTypes
@@ -114,12 +116,12 @@ class ZigIdentifierReference(element: PsiElement) :
         var parent = myElement.parent
         while (parent != null) {
             val target = when (parent) {
-                is ZigContainerBody -> parent.declProtos[name]
+                is ZigContainerBody -> parent.containerMembers[name]
                 is ZigFnDecl -> parent.fnProto.fnParams?.fnParamDecls[name]
                 is ZigBlock -> parent.varDeclProtos[name]
                 else -> null
             }
-            if (target != null) {
+            if (target != null && target !is ZigContainerField) {
                 return target
             }
             parent = parent.parent
@@ -175,7 +177,7 @@ class ZigFieldAccessReference(val access: ZigFieldAccess, val name: PsiElement) 
         when (lhs) {
             is ZigContainerDecl -> {
                 val containerBody = lhs.containerDeclBody ?: return
-                val declProto = containerBody.declProtos[name] ?: return
+                val declProto = containerBody.containerMembers[name] ?: return
                 results.addLast(PsiElementResolveResult(declProto))
             }
             is ZigBuiltinCall -> {
@@ -189,7 +191,7 @@ class ZigFieldAccessReference(val access: ZigFieldAccess, val name: PsiElement) 
                     if (child.elementType === ZigElementTypes.STRING_LITERAL) {
                         val importRef = ZigImportReference(child)
                         val file = importRef.resolve() as? ZigFile ?: return
-                        val declProto = file.declProtos[name] ?: return
+                        val declProto = file.containerMembers[name] ?: return
                         results.addLast(PsiElementResolveResult(declProto))
                     }
                 }
@@ -199,12 +201,25 @@ class ZigFieldAccessReference(val access: ZigFieldAccess, val name: PsiElement) 
                     val target = reference.resolve() ?: continue
                     when (target) {
                         is ZigVarDeclProto -> {
+                            val typeExpr = target.declTypeExpr?.expr
+                            if (typeExpr != null && !typeExpr.textMatches("type")) {
+                                resolveMember(typeExpr, name, results)
+                                continue
+                            }
                             if (target.isVar()) {
                                 continue
                             }
                             val varDecl = target.parent as? ZigVarDecl ?: continue
                             val initExpr = varDecl.varDeclInitExpr?.expr ?: continue
                             resolveMember(initExpr, name, results)
+                        }
+                        is ZigFnParamDecl -> {
+                            val typeExpr = target.fnParamTypeExpr?.expr ?: continue
+                            resolveMember(typeExpr, name, results)
+                        }
+                        is ZigContainerField -> {
+                            val typeExpr = target.containerFieldTypeExpr?.expr ?: continue
+                            resolveMember(typeExpr, name, results)
                         }
                     }
                 }
