@@ -71,6 +71,16 @@ class ZigImportReference(element: PsiElement) :
 
     override fun resolve(): PsiElement? {
         val fileName = parts.lastOrNull() ?: return null
+        when (fileName) {
+            "std" -> {
+                val projectService = myElement.project.getService(ZigProjectService::class.java)
+                return projectService.stdFile
+            }
+            "builtin" -> {
+                val projectService = myElement.project.getService(ZigProjectService::class.java)
+                return projectService.builtinFile
+            }
+        }
         if (!fileName.endsWith(".zig")) {
             // TODO: resolve imported modules
             return null
