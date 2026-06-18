@@ -52,10 +52,7 @@ class ZigReferenceContributor : PsiReferenceContributor() {
 }
 
 object ZigStringLiteralReferenceProvider : PsiReferenceProvider() {
-    override fun getReferencesByElement(
-        element: PsiElement,
-        context: ProcessingContext
-    ): Array<out PsiReference> {
+    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
         val callArgs = element.parent as? ZigCallArgs ?: return emptyArray()
         val builtinCall = callArgs.parent as? ZigBuiltinCall ?: return emptyArray()
         if (builtinCall.builtin.textMatches("@import")) {
@@ -100,10 +97,7 @@ class ZigImportReference(element: PsiElement) :
 }
 
 object ZigIdentifierReferenceProvider : PsiReferenceProvider() {
-    override fun getReferencesByElement(
-        element: PsiElement,
-        context: ProcessingContext
-    ): Array<out PsiReference> {
+    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
         return arrayOf(ZigIdentifierReference(element))
     }
 }
@@ -131,13 +125,10 @@ class ZigIdentifierReference(element: PsiElement) :
 }
 
 object ZigTestDeclReferenceProvider : PsiReferenceProvider() {
-    override fun getReferencesByElement(
-        element: PsiElement,
-        context: ProcessingContext
-    ): Array<out PsiReference> {
+    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
         val decl = element as ZigTestDecl
         val name = decl.testName
-        if (name?.node?.elementType === ZigTokenTypes.IDENTIFIER) {
+        if (name?.elementType === ZigTokenTypes.IDENTIFIER) {
             return arrayOf(ZigTestReference(decl, name))
         }
         return emptyArray()
@@ -153,10 +144,7 @@ class ZigTestReference(decl: ZigTestDecl, val name: PsiElement) :
 }
 
 object ZigFieldAccessReferenceProvider : PsiReferenceProvider() {
-    override fun getReferencesByElement(
-        element: PsiElement,
-        context: ProcessingContext
-    ): Array<out PsiReference> {
+    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
         val access = element as ZigFieldAccess
         val name = access.fieldName ?: return emptyArray()
         return arrayOf(ZigFieldAccessReference(access, name))
