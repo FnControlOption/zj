@@ -12,10 +12,10 @@ import com.intellij.psi.PsiReferenceProvider
 import com.intellij.psi.PsiReferenceRegistrar
 import com.intellij.psi.ResolveResult
 import com.intellij.psi.util.elementType
+import com.intellij.psi.util.findParentOfType
 import com.intellij.util.ProcessingContext
 import io.github.fncontroloption.zig.psi.ZigBlock
 import io.github.fncontroloption.zig.psi.ZigBuiltinCall
-import io.github.fncontroloption.zig.psi.ZigCallArgs
 import io.github.fncontroloption.zig.psi.ZigContainerBody
 import io.github.fncontroloption.zig.psi.ZigContainerDecl
 import io.github.fncontroloption.zig.psi.ZigContainerField
@@ -34,10 +34,6 @@ import io.github.fncontroloption.zig.psi.ZigVarDeclProto
 class ZigReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
         registrar.registerReferenceProvider(
-            PlatformPatterns.psiElement(ZigElementTypes.STRING_LITERAL),
-            ZigStringLiteralReferenceProvider,
-        )
-        registrar.registerReferenceProvider(
             PlatformPatterns.psiElement(ZigIdentifier::class.java),
             ZigIdentifierReferenceProvider,
         )
@@ -49,51 +45,10 @@ class ZigReferenceContributor : PsiReferenceContributor() {
             PlatformPatterns.psiElement(ZigFieldAccess::class.java),
             ZigFieldAccessReferenceProvider,
         )
-    }
-}
-
-object ZigStringLiteralReferenceProvider : PsiReferenceProvider() {
-    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
-        val callArgs = element.parent as? ZigCallArgs ?: return emptyArray()
-        val builtinCall = callArgs.parent as? ZigBuiltinCall ?: return emptyArray()
-        if (builtinCall.builtin.textMatches("@import")) {
-            return arrayOf(ZigImportReference(element))
-        }
-        return emptyArray()
-    }
-}
-
-class ZigImportReference(element: PsiElement) :
-    PsiReferenceBase<PsiElement>(element, TextRange(1, element.textLength - 1), true) {
-
-    // TODO: unescape string literal
-    val parts = element.text.substring(1, element.text.length - 1).split("/")
-
-    override fun resolve(): PsiElement? {
-        val fileName = parts.lastOrNull() ?: return null
-        when (fileName) {
-            "std" -> {
-                val projectService = myElement.project.getService(ZigProjectService::class.java)
-                return projectService.stdFile
-            }
-            "builtin" -> {
-                val projectService = myElement.project.getService(ZigProjectService::class.java)
-                return projectService.builtinFile
-            }
-        }
-        if (!fileName.endsWith(".zig")) {
-            // TODO: resolve imported modules
-            return null
-        }
-        var directory = myElement.containingFile?.containingDirectory ?: return null
-        parts.subList(0, parts.size - 1).forEach { dirName ->
-            if (dirName == "..") {
-                directory = directory.parentDirectory ?: return null
-            } else if (dirName != ".") {
-                directory = directory.findSubdirectory(dirName) ?: return null
-            }
-        }
-        return directory.findFile(fileName)
+        registrar.registerReferenceProvider(
+            PlatformPatterns.psiElement(ZigBuiltinCall::class.java),
+            ZigBuiltinCallReferenceProvider,
+        )
     }
 }
 
@@ -136,8 +91,8 @@ object ZigTestDeclReferenceProvider : PsiReferenceProvider() {
     }
 }
 
-class ZigTestReference(decl: ZigTestDecl, val name: PsiElement) :
-    PsiReferenceBase<ZigTestDecl>(decl, name.textRangeInParent, true) {
+class ZigTestReference(element: PsiElement, val name: PsiElement) :
+    PsiReferenceBase<PsiElement>(element, name.textRangeInParent, true) {
 
     private val ref = ZigIdentifierReference(name)
 
@@ -152,11 +107,11 @@ object ZigFieldAccessReferenceProvider : PsiReferenceProvider() {
     }
 }
 
-class ZigFieldAccessReference(val access: ZigFieldAccess, val name: PsiElement) :
+class ZigFieldAccessReference(access: ZigFieldAccess, val name: PsiElement) :
     PsiPolyVariantReferenceBase<ZigFieldAccess>(access, name.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
-        val lhs = access.lhs ?: return emptyArray()
+        val lhs = myElement.lhs ?: return emptyArray()
         val results = mutableListOf<ResolveResult>()
         resolveMember(lhs, name.text, results)
         return results.toTypedArray()
@@ -164,25 +119,19 @@ class ZigFieldAccessReference(val access: ZigFieldAccess, val name: PsiElement) 
 
     private fun resolveMember(lhs: PsiElement, name: String, results: MutableList<ResolveResult>) {
         when (lhs) {
+            is ZigFile -> {
+                val member = lhs.containerMembers[name] ?: return
+                results.addLast(PsiElementResolveResult(member))
+            }
             is ZigContainerDecl -> {
                 val containerBody = lhs.containerDeclBody ?: return
                 val member = containerBody.containerMembers[name] ?: return
                 results.addLast(PsiElementResolveResult(member))
             }
             is ZigBuiltinCall -> {
-                if (lhs.builtin.textMatches("@import")) {
-                    val callArgs = lhs.builtinCallArgs ?: return
-                    var child = callArgs.firstChild ?: return
-                    if (child.elementType !== ZigTokenTypes.L_PAREN) {
-                        return
-                    }
-                    child = child.nextSibling ?: return
-                    if (child.elementType === ZigElementTypes.STRING_LITERAL) {
-                        val importRef = ZigImportReference(child)
-                        val file = importRef.resolve() as? ZigFile ?: return
-                        val member = file.containerMembers[name] ?: return
-                        results.addLast(PsiElementResolveResult(member))
-                    }
+                for (reference in lhs.references) {
+                    val target = reference.resolve() ?: continue
+                    resolveMember(target, name, results)
                 }
             }
             is ZigPtrType -> {
@@ -221,5 +170,70 @@ class ZigFieldAccessReference(val access: ZigFieldAccess, val name: PsiElement) 
                 }
             }
         }
+    }
+}
+
+object ZigBuiltinCallReferenceProvider : PsiReferenceProvider() {
+    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
+        val builtinCall = element as ZigBuiltinCall
+        val builtin = builtinCall.builtin
+        if (builtin.textMatches("@This")) {
+            return arrayOf(ZigThisReference(builtinCall))
+        }
+        if (builtin.textMatches("@import")) {
+            val callArgs = builtinCall.builtinCallArgs ?: return emptyArray()
+            var child = callArgs.firstChild ?: return emptyArray()
+            if (child.elementType !== ZigTokenTypes.L_PAREN) {
+                return emptyArray()
+            }
+            child = child.nextSibling ?: return emptyArray()
+            if (child.elementType === ZigElementTypes.STRING_LITERAL) {
+                return arrayOf(ZigImportReference(builtinCall, child))
+            }
+        }
+        return emptyArray()
+    }
+}
+
+class ZigThisReference(element: PsiElement) :
+    PsiReferenceBase<PsiElement>(element, TextRange(0, element.textLength), true) {
+
+    override fun resolve(): PsiElement? {
+        val containerDecl = myElement.findParentOfType<ZigContainerDecl>()
+        return containerDecl ?: myElement.containingFile
+    }
+}
+
+class ZigImportReference(element: PsiElement, arg: PsiElement) :
+    PsiReferenceBase<PsiElement>(element, TextRange(0, element.textLength), true) {
+
+    // TODO: unescape string literal
+    val parts = arg.text.substring(1, arg.text.length - 1).split("/")
+
+    override fun resolve(): PsiElement? {
+        val fileName = parts.lastOrNull() ?: return null
+        when (fileName) {
+            "std" -> {
+                val projectService = myElement.project.getService(ZigProjectService::class.java)
+                return projectService.stdFile
+            }
+            "builtin" -> {
+                val projectService = myElement.project.getService(ZigProjectService::class.java)
+                return projectService.builtinFile
+            }
+        }
+        if (!fileName.endsWith(".zig")) {
+            // TODO: resolve imported modules
+            return null
+        }
+        var directory = myElement.containingFile?.containingDirectory ?: return null
+        parts.subList(0, parts.size - 1).forEach { dirName ->
+            if (dirName == "..") {
+                directory = directory.parentDirectory ?: return null
+            } else if (dirName != ".") {
+                directory = directory.findSubdirectory(dirName) ?: return null
+            }
+        }
+        return directory.findFile(fileName)
     }
 }

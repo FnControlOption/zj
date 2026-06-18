@@ -82,3 +82,7 @@ const foo = Foo2.foo2;
 const foo = Foo2.foo2Fn;
 const foo = @import("builtin").zig_version;
 const foo = @import("std").ArrayList;
+const foo = @This();
+const Foo3 = struct {
+    const Self = @This();
+};
