@@ -710,9 +710,14 @@ class ZigParserKt : PsiParser {
                 statement.rollbackTo()
                 return null
             }
-            // TODO
-            statement.rollbackTo()
-            return null
+            val expr = finishAssignExpr(builder, lhs)
+            if (!expect(builder, ZigTokenTypes.SEMICOLON)) {
+                // TODO
+                statement.rollbackTo()
+                return null
+            }
+            statement.done(ZigElementTypes.EXPR_STATEMENT)
+            return expr
         }
 
         parseInitExpr(builder, ZigTokenTypes.SEMICOLON)
@@ -727,6 +732,11 @@ class ZigParserKt : PsiParser {
 
         statement.done(ZigElementTypes.ASSIGN)
         return statement
+    }
+
+    private fun finishAssignExpr(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker {
+        // TODO
+        return lhs
     }
 
     private fun tryIf(builder: PsiBuilder, bodyParseFn: (PsiBuilder) -> PsiBuilder.Marker?): PsiBuilder.Marker? {

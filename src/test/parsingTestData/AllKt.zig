@@ -89,3 +89,6 @@ const Foo3 = struct {
 const foo = bar + ;
 const foo = !~--%&try bar;
 const foo = try ;
+test {
+    foo();
+}

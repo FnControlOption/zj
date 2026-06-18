@@ -85,6 +85,7 @@ public interface ZigElementTypes {
     IElementType ADDRESS_OF = new ZigElementType("ADDRESS_OF");
     IElementType TRY = new ZigElementType("TRY");
     IElementType CONTAINER_FIELD = new ZigElementType("CONTAINER_FIELD");
+    IElementType EXPR_STATEMENT = new ZigElementType("EXPR_STATEMENT");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {
