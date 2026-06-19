@@ -113,3 +113,4 @@ test {
     errdefer foo: {}
 }
 comptime {}
+const foo = bar: {};

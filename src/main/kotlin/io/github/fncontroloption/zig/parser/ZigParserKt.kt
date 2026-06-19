@@ -545,13 +545,17 @@ class ZigParserKt : PsiParser {
             }
             ZigTokenTypes.MULTILINE_STRING_LITERAL_LINE -> return null // TODO
             ZigTokenTypes.IDENTIFIER -> {
+                if (builder.lookAhead(1) === ZigTokenTypes.COLON) {
+                    when (builder.lookAhead(2)) {
+                        ZigTokenTypes.KEYWORD_INLINE -> return null // TODO
+                        ZigTokenTypes.KEYWORD_FOR -> return null // TODO
+                        ZigTokenTypes.KEYWORD_WHILE -> return null // TODO
+                        ZigTokenTypes.KEYWORD_SWITCH -> return null // TODO
+                        ZigTokenTypes.L_BRACE -> return parseBlockExpr(builder)
+                    }
+                }
                 val marker = builder.mark()
                 builder.advanceLexer()
-                if (builder.tokenType === ZigTokenTypes.COLON) {
-                    // TODO
-                    marker.rollbackTo()
-                    return null
-                }
                 marker.done(ZigElementTypes.IDENTIFIER)
                 return marker
             }
