@@ -4,6 +4,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementResolveResult
+import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiPolyVariantReferenceBase
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReferenceBase
@@ -218,6 +219,24 @@ class ZigImportReference(element: ZigBuiltinCall) :
             }
             return child.nextSibling as? ZigStringLiteral
         }
+
+    override fun bindToElement(element: PsiElement): PsiElement? {
+        val oldArg = importArg ?: throw IncorrectOperationException()
+        val psiFile = element as? PsiFile ?: throw IncorrectOperationException()
+        val importedFile = psiFile.virtualFile ?: throw IncorrectOperationException()
+        val containingDir = myElement.containingFile?.virtualFile?.parent ?: throw IncorrectOperationException()
+        val relativePath = containingDir.toNioPath().relativize(importedFile.toNioPath())
+        val newValue = buildString {
+            append(relativePath.getName(0))
+            for (i in 1 until relativePath.nameCount) {
+                append('/')
+                append(relativePath.getName(i))
+            }
+        }
+        val newArg = createZigStringLiteral(myElement.project, newValue)
+        oldArg.replace(newArg)
+        return myElement
+    }
 }
 
 object ZigEnumLiteralReferenceProvider : PsiReferenceProvider() {
