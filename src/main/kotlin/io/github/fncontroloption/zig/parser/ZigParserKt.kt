@@ -706,52 +706,56 @@ class ZigParserKt : PsiParser {
     }
 
     private fun tryPrimaryExpr(builder: PsiBuilder): PsiBuilder.Marker? {
-        val expr = builder.mark()
         when (builder.tokenType) {
             // TODO
             ZigTokenTypes.KEYWORD_BREAK -> {
+                val expr = builder.mark()
                 builder.advanceLexer()
                 expect(builder, ZigTokenTypes.COLON, ZigTokenTypes.IDENTIFIER)
                 tryExpr(builder)
                 expr.done(ZigElementTypes.BREAK)
+                return expr
             }
             ZigTokenTypes.KEYWORD_CONTINUE -> {
+                val expr = builder.mark()
                 builder.advanceLexer()
                 expect(builder, ZigTokenTypes.COLON, ZigTokenTypes.IDENTIFIER)
                 tryExpr(builder)
                 expr.done(ZigElementTypes.CONTINUE)
+                return expr
             }
             ZigTokenTypes.KEYWORD_COMPTIME -> {
+                val expr = builder.mark()
                 builder.advanceLexer()
                 tryExpr(builder)
                 expr.done(ZigElementTypes.COMPTIME)
+                return expr
             }
             ZigTokenTypes.KEYWORD_NOSUSPEND -> {
+                val expr = builder.mark()
                 builder.advanceLexer()
                 tryExpr(builder)
                 expr.done(ZigElementTypes.NOSUSPEND)
+                return expr
             }
             ZigTokenTypes.KEYWORD_RESUME -> {
+                val expr = builder.mark()
                 builder.advanceLexer()
                 tryExpr(builder)
                 expr.done(ZigElementTypes.RESUME)
+                return expr
             }
             ZigTokenTypes.KEYWORD_RETURN -> {
+                val expr = builder.mark()
                 builder.advanceLexer()
                 tryExpr(builder)
                 expr.done(ZigElementTypes.RETURN)
+                return expr
             }
             // TODO
-            ZigTokenTypes.L_BRACE -> {
-                expr.rollbackTo()
-                return parseBlock(builder)
-            }
-            else -> {
-                expr.rollbackTo()
-                return tryCurlySuffixExpr(builder)
-            }
+            ZigTokenTypes.L_BRACE -> return parseBlock(builder)
+            else -> return tryCurlySuffixExpr(builder)
         }
-        return expr
     }
 
     private fun tryCurlySuffixExpr(builder: PsiBuilder): PsiBuilder.Marker? {
