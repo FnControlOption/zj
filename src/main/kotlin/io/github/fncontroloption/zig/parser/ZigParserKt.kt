@@ -562,7 +562,19 @@ class ZigParserKt : PsiParser {
             ZigTokenTypes.KEYWORD_INLINE -> return null // TODO
             ZigTokenTypes.KEYWORD_FOR -> return null // TODO
             ZigTokenTypes.KEYWORD_WHILE -> return null // TODO
-            ZigTokenTypes.PERIOD -> return null // TODO
+            ZigTokenTypes.PERIOD -> {
+                when (builder.lookAhead(1)) {
+                    ZigTokenTypes.IDENTIFIER -> {
+                        val marker = builder.mark()
+                        builder.advanceLexer()
+                        builder.advanceLexer()
+                        marker.done(ZigElementTypes.ENUM_LITERAL)
+                        return marker
+                    }
+                    ZigTokenTypes.L_BRACE -> return null // TODO
+                    else -> return null
+                }
+            }
             ZigTokenTypes.KEYWORD_ERROR -> {
                 val decl = parseErrorSetDecl(builder)
                 if (decl != null) {

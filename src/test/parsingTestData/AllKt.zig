@@ -118,3 +118,4 @@ test {
     {}
     foo: {}
 }
+const foo = .bar;
