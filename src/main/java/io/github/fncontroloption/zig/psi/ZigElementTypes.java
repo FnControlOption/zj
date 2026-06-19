@@ -155,6 +155,12 @@ public interface ZigElementTypes {
             if (type == PTR_TYPE) {
                 return new ZigPtrType(node);
             }
+            if (type == ENUM_LITERAL) {
+                return new ZigEnumLiteral(node);
+            }
+            if (type == CALL) {
+                return new ZigCall(node);
+            }
             return new ZigPsiElement(node); // TODO
         }
     }

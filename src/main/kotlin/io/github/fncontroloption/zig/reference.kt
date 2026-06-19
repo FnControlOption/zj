@@ -16,15 +16,19 @@ import com.intellij.psi.util.findParentOfType
 import com.intellij.util.ProcessingContext
 import io.github.fncontroloption.zig.psi.ZigBlock
 import io.github.fncontroloption.zig.psi.ZigBuiltinCall
+import io.github.fncontroloption.zig.psi.ZigCall
+import io.github.fncontroloption.zig.psi.ZigCallArgs
 import io.github.fncontroloption.zig.psi.ZigContainerBody
 import io.github.fncontroloption.zig.psi.ZigContainerDecl
 import io.github.fncontroloption.zig.psi.ZigContainerField
 import io.github.fncontroloption.zig.psi.ZigElementTypes
+import io.github.fncontroloption.zig.psi.ZigEnumLiteral
 import io.github.fncontroloption.zig.psi.ZigFieldAccess
 import io.github.fncontroloption.zig.psi.ZigFile
 import io.github.fncontroloption.zig.psi.ZigFnDecl
 import io.github.fncontroloption.zig.psi.ZigFnParamDecl
 import io.github.fncontroloption.zig.psi.ZigIdentifier
+import io.github.fncontroloption.zig.psi.ZigInitExpr
 import io.github.fncontroloption.zig.psi.ZigPtrType
 import io.github.fncontroloption.zig.psi.ZigTestDecl
 import io.github.fncontroloption.zig.psi.ZigTokenTypes
@@ -48,6 +52,10 @@ class ZigReferenceContributor : PsiReferenceContributor() {
         registrar.registerReferenceProvider(
             PlatformPatterns.psiElement(ZigBuiltinCall::class.java),
             ZigBuiltinCallReferenceProvider,
+        )
+        registrar.registerReferenceProvider(
+            PlatformPatterns.psiElement(ZigEnumLiteral::class.java),
+            ZigEnumLiteralReferenceProvider,
         )
     }
 }
@@ -116,61 +124,6 @@ class ZigFieldAccessReference(access: ZigFieldAccess, val name: PsiElement) :
         resolveMember(lhs, name.text, results)
         return results.toTypedArray()
     }
-
-    private fun resolveMember(lhs: PsiElement, name: String, results: MutableList<ResolveResult>) {
-        when (lhs) {
-            is ZigFile -> {
-                val member = lhs.containerMembers[name] ?: return
-                results.addLast(PsiElementResolveResult(member))
-            }
-            is ZigContainerDecl -> {
-                val containerBody = lhs.containerDeclBody ?: return
-                val member = containerBody.containerMembers[name] ?: return
-                results.addLast(PsiElementResolveResult(member))
-            }
-            is ZigBuiltinCall -> {
-                for (reference in lhs.references) {
-                    val target = reference.resolve() ?: continue
-                    resolveMember(target, name, results)
-                }
-            }
-            is ZigPtrType -> {
-                if (lhs.size != ZigPtrType.Size.ONE) {
-                    return
-                }
-                val child = lhs.child ?: return
-                resolveMember(child, name, results)
-            }
-            is ZigIdentifier, is ZigFieldAccess -> {
-                for (reference in lhs.references) {
-                    val target = reference.resolve() ?: continue
-                    when (target) {
-                        is ZigVarDeclProto -> {
-                            val typeExpr = target.declTypeExpr?.expr
-                            if (typeExpr != null && !typeExpr.textMatches("type")) {
-                                resolveMember(typeExpr, name, results)
-                                continue
-                            }
-                            if (target.isVar()) {
-                                continue
-                            }
-                            val varDecl = target.parent as? ZigVarDecl ?: continue
-                            val initExpr = varDecl.varDeclInitExpr?.expr ?: continue
-                            resolveMember(initExpr, name, results)
-                        }
-                        is ZigFnParamDecl -> {
-                            val typeExpr = target.fnParamTypeExpr?.expr ?: continue
-                            resolveMember(typeExpr, name, results)
-                        }
-                        is ZigContainerField -> {
-                            val typeExpr = target.containerFieldTypeExpr?.expr ?: continue
-                            resolveMember(typeExpr, name, results)
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 object ZigBuiltinCallReferenceProvider : PsiReferenceProvider() {
@@ -237,5 +190,98 @@ class ZigImportReference(element: PsiElement, val arg: PsiElement) :
             }
         }
         return directory.findFile(fileName)
+    }
+}
+
+object ZigEnumLiteralReferenceProvider : PsiReferenceProvider() {
+    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
+        val literal = element as ZigEnumLiteral
+        val name = literal.fieldName ?: return emptyArray()
+        return arrayOf(ZigEnumLiteralReference(literal, name))
+    }
+}
+
+class ZigEnumLiteralReference(element: PsiElement, val name: PsiElement) :
+    PsiPolyVariantReferenceBase<PsiElement>(element, name.textRangeInParent, true) {
+
+    override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
+        var parent = myElement.parent
+        if (parent is ZigCall) {
+            parent = parent.parent
+        }
+        val typeExpr = when (parent) {
+            is ZigInitExpr -> {
+                parent = parent.parent
+                when (parent) {
+                    is ZigVarDecl -> parent.varDeclProto.declTypeExpr?.expr
+                    is ZigContainerField -> parent.containerFieldTypeExpr?.expr
+                    else -> return emptyArray()
+                }
+            }
+            is ZigCallArgs -> return emptyArray() // TODO
+            else -> return emptyArray()
+        }
+        if (typeExpr == null) {
+            return emptyArray()
+        }
+        // TODO: reduce optional/pointer/error union to base type
+        val results = mutableListOf<ResolveResult>()
+        resolveMember(typeExpr, name.text, results)
+        return results.toTypedArray()
+    }
+}
+
+private fun resolveMember(lhs: PsiElement, name: String, results: MutableList<ResolveResult>) {
+    when (lhs) {
+        is ZigFile -> {
+            val member = lhs.containerMembers[name] ?: return
+            results.addLast(PsiElementResolveResult(member))
+        }
+        is ZigContainerDecl -> {
+            val containerBody = lhs.containerDeclBody ?: return
+            val member = containerBody.containerMembers[name] ?: return
+            results.addLast(PsiElementResolveResult(member))
+        }
+        is ZigBuiltinCall -> {
+            for (reference in lhs.references) {
+                val target = reference.resolve() ?: continue
+                resolveMember(target, name, results)
+            }
+        }
+        is ZigPtrType -> {
+            if (lhs.size != ZigPtrType.Size.ONE) {
+                return
+            }
+            val child = lhs.child ?: return
+            resolveMember(child, name, results)
+        }
+        is ZigIdentifier, is ZigFieldAccess -> {
+            for (reference in lhs.references) {
+                val target = reference.resolve() ?: continue
+                when (target) {
+                    is ZigVarDeclProto -> {
+                        val typeExpr = target.declTypeExpr?.expr
+                        if (typeExpr != null && !typeExpr.textMatches("type")) {
+                            resolveMember(typeExpr, name, results)
+                            continue
+                        }
+                        if (target.isVar()) {
+                            continue
+                        }
+                        val varDecl = target.parent as? ZigVarDecl ?: continue
+                        val initExpr = varDecl.varDeclInitExpr?.expr ?: continue
+                        resolveMember(initExpr, name, results)
+                    }
+                    is ZigFnParamDecl -> {
+                        val typeExpr = target.fnParamTypeExpr?.expr ?: continue
+                        resolveMember(typeExpr, name, results)
+                    }
+                    is ZigContainerField -> {
+                        val typeExpr = target.containerFieldTypeExpr?.expr ?: continue
+                        resolveMember(typeExpr, name, results)
+                    }
+                }
+            }
+        }
     }
 }

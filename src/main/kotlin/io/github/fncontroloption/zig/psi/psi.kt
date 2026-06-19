@@ -137,6 +137,11 @@ class ZigFieldAccess(node: ASTNode) : ZigPsiElement(node) {
         get() = findChildByType(ZigTokenTypes.IDENTIFIER)
 }
 
+class ZigEnumLiteral(node: ASTNode) : ZigPsiElement(node) {
+    val fieldName: PsiElement?
+        get() = findChildByType(ZigTokenTypes.IDENTIFIER)
+}
+
 class ZigTypeExpr(node: ASTNode) : ZigPsiElement(node) {
     val expr: ZigPsiElement?
         get() = firstChild as? ZigPsiElement
@@ -179,6 +184,8 @@ class ZigPtrType(node: ASTNode) : ZigPsiElement(node) {
 
     fun isConst() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_CONST) != null
 }
+
+class ZigCall(node: ASTNode) : ZigPsiElement(node)
 
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {

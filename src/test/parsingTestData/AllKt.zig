@@ -119,3 +119,13 @@ test {
     foo: {}
 }
 const foo = .bar;
+const Foo3 = struct {
+    const a = b;
+    fn c() d {}
+};
+const foo: Foo3 = .a;
+const foo: Foo3 = .c();
+const Foo4 = struct {
+    foo: Foo3 = .a,
+    foo: Foo3 = .c(),
+};
