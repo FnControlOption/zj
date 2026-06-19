@@ -351,49 +351,60 @@ class ZigParserKt : PsiParser {
     }
 
     private fun tryTypeExpr(builder: PsiBuilder): PsiBuilder.Marker? {
-        val expr = builder.mark()
-        if (expect(builder, ZigTokenTypes.QUESTION_MARK)) {
-            if (tryTypeExpr(builder) != null) {
-                expr.done(ZigElementTypes.OPTIONAL_TYPE)
-                return expr
-            } else {
-                expr.rollbackTo()
-                return null
+        when (builder.tokenType) {
+            ZigTokenTypes.QUESTION_MARK -> {
+                val expr = builder.mark()
+                builder.advanceLexer()
+                if (tryTypeExpr(builder) != null) {
+                    expr.done(ZigElementTypes.OPTIONAL_TYPE)
+                    return expr
+                } else {
+                    expr.rollbackTo()
+                    return null
+                }
             }
-        } else if (expect(builder, ZigTokenTypes.KEYWORD_ANYFRAME, ZigTokenTypes.ARROW)) {
-            if (tryTypeExpr(builder) != null) {
-                expr.done(ZigElementTypes.ANYFRAME_TYPE)
-                return expr
-            } else {
-                expr.rollbackTo()
-                return null
+            ZigTokenTypes.KEYWORD_ANYFRAME if builder.lookAhead(1) == ZigTokenTypes.ARROW -> {
+                val expr = builder.mark()
+                builder.advanceLexer()
+                builder.advanceLexer()
+                if (tryTypeExpr(builder) != null) {
+                    expr.done(ZigElementTypes.ANYFRAME_TYPE)
+                    return expr
+                } else {
+                    expr.rollbackTo()
+                    return null
+                }
             }
-        } else if (expect(builder, ZigTokenTypes.ASTERISK)) {
-            parsePtrModifiers(builder)
-            if (tryTypeExpr(builder) != null) {
-                expr.done(ZigElementTypes.PTR_TYPE)
-                return expr
-            } else {
-                expr.rollbackTo()
-                return null
+            ZigTokenTypes.ASTERISK -> {
+                val expr = builder.mark()
+                builder.advanceLexer()
+                parsePtrModifiers(builder)
+                if (tryTypeExpr(builder) != null) {
+                    expr.done(ZigElementTypes.PTR_TYPE)
+                    return expr
+                } else {
+                    expr.rollbackTo()
+                    return null
+                }
             }
-        } else if (expect(builder, ZigTokenTypes.L_BRACKET)) {
-            if (!expect(builder, ZigTokenTypes.R_BRACKET)) {
-                // TODO
-                expr.rollbackTo()
-                return null
+            ZigTokenTypes.L_BRACKET -> {
+                val expr = builder.mark()
+                builder.advanceLexer()
+                if (!expect(builder, ZigTokenTypes.R_BRACKET)) {
+                    // TODO
+                    expr.rollbackTo()
+                    return null
+                }
+                parsePtrModifiers(builder)
+                if (tryTypeExpr(builder) != null) {
+                    expr.done(ZigElementTypes.PTR_TYPE)
+                    return expr
+                } else {
+                    expr.rollbackTo()
+                    return null
+                }
             }
-            parsePtrModifiers(builder)
-            if (tryTypeExpr(builder) != null) {
-                expr.done(ZigElementTypes.PTR_TYPE)
-                return expr
-            } else {
-                expr.rollbackTo()
-                return null
-            }
-        } else {
-            expr.rollbackTo()
-            return tryErrorUnionExpr(builder)
+            else -> return tryErrorUnionExpr(builder)
         }
     }
 
@@ -486,102 +497,99 @@ class ZigParserKt : PsiParser {
     }
 
     private fun tryPrimaryTypeExpr(builder: PsiBuilder): PsiBuilder.Marker? {
-        val marker = builder.mark()
-        if (expect(builder, ZigTokenTypes.CHAR_LITERAL)) {
-            marker.done(ZigElementTypes.CHAR_LITERAL)
-            return marker
-        } else if (expect(builder, ZigTokenTypes.NUMBER_LITERAL)) {
-            marker.done(ZigElementTypes.NUMBER_LITERAL)
-            return marker
-        } else if (expect(builder, ZigTokenTypes.KEYWORD_UNREACHABLE)) {
-            marker.done(ZigElementTypes.UNREACHABLE_LITERAL)
-            return marker
-        } else if (expect(builder, ZigTokenTypes.KEYWORD_ANYFRAME)) {
-            marker.done(ZigElementTypes.ANYFRAME_LITERAL)
-            return marker
-        } else if (expect(builder, ZigTokenTypes.STRING_LITERAL)) {
-            marker.done(ZigElementTypes.STRING_LITERAL)
-            return marker
-        } else if (expect(builder, ZigTokenTypes.IDENTIFIER)) {
-            if (builder.tokenType === ZigTokenTypes.COLON) {
-                // TODO
-                marker.rollbackTo()
-                return null
+        when (builder.tokenType) {
+            ZigTokenTypes.CHAR_LITERAL -> {
+                val marker = builder.mark()
+                builder.advanceLexer()
+                marker.done(ZigElementTypes.CHAR_LITERAL)
+                return marker
             }
-            marker.done(ZigElementTypes.IDENTIFIER)
-            return marker
-        } else if (builder.tokenType === ZigTokenTypes.BUILTIN) {
-            marker.rollbackTo()
-            return parseBuiltinCall(builder)
-        } else if (builder.tokenType === ZigTokenTypes.KEYWORD_FN) {
-            marker.rollbackTo()
-            return tryFnProto(builder, false, null)
-        } else if (builder.tokenType === ZigTokenTypes.KEYWORD_IF) {
-            marker.rollbackTo()
-            return tryIf(builder, this::tryTypeExpr)
-        } else if (builder.tokenType === ZigTokenTypes.KEYWORD_SWITCH) {
-            // TODO
-            marker.rollbackTo()
-            return null
-        } else if (builder.tokenType in ZigTokenSets.EXTERN_PACKED || builder.tokenType in ZigTokenSets.CONTAINERS) {
-            marker.rollbackTo()
-            return parseContainerDecl(builder)
-        } else if (expect(builder, ZigTokenTypes.KEYWORD_COMPTIME)) {
-            if (tryTypeExpr(builder) == null) {
-                marker.rollbackTo()
-                return null
+            ZigTokenTypes.NUMBER_LITERAL -> {
+                val marker = builder.mark()
+                builder.advanceLexer()
+                marker.done(ZigElementTypes.NUMBER_LITERAL)
+                return marker
             }
-            marker.done(ZigElementTypes.COMPTIME)
-            return marker
-        } else if (expect(builder, ZigTokenTypes.MULTILINE_STRING_LITERAL_LINE)) {
-            // TODO
-            marker.rollbackTo()
-            return null
-        } else if (expect(builder, ZigTokenTypes.KEYWORD_INLINE)) {
-            // TODO
-            marker.rollbackTo()
-            return null
-        } else if (expect(builder, ZigTokenTypes.KEYWORD_FOR)) {
-            // TODO
-            marker.rollbackTo()
-            return null
-        } else if (expect(builder, ZigTokenTypes.KEYWORD_WHILE)) {
-            // TODO
-            marker.rollbackTo()
-            return null
-        } else if (expect(builder, ZigTokenTypes.PERIOD)) {
-            // TODO
-            marker.rollbackTo()
-            return null
-        } else if (builder.tokenType === ZigTokenTypes.KEYWORD_ERROR) {
-            val decl = parseErrorSetDecl(builder)
-            if (decl != null) {
-                marker.drop()
-                return decl
+            ZigTokenTypes.KEYWORD_UNREACHABLE -> {
+                val marker = builder.mark()
+                builder.advanceLexer()
+                marker.done(ZigElementTypes.UNREACHABLE_LITERAL)
+                return marker
             }
-            expect(builder, ZigTokenTypes.KEYWORD_ERROR)
-            if (!expect(builder, ZigTokenTypes.PERIOD)) {
-                marker.rollbackTo()
-                return null
+            ZigTokenTypes.KEYWORD_ANYFRAME -> {
+                val marker = builder.mark()
+                builder.advanceLexer()
+                marker.done(ZigElementTypes.ANYFRAME_LITERAL)
+                return marker
             }
-            expect(builder, ZigTokenTypes.IDENTIFIER)
-            marker.done(ZigElementTypes.ERROR_VALUE)
-            return marker
-        } else if (expect(builder, ZigTokenTypes.L_PAREN)) {
-            if (tryExpr(builder) == null) {
-                marker.rollbackTo()
-                return null
+            ZigTokenTypes.STRING_LITERAL -> {
+                val marker = builder.mark()
+                builder.advanceLexer()
+                marker.done(ZigElementTypes.STRING_LITERAL)
+                return marker
             }
-            if (!expect(builder, ZigTokenTypes.R_PAREN)) {
-                marker.rollbackTo()
-                return null
+            ZigTokenTypes.BUILTIN -> return parseBuiltinCall(builder)
+            ZigTokenTypes.KEYWORD_FN -> return tryFnProto(builder, false, null)
+            ZigTokenTypes.KEYWORD_IF -> return tryIf(builder, this::tryTypeExpr)
+            ZigTokenTypes.KEYWORD_SWITCH -> return null // TODO
+            in ZigTokenSets.EXTERN_PACKED, in ZigTokenSets.CONTAINERS -> return parseContainerDecl(builder)
+            ZigTokenTypes.KEYWORD_COMPTIME -> {
+                val marker = builder.mark()
+                builder.advanceLexer()
+                if (tryTypeExpr(builder) == null) {
+                    marker.rollbackTo()
+                    return null
+                }
+                marker.done(ZigElementTypes.COMPTIME)
+                return marker
             }
-            marker.done(ZigElementTypes.GROUPED_EXPRESSION)
-            return marker
-        } else {
-            marker.rollbackTo()
-            return null
-
+            ZigTokenTypes.MULTILINE_STRING_LITERAL_LINE -> return null // TODO
+            ZigTokenTypes.IDENTIFIER -> {
+                val marker = builder.mark()
+                builder.advanceLexer()
+                if (builder.tokenType === ZigTokenTypes.COLON) {
+                    // TODO
+                    marker.rollbackTo()
+                    return null
+                }
+                marker.done(ZigElementTypes.IDENTIFIER)
+                return marker
+            }
+            ZigTokenTypes.KEYWORD_INLINE -> return null // TODO
+            ZigTokenTypes.KEYWORD_FOR -> return null // TODO
+            ZigTokenTypes.KEYWORD_WHILE -> return null // TODO
+            ZigTokenTypes.PERIOD -> return null // TODO
+            ZigTokenTypes.KEYWORD_ERROR -> {
+                val decl = parseErrorSetDecl(builder)
+                if (decl != null) {
+                    return decl
+                }
+                val marker = builder.mark()
+                builder.advanceLexer()
+                expect(builder, ZigTokenTypes.KEYWORD_ERROR)
+                if (!expect(builder, ZigTokenTypes.PERIOD)) {
+                    marker.rollbackTo()
+                    return null
+                }
+                expect(builder, ZigTokenTypes.IDENTIFIER)
+                marker.done(ZigElementTypes.ERROR_VALUE)
+                return marker
+            }
+            ZigTokenTypes.L_PAREN -> {
+                val marker = builder.mark()
+                builder.advanceLexer()
+                if (tryExpr(builder) == null) {
+                    marker.rollbackTo()
+                    return null
+                }
+                if (!expect(builder, ZigTokenTypes.R_PAREN)) {
+                    marker.rollbackTo()
+                    return null
+                }
+                marker.done(ZigElementTypes.GROUPED_EXPRESSION)
+                return marker
+            }
+            else -> return null
         }
     }
 
