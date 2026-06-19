@@ -13,6 +13,7 @@ import com.intellij.psi.PsiReferenceRegistrar
 import com.intellij.psi.ResolveResult
 import com.intellij.psi.util.elementType
 import com.intellij.psi.util.findParentOfType
+import com.intellij.util.IncorrectOperationException
 import com.intellij.util.ProcessingContext
 import io.github.fncontroloption.zig.psi.ZigBlock
 import io.github.fncontroloption.zig.psi.ZigBuiltinCall
@@ -21,7 +22,6 @@ import io.github.fncontroloption.zig.psi.ZigCallArgs
 import io.github.fncontroloption.zig.psi.ZigContainerBody
 import io.github.fncontroloption.zig.psi.ZigContainerDecl
 import io.github.fncontroloption.zig.psi.ZigContainerField
-import io.github.fncontroloption.zig.psi.ZigElementTypes
 import io.github.fncontroloption.zig.psi.ZigEnumLiteral
 import io.github.fncontroloption.zig.psi.ZigFieldAccess
 import io.github.fncontroloption.zig.psi.ZigFile
@@ -30,10 +30,13 @@ import io.github.fncontroloption.zig.psi.ZigFnParamDecl
 import io.github.fncontroloption.zig.psi.ZigIdentifier
 import io.github.fncontroloption.zig.psi.ZigInitExpr
 import io.github.fncontroloption.zig.psi.ZigPtrType
+import io.github.fncontroloption.zig.psi.ZigStringLiteral
 import io.github.fncontroloption.zig.psi.ZigTestDecl
 import io.github.fncontroloption.zig.psi.ZigTokenTypes
 import io.github.fncontroloption.zig.psi.ZigVarDecl
 import io.github.fncontroloption.zig.psi.ZigVarDeclProto
+import io.github.fncontroloption.zig.psi.createZigIdentifierToken
+import io.github.fncontroloption.zig.psi.createZigStringLiteral
 
 class ZigReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
@@ -62,29 +65,21 @@ class ZigReferenceContributor : PsiReferenceContributor() {
 
 object ZigIdentifierReferenceProvider : PsiReferenceProvider() {
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
-        return arrayOf(ZigIdentifierReference(element))
+        val identifier = element as ZigIdentifier
+        return arrayOf(ZigIdentifierReference(identifier))
     }
 }
 
-class ZigIdentifierReference(element: PsiElement) :
-    PsiReferenceBase<PsiElement>(element, TextRange(0, element.textLength), true) {
+class ZigIdentifierReference(element: ZigIdentifier) :
+    PsiReferenceBase<ZigIdentifier>(element, TextRange(0, element.textLength), true) {
 
-    override fun resolve(): PsiElement? {
-        val name = myElement.text
-        var parent = myElement.parent
-        while (parent != null) {
-            val target = when (parent) {
-                is ZigContainerBody -> parent.containerMembers[name]
-                is ZigFnDecl -> parent.fnProto.fnParams?.fnParamDecls[name]
-                is ZigBlock -> parent.varDeclProtos[name]
-                else -> null
-            }
-            if (target != null && target !is ZigContainerField) {
-                return target
-            }
-            parent = parent.parent
-        }
-        return null
+    override fun resolve() = resolveIdentifierReference(myElement)
+
+    override fun handleElementRename(newElementName: String): PsiElement? {
+        val oldToken = myElement.identifierToken ?: throw IncorrectOperationException()
+        val newToken = createZigIdentifierToken(myElement.project, newElementName)
+        oldToken.replace(newToken)
+        return myElement
     }
 }
 
@@ -99,12 +94,17 @@ object ZigTestDeclReferenceProvider : PsiReferenceProvider() {
     }
 }
 
-class ZigTestReference(element: PsiElement, val name: PsiElement) :
-    PsiReferenceBase<PsiElement>(element, name.textRangeInParent, true) {
+class ZigTestReference(element: ZigTestDecl, val name: PsiElement) :
+    PsiReferenceBase<ZigTestDecl>(element, name.textRangeInParent, true) {
 
-    private val ref = ZigIdentifierReference(name)
+    override fun resolve() = resolveIdentifierReference(name)
 
-    override fun resolve() = ref.resolve()
+    override fun handleElementRename(newElementName: String): PsiElement? {
+        val oldToken = myElement.testName ?: throw IncorrectOperationException()
+        val newToken = createZigIdentifierToken(myElement.project, newElementName)
+        oldToken.replace(newToken)
+        return myElement
+    }
 }
 
 object ZigFieldAccessReferenceProvider : PsiReferenceProvider() {
@@ -115,14 +115,21 @@ object ZigFieldAccessReferenceProvider : PsiReferenceProvider() {
     }
 }
 
-class ZigFieldAccessReference(access: ZigFieldAccess, val name: PsiElement) :
-    PsiPolyVariantReferenceBase<ZigFieldAccess>(access, name.textRangeInParent, true) {
+class ZigFieldAccessReference(element: ZigFieldAccess, val name: PsiElement) :
+    PsiPolyVariantReferenceBase<ZigFieldAccess>(element, name.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
         val lhs = myElement.lhs ?: return emptyArray()
         val results = mutableListOf<ResolveResult>()
         resolveMember(lhs, name.text, results)
         return results.toTypedArray()
+    }
+
+    override fun handleElementRename(newElementName: String): PsiElement? {
+        val oldToken = myElement.fieldName ?: throw IncorrectOperationException()
+        val newToken = createZigIdentifierToken(myElement.project, newElementName)
+        oldToken.replace(newToken)
+        return myElement
     }
 }
 
@@ -134,22 +141,14 @@ object ZigBuiltinCallReferenceProvider : PsiReferenceProvider() {
             return arrayOf(ZigThisReference(builtinCall))
         }
         if (builtin.textMatches("@import")) {
-            val callArgs = builtinCall.builtinCallArgs ?: return emptyArray()
-            var child = callArgs.firstChild ?: return emptyArray()
-            if (child.elementType !== ZigTokenTypes.L_PAREN) {
-                return emptyArray()
-            }
-            child = child.nextSibling ?: return emptyArray()
-            if (child.elementType === ZigElementTypes.STRING_LITERAL) {
-                return arrayOf(ZigImportReference(builtinCall, child))
-            }
+            return arrayOf(ZigImportReference(builtinCall))
         }
         return emptyArray()
     }
 }
 
-class ZigThisReference(element: PsiElement) :
-    PsiReferenceBase<PsiElement>(element, TextRange(0, element.textLength), true) {
+class ZigThisReference(element: ZigBuiltinCall) :
+    PsiReferenceBase<ZigBuiltinCall>(element, TextRange(0, element.textLength), true) {
 
     override fun resolve(): PsiElement? {
         val containerDecl = myElement.findParentOfType<ZigContainerDecl>()
@@ -157,12 +156,11 @@ class ZigThisReference(element: PsiElement) :
     }
 }
 
-class ZigImportReference(element: PsiElement, val arg: PsiElement) :
-    PsiReferenceBase<PsiElement>(element, TextRange(0, element.textLength), true) {
+class ZigImportReference(element: ZigBuiltinCall) :
+    PsiReferenceBase<ZigBuiltinCall>(element, TextRange(0, element.textLength), true) {
 
     override fun resolve(): PsiElement? {
-        // TODO: unescape string literal
-        val text = arg.text.substring(1, arg.textLength - 1)
+        val text = importArg?.literalValue ?: return null
         if (!text.endsWith(".zig") && !text.endsWith(".zon")) {
             when (text) {
                 "std" -> {
@@ -191,6 +189,35 @@ class ZigImportReference(element: PsiElement, val arg: PsiElement) :
         }
         return directory.findFile(fileName)
     }
+
+    override fun handleElementRename(newElementName: String): PsiElement? {
+        val oldArg = importArg ?: throw IncorrectOperationException()
+        val oldValue = oldArg.literalValue
+        val oldParts = oldValue.split("/")
+        if (oldParts.isEmpty()) {
+            throw IncorrectOperationException()
+        }
+        val newValue = buildString {
+            for (i in 0 until oldParts.lastIndex) {
+                append(oldParts[i])
+                append('/')
+            }
+            append(newElementName)
+        }
+        val newArg = createZigStringLiteral(myElement.project, newValue)
+        oldArg.replace(newArg)
+        return myElement
+    }
+
+    private val importArg: ZigStringLiteral?
+        get() {
+            val callArgs = myElement.builtinCallArgs ?: return null
+            val child = callArgs.firstChild ?: return null
+            if (child.elementType !== ZigTokenTypes.L_PAREN) {
+                return null
+            }
+            return child.nextSibling as? ZigStringLiteral
+        }
 }
 
 object ZigEnumLiteralReferenceProvider : PsiReferenceProvider() {
@@ -201,8 +228,8 @@ object ZigEnumLiteralReferenceProvider : PsiReferenceProvider() {
     }
 }
 
-class ZigEnumLiteralReference(element: PsiElement, val name: PsiElement) :
-    PsiPolyVariantReferenceBase<PsiElement>(element, name.textRangeInParent, true) {
+class ZigEnumLiteralReference(element: ZigEnumLiteral, val name: PsiElement) :
+    PsiPolyVariantReferenceBase<ZigEnumLiteral>(element, name.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
         var parent = myElement.parent
@@ -228,6 +255,13 @@ class ZigEnumLiteralReference(element: PsiElement, val name: PsiElement) :
         val results = mutableListOf<ResolveResult>()
         resolveMember(typeExpr, name.text, results)
         return results.toTypedArray()
+    }
+
+    override fun handleElementRename(newElementName: String): PsiElement? {
+        val oldToken = myElement.fieldName ?: throw IncorrectOperationException()
+        val newToken = createZigIdentifierToken(myElement.project, newElementName)
+        oldToken.replace(newToken)
+        return myElement
     }
 }
 
@@ -284,4 +318,22 @@ private fun resolveMember(lhs: PsiElement, name: String, results: MutableList<Re
             }
         }
     }
+}
+
+fun resolveIdentifierReference(element: PsiElement): PsiElement? {
+    val name = element.text
+    var parent = element.parent
+    while (parent != null) {
+        val target = when (parent) {
+            is ZigContainerBody -> parent.containerMembers[name]
+            is ZigFnDecl -> parent.fnProto.fnParams?.fnParamDecls[name]
+            is ZigBlock -> parent.varDeclProtos[name]
+            else -> null
+        }
+        if (target != null && target !is ZigContainerField) {
+            return target
+        }
+        parent = parent.parent
+    }
+    return null
 }

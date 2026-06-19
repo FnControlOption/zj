@@ -129,3 +129,7 @@ const Foo4 = struct {
     foo: Foo3 = .a,
     foo: Foo3 = .c(),
 };
+const foo5 = bar;
+const foo6 = foo5;
+fn foo7() Foo {}
+test foo7 {}

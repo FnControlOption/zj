@@ -1,17 +1,22 @@
 package io.github.fncontroloption.zig.psi
 
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.extapi.psi.ASTWrapperPsiElement
 import com.intellij.extapi.psi.PsiFileBase
 import com.intellij.lang.ASTNode
 import com.intellij.openapi.fileTypes.FileType
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NlsSafe
 import com.intellij.psi.FileViewProvider
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiReference
 import com.intellij.psi.impl.source.resolve.reference.ReferenceProvidersRegistry
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
+import com.intellij.util.FileContentUtil
 import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigLanguage
@@ -122,7 +127,10 @@ class ZigBuiltinCall(node: ASTNode) : ZigPsiElement(node) {
         get() = findChildByClass(ZigCallArgs::class.java)
 }
 
-class ZigIdentifier(node: ASTNode) : ZigPsiElement(node)
+class ZigIdentifier(node: ASTNode) : ZigPsiElement(node) {
+    val identifierToken: PsiElement?
+        get() = findChildByType(ZigTokenTypes.IDENTIFIER)
+}
 
 class ZigTestDecl(node: ASTNode) : ZigPsiElement(node) {
     val testName: PsiElement?
@@ -187,6 +195,12 @@ class ZigPtrType(node: ASTNode) : ZigPsiElement(node) {
 
 class ZigCall(node: ASTNode) : ZigPsiElement(node)
 
+class ZigStringLiteral(node: ASTNode) : ZigPsiElement(node) {
+    // TODO: unescape string literal
+    val literalValue: String
+        get() = text.substring(1, textLength - 1)
+}
+
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {
         return findChildByType(ZigTokenTypes.IDENTIFIER)
@@ -197,7 +211,10 @@ sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdenti
     }
 
     override fun setName(name: @NlsSafe String): PsiElement? {
-        throw IncorrectOperationException()
+        val oldIdent = nameIdentifier ?: throw IncorrectOperationException()
+        val newIdent = createZigIdentifierToken(project, name)
+        oldIdent.replace(newIdent)
+        return this
     }
 
     override fun getTextOffset(): Int {
@@ -306,4 +323,29 @@ class ZigFnParamDecl(node: ASTNode) : ZigNamedElement(node) {
 class ZigContainerField(node: ASTNode) : ZigNamedElement(node) {
     val containerFieldTypeExpr: ZigTypeExpr?
         get() = findChildByClass(ZigTypeExpr::class.java)
+}
+
+fun createZigFile(project: Project, text: String): ZigFile {
+    val fileFactory = PsiFileFactory.getInstance(project)
+    val file = fileFactory.createFileFromText("dummy.zig",ZigLanguage.INSTANCE, text)
+    return file as ZigFile
+}
+
+fun createZigIdentifier(project: Project, name: String): ZigIdentifier {
+    val file = createZigFile(project, "const dummy = $name;")
+    val varDecl = file.firstChild as ZigVarDecl
+    return varDecl.varDeclInitExpr?.expr as ZigIdentifier
+}
+
+fun createZigIdentifierToken(project: Project, name: String): PsiElement {
+    val element = createZigIdentifier(project, name).firstChild
+    assert(element.elementType == ZigTokenTypes.IDENTIFIER)
+    return element
+}
+
+fun createZigStringLiteral(project: Project, value: String): ZigStringLiteral {
+    // TODO: escape string literal
+    val file = createZigFile(project, "const dummy = \"$value\";")
+    val varDecl = file.firstChild as ZigVarDecl
+    return varDecl.varDeclInitExpr?.expr as ZigStringLiteral
 }
