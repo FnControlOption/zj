@@ -95,6 +95,7 @@ public interface ZigElementTypes {
     IElementType EXPR_STATEMENT = new ZigElementType("EXPR_STATEMENT");
     IElementType DEFER = new ZigElementType("DEFER");
     IElementType ERRDEFER = new ZigElementType("ERRDEFER");
+    IElementType LABELED_STATEMENT = new ZigElementType("LABELED_STATEMENT");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

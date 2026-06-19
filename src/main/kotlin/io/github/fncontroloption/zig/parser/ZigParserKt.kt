@@ -748,16 +748,15 @@ class ZigParserKt : PsiParser {
     }
 
     private fun tryStatement(builder: PsiBuilder, isBlockLevel: Boolean): PsiBuilder.Marker? {
-        val statement = builder.mark()
         if (expect(builder, ZigTokenTypes.KEYWORD_COMPTIME)) {
             // TODO
-            statement.rollbackTo()
             return null
         }
         when (builder.tokenType) {
             // TODO
             ZigTokenTypes.KEYWORD_DEFER -> {
                 if (isBlockLevel) {
+                    val statement = builder.mark()
                     builder.advanceLexer()
                     parseBlockExprStatement(builder)
                     statement.done(ZigElementTypes.DEFER)
@@ -766,6 +765,7 @@ class ZigParserKt : PsiParser {
             }
             ZigTokenTypes.KEYWORD_ERRDEFER -> {
                 if (isBlockLevel) {
+                    val statement = builder.mark()
                     builder.advanceLexer()
                     parseBlockExprStatement(builder)
                     statement.done(ZigElementTypes.ERRDEFER)
@@ -774,15 +774,38 @@ class ZigParserKt : PsiParser {
             }
             // TODO
         }
-        // TODO
+        val labeledStatement = parseLabeledStatement(builder)
+        if (labeledStatement != null) {
+            return labeledStatement
+        }
         if (isBlockLevel) {
-            statement.rollbackTo()
             return tryVarDeclExprStatement(builder)
         } else {
             // TODO
-            statement.rollbackTo()
             return null
         }
+    }
+
+    private fun parseLabeledStatement(builder: PsiBuilder): PsiBuilder.Marker? {
+        val marker = builder.mark()
+        val hasLabel = expect(builder, ZigTokenTypes.IDENTIFIER, ZigTokenTypes.COLON)
+        val statement = parseBlock(builder) ?: parseLoopStatement(builder) ?: parseSwitchExpr(builder)
+        if (statement != null) {
+            if (hasLabel) {
+                marker.done(ZigElementTypes.LABELED_STATEMENT)
+                return marker
+            } else {
+                marker.drop()
+                return statement
+            }
+        }
+        if (!hasLabel) {
+            marker.rollbackTo()
+            return null
+        }
+        // TODO: mark error
+        marker.rollbackTo()
+        return null
     }
 
     private fun tryVarDeclExprStatement(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -907,6 +930,16 @@ class ZigParserKt : PsiParser {
     private fun finishAssignExpr(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker {
         // TODO
         return lhs
+    }
+
+    private fun parseLoopStatement(builder: PsiBuilder): PsiBuilder.Marker? {
+        // TODO
+        return null
+    }
+
+    private fun parseSwitchExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+        // TODO
+        return null
     }
 
     private fun parseUntil(builder: PsiBuilder, terminator: IElementType) {

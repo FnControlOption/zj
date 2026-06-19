@@ -114,3 +114,7 @@ test {
 }
 comptime {}
 const foo = bar: {};
+test {
+    {}
+    foo: {}
+}
