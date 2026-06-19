@@ -51,6 +51,7 @@ class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLan
     override var cachedMembers: Map<String, ZigNamedElement>? = null
 
     override fun subtreeChanged() {
+        super.subtreeChanged()
         cachedMembers = null
     }
 
@@ -92,6 +93,7 @@ class ZigBlock(node: ASTNode) : ZigPsiElement(node) {
         }
 
     override fun subtreeChanged() {
+        super.subtreeChanged()
         cachedVarDeclProtos = null
     }
 }
@@ -105,6 +107,7 @@ class ZigContainerDeclBody(node: ASTNode) : ZigPsiElement(node), ZigContainerBod
     override var cachedMembers: Map<String, ZigNamedElement>? = null
 
     override fun subtreeChanged() {
+        super.subtreeChanged()
         cachedMembers = null
     }
 }
@@ -281,6 +284,7 @@ class ZigFnParams(node: ASTNode) : ZigPsiElement(node) {
         }
 
     override fun subtreeChanged() {
+        super.subtreeChanged()
         cachedFnParamDecls = null
     }
 }
