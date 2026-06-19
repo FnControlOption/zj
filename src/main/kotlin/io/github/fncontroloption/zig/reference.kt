@@ -204,28 +204,30 @@ class ZigThisReference(element: PsiElement) :
     }
 }
 
-class ZigImportReference(element: PsiElement, arg: PsiElement) :
+class ZigImportReference(element: PsiElement, val arg: PsiElement) :
     PsiReferenceBase<PsiElement>(element, TextRange(0, element.textLength), true) {
 
-    // TODO: unescape string literal
-    val parts = arg.text.substring(1, arg.text.length - 1).split("/")
-
     override fun resolve(): PsiElement? {
+        // TODO: unescape string literal
+        val text = arg.text.substring(1, arg.textLength - 1)
+        if (!text.endsWith(".zig") && !text.endsWith(".zon")) {
+            when (text) {
+                "std" -> {
+                    val projectService = myElement.project.getService(ZigProjectService::class.java)
+                    return projectService.stdFile
+                }
+                "builtin" -> {
+                    val projectService = myElement.project.getService(ZigProjectService::class.java)
+                    return projectService.builtinFile
+                }
+                else -> {
+                    // TODO: resolve imported modules
+                    return null
+                }
+            }
+        }
+        val parts = text.split("/")
         val fileName = parts.lastOrNull() ?: return null
-        when (fileName) {
-            "std" -> {
-                val projectService = myElement.project.getService(ZigProjectService::class.java)
-                return projectService.stdFile
-            }
-            "builtin" -> {
-                val projectService = myElement.project.getService(ZigProjectService::class.java)
-                return projectService.builtinFile
-            }
-        }
-        if (!fileName.endsWith(".zig")) {
-            // TODO: resolve imported modules
-            return null
-        }
         var directory = myElement.containingFile?.containingDirectory ?: return null
         parts.subList(0, parts.size - 1).forEach { dirName ->
             if (dirName == "..") {
