@@ -345,8 +345,17 @@ class ZigParserKt : PsiParser {
         if (expect(builder, ZigTokenTypes.EQUAL)) {
             parseInitExpr(builder, ZigTokenSets.COMMA_BRACE)
         }
-        expect(builder, ZigTokenTypes.COMMA)
         field.done(ZigElementTypes.CONTAINER_FIELD)
+        if (!expect(builder, ZigTokenTypes.COMMA)) {
+            val terminator = when (enclosure) {
+                ZigParserDefinition.FILE -> null
+                ZigElementTypes.CONTAINER_DECL_BODY -> ZigTokenTypes.R_BRACE
+                else -> throw IllegalStateException()
+            }
+            if (builder.tokenType !== terminator) {
+                // TODO: mark error
+            }
+        }
         return field
     }
 
