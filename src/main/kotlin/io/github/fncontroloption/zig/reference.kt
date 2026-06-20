@@ -17,31 +17,7 @@ import com.intellij.psi.util.elementType
 import com.intellij.psi.util.findParentOfType
 import com.intellij.util.IncorrectOperationException
 import com.intellij.util.ProcessingContext
-import io.github.fncontroloption.zig.psi.ZigBlock
-import io.github.fncontroloption.zig.psi.ZigBuiltinCall
-import io.github.fncontroloption.zig.psi.ZigCall
-import io.github.fncontroloption.zig.psi.ZigCallArgs
-import io.github.fncontroloption.zig.psi.ZigContainerBody
-import io.github.fncontroloption.zig.psi.ZigContainerDecl
-import io.github.fncontroloption.zig.psi.ZigContainerField
-import io.github.fncontroloption.zig.psi.ZigEnumLiteral
-import io.github.fncontroloption.zig.psi.ZigFieldAccess
-import io.github.fncontroloption.zig.psi.ZigFile
-import io.github.fncontroloption.zig.psi.ZigFnDecl
-import io.github.fncontroloption.zig.psi.ZigFnParamDecl
-import io.github.fncontroloption.zig.psi.ZigFnProto
-import io.github.fncontroloption.zig.psi.ZigIdentifier
-import io.github.fncontroloption.zig.psi.ZigInitExpr
-import io.github.fncontroloption.zig.psi.ZigPsiElement
-import io.github.fncontroloption.zig.psi.ZigPtrType
-import io.github.fncontroloption.zig.psi.ZigReturn
-import io.github.fncontroloption.zig.psi.ZigStringLiteral
-import io.github.fncontroloption.zig.psi.ZigTestDecl
-import io.github.fncontroloption.zig.psi.ZigTokenTypes
-import io.github.fncontroloption.zig.psi.ZigVarDecl
-import io.github.fncontroloption.zig.psi.ZigVarDeclProto
-import io.github.fncontroloption.zig.psi.createZigIdentifierToken
-import io.github.fncontroloption.zig.psi.createZigStringLiteral
+import io.github.fncontroloption.zig.psi.*
 
 class ZigReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
@@ -64,6 +40,10 @@ class ZigReferenceContributor : PsiReferenceContributor() {
         registrar.registerReferenceProvider(
             PlatformPatterns.psiElement(ZigEnumLiteral::class.java),
             ZigEnumLiteralReferenceProvider,
+        )
+        registrar.registerReferenceProvider(
+            PlatformPatterns.psiElement(ZigInitListEntry::class.java),
+            ZigInitListEntryReferenceProvider,
         )
     }
 }
@@ -255,26 +235,42 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val name: PsiElement) :
     PsiPolyVariantReferenceBase<ZigEnumLiteral>(element, name.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
-        var parent = myElement.parent
-        if (parent is ZigCall) {
-            parent = parent.parent
-        }
-        val typeExpr = when (parent) {
-            is ZigInitExpr -> {
-                parent = parent.parent
-                when (parent) {
-                    is ZigVarDecl -> parent.varDeclProto.declTypeExpr?.expr
-                    is ZigContainerField -> parent.containerFieldTypeExpr?.expr
-                    else -> return emptyArray()
-                }
-            }
-            is ZigCallArgs -> return emptyArray() // TODO
-            else -> return emptyArray()
+        val typeExpr = resolveInferredTypeExpr(myElement) ?: return emptyArray()
+        val results = mutableListOf<ResolveResult>()
+        resolveMember(typeExpr, name.text, mutableSetOf(), results)
+        return results.toTypedArray()
+    }
+
+    override fun handleElementRename(newElementName: String): PsiElement? {
+        val oldToken = myElement.fieldName ?: throw IncorrectOperationException()
+        val newToken = createZigIdentifierToken(myElement.project, newElementName)
+        oldToken.replace(newToken)
+        return myElement
+    }
+}
+
+object ZigInitListEntryReferenceProvider : PsiReferenceProvider() {
+    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
+        val entry = element as ZigInitListEntry
+        val name = entry.fieldName ?: return emptyArray()
+        return arrayOf(ZigInitListEntryReference(entry, name))
+    }
+}
+
+class ZigInitListEntryReference(element: ZigInitListEntry, val name: PsiElement) :
+    PsiPolyVariantReferenceBase<ZigInitListEntry>(element, name.textRangeInParent, true) {
+
+    override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
+        val initList = myElement.parent as? ZigInitList ?: return emptyArray()
+        val arrayInit = initList.parent as? ZigArrayInit ?: return emptyArray()
+        val typeExpr = if (arrayInit.isTypeInferred()) {
+            resolveInferredTypeExpr(arrayInit)
+        } else {
+            arrayInit.initTypeExpr?.expr
         }
         if (typeExpr == null) {
             return emptyArray()
         }
-        // TODO: reduce optional/pointer/error union to base type
         val results = mutableListOf<ResolveResult>()
         resolveMember(typeExpr, name.text, mutableSetOf(), results)
         return results.toTypedArray()
@@ -409,4 +405,29 @@ fun getConstInitExpr(varDeclProto: ZigVarDeclProto): ZigPsiElement? {
     }
     val varDecl = varDeclProto.parent as? ZigVarDecl ?: return null
     return varDecl.varDeclInitExpr?.expr
+}
+
+fun resolveInferredTypeExpr(element: PsiElement): ZigPsiElement? {
+    var parent = element.parent
+    if (element is ZigEnumLiteral && parent is ZigCall) {
+        parent = parent.parent
+    }
+    val typeExpr = when (parent) {
+        is ZigInitExpr -> {
+            parent = parent.parent
+            when (parent) {
+                is ZigVarDecl -> parent.varDeclProto.declTypeExpr?.expr
+                is ZigContainerField -> parent.containerFieldTypeExpr?.expr
+                else -> return null
+            }
+        }
+        is ZigCallArgs -> return null // TODO
+        is ZigReturn -> return null // TODO
+        else -> return null
+    }
+    if (typeExpr == null) {
+        return null
+    }
+    // TODO: reduce optional/pointer/error union to base type
+    return typeExpr
 }

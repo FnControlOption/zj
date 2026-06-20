@@ -170,6 +170,15 @@ public interface ZigElementTypes {
             if (type == RETURN) {
                 return new ZigReturn(node);
             }
+            if (type == ARRAY_INIT) {
+                return new ZigArrayInit(node);
+            }
+            if (type == INIT_LIST) {
+                return new ZigInitList(node);
+            }
+            if (type == INIT_LIST_ENTRY) {
+                return new ZigInitListEntry(node);
+            }
             return new ZigPsiElement(node); // TODO
         }
     }

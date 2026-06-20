@@ -235,6 +235,26 @@ class ZigReturn(node: ASTNode) : ZigPsiElement(node) {
         get() = findChildByClass(ZigPsiElement::class.java)
 }
 
+class ZigArrayInit(node: ASTNode) : ZigPsiElement(node) {
+    val initTypeExpr: ZigTypeExpr?
+        get() = findChildByClass(ZigTypeExpr::class.java)
+
+    val initList: ZigInitList?
+        get() = findChildByClass(ZigInitList::class.java)
+
+    fun isTypeInferred() = findChildByType<PsiElement?>(ZigTokenTypes.PERIOD) != null
+}
+
+class ZigInitList(node: ASTNode) : ZigPsiElement(node)
+
+class ZigInitListEntry(node: ASTNode) : ZigPsiElement(node) {
+    val fieldName: PsiElement?
+        get() = findChildByType(ZigTokenTypes.IDENTIFIER)
+
+    val expr: ZigPsiElement?
+        get() = findChildByClass(ZigPsiElement::class.java)
+}
+
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {
         return findChildByType(ZigTokenTypes.IDENTIFIER)

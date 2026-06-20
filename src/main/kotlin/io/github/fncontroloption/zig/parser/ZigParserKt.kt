@@ -783,7 +783,9 @@ class ZigParserKt : PsiParser {
         if (initList == null) {
             return lhs
         }
-        val init = lhs.precede()
+        val typeExpr = lhs.precede()
+        typeExpr.doneBefore(ZigElementTypes.TYPE_EXPR, initList)
+        val init = typeExpr.precede()
         init.done(ZigElementTypes.ARRAY_INIT)
         return init
     }
