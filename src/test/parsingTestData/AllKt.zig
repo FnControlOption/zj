@@ -139,3 +139,14 @@ const foo = .{ bar, baz };
 const foo = .{ .bar = baz };
 const foo = '\\';
 const foo = "\\";
+const Foo8 = struct {
+    foo: Foo,
+};
+fn foo8() Foo8 {}
+const foo = foo8().foo;
+fn Foo9() type {
+    return struct {
+        const foo = bar;
+    };
+}
+const foo = Foo9().foo;

@@ -162,7 +162,7 @@ class ZigTestDecl(node: ASTNode) : ZigPsiElement(node), ZigStructureElement {
 
 class ZigFieldAccess(node: ASTNode) : ZigPsiElement(node) {
     val lhs: ZigPsiElement?
-        get() = firstChild as? ZigPsiElement
+        get() = findChildByClass(ZigPsiElement::class.java)
 
     val fieldName: PsiElement?
         get() = findChildByType(ZigTokenTypes.IDENTIFIER)
@@ -175,12 +175,12 @@ class ZigEnumLiteral(node: ASTNode) : ZigPsiElement(node) {
 
 class ZigTypeExpr(node: ASTNode) : ZigPsiElement(node) {
     val expr: ZigPsiElement?
-        get() = firstChild as? ZigPsiElement
+        get() = findChildByClass(ZigPsiElement::class.java)
 }
 
 class ZigInitExpr(node: ASTNode) : ZigPsiElement(node) {
     val expr: ZigPsiElement?
-        get() = firstChild as? ZigPsiElement
+        get() = findChildByClass(ZigPsiElement::class.java)
 }
 
 class ZigPtrType(node: ASTNode) : ZigPsiElement(node) {
@@ -211,17 +211,28 @@ class ZigPtrType(node: ASTNode) : ZigPsiElement(node) {
         }
 
     val child: ZigPsiElement?
-        get() = lastChild as? ZigPsiElement
+        get() = findChildByClass(ZigPsiElement::class.java)
 
     fun isConst() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_CONST) != null
 }
 
-class ZigCall(node: ASTNode) : ZigPsiElement(node)
+class ZigCall(node: ASTNode) : ZigPsiElement(node) {
+    val lhs: ZigPsiElement?
+        get() = findChildByClass(ZigPsiElement::class.java)
+
+    val callArgs: ZigCallArgs?
+        get() = findChildByClass(ZigCallArgs::class.java)
+}
 
 class ZigStringLiteral(node: ASTNode) : ZigPsiElement(node) {
     // TODO: unescape string literal
     val literalValue: String
         get() = text.substring(1, textLength - 1)
+}
+
+class ZigReturn(node: ASTNode) : ZigPsiElement(node) {
+    val expr: ZigPsiElement?
+        get() = findChildByClass(ZigPsiElement::class.java)
 }
 
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
@@ -316,6 +327,9 @@ class ZigVarDecl(node: ASTNode) : ZigPsiElement(node), ZigStructureElement {
 class ZigFnDecl(node: ASTNode) : ZigPsiElement(node), ZigStructureElement {
     val fnProto: ZigFnProto
         get() = findNotNullChildByClass(ZigFnProto::class.java)
+
+    val fnBody: ZigBlock?
+        get() = findChildByClass(ZigBlock::class.java)
 
     fun isPub() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_PUB) != null
 

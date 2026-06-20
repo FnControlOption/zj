@@ -12,6 +12,7 @@ import com.intellij.psi.PsiReferenceContributor
 import com.intellij.psi.PsiReferenceProvider
 import com.intellij.psi.PsiReferenceRegistrar
 import com.intellij.psi.ResolveResult
+import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.util.elementType
 import com.intellij.psi.util.findParentOfType
 import com.intellij.util.IncorrectOperationException
@@ -28,10 +29,12 @@ import io.github.fncontroloption.zig.psi.ZigFieldAccess
 import io.github.fncontroloption.zig.psi.ZigFile
 import io.github.fncontroloption.zig.psi.ZigFnDecl
 import io.github.fncontroloption.zig.psi.ZigFnParamDecl
+import io.github.fncontroloption.zig.psi.ZigFnProto
 import io.github.fncontroloption.zig.psi.ZigIdentifier
 import io.github.fncontroloption.zig.psi.ZigInitExpr
 import io.github.fncontroloption.zig.psi.ZigPsiElement
 import io.github.fncontroloption.zig.psi.ZigPtrType
+import io.github.fncontroloption.zig.psi.ZigReturn
 import io.github.fncontroloption.zig.psi.ZigStringLiteral
 import io.github.fncontroloption.zig.psi.ZigTestDecl
 import io.github.fncontroloption.zig.psi.ZigTokenTypes
@@ -323,6 +326,26 @@ private fun resolveMember(
             }
             val child = lhs.child ?: return
             resolveMember(child, name, visited, results)
+        }
+        is ZigCall -> {
+            val callLhs = lhs.lhs ?: return
+            forEachReferenceLeaf(callLhs, visited) { target ->
+                val fnProto = target as? ZigFnProto ?: return@forEachReferenceLeaf
+                val returnTypeExpr = fnProto.fnReturnTypeExpr?.expr ?: return@forEachReferenceLeaf
+                if (returnTypeExpr.textMatches("type")) {
+                    val fnDecl = fnProto.parent as? ZigFnDecl ?: return@forEachReferenceLeaf
+                    val fnBody = fnDecl.fnBody ?: return@forEachReferenceLeaf
+                    val psiTraverser = SyntaxTraverser.psiTraverser(fnBody).expand { it !is ZigContainerDecl }
+                    for (elem in psiTraverser) {
+                        if (elem is ZigReturn) {
+                            val returnExpr = elem.expr ?: return@forEachReferenceLeaf
+                            resolveMember(returnExpr, name, visited, results)
+                        }
+                    }
+                } else {
+                    resolveMember(returnTypeExpr, name, visited, results)
+                }
+            }
         }
         else -> {
             visited.remove(lhs)

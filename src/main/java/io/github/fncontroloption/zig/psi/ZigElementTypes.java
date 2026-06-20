@@ -167,6 +167,9 @@ public interface ZigElementTypes {
             if (type == STRING_LITERAL) {
                 return new ZigStringLiteral(node);
             }
+            if (type == RETURN) {
+                return new ZigReturn(node);
+            }
             return new ZigPsiElement(node); // TODO
         }
     }
