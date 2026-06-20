@@ -46,7 +46,7 @@ public class ZigSyntaxHighlighter extends SyntaxHighlighterBase {
     if (ZigTokenSets.KEYWORDS.contains(tokenType)) {
       return KEYWORD_KEYS;
     }
-    if (ZigTokenSets.STRINGS.contains(tokenType)) {
+    if (ZigTokenSets.STRINGS.contains(tokenType) || tokenType.equals(ZigTokenTypes.CHAR_LITERAL)) {
       return STRING_KEYS;
     }
     if (ZigTokenSets.DOC_COMMENTS.contains(tokenType)) {

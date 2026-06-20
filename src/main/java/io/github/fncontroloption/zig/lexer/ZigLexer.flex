@@ -164,7 +164,7 @@ import io.github.fncontroloption.zig.psi.ZigTokenTypes;
   <<EOF>> { yybegin(YYINITIAL); return TokenType.BAD_CHARACTER; }
   ' { yybegin(YYINITIAL); return ZigTokenTypes.CHAR_LITERAL; }
   [^] {}
-  \\' {}
+  \\[^] {}
 }
 
 <STRING> {
@@ -172,7 +172,7 @@ import io.github.fncontroloption.zig.psi.ZigTokenTypes;
   <<EOF>> { yybegin(YYINITIAL); return TokenType.BAD_CHARACTER; }
   \" { yybegin(YYINITIAL); return type; }
   [^] {}
-  \\\" {}
+  \\[^] {}
 }
 
 <MULTILINE_STRING> {

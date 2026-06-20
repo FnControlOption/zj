@@ -137,3 +137,5 @@ const foo = Foo{ bar, baz };
 const foo = Foo{ .bar = baz };
 const foo = .{ bar, baz };
 const foo = .{ .bar = baz };
+const foo = '\\';
+const foo = "\\";
