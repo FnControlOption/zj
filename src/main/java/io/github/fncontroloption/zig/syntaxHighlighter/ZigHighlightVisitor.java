@@ -101,6 +101,22 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                     yield null;
                 }
 
+                if (proto.isConst()) {
+                    var parent = proto.getParent();
+                    if (parent instanceof ZigVarDecl decl) {
+                        var initExpr = decl.getVarDeclInitExpr();
+                        if (initExpr != null) {
+                            var expr = initExpr.getExpr();
+                            if (expr != null) {
+                                var info = createHighlightInfo(expr);
+                                if (info != null && info.type == ZigHighlightInfoTypes.STATIC_METHOD) {
+                                    yield createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD);
+                                }
+                            }
+                        }
+                    }
+                }
+
                 var type = switch (proto.getDeclType()) {
                     case LOCAL_CONST -> ZigHighlightInfoTypes.LOCAL_VARIABLE;
                     case LOCAL_VAR -> ZigHighlightInfoTypes.REASSIGNED_LOCAL_VARIABLE;
