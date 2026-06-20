@@ -2,11 +2,15 @@ package io.github.fncontroloption.zig.psi
 
 import com.intellij.extapi.psi.ASTWrapperPsiElement
 import com.intellij.extapi.psi.PsiFileBase
+import com.intellij.icons.AllIcons
+import com.intellij.ide.projectView.PresentationData
 import com.intellij.lang.ASTNode
+import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NlsSafe
 import com.intellij.psi.FileViewProvider
+import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiNameIdentifierOwner
@@ -14,9 +18,14 @@ import com.intellij.psi.PsiReference
 import com.intellij.psi.impl.source.resolve.reference.ReferenceProvidersRegistry
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
+import com.intellij.ui.RowIcon
 import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigLanguage
+
+interface ZigStructureElement : NavigatablePsiElement {
+    fun isViewable(): Boolean = true
+}
 
 interface ZigContainerBody : PsiElement {
     var cachedMembers: Map<String, ZigNamedElement>?
@@ -100,9 +109,18 @@ class ZigBlock(node: ASTNode) : ZigPsiElement(node) {
     }
 }
 
-class ZigContainerDecl(node: ASTNode) : ZigPsiElement(node) {
+class ZigContainerDecl(node: ASTNode) : ZigPsiElement(node), ZigStructureElement {
     val containerDeclBody: ZigContainerDeclBody?
         get() = findChildByClass(ZigContainerDeclBody::class.java)
+
+    val containerDeclType: PsiElement
+        get() = findNotNullChildByType(ZigTokenSets.CONTAINERS)
+
+    override fun getName(): String? = containerDeclType.text
+
+    override fun getPresentation(): ItemPresentation {
+        return PresentationData(containerDeclType.text, null, AllIcons.Nodes.Type, null)
+    }
 }
 
 class ZigContainerDeclBody(node: ASTNode) : ZigPsiElement(node), ZigContainerBody {
@@ -129,9 +147,17 @@ class ZigIdentifier(node: ASTNode) : ZigPsiElement(node) {
         get() = findChildByType(ZigTokenTypes.IDENTIFIER)
 }
 
-class ZigTestDecl(node: ASTNode) : ZigPsiElement(node) {
+class ZigTestDecl(node: ASTNode) : ZigPsiElement(node), ZigStructureElement {
     val testName: PsiElement?
         get() = findChildByType(ZigTokenSets.TEST_NAME)
+
+    override fun getName() = testName?.text
+
+    override fun getPresentation(): ItemPresentation {
+        val name = testName?.text
+        val text = if (name != null) "test $name" else "test"
+        return PresentationData(text, null, AllIcons.Nodes.Test, null)
+    }
 }
 
 class ZigFieldAccess(node: ASTNode) : ZigPsiElement(node) {
@@ -229,12 +255,8 @@ class ZigVarDeclProto(node: ASTNode) : ZigNamedElement(node) {
 
     val declType: Type
         get() {
-            val scope = PsiTreeUtil.findFirstParent(this, true) {
-                it is ZigBlock || it is ZigContainerDeclBody
-            }
-
-            return when (scope) {
-                is ZigBlock -> when {
+            return when {
+                isLocal() -> when {
                     isConst() -> Type.LOCAL_CONST
                     else -> Type.LOCAL_VAR
                 }
@@ -248,36 +270,104 @@ class ZigVarDeclProto(node: ASTNode) : ZigNamedElement(node) {
     val declTypeExpr: ZigTypeExpr?
         get() = findChildByClass(ZigTypeExpr::class.java)
 
+    val scope: PsiElement?
+        get() = PsiTreeUtil.findFirstParent(this, true) {
+            it is ZigBlock || it is ZigContainerDeclBody
+        }
+
+    fun isLocal() = scope is ZigBlock
+
+    fun isGlobal() = when (scope) {
+        null, is ZigContainerDeclBody -> true
+        else -> false
+    }
 
     fun isVar() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_VAR) != null
 
     fun isConst() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_CONST) != null
 }
 
-class ZigVarDecl(node: ASTNode) : ZigPsiElement(node) {
+class ZigVarDecl(node: ASTNode) : ZigPsiElement(node), ZigStructureElement {
     val varDeclProto: ZigVarDeclProto
         get() = findNotNullChildByClass(ZigVarDeclProto::class.java)
 
     val varDeclInitExpr: ZigInitExpr?
         get() = findChildByClass(ZigInitExpr::class.java)
 
+    fun isPub() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_PUB) != null
+
     override fun getName() = varDeclProto.name
 
     override fun getTextOffset() = varDeclProto.textOffset
+
+    override fun isViewable() = varDeclProto.isGlobal()
+
+    override fun getPresentation(): ItemPresentation {
+        val name = varDeclProto.name
+        val type = varDeclProto.declTypeExpr?.text
+        val text = if (name != null && type != null) "$name: $type" else name ?: type
+        val mutability = if (varDeclProto.isConst()) AllIcons.Nodes.Constant else AllIcons.Nodes.Variable
+        val visibility = if (isPub()) AllIcons.Nodes.Public else AllIcons.Nodes.Private
+        val rowIcon = RowIcon(mutability, visibility)
+        return PresentationData(text, null, rowIcon, null)
+    }
 }
 
-class ZigFnDecl(node: ASTNode) : ZigPsiElement(node) {
+class ZigFnDecl(node: ASTNode) : ZigPsiElement(node), ZigStructureElement {
     val fnProto: ZigFnProto
         get() = findNotNullChildByClass(ZigFnProto::class.java)
+
+    fun isPub() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_PUB) != null
 
     override fun getName() = fnProto.name
 
     override fun getTextOffset() = fnProto.textOffset
+
+    override fun getPresentation(): ItemPresentation {
+        val name = fnProto.name
+        val paramDecls = fnProto.fnParams?.fnParamDecls?.values
+        val returnType = fnProto.fnReturnTypeExpr?.text
+        val text = buildString {
+            if (name != null) {
+                append(name)
+            }
+            append('(')
+            if (paramDecls != null) {
+                var needComma = false
+                for (param in paramDecls) {
+                    if (needComma) {
+                        append(", ")
+                    }
+                    val paramType = param.fnParamTypeExpr?.text
+                    if (paramType != null) {
+                        append(paramType)
+                    }
+                    needComma = true
+                }
+            }
+            append(')')
+            append(' ')
+            if (fnProto.hasInferredError()) {
+                append('!')
+            }
+            if (returnType != null) {
+                append(returnType)
+            }
+        }
+        val visibility = if (isPub()) AllIcons.Nodes.Public else AllIcons.Nodes.Private
+        val rowIcon = RowIcon(AllIcons.Nodes.Function, visibility)
+        return PresentationData(text, null, rowIcon, null)
+    }
 }
 
 class ZigFnProto(node: ASTNode) : ZigNamedElement(node) {
     val fnParams: ZigFnParams?
         get() = findChildByClass(ZigFnParams::class.java)
+
+    val fnReturnTypeExpr: ZigTypeExpr?
+        get() = findChildByClass(ZigTypeExpr::class.java)
+
+    fun hasInferredError() = findChildByType<PsiElement?>(ZigTokenTypes.BANG) != null
 }
 
 class ZigFnParams(node: ASTNode) : ZigPsiElement(node) {
@@ -317,9 +407,16 @@ class ZigFnParamDecl(node: ASTNode) : ZigNamedElement(node) {
     fun isAnytype() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_ANYTYPE) != null
 }
 
-class ZigContainerField(node: ASTNode) : ZigNamedElement(node) {
+class ZigContainerField(node: ASTNode) : ZigNamedElement(node), ZigStructureElement {
     val containerFieldTypeExpr: ZigTypeExpr?
         get() = findChildByClass(ZigTypeExpr::class.java)
+
+    override fun getPresentation(): ItemPresentation {
+        val name = name
+        val type = containerFieldTypeExpr?.text
+        val text = if (name != null && type != null) "$name: $type" else name ?: type
+        return PresentationData(text, null, AllIcons.Nodes.Field, null)
+    }
 }
 
 fun createZigFile(project: Project, text: String): ZigFile {

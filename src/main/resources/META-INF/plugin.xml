@@ -46,6 +46,8 @@
     <psi.referenceContributor language="Zig"
                               implementation="io.github.fncontroloption.zig.ZigReferenceContributor"/>
     <lang.foldingBuilder language="Zig" implementationClass="io.github.fncontroloption.zig.ZigFoldingBuilder"/>
+    <lang.psiStructureViewFactory language="Zig"
+                                  implementationClass="io.github.fncontroloption.zig.ZigStructureViewFactory"/>
     <codeStyleSettingsProvider implementation="io.github.fncontroloption.zig.codeStyle.ZigCodeStyleSettingsProvider"/>
     <langCodeStyleSettingsProvider implementation="io.github.fncontroloption.zig.codeStyle.ZigLanguageCodeStyleSettingsProvider"/>
     <lang.commenter language="Zig" implementationClass="io.github.fncontroloption.zig.ZigCommenter"/>
