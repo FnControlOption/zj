@@ -133,3 +133,7 @@ const foo5 = bar;
 const foo6 = foo5;
 fn foo7() Foo {}
 test foo7 {}
+const foo = Foo{ bar, baz };
+const foo = Foo{ .bar = baz };
+const foo = .{ bar, baz };
+const foo = .{ .bar = baz };

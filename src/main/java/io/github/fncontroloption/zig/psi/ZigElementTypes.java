@@ -97,6 +97,9 @@ public interface ZigElementTypes {
     IElementType ERRDEFER = new ZigElementType("ERRDEFER");
     IElementType LABELED_STATEMENT = new ZigElementType("LABELED_STATEMENT");
     IElementType ENUM_LITERAL = new ZigElementType("ENUM_LITERAL");
+    IElementType ARRAY_INIT = new ZigElementType("ARRAY_INIT");
+    IElementType INIT_LIST = new ZigElementType("INIT_LIST");
+    IElementType INIT_LIST_ENTRY = new ZigElementType("INIT_LIST_ENTRY");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

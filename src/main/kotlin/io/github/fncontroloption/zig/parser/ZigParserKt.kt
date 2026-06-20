@@ -571,7 +571,15 @@ class ZigParserKt : PsiParser {
                         marker.done(ZigElementTypes.ENUM_LITERAL)
                         return marker
                     }
-                    ZigTokenTypes.L_BRACE -> return null // TODO
+                    ZigTokenTypes.L_BRACE -> {
+                        val marker = builder.mark()
+                        builder.advanceLexer()
+                        parseBraceEnclosed(builder, null, ZigElementTypes.INIT_LIST) {
+                            parseInitListEntry(builder)
+                        }
+                        marker.done(ZigElementTypes.ARRAY_INIT)
+                        return marker
+                    }
                     else -> return null
                 }
             }
@@ -759,8 +767,31 @@ class ZigParserKt : PsiParser {
     }
 
     private fun tryCurlySuffixExpr(builder: PsiBuilder): PsiBuilder.Marker? {
-        // TODO
-        return tryTypeExpr(builder)
+        val lhs = tryTypeExpr(builder) ?: return null
+        val initList = parseBraceEnclosed(builder, null, ZigElementTypes.INIT_LIST) {
+            parseInitListEntry(builder)
+        }
+        if (initList == null) {
+            return lhs
+        }
+        val init = lhs.precede()
+        init.done(ZigElementTypes.ARRAY_INIT)
+        return init
+    }
+
+    private fun parseInitListEntry(builder: PsiBuilder): PsiBuilder.Marker? {
+        val entry = builder.mark()
+        if (expect(builder, ZigTokenTypes.PERIOD, ZigTokenTypes.IDENTIFIER, ZigTokenTypes.EQUAL)) {
+            tryExpr(builder)
+        } else if (tryExpr(builder) == null) {
+            entry.rollbackTo()
+            return null
+        }
+        if (!expect(builder, ZigTokenTypes.COMMA) && builder.tokenType !== ZigTokenTypes.R_BRACE) {
+            // TODO: mark error
+        }
+        entry.done(ZigElementTypes.INIT_LIST_ENTRY)
+        return entry
     }
 
     private fun tryStatement(builder: PsiBuilder, isBlockLevel: Boolean): PsiBuilder.Marker? {
