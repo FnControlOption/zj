@@ -6,7 +6,7 @@ import com.intellij.psi.tree.IElementType;
 
 public interface ZigElementTypes {
     IElementType CONTAINER_DECL = new ZigElementType("CONTAINER_DECL");
-    IElementType CONTAINER_DECL_ARG = new ZigElementType("CONTAINER_DECL_ARG");
+    IElementType CONTAINER_DECL_TAG = new ZigElementType("CONTAINER_DECL_TAG");
     IElementType CONTAINER_DECL_BODY = new ZigElementType("CONTAINER_DECL_BODY");
     IElementType BLOCK = new ZigElementType("BLOCK");
     IElementType BLOCK_EXPR = new ZigElementType("BLOCK_EXPR");

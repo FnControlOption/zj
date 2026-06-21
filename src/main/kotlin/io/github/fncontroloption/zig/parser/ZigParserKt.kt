@@ -47,13 +47,43 @@ class ZigParserKt : PsiParser {
             return null
         }
         containerStack.addLast(containerToken!!)
-        parseParenEnclosed(builder, null, ZigElementTypes.CONTAINER_DECL_ARG)
+        parseContainerDeclTag(builder)
         parseBraceEnclosed(builder, null, ZigElementTypes.CONTAINER_DECL_BODY) {
             parseContainerMember(builder)
         }
         containerStack.removeLast()
         container.done(ZigElementTypes.CONTAINER_DECL)
         return container
+    }
+
+    private fun parseContainerDeclTag(builder: PsiBuilder): PsiBuilder.Marker? {
+        var expr: PsiBuilder.Marker? = null
+        return parseParenEnclosed(builder, null, ZigElementTypes.CONTAINER_DECL_TAG) {
+            if (expr == null) {
+                when (builder.tokenType) {
+                    ZigTokenTypes.KEYWORD_ENUM -> {
+                        when (builder.lookAhead(1)) {
+                            ZigTokenTypes.L_PAREN -> {
+                                expr = builder.mark()
+                                builder.advanceLexer()
+                                parseContainerDeclTag(builder)
+                                expr!!.drop()
+                            }
+                            ZigTokenTypes.R_PAREN -> {
+                                expr = builder.mark()
+                                builder.advanceLexer()
+                                expr!!.drop()
+                            }
+                            else -> expr = tryExpr(builder)
+                        }
+                    }
+                    else -> expr = tryExpr(builder)
+                }
+                expr
+            } else {
+                null
+            }
+        }
     }
 
     private fun parseBlock(builder: PsiBuilder): PsiBuilder.Marker? {

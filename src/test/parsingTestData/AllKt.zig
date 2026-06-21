@@ -163,3 +163,7 @@ const Foo = enum {
     foo = bar,
     baz,
 };
+const Foo = struct(Bar) {};
+const Foo = enum(Bar) {};
+const Foo = union(enum) {};
+const Foo = union(enum(Bar)) {};

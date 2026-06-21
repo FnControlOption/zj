@@ -25,7 +25,7 @@ private val PAREN_ENCLOSED = TokenSet.create(
     ZigElementTypes.ALIGN,
     ZigElementTypes.CALL_ARGS,
     ZigElementTypes.CALLCONV,
-    ZigElementTypes.CONTAINER_DECL_ARG,
+    ZigElementTypes.CONTAINER_DECL_TAG,
     ZigElementTypes.FN_PARAMS,
     ZigElementTypes.LINKSECTION,
 )
