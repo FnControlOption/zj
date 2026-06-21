@@ -187,6 +187,9 @@ public interface ZigElementTypes {
             if (type == INIT_LIST_ENTRY) {
                 return new ZigInitListEntry(node);
             }
+            if (type == DEREF) {
+                return new ZigDeref(node);
+            }
             return new ZigPsiElement(node); // TODO
         }
     }

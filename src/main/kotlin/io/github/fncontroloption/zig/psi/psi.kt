@@ -255,6 +255,11 @@ class ZigInitListEntry(node: ASTNode) : ZigPsiElement(node) {
         get() = findChildByClass(ZigPsiElement::class.java)
 }
 
+class ZigDeref(node: ASTNode) : ZigPsiElement(node) {
+    val lhs: ZigPsiElement?
+        get() = findChildByClass(ZigPsiElement::class.java)
+}
+
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {
         return findChildByType(ZigTokenTypes.IDENTIFIER)

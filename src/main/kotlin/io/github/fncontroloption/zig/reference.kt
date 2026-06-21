@@ -316,6 +316,10 @@ private fun resolveMember(
             val member = containerBody.containerMembers[name] ?: return
             results.addLast(PsiElementResolveResult(member))
         }
+        is ZigDeref -> {
+            val derefLhs = lhs.lhs ?: return
+            resolveMember(derefLhs, name, visited, results)
+        }
         is ZigPtrType -> {
             if (lhs.size != ZigPtrType.Size.ONE) {
                 return
@@ -388,23 +392,18 @@ fun forEachReferenceLeaf(element: PsiElement, visited: MutableSet<PsiElement>, b
         if (target is ZigVarDeclProto) {
             val typeExpr = target.declTypeExpr?.expr
             if (typeExpr == null) {
-                val initExpr = getConstInitExpr(target)
-                if (initExpr != null) {
-                    forEachReferenceLeaf(initExpr, visited, block)
-                    continue
+                val parent = target.parent
+                if (parent is ZigVarDecl) {
+                    val initExpr = parent.varDeclInitExpr?.expr
+                    if (initExpr != null) {
+                        forEachReferenceLeaf(initExpr, visited, block)
+                        continue
+                    }
                 }
             }
         }
         forEachReferenceLeaf(target, visited, block)
     }
-}
-
-fun getConstInitExpr(varDeclProto: ZigVarDeclProto): ZigPsiElement? {
-    if (varDeclProto.isVar()) {
-        return null
-    }
-    val varDecl = varDeclProto.parent as? ZigVarDecl ?: return null
-    return varDecl.varDeclInitExpr?.expr
 }
 
 fun resolveInferredTypeExpr(element: PsiElement): ZigPsiElement? {
