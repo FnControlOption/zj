@@ -372,7 +372,7 @@ class ZigParserKt : PsiParser {
                     return null
                 }
             }
-            ZigTokenTypes.KEYWORD_ANYFRAME if builder.lookAhead(1) == ZigTokenTypes.ARROW -> {
+            ZigTokenTypes.KEYWORD_ANYFRAME if builder.lookAhead(1) === ZigTokenTypes.ARROW -> {
                 val expr = builder.mark()
                 builder.advanceLexer()
                 builder.advanceLexer()
@@ -487,21 +487,31 @@ class ZigParserKt : PsiParser {
     }
 
     private fun parseSuffixOp(builder: PsiBuilder): IElementType? {
-        val suffixStart = builder.mark()
-        if (expect(builder, ZigTokenTypes.PERIOD)) {
-            if (expect(builder, ZigTokenTypes.QUESTION_MARK)) {
-                suffixStart.drop()
-                return ZigElementTypes.UNWRAP_OPTIONAL
-            } else {
-                if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
-                    // TODO: mark error
+        when (builder.tokenType) {
+            // TODO
+            ZigTokenTypes.PERIOD -> {
+                when (builder.lookAhead(1)) {
+                    ZigTokenTypes.IDENTIFIER -> {
+                        builder.advanceLexer()
+                        builder.advanceLexer()
+                        return ZigElementTypes.FIELD_ACCESS
+                    }
+                    ZigTokenTypes.QUESTION_MARK -> {
+                        builder.advanceLexer()
+                        builder.advanceLexer()
+                        return ZigElementTypes.UNWRAP_OPTIONAL
+                    }
+                    ZigTokenTypes.L_BRACE -> {
+                        return null
+                    }
+                    else -> {
+                        // TODO: mark error
+                        builder.advanceLexer()
+                        return ZigElementTypes.FIELD_ACCESS
+                    }
                 }
-                suffixStart.drop()
-                return ZigElementTypes.FIELD_ACCESS
             }
         }
-        // TODO
-        suffixStart.rollbackTo()
         return null
     }
 
@@ -687,7 +697,7 @@ class ZigParserKt : PsiParser {
                 builder.error("Comparison operators cannot be chained");
             }
             builder.advanceLexer()
-            if (operToken == ZigTokenTypes.KEYWORD_CATCH) {
+            if (operToken === ZigTokenTypes.KEYWORD_CATCH) {
                 // TODO: parsePayload
             }
             if (tryExprPrecedence(builder, info.prec + 1) == null) {
