@@ -132,6 +132,16 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                     yield null;
                 }
 
+                var parent = field.getParent();
+                while (parent != null) {
+                    if (parent instanceof ZigContainerDecl containerDecl) {
+                        if (containerDecl.isEnum()) {
+                            yield createHighlightInfo(identifier, ZigHighlightInfoTypes.CONSTANT);
+                        }
+                    }
+                    parent = parent.getParent();
+                }
+
                 yield createHighlightInfo(identifier, ZigHighlightInfoTypes.INSTANCE_FIELD);
             }
 
@@ -160,7 +170,7 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                     yield null;
                 }
 
-                yield createHighlightInfoFromReference(literal, name);
+                yield createHighlightInfo(name, ZigHighlightInfoTypes.CONSTANT);
             }
 
             case ZigInitListEntry entry -> {

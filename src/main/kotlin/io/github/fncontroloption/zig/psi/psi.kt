@@ -116,6 +116,14 @@ class ZigContainerDecl(node: ASTNode) : ZigPsiElement(node), ZigStructureElement
     val containerDeclType: PsiElement
         get() = findNotNullChildByType(ZigTokenSets.CONTAINERS)
 
+    fun isEnum() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_ENUM) != null
+
+    fun isOpaque() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_OPAQUE) != null
+
+    fun isStruct() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_STRUCT) != null
+
+    fun isUnion() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_UNION) != null
+
     override fun getName(): String? = containerDeclType.text
 
     override fun getPresentation(): ItemPresentation {
