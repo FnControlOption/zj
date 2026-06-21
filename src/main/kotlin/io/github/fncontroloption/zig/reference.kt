@@ -235,9 +235,10 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val name: PsiElement) :
     PsiPolyVariantReferenceBase<ZigEnumLiteral>(element, name.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
-        val typeExpr = resolveInferredTypeExpr(myElement) ?: return emptyArray()
         val results = mutableListOf<ResolveResult>()
-        resolveMember(typeExpr, name.text, mutableSetOf(), results)
+        for (typeExpr in resolveInferredTypeExprs(myElement)) {
+            resolveMember(typeExpr, name.text, mutableSetOf(), results)
+        }
         return results.toTypedArray()
     }
 
@@ -263,16 +264,16 @@ class ZigInitListEntryReference(element: ZigInitListEntry, val name: PsiElement)
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
         val initList = myElement.parent as? ZigInitList ?: return emptyArray()
         val arrayInit = initList.parent as? ZigArrayInit ?: return emptyArray()
-        val typeExpr = if (arrayInit.isTypeInferred()) {
-            resolveInferredTypeExpr(arrayInit)
+        val inferredTypeExprs = if (arrayInit.isTypeInferred()) {
+            resolveInferredTypeExprs(arrayInit)
         } else {
-            arrayInit.initTypeExpr?.expr
-        }
-        if (typeExpr == null) {
-            return emptyArray()
+            val typeExpr = arrayInit.initTypeExpr?.expr ?: return emptyArray()
+            setOf(typeExpr)
         }
         val results = mutableListOf<ResolveResult>()
-        resolveMember(typeExpr, name.text, mutableSetOf(), results)
+        for (typeExpr in inferredTypeExprs) {
+            resolveMember(typeExpr, name.text, mutableSetOf(), results)
+        }
         return results.toTypedArray()
     }
 
@@ -426,27 +427,41 @@ fun forEachReferenceLeaf(element: PsiElement, visited: MutableSet<PsiElement>, b
     }
 }
 
-fun resolveInferredTypeExpr(element: PsiElement): ZigPsiElement? {
+fun resolveInferredTypeExprs(element: PsiElement): Set<ZigPsiElement> {
     var parent = element.parent
     if (element is ZigEnumLiteral && parent is ZigCall) {
         parent = parent.parent
     }
-    val typeExpr = when (parent) {
+    when (parent) {
         is ZigInitExpr -> {
             parent = parent.parent
             when (parent) {
-                is ZigVarDecl -> parent.varDeclProto.declTypeExpr?.expr
-                is ZigContainerField -> parent.containerFieldTypeExpr?.expr
-                else -> return null
+                is ZigVarDecl -> {
+                    val typeExpr = parent.varDeclProto.declTypeExpr?.expr ?: return emptySet()
+                    return setOf(typeExpr)
+                }
+                is ZigContainerField -> {
+                    val typeExpr = parent.containerFieldTypeExpr?.expr ?: return emptySet()
+                    return setOf(typeExpr)
+                }
+                else -> return emptySet()
             }
         }
-        is ZigCallArgs -> return null // TODO
-        is ZigReturn -> return null // TODO
-        else -> return null
+        is ZigInitListEntry -> {
+            return buildSet {
+                for (reference in parent.references) {
+                    val target = reference.resolve() ?: continue
+                    when (target) {
+                        is ZigContainerField -> {
+                            val typeExpr = target.containerFieldTypeExpr?.expr ?: continue
+                            add(typeExpr)
+                        }
+                    }
+                }
+            }
+        }
+        is ZigCallArgs -> return emptySet() // TODO
+        is ZigReturn -> return emptySet() // TODO
+        else -> return emptySet()
     }
-    if (typeExpr == null) {
-        return null
-    }
-    // TODO: reduce optional/pointer/error union to base type
-    return typeExpr
 }
