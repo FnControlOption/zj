@@ -20,16 +20,6 @@ private val BRACE_ENCLOSED = TokenSet.create(
     ZigElementTypes.ERROR_SET_DECL,
 )
 
-private val PAREN_ENCLOSED = TokenSet.create(
-    ZigElementTypes.ADDRSPACE,
-    ZigElementTypes.ALIGN,
-    ZigElementTypes.CALL_ARGS,
-    ZigElementTypes.CALLCONV,
-    ZigElementTypes.CONTAINER_DECL_TAG,
-    ZigElementTypes.FN_PARAMS,
-    ZigElementTypes.LINKSECTION,
-)
-
 private val BLOCKS_COLLAPSED_BY_DEFAULT = TokenSet.create(
     ZigElementTypes.FN_DECL,
     ZigElementTypes.TEST_DECL,
@@ -47,35 +37,23 @@ class ZigFoldingBuilder : FoldingBuilderEx(), DumbAware {
             override fun visitElement(element: PsiElement) {
                 walkingState.elementStarted(element)
                 val node = element.node ?: return
-                when (node.elementType) {
-                    in BRACE_ENCLOSED -> {
-                        val lbrace = node.findChildByType(ZigTokenTypes.L_BRACE) ?: return
-                        val range = TextRange(lbrace.textRange.startOffset, node.textRange.endOffset)
-                        descriptors.add(FoldingDescriptor(element, range))
-                    }
-                    in PAREN_ENCLOSED -> {
-                        val lparen = node.findChildByType(ZigTokenTypes.L_PAREN) ?: return
-                        val range = TextRange(lparen.textRange.startOffset, node.textRange.endOffset)
-                        descriptors.add(FoldingDescriptor(element, range))
-                    }
+                if (node.elementType !in BRACE_ENCLOSED) {
+                    return
                 }
+                if (!node.textContains('\n')) {
+                    return
+                }
+                val lbrace = node.findChildByType(ZigTokenTypes.L_BRACE) ?: return
+                val range = TextRange(lbrace.textRange.startOffset, node.textRange.endOffset)
+                descriptors.add(FoldingDescriptor(element, range))
             }
         })
         return descriptors.toTypedArray()
     }
 
     override fun isCollapsedByDefault(node: ASTNode): Boolean {
-        if (!node.textContains('\n')) {
-            return false
-        }
-        return node.elementType == ZigElementTypes.BLOCK && node.treeParent?.elementType in BLOCKS_COLLAPSED_BY_DEFAULT
+        return node.elementType === ZigElementTypes.BLOCK && node.treeParent?.elementType in BLOCKS_COLLAPSED_BY_DEFAULT
     }
 
-    override fun getPlaceholderText(node: ASTNode): String? {
-        return when (node.elementType) {
-            in BRACE_ENCLOSED -> "{...}"
-            in PAREN_ENCLOSED -> "(...)"
-            else -> null
-        }
-    }
+    override fun getPlaceholderText(node: ASTNode) = "{...}"
 }
