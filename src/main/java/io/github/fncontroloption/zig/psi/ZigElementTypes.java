@@ -100,6 +100,14 @@ public interface ZigElementTypes {
     IElementType ARRAY_INIT = new ZigElementType("ARRAY_INIT");
     IElementType INIT_LIST = new ZigElementType("INIT_LIST");
     IElementType INIT_LIST_ENTRY = new ZigElementType("INIT_LIST_ENTRY");
+    IElementType SLICE = new ZigElementType("SLICE");
+    IElementType SLICE_INDEXES = new ZigElementType("SLICE_INDEXES");
+    IElementType SLICE_START = new ZigElementType("SLICE_START");
+    IElementType SLICE_END = new ZigElementType("SLICE_END");
+    IElementType SLICE_SENTINEL = new ZigElementType("SLICE_SENTINEL");
+    IElementType ARRAY_ACCESS = new ZigElementType("ARRAY_ACCESS");
+    IElementType ARRAY_ACCESS_INDEX = new ZigElementType("ARRAY_ACCESS_INDEX");
+    IElementType DEREF = new ZigElementType("DEREF");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

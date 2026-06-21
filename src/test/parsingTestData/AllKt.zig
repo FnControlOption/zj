@@ -152,3 +152,9 @@ fn Foo9() type {
 const foo = Foo9().foo;
 const foo = Foo8{ .foo = bar };
 const foo: Foo8 = .{ .foo = bar };
+const foo = bar[ ];
+const foo = bar[a];
+const foo = bar[a..];
+const foo = bar[a..b];
+const foo = bar[a..b:c];
+const foo = bar.?;

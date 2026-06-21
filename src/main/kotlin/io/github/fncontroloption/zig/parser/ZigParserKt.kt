@@ -488,7 +488,52 @@ class ZigParserKt : PsiParser {
 
     private fun parseSuffixOp(builder: PsiBuilder): IElementType? {
         when (builder.tokenType) {
-            // TODO
+            ZigTokenTypes.L_BRACKET -> {
+                var startExpr: PsiBuilder.Marker? = null
+                var endExpr: PsiBuilder.Marker? = null
+                var sentinel: PsiBuilder.Marker? = null
+                val accessIndex = parseBracketEnclosed(builder, null, ZigElementTypes.ARRAY_ACCESS_INDEX) {
+                    if (startExpr == null) {
+                        startExpr = tryExpr(builder)
+                        startExpr
+                    } else if (endExpr == null) {
+                        if (builder.tokenType === ZigTokenTypes.ELLIPSIS2) {
+                            endExpr = builder.mark()
+                            builder.advanceLexer()
+                            tryExpr(builder)
+                            endExpr.done(ZigElementTypes.SLICE_END)
+                            endExpr
+                        } else {
+                            null
+                        }
+                    } else if (sentinel == null) {
+                        if (builder.tokenType === ZigTokenTypes.COLON) {
+                            sentinel = builder.mark()
+                            builder.advanceLexer()
+                            if (tryExpr(builder) == null) {
+                                // TODO: mark error
+                            }
+                            sentinel.done(ZigElementTypes.SLICE_SENTINEL)
+                            sentinel
+                        } else {
+                            null
+                        }
+                    } else {
+                        null
+                    }
+                }
+                if (endExpr != null) {
+                    startExpr!!.precede().doneBefore(ZigElementTypes.SLICE_START, endExpr)
+                    accessIndex!!.precede().done(ZigElementTypes.SLICE_INDEXES)
+                    accessIndex.drop()
+                    return ZigElementTypes.SLICE
+                }
+                return ZigElementTypes.ARRAY_ACCESS
+            }
+            ZigTokenTypes.PERIOD_ASTERISK -> {
+                builder.advanceLexer()
+                return ZigElementTypes.DEREF
+            }
             ZigTokenTypes.PERIOD -> {
                 when (builder.lookAhead(1)) {
                     ZigTokenTypes.IDENTIFIER -> {
@@ -1045,6 +1090,15 @@ class ZigParserKt : PsiParser {
         parseMember: () -> PsiBuilder.Marker? = { null },
     ): PsiBuilder.Marker? {
         return parseEnclosed(builder, prefix, ZigTokenTypes.L_PAREN, type, parseMember)
+    }
+
+    private fun parseBracketEnclosed(
+        builder: PsiBuilder,
+        prefix: IElementType?,
+        type: IElementType,
+        parseMember: () -> PsiBuilder.Marker? = { null },
+    ): PsiBuilder.Marker? {
+        return parseEnclosed(builder, prefix, ZigTokenTypes.L_BRACKET, type, parseMember)
     }
 
     private fun parseBraceEnclosed(
