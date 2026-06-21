@@ -13,9 +13,11 @@ import io.github.fncontroloption.zig.psi.ZigTokenTypes
 /** @see com.intellij.java.syntax.parser.JavaParser */
 class ZigParserKt : PsiParser {
     private val enclosureStack = ArrayDeque<IElementType>()
+    private val containerStack = ArrayDeque<IElementType>()
 
     override fun parse(root: IElementType, builder: PsiBuilder): ASTNode {
         enclosureStack.addLast(root)
+        containerStack.addLast(ZigTokenTypes.KEYWORD_STRUCT)
         val rootMarker = builder.mark()
         while (!builder.eof()) {
             if (parseContainerMember(builder) == null) {
@@ -24,6 +26,7 @@ class ZigParserKt : PsiParser {
         }
         rootMarker.done(root)
         enclosureStack.removeLast()
+        containerStack.removeLast()
         return builder.treeBuilt
     }
 
@@ -38,14 +41,17 @@ class ZigParserKt : PsiParser {
     private fun parseContainerDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         val container = builder.mark()
         expect(builder, ZigTokenSets.EXTERN_PACKED)
+        val containerToken = builder.tokenType
         if (!expect(builder, ZigTokenSets.CONTAINERS)) {
             container.rollbackTo()
             return null
         }
+        containerStack.addLast(containerToken!!)
         parseParenEnclosed(builder, null, ZigElementTypes.CONTAINER_DECL_ARG)
         parseBraceEnclosed(builder, null, ZigElementTypes.CONTAINER_DECL_BODY) {
             parseContainerMember(builder)
         }
+        containerStack.removeLast()
         container.done(ZigElementTypes.CONTAINER_DECL)
         return container
     }
@@ -331,16 +337,18 @@ class ZigParserKt : PsiParser {
 
         val field = builder.mark()
         expect(builder, ZigTokenTypes.KEYWORD_COMPTIME)
-        if (!expect(builder, ZigTokenTypes.IDENTIFIER, ZigTokenTypes.COLON)) {
+        val hasName = expect(builder, ZigTokenTypes.IDENTIFIER, ZigTokenTypes.COLON)
+        if (hasName || containerStack.last() === ZigTokenTypes.KEYWORD_STRUCT) {
+            val type = builder.mark()
+            if (tryTypeExpr(builder) == null) {
+                field.rollbackTo()
+                return null
+            }
+            type.done(ZigElementTypes.TYPE_EXPR)
+        } else if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
             field.rollbackTo()
             return null
         }
-        val type = builder.mark()
-        if (tryTypeExpr(builder) == null) {
-            field.rollbackTo()
-            return null
-        }
-        type.done(ZigElementTypes.TYPE_EXPR)
         parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigElementTypes.ALIGN)
         if (expect(builder, ZigTokenTypes.EQUAL)) {
             parseInitExpr(builder, ZigTokenSets.COMMA_BRACE)

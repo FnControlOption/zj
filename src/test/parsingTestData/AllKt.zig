@@ -159,3 +159,7 @@ const foo = bar[a..b];
 const foo = bar[a..b:c];
 const foo = bar.*;
 const foo = bar.?;
+const Foo = enum {
+    foo = bar,
+    baz,
+};
