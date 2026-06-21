@@ -270,6 +270,23 @@ class ZigUnwrapOptional(node: ASTNode) : ZigPsiElement(node) {
         get() = findChildByClass(ZigPsiElement::class.java)
 }
 
+sealed class ZigPrefixOp(node: ASTNode) : ZigPsiElement(node) {
+    val expr: ZigPsiElement?
+        get() = findChildByClass(ZigPsiElement::class.java)
+}
+
+class ZigBoolNot(node: ASTNode) : ZigPrefixOp(node)
+
+class ZigNegation(node: ASTNode) : ZigPrefixOp(node)
+
+class ZigBitNot(node: ASTNode) : ZigPrefixOp(node)
+
+class ZigNegationWrap(node: ASTNode) : ZigPrefixOp(node)
+
+class ZigAddressOf(node: ASTNode) : ZigPrefixOp(node)
+
+class ZigTry(node: ASTNode) : ZigPrefixOp(node)
+
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {
         return findChildByType(ZigTokenTypes.IDENTIFIER)

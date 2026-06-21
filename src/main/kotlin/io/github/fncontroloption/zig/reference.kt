@@ -316,6 +316,10 @@ private fun resolveMember(
             val member = containerBody.containerMembers[name] ?: return
             results.addLast(PsiElementResolveResult(member))
         }
+        is ZigAddressOf -> {
+            val expr = lhs.expr ?: return
+            resolveMember(expr, name, visited, results)
+        }
         is ZigDeref -> {
             val derefLhs = lhs.lhs ?: return
             resolveMember(derefLhs, name, visited, results)

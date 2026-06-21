@@ -196,6 +196,24 @@ public interface ZigElementTypes {
             if (type == UNWRAP_OPTIONAL) {
                 return new ZigUnwrapOptional(node);
             }
+            if (type == BOOL_NOT) {
+                return new ZigBoolNot(node);
+            }
+            if (type == NEGATION) {
+                return new ZigNegation(node);
+            }
+            if (type == BIT_NOT) {
+                return new ZigBitNot(node);
+            }
+            if (type == NEGATION_WRAP) {
+                return new ZigNegationWrap(node);
+            }
+            if (type == ADDRESS_OF) {
+                return new ZigAddressOf(node);
+            }
+            if (type == TRY) {
+                return new ZigTry(node);
+            }
             return new ZigPsiElement(node); // TODO
         }
     }
