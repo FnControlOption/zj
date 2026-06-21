@@ -157,4 +157,5 @@ const foo = bar[a];
 const foo = bar[a..];
 const foo = bar[a..b];
 const foo = bar[a..b:c];
+const foo = bar.*;
 const foo = bar.?;
