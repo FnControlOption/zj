@@ -221,6 +221,14 @@ class ZigPtrType(node: ASTNode) : ZigPsiElement(node) {
     fun isConst() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_CONST) != null
 }
 
+class ZigErrorUnion(node: ASTNode) : ZigPsiElement(node) {
+    val lhs: ZigPsiElement?
+        get() = firstChild as? ZigPsiElement
+
+    val rhs: ZigPsiElement?
+        get() = lastChild as? ZigPsiElement
+}
+
 class ZigCall(node: ASTNode) : ZigPsiElement(node) {
     val lhs: ZigPsiElement?
         get() = findChildByClass(ZigPsiElement::class.java)

@@ -169,6 +169,9 @@ public interface ZigElementTypes {
             if (type == PTR_TYPE) {
                 return new ZigPtrType(node);
             }
+            if (type == ERROR_UNION) {
+                return new ZigErrorUnion(node);
+            }
             if (type == ENUM_LITERAL) {
                 return new ZigEnumLiteral(node);
             }

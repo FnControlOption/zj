@@ -328,6 +328,10 @@ private fun resolveMember(
             val unwrapLhs = lhs.lhs ?: return
             resolveMember(unwrapLhs, name, visited, results)
         }
+        is ZigTry -> {
+            val expr = lhs.expr ?: return
+            resolveMember(expr, name, visited, results)
+        }
         is ZigPtrType -> {
             if (lhs.size != ZigPtrType.Size.ONE) {
                 return
@@ -338,6 +342,10 @@ private fun resolveMember(
         is ZigOptionalType -> {
             val child = lhs.child ?: return
             resolveMember(child, name, visited, results)
+        }
+        is ZigErrorUnion -> {
+            val rhs = lhs.rhs ?: return
+            resolveMember(rhs, name, visited, results)
         }
         is ZigCall -> {
             val callLhs = lhs.lhs ?: return
