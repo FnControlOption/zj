@@ -163,6 +163,9 @@ public interface ZigElementTypes {
             if (type == CONTAINER_FIELD) {
                 return new ZigContainerField(node);
             }
+            if (type == OPTIONAL_TYPE) {
+                return new ZigOptionalType(node);
+            }
             if (type == PTR_TYPE) {
                 return new ZigPtrType(node);
             }
@@ -189,6 +192,9 @@ public interface ZigElementTypes {
             }
             if (type == DEREF) {
                 return new ZigDeref(node);
+            }
+            if (type == UNWRAP_OPTIONAL) {
+                return new ZigUnwrapOptional(node);
             }
             return new ZigPsiElement(node); // TODO
         }

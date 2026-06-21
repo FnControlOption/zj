@@ -320,10 +320,18 @@ private fun resolveMember(
             val derefLhs = lhs.lhs ?: return
             resolveMember(derefLhs, name, visited, results)
         }
+        is ZigUnwrapOptional -> {
+            val unwrapLhs = lhs.lhs ?: return
+            resolveMember(unwrapLhs, name, visited, results)
+        }
         is ZigPtrType -> {
             if (lhs.size != ZigPtrType.Size.ONE) {
                 return
             }
+            val child = lhs.child ?: return
+            resolveMember(child, name, visited, results)
+        }
+        is ZigOptionalType -> {
             val child = lhs.child ?: return
             resolveMember(child, name, visited, results)
         }

@@ -183,6 +183,11 @@ class ZigInitExpr(node: ASTNode) : ZigPsiElement(node) {
         get() = findChildByClass(ZigPsiElement::class.java)
 }
 
+class ZigOptionalType(node: ASTNode) : ZigPsiElement(node) {
+    val child: ZigPsiElement?
+        get() = findChildByClass(ZigPsiElement::class.java)
+}
+
 class ZigPtrType(node: ASTNode) : ZigPsiElement(node) {
     enum class Size {
         ONE,
@@ -256,6 +261,11 @@ class ZigInitListEntry(node: ASTNode) : ZigPsiElement(node) {
 }
 
 class ZigDeref(node: ASTNode) : ZigPsiElement(node) {
+    val lhs: ZigPsiElement?
+        get() = findChildByClass(ZigPsiElement::class.java)
+}
+
+class ZigUnwrapOptional(node: ASTNode) : ZigPsiElement(node) {
     val lhs: ZigPsiElement?
         get() = findChildByClass(ZigPsiElement::class.java)
 }
