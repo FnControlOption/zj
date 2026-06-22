@@ -348,16 +348,16 @@ private fun resolveMember(
         }
         is ZigCall -> {
             val callLhs = lhs.lhs ?: return
-            forEachReferenceLeaf(callLhs, visited) { target ->
-                val fnProto = target as? ZigFnProto ?: return@forEachReferenceLeaf
-                val returnTypeExpr = fnProto.fnReturnTypeExpr?.expr ?: return@forEachReferenceLeaf
+            for (target in resolveLeafReferences(callLhs, visited)) {
+                val fnProto = target as? ZigFnProto ?: continue
+                val returnTypeExpr = fnProto.fnReturnTypeExpr?.expr ?: continue
                 if (returnTypeExpr.textMatches("type")) {
-                    val fnDecl = fnProto.parent as? ZigFnDecl ?: return@forEachReferenceLeaf
-                    val fnBody = fnDecl.fnBody ?: return@forEachReferenceLeaf
+                    val fnDecl = fnProto.parent as? ZigFnDecl ?: continue
+                    val fnBody = fnDecl.fnBody ?: continue
                     val psiTraverser = SyntaxTraverser.psiTraverser(fnBody).expand { it !is ZigContainerDecl }
                     for (elem in psiTraverser) {
                         if (elem is ZigReturn) {
-                            val returnExpr = elem.expr ?: return@forEachReferenceLeaf
+                            val returnExpr = elem.expr ?: continue
                             resolveMember(returnExpr, name, visited, results)
                         }
                     }
@@ -372,7 +372,7 @@ private fun resolveMember(
         }
         else -> {
             visited.remove(lhs)
-            forEachReferenceLeaf(lhs, visited) { target ->
+            for (target in resolveLeafReferences(lhs, visited)) {
                 if (target != lhs) {
                     visited.remove(target)
                     resolveMember(target, name, visited, results)
@@ -398,35 +398,6 @@ fun resolveIdentifierReference(element: PsiElement): PsiElement? {
         parent = parent.parent
     }
     return null
-}
-
-fun forEachReferenceLeaf(element: PsiElement, visited: MutableSet<PsiElement>, block: (PsiElement) -> Unit) {
-    if (element in visited) {
-        return
-    }
-    visited.add(element)
-    var isLeaf = true
-    for (target in multiResolveReferences(element)) {
-        isLeaf = false
-        if (target is ZigVarDeclProto) {
-            val typeExpr = target.declTypeExpr?.expr
-            if (typeExpr == null) {
-                val parent = target.parent
-                if (parent is ZigVarDecl) {
-                    val initExpr = parent.varDeclInitExpr?.expr
-                    if (initExpr != null) {
-                        forEachReferenceLeaf(initExpr, visited, block)
-                        continue
-                    }
-                }
-            }
-        }
-        forEachReferenceLeaf(target, visited, block)
-    }
-    if (isLeaf) {
-        block(element)
-        return
-    }
 }
 
 fun resolveInferredTypeExprs(element: PsiElement): Set<ZigPsiElement> {
@@ -478,4 +449,28 @@ fun multiResolveReferences(element: PsiElement): Sequence<PsiElement> {
             sequenceOf(reference.resolve()).filterNotNull()
         }
     }
+}
+
+fun resolveLeafReferences(element: PsiElement, visited: MutableSet<PsiElement>): Sequence<PsiElement> {
+    if (element in visited) {
+        return emptySequence()
+    }
+    visited.add(element)
+    return multiResolveReferences(element)
+        .flatMap { target ->
+            if (target is ZigVarDeclProto) {
+                val typeExpr = target.declTypeExpr?.expr
+                if (typeExpr == null) {
+                    val parent = target.parent
+                    if (parent is ZigVarDecl) {
+                        val initExpr = parent.varDeclInitExpr?.expr
+                        if (initExpr != null) {
+                            return@flatMap resolveLeafReferences(initExpr, visited)
+                        }
+                    }
+                }
+            }
+            resolveLeafReferences(target, visited)
+        }
+        .ifEmpty { sequenceOf(element) }
 }
