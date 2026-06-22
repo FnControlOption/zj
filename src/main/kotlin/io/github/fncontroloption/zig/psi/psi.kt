@@ -197,34 +197,10 @@ class ZigOptionalType(node: ASTNode) : ZigPsiElement(node) {
 }
 
 class ZigPointerType(node: ASTNode) : ZigPsiElement(node) {
-    enum class Size {
-        ONE,
-        MANY,
-        SLICE,
-        C,
-    }
-
-    val size: Size?
-        get() {
-            var child = firstChild ?: return null
-            return when (child.elementType) {
-                ZigTokenTypes.ASTERISK -> Size.ONE
-                ZigTokenTypes.L_BRACKET -> {
-                    child = child.nextSibling ?: return null
-                    when (child.elementType) {
-                        ZigTokenTypes.ASTERISK -> {
-                            child = child.nextSibling ?: return Size.MANY
-                            if (child.textMatches("c")) Size.C else Size.MANY
-                        }
-                        else -> Size.SLICE
-                    }
-                }
-                else -> null
-            }
-        }
-
     val child: ZigPsiElement?
         get() = findChildByClass(ZigPsiElement::class.java)
+
+    fun isOne() = findChildByType<PsiElement?>(ZigTokenTypes.ASTERISK) != null
 
     fun isConst() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_CONST) != null
 }

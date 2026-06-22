@@ -380,6 +380,8 @@ class ZigParserKt : PsiParser {
         return field
     }
 
+    private enum class TypeLengthState { START, SENTINEL, DONE }
+
     private fun tryTypeExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         when (builder.tokenType) {
             ZigTokenTypes.QUESTION_MARK -> {
@@ -419,28 +421,77 @@ class ZigParserKt : PsiParser {
             }
             ZigTokenTypes.L_BRACKET -> {
                 val expr = builder.mark()
-                builder.advanceLexer()
-                if (!expect(builder, ZigTokenTypes.R_BRACKET)) {
-                    // TODO
+                var isArray = true
+                var lengthState = TypeLengthState.START
+                parseBracketEnclosed(builder, null, ZigElementTypes.TYPE_LENGTH) {
+                    when (lengthState) {
+                        TypeLengthState.START -> {
+                            val length = builder.mark()
+                            when (builder.tokenType) {
+                                ZigTokenTypes.ASTERISK -> {
+                                    isArray = false
+                                    builder.advanceLexer()
+                                    when (builder.tokenType) {
+                                        ZigTokenTypes.IDENTIFIER if builder.tokenText == "c" -> {
+                                            // C pointer: [*c]Foo
+                                            builder.advanceLexer()
+                                            lengthState = TypeLengthState.DONE
+                                        }
+                                        else -> {
+                                            // Many-item pointer: [*]Foo
+                                            lengthState = TypeLengthState.SENTINEL
+                                        }
+                                    }
+                                }
+                                else -> {
+                                    // Array: [len]Foo
+                                    // Slice: []Foo
+                                    isArray = tryExpr(builder) != null
+                                    lengthState = TypeLengthState.SENTINEL
+                                }
+                            }
+                            length.drop()
+                            length
+                        }
+                        TypeLengthState.SENTINEL -> {
+                            when (builder.tokenType) {
+                                ZigTokenTypes.COLON -> {
+                                    val sentinel = builder.mark()
+                                    builder.advanceLexer()
+                                    tryExpr(builder)
+                                    lengthState = TypeLengthState.DONE
+                                    sentinel.done(ZigElementTypes.TYPE_SENTINEL)
+                                    sentinel
+                                }
+                                else -> null
+                            }
+                        }
+                        TypeLengthState.DONE -> null
+                    }
+                }
+                val modifiers = parsePointerModifiers(builder)
+                if (tryTypeExpr(builder) == null) {
                     expr.rollbackTo()
                     return null
                 }
-                parsePointerModifiers(builder)
-                if (tryTypeExpr(builder) != null) {
-                    expr.done(ZigElementTypes.POINTER_TYPE)
-                    return expr
+                if (isArray) {
+                    if (modifiers != null) {
+                        // TODO: mark error
+                    }
+                    expr.done(ZigElementTypes.ARRAY_TYPE)
                 } else {
-                    expr.rollbackTo()
-                    return null
+                    expr.done(ZigElementTypes.POINTER_TYPE)
                 }
+                return expr
             }
             else -> return tryErrorUnionExpr(builder)
         }
     }
 
-    private fun parsePointerModifiers(builder: PsiBuilder) {
+    private fun parsePointerModifiers(builder: PsiBuilder): PsiBuilder.Marker? {
         // TODO
         expect(builder, ZigTokenTypes.KEYWORD_CONST)
+        return null
     }
 
     private fun tryErrorUnionExpr(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -1146,6 +1197,7 @@ class ZigParserKt : PsiParser {
                 ZigTokenTypes.R_PAREN -> parens--
             }
             builder.advanceLexer()
+            // TODO: mark error
         }
         enclosureStack.removeLast()
         marker.done(type)

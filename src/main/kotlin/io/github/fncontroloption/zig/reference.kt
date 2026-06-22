@@ -334,9 +334,6 @@ private fun resolveMember(
             resolveMember(expr, name, visited, results)
         }
         is ZigPointerType -> {
-            if (lhs.size != ZigPointerType.Size.ONE) {
-                return
-            }
             val child = lhs.child ?: return
             resolveMember(child, name, visited, results)
         }

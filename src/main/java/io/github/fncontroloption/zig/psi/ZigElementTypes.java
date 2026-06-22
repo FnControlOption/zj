@@ -41,6 +41,9 @@ public interface ZigElementTypes {
     IElementType OPTIONAL_TYPE = new ZigElementType("OPTIONAL_TYPE");
     IElementType ANYFRAME_TYPE = new ZigElementType("ANYFRAME_TYPE");
     IElementType POINTER_TYPE = new ZigElementType("POINTER_TYPE");
+    IElementType ARRAY_TYPE = new ZigElementType("ARRAY_TYPE");
+    IElementType TYPE_LENGTH = new ZigElementType("TYPE_LENGTH");
+    IElementType TYPE_SENTINEL = new ZigElementType("TYPE_SENTINEL");
     IElementType ERROR_UNION = new ZigElementType("ERROR_UNION");
     IElementType ASSIGN = new ZigElementType("ASSIGN");
     IElementType BREAK = new ZigElementType("BREAK");
