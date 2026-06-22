@@ -184,3 +184,10 @@ test {
     if (a) b else c;
     if (a) |*b| {} else |c| {}
 }
+const foo = switch (bar) { baz => qux };
+const foo = bar: switch (a) {
+    inline b,
+    c,
+    => |d, e| f,
+    inline else => |g, h| i,
+};

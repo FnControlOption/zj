@@ -10,7 +10,6 @@ public interface ZigElementTypes {
     IElementType CONTAINER_TAG_ENUM = new ZigElementType("CONTAINER_TAG_ENUM");
     IElementType CONTAINER_DECL_BODY = new ZigElementType("CONTAINER_DECL_BODY");
     IElementType BLOCK = new ZigElementType("BLOCK");
-    IElementType BLOCK_EXPR = new ZigElementType("BLOCK_EXPR");
     IElementType BUILTIN_CALL = new ZigElementType("BUILTIN_CALL");
     IElementType CALL = new ZigElementType("CALL");
     IElementType CALL_ARGS = new ZigElementType("CALL_ARGS");
@@ -99,7 +98,6 @@ public interface ZigElementTypes {
     IElementType EXPR_STATEMENT = new ZigElementType("EXPR_STATEMENT");
     IElementType DEFER = new ZigElementType("DEFER");
     IElementType ERRDEFER = new ZigElementType("ERRDEFER");
-    IElementType LABELED_STATEMENT = new ZigElementType("LABELED_STATEMENT");
     IElementType ENUM_LITERAL = new ZigElementType("ENUM_LITERAL");
     IElementType ARRAY_INIT = new ZigElementType("ARRAY_INIT");
     IElementType INIT_LIST = new ZigElementType("INIT_LIST");
@@ -110,6 +108,10 @@ public interface ZigElementTypes {
     IElementType SLICE_SENTINEL = new ZigElementType("SLICE_SENTINEL");
     IElementType ARRAY_ACCESS = new ZigElementType("ARRAY_ACCESS");
     IElementType DEREF = new ZigElementType("DEREF");
+    IElementType SWITCH = new ZigElementType("SWITCH");
+    IElementType SWITCH_PRONG_LIST = new ZigElementType("SWITCH_PRONG_LIST");
+    IElementType SWITCH_PRONG = new ZigElementType("SWITCH_PRONG");
+    IElementType SWITCH_ITEM = new ZigElementType("SWITCH_ITEM");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {
