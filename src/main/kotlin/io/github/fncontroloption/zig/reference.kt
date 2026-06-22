@@ -263,8 +263,7 @@ class ZigInitListEntryReference(element: ZigInitListEntry, val name: PsiElement)
     PsiPolyVariantReferenceBase<ZigInitListEntry>(element, name.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
-        val initList = myElement.parent as? ZigInitList ?: return emptyArray()
-        val arrayInit = initList.parent as? ZigArrayInit ?: return emptyArray()
+        val arrayInit = myElement.findParentOfType<ZigArrayInit>() ?: return emptyArray()
         val inferredTypeExprs = if (arrayInit.isTypeInferred()) {
             resolveInferredTypeExprs(arrayInit)
         } else {
@@ -430,37 +429,19 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
             }
         }
         is ZigReturn -> {
-            parent = parent.parent
-            while (parent != null) {
-                if (parent is ZigFnDecl) {
-                    val typeExpr = parent.fnProto.fnReturnTypeExpr?.expr ?: return emptySequence()
-                    return sequenceOf(typeExpr)
-                }
-                parent = parent.parent
-            }
-            return emptySequence()
+            val fnDecl = parent.findParentOfType<ZigFnDecl>() ?: return emptySequence()
+            val typeExpr = fnDecl.fnProto.fnReturnTypeExpr?.expr ?: return emptySequence()
+            return sequenceOf(typeExpr)
         }
         // is ZigEqualEqual, is ZigBangEqual -> return emptySequence() // TODO
         is ZigSwitchItem -> {
-            parent = parent.parent
-            while (parent != null) {
-                if (parent is ZigSwitch) {
-                    val expr = parent.switchCondition?.expr ?: return emptySequence()
-                    return sequenceOf(expr)
-                }
-                parent = parent.parent
-            }
-            return emptySequence()
+            val switch = parent.findParentOfType<ZigSwitch>() ?: return emptySequence()
+            val expr = switch.switchCondition?.expr ?: return emptySequence()
+            return sequenceOf(expr)
         }
         is ZigSwitchProng -> {
-            parent = parent.parent
-            while (parent != null) {
-                if (parent is ZigSwitch) {
-                    return resolveInferredTypeExprs(parent)
-                }
-                parent = parent.parent
-            }
-            return emptySequence()
+            val switch = parent.findParentOfType<ZigSwitch>() ?: return emptySequence()
+            return resolveInferredTypeExprs(switch)
         }
         is ZigCallArgs -> return emptySequence() // TODO
         else -> return emptySequence()
