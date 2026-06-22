@@ -757,7 +757,6 @@ class ZigParserKt : PsiParser {
     }
 
     private fun tryExpr(builder: PsiBuilder): PsiBuilder.Marker? {
-        // TODO
         return tryExprPrecedence(builder, 0)
     }
 
@@ -818,7 +817,7 @@ class ZigParserKt : PsiParser {
             }
             builder.advanceLexer()
             if (operToken === ZigTokenTypes.KEYWORD_CATCH) {
-                // TODO: parsePayload
+                parsePayload(builder)
             }
             if (tryExprPrecedence(builder, info.prec + 1) == null) {
                 // TODO: mark error
@@ -1070,21 +1069,21 @@ class ZigParserKt : PsiParser {
             return null
         }
         parseConditionExpr(builder)
-        // TODO: parsePtrPayload
-        val thenExpr = bodyParseFn(builder)
-        if (thenExpr == null) {
+        val thenMarker = builder.mark()
+        parsePtrPayload(builder)
+        if (bodyParseFn(builder) == null) {
             marker.rollbackTo()
             return null
         }
-        thenExpr.precede().done(ZigElementTypes.THEN_EXPR)
+        thenMarker.done(ZigElementTypes.THEN)
         if (expect(builder, ZigTokenTypes.KEYWORD_ELSE)) {
-            // TODO: parsePayload
-            val elseExpr = bodyParseFn(builder)
-            if (elseExpr == null) {
+            val elseMarker = builder.mark()
+            parsePayload(builder)
+            if (bodyParseFn(builder) == null) {
                 marker.rollbackTo()
                 return null
             }
-            elseExpr.precede().done(ZigElementTypes.ELSE_EXPR)
+            elseMarker.done(ZigElementTypes.ELSE)
         }
         marker.done(ZigElementTypes.IF)
         return marker
@@ -1120,6 +1119,39 @@ class ZigParserKt : PsiParser {
     private fun parseSwitchExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         // TODO
         return null
+    }
+
+    private fun parsePayload(builder: PsiBuilder): PsiBuilder.Marker? {
+        if (builder.tokenType !== ZigTokenTypes.PIPE) {
+            return null
+        }
+        val marker = builder.mark()
+        builder.advanceLexer()
+        if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
+            // TODO: mark error
+        }
+        if (!expect(builder, ZigTokenTypes.PIPE)) {
+            // TODO: mark error
+        }
+        marker.done(ZigElementTypes.PAYLOAD)
+        return marker
+    }
+
+    private fun parsePtrPayload(builder: PsiBuilder): PsiBuilder.Marker? {
+        if (builder.tokenType !== ZigTokenTypes.PIPE) {
+            return null
+        }
+        val marker = builder.mark()
+        builder.advanceLexer()
+        expect(builder, ZigTokenTypes.ASTERISK)
+        if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
+            // TODO: mark error
+        }
+        if (!expect(builder, ZigTokenTypes.PIPE)) {
+            // TODO: mark error
+        }
+        marker.done(ZigElementTypes.PAYLOAD)
+        return marker
     }
 
     private fun parseUntil(builder: PsiBuilder, terminator: IElementType) {

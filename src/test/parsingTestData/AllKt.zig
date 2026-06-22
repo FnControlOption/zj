@@ -176,3 +176,5 @@ const Foo = [*:sentinel]const Bar;
 const Foo = [length]Bar;
 const Foo = [length:sentinel]const Bar;
 const Foo = *const volatile allowzero Bar;
+const foo = bar catch |baz| qux;
+const foo = if (a) |*b| c else |d| e;

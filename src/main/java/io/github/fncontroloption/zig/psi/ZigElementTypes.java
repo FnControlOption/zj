@@ -57,10 +57,9 @@ public interface ZigElementTypes {
     IElementType GROUPED_EXPRESSION = new ZigElementType("GROUPED_EXPRESSION");
     IElementType IF = new ZigElementType("IF");
     IElementType CONDITION_EXPR = new ZigElementType("CONDITION_EXPR");
-    IElementType THEN_PAYLOAD = new ZigElementType("THEN_PAYLOAD");
-    IElementType THEN_EXPR = new ZigElementType("THEN_EXPR");
-    IElementType ELSE_PAYLOAD = new ZigElementType("ELSE_PAYLOAD");
-    IElementType ELSE_EXPR = new ZigElementType("ELSE_EXPR");
+    IElementType PAYLOAD = new ZigElementType("PAYLOAD");
+    IElementType THEN = new ZigElementType("THEN");
+    IElementType ELSE = new ZigElementType("ELSE");
     IElementType EQUAL_EQUAL = new ZigElementType("EQUAL_EQUAL");
     IElementType BANG_EQUAL = new ZigElementType("BANG_EQUAL");
     IElementType LESS_THAN = new ZigElementType("LESS_THAN");
