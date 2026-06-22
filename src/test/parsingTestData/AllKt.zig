@@ -197,3 +197,6 @@ const Foo10 = if (foo) struct {
     const bar = baz;
 };
 const foo = Foo10.bar;
+fn foo11() Foo {}
+fn foo12() Foo {}
+const foo = if (bar) foo11 else foo12;

@@ -11,6 +11,7 @@ import io.github.fncontroloption.zig.psi.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -109,9 +110,12 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                         if (initExpr != null) {
                             var expr = initExpr.getExpr();
                             if (expr != null) {
-                                var info = createHighlightInfo(expr);
-                                if (info != null && info.type == ZigHighlightInfoTypes.STATIC_METHOD) {
-                                    yield createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD);
+                                var it = ReferenceKt.resolveLeafReferences(expr, new HashSet<>()).iterator();
+                                while (it.hasNext()) {
+                                    var target = it.next();
+                                    if (target instanceof ZigFnProto) {
+                                        yield createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD);
+                                    }
                                 }
                             }
                         }
