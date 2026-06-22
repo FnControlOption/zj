@@ -333,8 +333,8 @@ private fun resolveMember(
             val expr = lhs.expr ?: return
             resolveMember(expr, name, visited, results)
         }
-        is ZigPtrType -> {
-            if (lhs.size != ZigPtrType.Size.ONE) {
+        is ZigPointerType -> {
+            if (lhs.size != ZigPointerType.Size.ONE) {
                 return
             }
             val child = lhs.child ?: return

@@ -196,7 +196,7 @@ class ZigOptionalType(node: ASTNode) : ZigPsiElement(node) {
         get() = findChildByClass(ZigPsiElement::class.java)
 }
 
-class ZigPtrType(node: ASTNode) : ZigPsiElement(node) {
+class ZigPointerType(node: ASTNode) : ZigPsiElement(node) {
     enum class Size {
         ONE,
         MANY,

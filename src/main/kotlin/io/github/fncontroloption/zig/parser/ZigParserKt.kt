@@ -408,9 +408,9 @@ class ZigParserKt : PsiParser {
             ZigTokenTypes.ASTERISK -> {
                 val expr = builder.mark()
                 builder.advanceLexer()
-                parsePtrModifiers(builder)
+                parsePointerModifiers(builder)
                 if (tryTypeExpr(builder) != null) {
-                    expr.done(ZigElementTypes.PTR_TYPE)
+                    expr.done(ZigElementTypes.POINTER_TYPE)
                     return expr
                 } else {
                     expr.rollbackTo()
@@ -425,9 +425,9 @@ class ZigParserKt : PsiParser {
                     expr.rollbackTo()
                     return null
                 }
-                parsePtrModifiers(builder)
+                parsePointerModifiers(builder)
                 if (tryTypeExpr(builder) != null) {
-                    expr.done(ZigElementTypes.PTR_TYPE)
+                    expr.done(ZigElementTypes.POINTER_TYPE)
                     return expr
                 } else {
                     expr.rollbackTo()
@@ -438,7 +438,7 @@ class ZigParserKt : PsiParser {
         }
     }
 
-    private fun parsePtrModifiers(builder: PsiBuilder) {
+    private fun parsePointerModifiers(builder: PsiBuilder) {
         // TODO
         expect(builder, ZigTokenTypes.KEYWORD_CONST)
     }
