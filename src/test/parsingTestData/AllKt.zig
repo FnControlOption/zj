@@ -214,3 +214,10 @@ fn Foo14() type {
 const foo = Foo14().foo(bar, .a);
 const foo14: Foo14() = bar;
 const foo = foo14.foo(.a);
+const foo15: [bar]Foo8 = baz;
+const foo = foo15[bar].foo;
+const foo = foo15[bar..baz][qux].foo;
+const foo16: [*]Foo8 = bar;
+const foo = foo16[bar].foo;
+const foo17: *[len]Foo8 = bar;
+const foo = foo17[bar].foo;

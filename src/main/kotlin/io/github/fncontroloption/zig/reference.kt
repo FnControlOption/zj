@@ -325,6 +325,14 @@ private fun resolveMember(
             val derefLhs = lhs.lhs ?: return
             resolveMember(derefLhs, name, visited, results)
         }
+        is ZigArrayAccess -> {
+            val accessLhs = lhs.lhs ?: return
+            resolveMember(accessLhs, name, visited, results)
+        }
+        is ZigSlice -> {
+            val sliceLhs = lhs.lhs ?: return
+            resolveMember(sliceLhs, name, visited, results)
+        }
         is ZigUnwrapOptional -> {
             val unwrapLhs = lhs.lhs ?: return
             resolveMember(unwrapLhs, name, visited, results)
@@ -334,6 +342,10 @@ private fun resolveMember(
             resolveMember(expr, name, visited, results)
         }
         is ZigPointerType -> {
+            val child = lhs.child ?: return
+            resolveMember(child, name, visited, results)
+        }
+        is ZigArrayType -> {
             val child = lhs.child ?: return
             resolveMember(child, name, visited, results)
         }

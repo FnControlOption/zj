@@ -202,6 +202,11 @@ class ZigPointerType(node: ASTNode) : ZigPsiElement(node) {
     fun isOne() = findChildByType<PsiElement?>(ZigTokenTypes.ASTERISK) != null
 }
 
+class ZigArrayType(node: ASTNode) : ZigPsiElement(node) {
+    val child: ZigPsiElement?
+        get() = lastChild as? ZigPsiElement
+}
+
 class ZigErrorUnion(node: ASTNode) : ZigPsiElement(node) {
     val lhs: ZigPsiElement?
         get() = firstChild as? ZigPsiElement
@@ -250,6 +255,16 @@ class ZigInitListEntry(node: ASTNode) : ZigPsiElement(node) {
 }
 
 class ZigDeref(node: ASTNode) : ZigPsiElement(node) {
+    val lhs: ZigPsiElement?
+        get() = findChildByClass(ZigPsiElement::class.java)
+}
+
+class ZigArrayAccess(node: ASTNode) : ZigPsiElement(node) {
+    val lhs: ZigPsiElement?
+        get() = findChildByClass(ZigPsiElement::class.java)
+}
+
+class ZigSlice(node: ASTNode) : ZigPsiElement(node) {
     val lhs: ZigPsiElement?
         get() = findChildByClass(ZigPsiElement::class.java)
 }

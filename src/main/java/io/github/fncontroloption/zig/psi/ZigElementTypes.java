@@ -173,6 +173,9 @@ public interface ZigElementTypes {
             if (type == POINTER_TYPE) {
                 return new ZigPointerType(node);
             }
+            if (type == ARRAY_TYPE) {
+                return new ZigArrayType(node);
+            }
             if (type == ERROR_UNION) {
                 return new ZigErrorUnion(node);
             }
@@ -199,6 +202,12 @@ public interface ZigElementTypes {
             }
             if (type == DEREF) {
                 return new ZigDeref(node);
+            }
+            if (type == ARRAY_ACCESS) {
+                return new ZigArrayAccess(node);
+            }
+            if (type == SLICE) {
+                return new ZigSlice(node);
             }
             if (type == UNWRAP_OPTIONAL) {
                 return new ZigUnwrapOptional(node);
