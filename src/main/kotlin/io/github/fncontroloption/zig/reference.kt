@@ -269,7 +269,7 @@ class ZigInitListEntryReference(element: ZigInitListEntry, val name: PsiElement)
             resolveInferredTypeExprs(arrayInit)
         } else {
             val typeExpr = arrayInit.initTypeExpr?.expr ?: return emptyArray()
-            setOf(typeExpr)
+            sequenceOf(typeExpr)
         }
         val results = mutableListOf<ResolveResult>()
         for (typeExpr in inferredTypeExprs) {
@@ -400,7 +400,7 @@ fun resolveIdentifierReference(element: PsiElement): PsiElement? {
     return null
 }
 
-fun resolveInferredTypeExprs(element: PsiElement): Set<ZigPsiElement> {
+fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
     var parent = element.parent
     if (element is ZigEnumLiteral && parent is ZigCall) {
         parent = parent.parent
@@ -410,26 +410,22 @@ fun resolveInferredTypeExprs(element: PsiElement): Set<ZigPsiElement> {
             parent = parent.parent
             when (parent) {
                 is ZigVarDecl -> {
-                    val typeExpr = parent.varDeclProto.declTypeExpr?.expr ?: return emptySet()
-                    return setOf(typeExpr)
+                    val typeExpr = parent.varDeclProto.declTypeExpr?.expr ?: return emptySequence()
+                    return sequenceOf(typeExpr)
                 }
                 is ZigContainerField -> {
-                    val typeExpr = parent.containerFieldTypeExpr?.expr ?: return emptySet()
-                    return setOf(typeExpr)
+                    val typeExpr = parent.containerFieldTypeExpr?.expr ?: return emptySequence()
+                    return sequenceOf(typeExpr)
                 }
-                // is ZigAssign -> return emptySet() // TODO
-                else -> return emptySet()
+                // is ZigAssign -> return emptySequence() // TODO
+                else -> return emptySequence()
             }
         }
         is ZigInitListEntry -> {
-            return buildSet {
-                for (target in multiResolveReferences(parent)) {
-                    when (target) {
-                        is ZigContainerField -> {
-                            val typeExpr = target.containerFieldTypeExpr?.expr ?: continue
-                            add(typeExpr)
-                        }
-                    }
+            return multiResolveReferences(parent).mapNotNull { target ->
+                when (target) {
+                    is ZigContainerField -> target.containerFieldTypeExpr?.expr
+                    else -> null
                 }
             }
         }
@@ -437,27 +433,27 @@ fun resolveInferredTypeExprs(element: PsiElement): Set<ZigPsiElement> {
             parent = parent.parent
             while (parent != null) {
                 if (parent is ZigFnDecl) {
-                    val typeExpr = parent.fnProto.fnReturnTypeExpr?.expr ?: return emptySet()
-                    return setOf(typeExpr)
+                    val typeExpr = parent.fnProto.fnReturnTypeExpr?.expr ?: return emptySequence()
+                    return sequenceOf(typeExpr)
                 }
                 parent = parent.parent
             }
-            return emptySet()
+            return emptySequence()
         }
-        // is ZigEqualEqual, is ZigBangEqual -> return emptySet() // TODO
+        // is ZigEqualEqual, is ZigBangEqual -> return emptySequence() // TODO
         is ZigSwitchItem -> {
             parent = parent.parent
             while (parent != null) {
                 if (parent is ZigSwitch) {
-                    val expr = parent.switchCondition?.expr ?: return emptySet()
-                    return setOf(expr)
+                    val expr = parent.switchCondition?.expr ?: return emptySequence()
+                    return sequenceOf(expr)
                 }
                 parent = parent.parent
             }
-            return emptySet()
+            return emptySequence()
         }
-        is ZigCallArgs -> return emptySet() // TODO
-        else -> return emptySet()
+        is ZigCallArgs -> return emptySequence() // TODO
+        else -> return emptySequence()
     }
 }
 
