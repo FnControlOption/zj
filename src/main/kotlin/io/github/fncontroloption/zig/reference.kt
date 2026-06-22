@@ -432,8 +432,18 @@ fun resolveInferredTypeExprs(element: PsiElement): Set<ZigPsiElement> {
                 }
             }
         }
+        is ZigReturn -> {
+            parent = parent.parent
+            while (parent != null) {
+                if (parent is ZigFnDecl) {
+                    val typeExpr = parent.fnProto.fnReturnTypeExpr?.expr ?: return emptySet()
+                    return setOf(typeExpr)
+                }
+                parent = parent.parent
+            }
+            return emptySet()
+        }
         is ZigCallArgs -> return emptySet() // TODO
-        is ZigReturn -> return emptySet() // TODO
         else -> return emptySet()
     }
 }
