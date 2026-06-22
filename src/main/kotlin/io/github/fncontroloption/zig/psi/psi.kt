@@ -295,6 +295,22 @@ class ZigElse(node: ASTNode) : ZigPsiElement(node) {
         get() = lastChild as? ZigPsiElement
 }
 
+class ZigCondition(node: ASTNode) : ZigPsiElement(node) {
+    val expr: ZigPsiElement?
+        get() = findChildByClass(ZigPsiElement::class.java)
+}
+
+class ZigSwitch(node: ASTNode) : ZigPsiElement(node) {
+    val switchCondition: ZigCondition?
+        get() = findChildByClass(ZigCondition::class.java)
+}
+
+class ZigSwitchProngList(node: ASTNode) : ZigPsiElement(node)
+
+class ZigSwitchProng(node: ASTNode) : ZigPsiElement(node)
+
+class ZigSwitchItem(node: ASTNode) : ZigPsiElement(node)
+
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {
         return findChildByType(ZigTokenTypes.IDENTIFIER)

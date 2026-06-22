@@ -417,6 +417,7 @@ fun resolveInferredTypeExprs(element: PsiElement): Set<ZigPsiElement> {
                     val typeExpr = parent.containerFieldTypeExpr?.expr ?: return emptySet()
                     return setOf(typeExpr)
                 }
+                // is ZigAssign -> return emptySet() // TODO
                 else -> return emptySet()
             }
         }
@@ -438,6 +439,18 @@ fun resolveInferredTypeExprs(element: PsiElement): Set<ZigPsiElement> {
                 if (parent is ZigFnDecl) {
                     val typeExpr = parent.fnProto.fnReturnTypeExpr?.expr ?: return emptySet()
                     return setOf(typeExpr)
+                }
+                parent = parent.parent
+            }
+            return emptySet()
+        }
+        // is ZigEqualEqual, is ZigBangEqual -> return emptySet() // TODO
+        is ZigSwitchItem -> {
+            parent = parent.parent
+            while (parent != null) {
+                if (parent is ZigSwitch) {
+                    val expr = parent.switchCondition?.expr ?: return emptySet()
+                    return setOf(expr)
                 }
                 parent = parent.parent
             }

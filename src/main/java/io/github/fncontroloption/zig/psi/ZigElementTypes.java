@@ -230,6 +230,21 @@ public interface ZigElementTypes {
             if (type == ELSE) {
                 return new ZigElse(node);
             }
+            if (type == CONDITION) {
+                return new ZigCondition(node);
+            }
+            if (type == SWITCH) {
+                return new ZigSwitch(node);
+            }
+            if (type == SWITCH_PRONG_LIST) {
+                return new ZigSwitchProngList(node);
+            }
+            if (type == SWITCH_PRONG) {
+                return new ZigSwitchProng(node);
+            }
+            if (type == SWITCH_ITEM) {
+                return new ZigSwitchItem(node);
+            }
             return new ZigPsiElement(node); // TODO
         }
     }
