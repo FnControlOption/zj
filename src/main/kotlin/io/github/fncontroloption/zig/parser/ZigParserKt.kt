@@ -215,18 +215,18 @@ class ZigParserKt : PsiParser {
         init.done(ZigElementTypes.INIT_EXPR)
     }
 
-    private fun tryFnProto(builder: PsiBuilder, requireNames: Boolean, terminators: TokenSet?): PsiBuilder.Marker? {
+    private fun tryFnProto(builder: PsiBuilder, requireName: Boolean, terminators: TokenSet?): PsiBuilder.Marker? {
         val proto = builder.mark()
         if (!expect(builder, ZigTokenTypes.KEYWORD_FN)) {
             proto.rollbackTo()
             return null
         }
         val hasName = expect(builder, ZigTokenTypes.IDENTIFIER)
-        if (!hasName && requireNames) {
+        if (!hasName && requireName) {
             proto.rollbackTo()
             return null
         }
-        parseFnParams(builder, requireNames)
+        parseFnParams(builder)
         parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigElementTypes.ALIGN)
         parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ADDRSPACE, ZigElementTypes.ADDRSPACE)
         parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_LINKSECTION, ZigElementTypes.LINKSECTION)
@@ -264,37 +264,39 @@ class ZigParserKt : PsiParser {
         return decl
     }
 
-    private fun parseFnParams(builder: PsiBuilder, requireNames: Boolean): PsiBuilder.Marker? {
+    private fun parseFnParams(builder: PsiBuilder): PsiBuilder.Marker? {
         return parseParenEnclosed(builder, null, ZigElementTypes.FN_PARAMS) {
-            val paramDecl = tryFnParamDecl(builder, requireNames) ?: return@parseParenEnclosed null
-            if (!expect(builder, ZigTokenTypes.COMMA) && builder.tokenType !== ZigTokenTypes.R_PAREN) {
-                // TODO: mark error
+            when (builder.tokenType) {
+                ZigTokenTypes.R_PAREN -> null
+                else -> tryFnParamDecl(builder)
             }
-            paramDecl
         }
     }
 
-    private fun tryFnParamDecl(builder: PsiBuilder, requireNames: Boolean): PsiBuilder.Marker? {
+    private fun tryFnParamDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         val decl = builder.mark()
         if (expect(builder, ZigTokenTypes.ELLIPSIS3)) {
             decl.done(ZigElementTypes.FN_VARARGS)
+            expect(builder, ZigTokenTypes.COMMA)
+            if (builder.tokenType !== ZigTokenTypes.R_PAREN) {
+                // TODO: mark error
+            }
             return decl
         }
         expect(builder, ZigTokenSets.NOALIAS_COMPTIME)
         val hasName = expect(builder, ZigTokenTypes.IDENTIFIER, ZigTokenTypes.COLON)
-        if (!hasName && requireNames) {
-            decl.rollbackTo()
-            return null
-        }
         if (!expect(builder, ZigTokenTypes.KEYWORD_ANYTYPE)) {
             val type = builder.mark()
-            if (tryTypeExpr(builder) == null) {
+            if (tryTypeExpr(builder) == null && !hasName) {
                 decl.rollbackTo()
                 return null
             }
             type.done(ZigElementTypes.TYPE_EXPR)
         }
         decl.done(ZigElementTypes.FN_PARAM_DECL)
+        if (!expect(builder, ZigTokenTypes.COMMA) && builder.tokenType !== ZigTokenTypes.R_PAREN) {
+            // TODO: mark error
+        }
         return decl
     }
 
