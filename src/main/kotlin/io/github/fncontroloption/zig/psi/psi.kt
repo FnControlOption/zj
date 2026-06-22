@@ -136,7 +136,10 @@ class ZigContainerDeclBody(node: ASTNode) : ZigPsiElement(node), ZigContainerBod
     }
 }
 
-class ZigCallArgs(node: ASTNode) : ZigPsiElement(node)
+class ZigCallArgs(node: ASTNode) : ZigPsiElement(node) {
+    val exprs: Sequence<ZigPsiElement>
+        get() = childrenOfType(this)
+}
 
 class ZigBuiltinCall(node: ASTNode) : ZigPsiElement(node) {
     val builtin: PsiElement

@@ -200,3 +200,17 @@ const foo = Foo10.bar;
 fn foo11() Foo {}
 fn foo12() Foo {}
 const foo = if (bar) foo11 else foo12;
+const Foo13 = struct {
+    fn foo(self: @This(), bar: Foo3) {}
+};
+const foo = Foo13.foo(bar, .a);
+const foo13: Foo13 = bar;
+const foo = foo13.foo(.a);
+fn Foo14() type {
+    return struct {
+        fn foo(self: @This(), bar: Foo3) {}
+    };
+}
+const foo = Foo14().foo(bar, .a);
+const foo14: Foo14() = bar;
+const foo = foo14.foo(.a);

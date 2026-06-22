@@ -396,8 +396,10 @@ fun resolveIdentifierReference(element: PsiElement): PsiElement? {
 }
 
 fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
+    var element = element
     var parent = element.parent
     if (element is ZigEnumLiteral && parent is ZigCall) {
+        element = parent
         parent = parent.parent
     }
     when (parent) {
@@ -439,7 +441,28 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
             val switch = parent.findParentOfType<ZigSwitch>() ?: return emptySequence()
             return resolveInferredTypeExprs(switch)
         }
-        is ZigCallArgs -> return emptySequence() // TODO
+        is ZigCallArgs -> {
+            val argIndex = parent.exprs.indexOf(element)
+            assert(argIndex >= 0)
+            val call = parent.findParentOfType<ZigCall>() ?: return emptySequence()
+            val callLhs = call.lhs ?: return emptySequence()
+            var paramIndex = argIndex
+            if (callLhs is ZigFieldAccess) {
+                val accessLhs = callLhs.lhs ?: return emptySequence()
+                if (isImplicitSelfArg(accessLhs)) {
+                    paramIndex += 1
+                }
+            }
+            return followAliasesAndBranches(callLhs, mutableSetOf()).mapNotNull { target ->
+                when (target) {
+                    is ZigFnProto -> {
+                        val paramDecl = target.fnParams?.fnParamDecls?.values?.elementAtOrNull(paramIndex)
+                        paramDecl?.fnParamTypeExpr?.expr
+                    }
+                    else -> null
+                }
+            }
+        }
         else -> return emptySequence()
     }
 }
@@ -488,4 +511,24 @@ fun followAliasesAndBranches(element: PsiElement, visited: MutableSet<PsiElement
             followAliasesAndBranches(target, visited)
         }
         .ifEmpty { sequenceOf(element) }
+}
+
+fun isImplicitSelfArg(element: PsiElement): Boolean {
+    for (target in followAliasesAndBranches(element, mutableSetOf())) {
+        when (target) {
+            is ZigFile, is ZigContainerDecl -> return false
+            is ZigCall -> {
+                val callLhs = target.lhs ?: return false
+                for (target in followAliasesAndBranches(callLhs, mutableSetOf())) {
+                    val fnProto = target as? ZigFnProto ?: continue
+                    val returnTypeExpr = fnProto.fnReturnTypeExpr?.expr ?: continue
+                    if (returnTypeExpr.textMatches("type")) {
+                        return false
+                    }
+                }
+                return true
+            }
+        }
+    }
+    return true
 }
