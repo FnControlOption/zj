@@ -5,6 +5,7 @@ import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementResolveResult
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiPolyVariantReference
 import com.intellij.psi.PsiPolyVariantReferenceBase
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReferenceBase
@@ -365,6 +366,10 @@ private fun resolveMember(
                 }
             }
         }
+        is ZigIf -> {
+            lhs.thenBranch?.expr?.let { resolveMember(it, name, visited, results) }
+            lhs.elseBranch?.expr?.let { resolveMember(it, name, visited, results) }
+        }
         else -> {
             visited.remove(lhs)
             forEachReferenceLeaf(lhs, visited) { target ->
@@ -400,13 +405,9 @@ fun forEachReferenceLeaf(element: PsiElement, visited: MutableSet<PsiElement>, b
         return
     }
     visited.add(element)
-    val references = element.references
-    if (references.isEmpty()) {
-        block(element)
-        return
-    }
-    for (ref in references) {
-        val target = ref.resolve() ?: continue
+    var isLeaf = true
+    for (target in multiResolveReferences(element)) {
+        isLeaf = false
         if (target is ZigVarDeclProto) {
             val typeExpr = target.declTypeExpr?.expr
             if (typeExpr == null) {
@@ -421,6 +422,10 @@ fun forEachReferenceLeaf(element: PsiElement, visited: MutableSet<PsiElement>, b
             }
         }
         forEachReferenceLeaf(target, visited, block)
+    }
+    if (isLeaf) {
+        block(element)
+        return
     }
 }
 
@@ -446,8 +451,7 @@ fun resolveInferredTypeExprs(element: PsiElement): Set<ZigPsiElement> {
         }
         is ZigInitListEntry -> {
             return buildSet {
-                for (reference in parent.references) {
-                    val target = reference.resolve() ?: continue
+                for (target in multiResolveReferences(parent)) {
                     when (target) {
                         is ZigContainerField -> {
                             val typeExpr = target.containerFieldTypeExpr?.expr ?: continue
@@ -460,5 +464,18 @@ fun resolveInferredTypeExprs(element: PsiElement): Set<ZigPsiElement> {
         is ZigCallArgs -> return emptySet() // TODO
         is ZigReturn -> return emptySet() // TODO
         else -> return emptySet()
+    }
+}
+
+fun multiResolveReferences(element: PsiElement): Sequence<PsiElement> {
+    return element.references.asSequence().flatMap { reference ->
+        if (reference is PsiPolyVariantReference) {
+            reference.multiResolve(false)
+                .asSequence()
+                .filter(ResolveResult::isValidResult)
+                .mapNotNull(ResolveResult::getElement)
+        } else {
+            sequenceOf(reference.resolve()).filterNotNull()
+        }
     }
 }

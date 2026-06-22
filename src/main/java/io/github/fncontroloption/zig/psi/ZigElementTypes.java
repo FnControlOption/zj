@@ -219,6 +219,15 @@ public interface ZigElementTypes {
             if (type == TRY) {
                 return new ZigTry(node);
             }
+            if (type == IF) {
+                return new ZigIf(node);
+            }
+            if (type == THEN) {
+                return new ZigThen(node);
+            }
+            if (type == ELSE) {
+                return new ZigElse(node);
+            }
             return new ZigPsiElement(node); // TODO
         }
     }

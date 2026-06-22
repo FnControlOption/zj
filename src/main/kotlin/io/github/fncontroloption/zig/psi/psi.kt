@@ -277,6 +277,24 @@ class ZigAddressOf(node: ASTNode) : ZigPrefixOp(node)
 
 class ZigTry(node: ASTNode) : ZigPrefixOp(node)
 
+class ZigIf(node: ASTNode) : ZigPsiElement(node) {
+    val thenBranch: ZigThen?
+        get() = findChildByClass(ZigThen::class.java)
+
+    val elseBranch: ZigElse?
+        get() = findChildByClass(ZigElse::class.java)
+}
+
+class ZigThen(node: ASTNode) : ZigPsiElement(node) {
+    val expr: ZigPsiElement?
+        get() = lastChild as? ZigPsiElement
+}
+
+class ZigElse(node: ASTNode) : ZigPsiElement(node) {
+    val expr: ZigPsiElement?
+        get() = lastChild as? ZigPsiElement
+}
+
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {
         return findChildByType(ZigTokenTypes.IDENTIFIER)

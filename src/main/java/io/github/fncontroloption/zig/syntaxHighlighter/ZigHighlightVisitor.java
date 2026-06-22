@@ -6,6 +6,7 @@ import com.intellij.codeInsight.daemon.impl.HighlightVisitor;
 import com.intellij.codeInsight.daemon.impl.analysis.HighlightInfoHolder;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import io.github.fncontroloption.zig.ReferenceKt;
 import io.github.fncontroloption.zig.psi.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -217,13 +218,12 @@ public class ZigHighlightVisitor implements HighlightVisitor {
     }
 
     private @Nullable HighlightInfo createHighlightInfoFromReference(PsiElement element, PsiElement range) {
-        for (var reference : element.getReferences()) {
-            var resolved = reference.resolve();
-            if (resolved != null) {
-                var info = createHighlightInfo(resolved);
-                if (info != null) {
-                    return createHighlightInfo(range, info.type);
-                }
+        var it = ReferenceKt.multiResolveReferences(element).iterator();
+        while (it.hasNext()) {
+            var target = it.next();
+            var info = createHighlightInfo(target);
+            if (info != null) {
+                return createHighlightInfo(range, info.type);
             }
         }
         return null;
