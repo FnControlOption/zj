@@ -854,6 +854,7 @@ class ZigParserKt : PsiParser {
     private fun tryPrimaryExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         when (builder.tokenType) {
             // TODO
+            ZigTokenTypes.KEYWORD_IF -> return tryIf(builder, this::tryExpr)
             ZigTokenTypes.KEYWORD_BREAK -> {
                 val expr = builder.mark()
                 builder.advanceLexer()
