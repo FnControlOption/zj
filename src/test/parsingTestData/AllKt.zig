@@ -175,3 +175,4 @@ const Foo = [*]Bar;
 const Foo = [*:sentinel]const Bar;
 const Foo = [length]Bar;
 const Foo = [length:sentinel]const Bar;
+const Foo = *const volatile allowzero Bar;

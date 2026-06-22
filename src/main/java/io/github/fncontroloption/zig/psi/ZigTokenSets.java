@@ -116,4 +116,12 @@ public interface ZigTokenSets {
 
   TokenSet COMMA_BRACE = TokenSet.create(ZigTokenTypes.COMMA, ZigTokenTypes.R_BRACE);
 
+  TokenSet POINTER_MODIFIERS = TokenSet.create(
+          ZigTokenTypes.KEYWORD_ALIGN,
+          ZigTokenTypes.KEYWORD_CONST,
+          ZigTokenTypes.KEYWORD_VOLATILE,
+          ZigTokenTypes.KEYWORD_ALLOWZERO,
+          ZigTokenTypes.KEYWORD_ADDRSPACE
+  );
+
 }

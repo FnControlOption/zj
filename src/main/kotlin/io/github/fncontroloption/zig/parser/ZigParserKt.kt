@@ -489,9 +489,32 @@ class ZigParserKt : PsiParser {
     }
 
     private fun parsePointerModifiers(builder: PsiBuilder): PsiBuilder.Marker? {
-        // TODO
-        expect(builder, ZigTokenTypes.KEYWORD_CONST)
-        return null
+        if (builder.tokenType !in ZigTokenSets.POINTER_MODIFIERS) {
+            return null
+        }
+        val marker = builder.mark()
+        while (!builder.eof()) {
+            when (builder.tokenType) {
+                ZigTokenTypes.KEYWORD_ALIGN -> {
+                    parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigElementTypes.ALIGN)
+                }
+                ZigTokenTypes.KEYWORD_CONST -> {
+                    builder.advanceLexer()
+                }
+                ZigTokenTypes.KEYWORD_VOLATILE -> {
+                    builder.advanceLexer()
+                }
+                ZigTokenTypes.KEYWORD_ALLOWZERO -> {
+                    builder.advanceLexer()
+                }
+                ZigTokenTypes.KEYWORD_ADDRSPACE -> {
+                    parseParenEnclosed(builder, ZigTokenTypes.KEYWORD_ADDRSPACE, ZigElementTypes.ADDRSPACE)
+                }
+                else -> break
+            }
+        }
+        marker.done(ZigElementTypes.POINTER_MODIFIERS)
+        return marker
     }
 
     private fun tryErrorUnionExpr(builder: PsiBuilder): PsiBuilder.Marker? {

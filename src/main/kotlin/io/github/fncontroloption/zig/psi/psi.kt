@@ -201,8 +201,6 @@ class ZigPointerType(node: ASTNode) : ZigPsiElement(node) {
         get() = findChildByClass(ZigPsiElement::class.java)
 
     fun isOne() = findChildByType<PsiElement?>(ZigTokenTypes.ASTERISK) != null
-
-    fun isConst() = findChildByType<PsiElement?>(ZigTokenTypes.KEYWORD_CONST) != null
 }
 
 class ZigErrorUnion(node: ASTNode) : ZigPsiElement(node) {
