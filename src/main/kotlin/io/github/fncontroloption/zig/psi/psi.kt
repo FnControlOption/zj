@@ -198,7 +198,7 @@ class ZigOptionalType(node: ASTNode) : ZigPsiElement(node) {
 
 class ZigPointerType(node: ASTNode) : ZigPsiElement(node) {
     val child: ZigPsiElement?
-        get() = findChildByClass(ZigPsiElement::class.java)
+        get() = lastChild as? ZigPsiElement
 
     fun isOne() = findChildByType<PsiElement?>(ZigTokenTypes.ASTERISK) != null
 }
