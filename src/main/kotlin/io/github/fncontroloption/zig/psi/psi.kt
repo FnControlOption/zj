@@ -89,15 +89,11 @@ class ZigBlock(node: ASTNode) : ZigPsiElement(node) {
                 return decls
             }
             decls = mutableMapOf()
-            var child = firstChild
-            while (child != null) {
-                if (child is ZigVarDecl) {
-                    val name = child.name
-                    if (name != null) {
-                        decls[name] = child.varDeclProto
-                    }
+            for (varDecl in childrenOfType<ZigVarDecl>(this)) {
+                val name = varDecl.name
+                if (name != null) {
+                    decls[name] = varDecl.varDeclProto
                 }
-                child = child.nextSibling
             }
             cachedVarDeclProtos = decls
             return decls
@@ -470,15 +466,11 @@ class ZigFnParams(node: ASTNode) : ZigPsiElement(node) {
                 return decls
             }
             decls = mutableMapOf()
-            var child = firstChild
-            while (child != null) {
-                if (child is ZigFnParamDecl) {
-                    val name = child.name
-                    if (name != null) {
-                        decls[name] = child
-                    }
+            for (paramDecl in childrenOfType<ZigFnParamDecl>(this)) {
+                val name = paramDecl.name
+                if (name != null) {
+                    decls[name] = paramDecl
                 }
-                child = child.nextSibling
             }
             cachedFnParamDecls = decls
             return decls
@@ -532,4 +524,18 @@ fun createZigStringLiteral(project: Project, value: String): ZigStringLiteral {
     val file = createZigFile(project, "const dummy = \"$value\";")
     val varDecl = file.firstChild as ZigVarDecl
     return varDecl.varDeclInitExpr?.expr as ZigStringLiteral
+}
+
+inline fun <reified T : PsiElement> childrenOfType(element: PsiElement): Sequence<T> {
+    var nextChild = element.firstChild
+    return generateSequence {
+        while (nextChild != null) {
+            val element = nextChild
+            nextChild = nextChild.nextSibling
+            if (element is T) {
+                return@generateSequence element
+            }
+        }
+        null
+    }
 }
