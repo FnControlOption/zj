@@ -191,3 +191,9 @@ const foo = bar: switch (a) {
     => |d, e| f,
     inline else => |g, h| i,
 };
+const Foo10 = if (foo) struct {
+    const bar = baz;
+} else struct {
+    const bar = baz;
+};
+const foo = Foo10.bar;

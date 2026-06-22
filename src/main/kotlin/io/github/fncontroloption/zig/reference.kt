@@ -106,7 +106,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val name: PsiElement) :
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
         val lhs = myElement.lhs ?: return emptyArray()
-        val results = mutableListOf<ResolveResult>()
+        val results = mutableSetOf<ResolveResult>()
         resolveMember(lhs, name.text, mutableSetOf(), results)
         return results.toTypedArray()
     }
@@ -236,7 +236,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val name: PsiElement) :
     PsiPolyVariantReferenceBase<ZigEnumLiteral>(element, name.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
-        val results = mutableListOf<ResolveResult>()
+        val results = mutableSetOf<ResolveResult>()
         for (typeExpr in resolveInferredTypeExprs(myElement)) {
             resolveMember(typeExpr, name.text, mutableSetOf(), results)
         }
@@ -270,7 +270,7 @@ class ZigInitListEntryReference(element: ZigInitListEntry, val name: PsiElement)
             val typeExpr = arrayInit.initTypeExpr?.expr ?: return emptyArray()
             sequenceOf(typeExpr)
         }
-        val results = mutableListOf<ResolveResult>()
+        val results = mutableSetOf<ResolveResult>()
         for (typeExpr in inferredTypeExprs) {
             resolveMember(typeExpr, name.text, mutableSetOf(), results)
         }
@@ -289,7 +289,7 @@ private fun resolveMember(
     lhs: PsiElement,
     name: String,
     visited: MutableSet<PsiElement>,
-    results: MutableList<ResolveResult>,
+    results: MutableSet<ResolveResult>,
 ) {
     if (lhs in visited) {
         return
@@ -310,12 +310,12 @@ private fun resolveMember(
         }
         is ZigFile -> {
             val member = lhs.containerMembers[name] ?: return
-            results.addLast(PsiElementResolveResult(member))
+            results.add(PsiElementResolveResult(member))
         }
         is ZigContainerDecl -> {
             val containerBody = lhs.containerDeclBody ?: return
             val member = containerBody.containerMembers[name] ?: return
-            results.addLast(PsiElementResolveResult(member))
+            results.add(PsiElementResolveResult(member))
         }
         is ZigAddressOf -> {
             val expr = lhs.expr ?: return
@@ -364,10 +364,6 @@ private fun resolveMember(
                     resolveMember(returnTypeExpr, name, visited, results)
                 }
             }
-        }
-        is ZigIf -> {
-            lhs.thenBranch?.expr?.let { resolveMember(it, name, visited, results) }
-            lhs.elseBranch?.expr?.let { resolveMember(it, name, visited, results) }
         }
         else -> {
             visited.remove(lhs)
@@ -466,6 +462,15 @@ fun resolveLeafReferences(element: PsiElement, visited: MutableSet<PsiElement>):
         return emptySequence()
     }
     visited.add(element)
+    when (element) {
+        is ZigIf -> {
+            val thenExpr = element.thenBranch?.expr
+            val elseExpr = element.elseBranch?.expr
+            return sequenceOf(thenExpr, elseExpr)
+                .filterNotNull()
+                .flatMap { resolveLeafReferences(it, visited) }
+        }
+    }
     return multiResolveReferences(element)
         .flatMap { target ->
             if (target is ZigVarDeclProto) {
