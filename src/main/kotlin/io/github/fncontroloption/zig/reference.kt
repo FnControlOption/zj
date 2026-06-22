@@ -453,6 +453,9 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
             val switch = parent.findParentOfType<ZigSwitch>() ?: return emptySequence()
             return resolveInferredTypeExprs(switch)
         }
+        is ZigAddressOf -> {
+            return resolveInferredTypeExprs(parent)
+        }
         is ZigCallArgs -> {
             val argIndex = parent.exprs.indexOf(element)
             assert(argIndex >= 0)
