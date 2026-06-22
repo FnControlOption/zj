@@ -1022,7 +1022,7 @@ class ZigParserKt : PsiParser {
         assert(builder.tokenType === ZigTokenTypes.KEYWORD_IF)
         val ifMarker = builder.mark()
         builder.advanceLexer()
-        parseConditionExpr(builder)
+        parseCondition(builder)
         val thenMarker = builder.mark()
         parsePtrPayload(builder)
         var elseRequired = false;
@@ -1150,7 +1150,7 @@ class ZigParserKt : PsiParser {
             marker.rollbackTo()
             return null
         }
-        parseConditionExpr(builder)
+        parseCondition(builder)
         val thenMarker = builder.mark()
         parsePtrPayload(builder)
         if (bodyParseFn(builder) == null) {
@@ -1172,9 +1172,9 @@ class ZigParserKt : PsiParser {
         return marker
     }
 
-    private fun parseConditionExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parseCondition(builder: PsiBuilder): PsiBuilder.Marker? {
         var expr: PsiBuilder.Marker? = null
-        return parseParenEnclosed(builder, null, ZigElementTypes.CONDITION_EXPR) {
+        return parseParenEnclosed(builder, null, ZigElementTypes.CONDITION) {
             if (expr == null) {
                 expr = tryExpr(builder)
                 expr

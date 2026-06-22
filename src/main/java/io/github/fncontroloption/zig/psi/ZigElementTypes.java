@@ -56,7 +56,7 @@ public interface ZigElementTypes {
     IElementType RETURN = new ZigElementType("RETURN");
     IElementType GROUPED_EXPRESSION = new ZigElementType("GROUPED_EXPRESSION");
     IElementType IF = new ZigElementType("IF");
-    IElementType CONDITION_EXPR = new ZigElementType("CONDITION_EXPR");
+    IElementType CONDITION = new ZigElementType("CONDITION");
     IElementType PAYLOAD = new ZigElementType("PAYLOAD");
     IElementType THEN = new ZigElementType("THEN");
     IElementType ELSE = new ZigElementType("ELSE");
