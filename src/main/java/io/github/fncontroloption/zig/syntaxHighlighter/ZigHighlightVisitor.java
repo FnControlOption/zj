@@ -110,7 +110,7 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                         if (initExpr != null) {
                             var expr = initExpr.getExpr();
                             if (expr != null) {
-                                var it = ReferenceKt.resolveLeafReferences(expr, new HashSet<>()).iterator();
+                                var it = ReferenceKt.followAliasesAndBranches(expr, new HashSet<>()).iterator();
                                 while (it.hasNext()) {
                                     var target = it.next();
                                     if (target instanceof ZigFnProto) {
@@ -222,7 +222,7 @@ public class ZigHighlightVisitor implements HighlightVisitor {
     }
 
     private @Nullable HighlightInfo createHighlightInfoFromReference(PsiElement element, PsiElement range) {
-        var it = ReferenceKt.multiResolveReferences(element).iterator();
+        var it = ReferenceKt.resolveReferences(element).iterator();
         while (it.hasNext()) {
             var target = it.next();
             var info = createHighlightInfo(target);

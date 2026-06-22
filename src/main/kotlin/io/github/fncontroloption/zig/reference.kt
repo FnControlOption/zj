@@ -347,7 +347,7 @@ private fun resolveMember(
         }
         is ZigCall -> {
             val callLhs = lhs.lhs ?: return
-            for (target in resolveLeafReferences(callLhs, visited)) {
+            for (target in followAliasesAndBranches(callLhs, visited)) {
                 val fnProto = target as? ZigFnProto ?: continue
                 val returnTypeExpr = fnProto.fnReturnTypeExpr?.expr ?: continue
                 if (returnTypeExpr.textMatches("type")) {
@@ -367,7 +367,7 @@ private fun resolveMember(
         }
         else -> {
             visited.remove(lhs)
-            for (target in resolveLeafReferences(lhs, visited)) {
+            for (target in followAliasesAndBranches(lhs, visited)) {
                 if (target != lhs) {
                     visited.remove(target)
                     resolveMember(target, name, visited, results)
@@ -417,7 +417,7 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
             }
         }
         is ZigInitListEntry -> {
-            return multiResolveReferences(parent).mapNotNull { target ->
+            return resolveReferences(parent).mapNotNull { target ->
                 when (target) {
                     is ZigContainerField -> target.containerFieldTypeExpr?.expr
                     else -> null
@@ -444,7 +444,7 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
     }
 }
 
-fun multiResolveReferences(element: PsiElement): Sequence<PsiElement> {
+fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
     return element.references.asSequence().flatMap { reference ->
         if (reference is PsiPolyVariantReference) {
             reference.multiResolve(false)
@@ -457,7 +457,7 @@ fun multiResolveReferences(element: PsiElement): Sequence<PsiElement> {
     }
 }
 
-fun resolveLeafReferences(element: PsiElement, visited: MutableSet<PsiElement>): Sequence<PsiElement> {
+fun followAliasesAndBranches(element: PsiElement, visited: MutableSet<PsiElement>): Sequence<PsiElement> {
     if (element in visited) {
         return emptySequence()
     }
@@ -468,10 +468,10 @@ fun resolveLeafReferences(element: PsiElement, visited: MutableSet<PsiElement>):
             val elseExpr = element.elseBranch?.expr
             return sequenceOf(thenExpr, elseExpr)
                 .filterNotNull()
-                .flatMap { resolveLeafReferences(it, visited) }
+                .flatMap { followAliasesAndBranches(it, visited) }
         }
     }
-    return multiResolveReferences(element)
+    return resolveReferences(element)
         .flatMap { target ->
             if (target is ZigVarDeclProto) {
                 val typeExpr = target.declTypeExpr?.expr
@@ -480,12 +480,12 @@ fun resolveLeafReferences(element: PsiElement, visited: MutableSet<PsiElement>):
                     if (parent is ZigVarDecl) {
                         val initExpr = parent.varDeclInitExpr?.expr
                         if (initExpr != null) {
-                            return@flatMap resolveLeafReferences(initExpr, visited)
+                            return@flatMap followAliasesAndBranches(initExpr, visited)
                         }
                     }
                 }
             }
-            resolveLeafReferences(target, visited)
+            followAliasesAndBranches(target, visited)
         }
         .ifEmpty { sequenceOf(element) }
 }
