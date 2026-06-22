@@ -6,7 +6,8 @@ import com.intellij.psi.tree.IElementType;
 
 public interface ZigElementTypes {
     IElementType CONTAINER_DECL = new ZigElementType("CONTAINER_DECL");
-    IElementType CONTAINER_DECL_TAG = new ZigElementType("CONTAINER_DECL_TAG");
+    IElementType CONTAINER_TAG = new ZigElementType("CONTAINER_TAG");
+    IElementType CONTAINER_TAG_ENUM = new ZigElementType("CONTAINER_TAG_ENUM");
     IElementType CONTAINER_DECL_BODY = new ZigElementType("CONTAINER_DECL_BODY");
     IElementType BLOCK = new ZigElementType("BLOCK");
     IElementType BLOCK_EXPR = new ZigElementType("BLOCK_EXPR");
@@ -105,12 +106,10 @@ public interface ZigElementTypes {
     IElementType INIT_LIST = new ZigElementType("INIT_LIST");
     IElementType INIT_LIST_ENTRY = new ZigElementType("INIT_LIST_ENTRY");
     IElementType SLICE = new ZigElementType("SLICE");
-    IElementType SLICE_INDEXES = new ZigElementType("SLICE_INDEXES");
-    IElementType SLICE_START = new ZigElementType("SLICE_START");
+    IElementType INDEXES = new ZigElementType("INDEXES");
     IElementType SLICE_END = new ZigElementType("SLICE_END");
     IElementType SLICE_SENTINEL = new ZigElementType("SLICE_SENTINEL");
     IElementType ARRAY_ACCESS = new ZigElementType("ARRAY_ACCESS");
-    IElementType ARRAY_ACCESS_INDEX = new ZigElementType("ARRAY_ACCESS_INDEX");
     IElementType DEREF = new ZigElementType("DEREF");
 
     class Factory {

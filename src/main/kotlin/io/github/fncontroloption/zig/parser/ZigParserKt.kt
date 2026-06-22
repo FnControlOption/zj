@@ -58,21 +58,23 @@ class ZigParserKt : PsiParser {
 
     private fun parseContainerDeclTag(builder: PsiBuilder): PsiBuilder.Marker? {
         var expr: PsiBuilder.Marker? = null
-        return parseParenEnclosed(builder, null, ZigElementTypes.CONTAINER_DECL_TAG) {
+        return parseParenEnclosed(builder, null, ZigElementTypes.CONTAINER_TAG) {
             if (expr == null) {
                 when (builder.tokenType) {
                     ZigTokenTypes.KEYWORD_ENUM -> {
                         when (builder.lookAhead(1)) {
                             ZigTokenTypes.L_PAREN -> {
-                                expr = builder.mark()
+                                val enum = builder.mark()
                                 builder.advanceLexer()
                                 parseContainerDeclTag(builder)
-                                expr!!.drop()
+                                enum.done(ZigElementTypes.CONTAINER_TAG_ENUM)
+                                expr = enum
                             }
                             ZigTokenTypes.R_PAREN -> {
-                                expr = builder.mark()
+                                val enum = builder.mark()
                                 builder.advanceLexer()
-                                expr!!.drop()
+                                enum.done(ZigElementTypes.CONTAINER_TAG_ENUM)
+                                expr = enum
                             }
                             else -> expr = tryExpr(builder)
                         }
@@ -423,7 +425,7 @@ class ZigParserKt : PsiParser {
                 val expr = builder.mark()
                 var isArray = true
                 var lengthState = TypeLengthState.START
-                parseBracketEnclosed(builder, null, ZigElementTypes.TYPE_LENGTH) {
+                val prefix = parseBracketEnclosed(builder, null, ZigElementTypes.ARRAY_TYPE) {
                     when (lengthState) {
                         TypeLengthState.START -> {
                             val length = builder.mark()
@@ -450,7 +452,7 @@ class ZigParserKt : PsiParser {
                                     lengthState = TypeLengthState.SENTINEL
                                 }
                             }
-                            length.drop()
+                            length.done(ZigElementTypes.TYPE_LENGTH)
                             length
                         }
                         TypeLengthState.SENTINEL -> {
@@ -469,6 +471,7 @@ class ZigParserKt : PsiParser {
                         TypeLengthState.DONE -> null
                     }
                 }
+                prefix!!.drop()
                 val modifiers = parsePointerModifiers(builder)
                 if (tryTypeExpr(builder) == null) {
                     expr.rollbackTo()
@@ -570,7 +573,7 @@ class ZigParserKt : PsiParser {
                 var startExpr: PsiBuilder.Marker? = null
                 var endExpr: PsiBuilder.Marker? = null
                 var sentinel: PsiBuilder.Marker? = null
-                val accessIndex = parseBracketEnclosed(builder, null, ZigElementTypes.ARRAY_ACCESS_INDEX) {
+                parseBracketEnclosed(builder, null, ZigElementTypes.INDEXES) {
                     if (startExpr == null) {
                         startExpr = tryExpr(builder)
                         startExpr
@@ -601,9 +604,6 @@ class ZigParserKt : PsiParser {
                     }
                 }
                 if (endExpr != null) {
-                    startExpr!!.precede().doneBefore(ZigElementTypes.SLICE_START, endExpr)
-                    accessIndex!!.precede().done(ZigElementTypes.SLICE_INDEXES)
-                    accessIndex.drop()
                     return ZigElementTypes.SLICE
                 }
                 return ZigElementTypes.ARRAY_ACCESS
