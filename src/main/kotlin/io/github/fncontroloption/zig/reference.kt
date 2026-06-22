@@ -431,11 +431,21 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
             }
         }
         is ZigInitListEntry -> {
-            return resolveReferences(parent).mapNotNull { target ->
-                when (target) {
-                    is ZigContainerField -> target.containerFieldTypeExpr?.expr
-                    else -> null
+            if (parent.fieldName != null) {
+                return resolveReferences(parent).mapNotNull { target ->
+                    when (target) {
+                        is ZigContainerField -> target.containerFieldTypeExpr?.expr
+                        else -> null
+                    }
                 }
+            } else {
+                val arrayInit = parent.findParentOfType<ZigArrayInit>() ?: return emptySequence()
+                if (arrayInit.isTypeInferred()) {
+                    return resolveInferredTypeExprs(arrayInit)
+                }
+                val typeExpr = arrayInit.initTypeExpr?.expr ?: return emptySequence()
+                // TODO: handle tuples
+                return sequenceOf(typeExpr)
             }
         }
         is ZigReturn -> {
