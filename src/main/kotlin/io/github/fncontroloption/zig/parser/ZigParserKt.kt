@@ -960,6 +960,7 @@ class ZigParserKt : PsiParser {
                     return statement
                 }
             }
+            ZigTokenTypes.KEYWORD_IF -> return expectIfStatement(builder)
             // TODO
         }
         val labeledStatement = parseLabeledStatement(builder)
@@ -969,9 +970,55 @@ class ZigParserKt : PsiParser {
         if (isBlockLevel) {
             return tryVarDeclExprStatement(builder)
         } else {
-            // TODO
-            return null
+            val statement = builder.mark()
+            if (parseAssignExpr(builder) == null) {
+                statement.rollbackTo()
+                return null
+            }
+            if (!expect(builder, ZigTokenTypes.SEMICOLON)) {
+                // TODO mark error
+            }
+            statement.done(ZigElementTypes.EXPR_STATEMENT)
+            return statement
         }
+    }
+
+    private fun expectIfStatement(builder: PsiBuilder): PsiBuilder.Marker {
+        assert(builder.tokenType === ZigTokenTypes.KEYWORD_IF)
+        val ifMarker = builder.mark()
+        builder.advanceLexer()
+        parseConditionExpr(builder)
+        val thenMarker = builder.mark()
+        parsePtrPayload(builder)
+        var elseRequired = false;
+        if (parseBlockExpr(builder) == null) {
+            if (parseAssignExpr(builder) == null) {
+                // TODO: mark error
+            }
+            if (expect(builder, ZigTokenTypes.SEMICOLON)) {
+                thenMarker.done(ZigElementTypes.THEN)
+                ifMarker.done(ZigElementTypes.IF)
+                return ifMarker
+            }
+            elseRequired = true
+        }
+        thenMarker.done(ZigElementTypes.THEN)
+        if (builder.tokenType !== ZigTokenTypes.KEYWORD_ELSE) {
+            if (elseRequired) {
+                // TODO: mark error
+            }
+            ifMarker.done(ZigElementTypes.IF)
+            return ifMarker
+        }
+        val elseMarker = builder.mark()
+        builder.advanceLexer()
+        parsePayload(builder)
+        if (tryStatement(builder, false) == null) {
+            // TODO: mark error
+        }
+        elseMarker.done(ZigElementTypes.ELSE)
+        ifMarker.done(ZigElementTypes.IF)
+        return ifMarker
     }
 
     private fun parseLabeledStatement(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -1077,8 +1124,9 @@ class ZigParserKt : PsiParser {
             return null
         }
         thenMarker.done(ZigElementTypes.THEN)
-        if (expect(builder, ZigTokenTypes.KEYWORD_ELSE)) {
+        if (builder.tokenType === ZigTokenTypes.KEYWORD_ELSE) {
             val elseMarker = builder.mark()
+            builder.advanceLexer()
             parsePayload(builder)
             if (bodyParseFn(builder) == null) {
                 marker.rollbackTo()
