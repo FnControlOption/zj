@@ -452,6 +452,16 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
             }
             return emptySequence()
         }
+        is ZigSwitchProng -> {
+            parent = parent.parent
+            while (parent != null) {
+                if (parent is ZigSwitch) {
+                    return resolveInferredTypeExprs(parent)
+                }
+                parent = parent.parent
+            }
+            return emptySequence()
+        }
         is ZigCallArgs -> return emptySequence() // TODO
         else -> return emptySequence()
     }
