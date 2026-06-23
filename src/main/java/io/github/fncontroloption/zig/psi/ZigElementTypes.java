@@ -114,6 +114,9 @@ public interface ZigElementTypes {
     IElementType SWITCH_ITEM = new ZigElementType("SWITCH_ITEM");
     IElementType WHILE = new ZigElementType("WHILE");
     IElementType WHILE_CONTINUE_EXPR = new ZigElementType("WHILE_CONTINUE_EXPR");
+    IElementType FOR = new ZigElementType("FOR");
+    IElementType FOR_INPUTS = new ZigElementType("FOR_INPUTS");
+    IElementType FOR_RANGE = new ZigElementType("FOR_RANGE");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

@@ -228,3 +228,7 @@ test {
     while (foo) {}
     foo: inline while (a) |*b| : (c) d else e;
 }
+test {
+    for (foo) {}
+    foo: inline for (a, b..c,) |d, *e,| f else g;
+}

@@ -1075,7 +1075,7 @@ class ZigParserKt : PsiParser {
         val statement = builder.mark()
         val scratch = mutableListOf<PsiBuilder.Marker>()
 
-        while (true) {
+        while (!builder.eof()) {
             val varDeclProto = parseVarDeclProto(builder)
             if (varDeclProto != null) {
                 scratch.add(varDeclProto)
@@ -1379,9 +1379,90 @@ class ZigParserKt : PsiParser {
             forMarker.rollbackTo()
             return null
         }
-        // TODO
-        forMarker.rollbackTo()
-        return null
+        forPrefix(builder)
+        var elseRequired = false;
+        val thenMarker = builder.mark()
+        if (parseBlockExpr(builder) == null) {
+            if (parseAssignExpr(builder) == null) {
+                // TODO: mark error
+            }
+            if (expect(builder, ZigTokenTypes.SEMICOLON)) {
+                thenMarker.done(ZigElementTypes.THEN)
+                forMarker.done(ZigElementTypes.FOR)
+                return forMarker
+            }
+            elseRequired = true
+        }
+        thenMarker.done(ZigElementTypes.THEN)
+        if (builder.tokenType === ZigTokenTypes.KEYWORD_ELSE) {
+            val elseMarker = builder.mark()
+            builder.advanceLexer()
+            tryStatement(builder, false)
+            elseMarker.done(ZigElementTypes.ELSE)
+        } else if (elseRequired) {
+            // TODO: mark error
+        }
+        forMarker.done(ZigElementTypes.FOR)
+        return forMarker
+    }
+
+    private fun forPrefix(builder: PsiBuilder) {
+        if (parseForInputs(builder) == null) {
+            // TODO: mark error
+        }
+        if (builder.tokenType !== ZigTokenTypes.PIPE) {
+            // TODO: mark error
+            return
+        }
+        val payload = builder.mark()
+        builder.advanceLexer()
+        while (!builder.eof()) {
+            expect(builder, ZigTokenTypes.ASTERISK)
+            if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
+                // TODO: mark error
+            }
+            if (expect(builder, ZigTokenTypes.PIPE)) {
+                break
+            }
+            if (!expect(builder, ZigTokenTypes.COMMA)) {
+                // TODO: mark error
+            }
+            if (expect(builder, ZigTokenTypes.PIPE)) {
+                break
+            }
+        }
+        payload.done(ZigElementTypes.PAYLOAD)
+    }
+
+    private fun parseForInputs(builder: PsiBuilder): PsiBuilder.Marker? {
+        var hasInput = false
+        val marker = parseParenEnclosed(builder, null, ZigElementTypes.FOR_INPUTS) {
+            val input = tryForInput(builder)
+            if (input != null) {
+                hasInput = true
+            }
+            input
+        }
+        if (marker == null) {
+            return null
+        }
+        if (!hasInput) {
+            // TODO: mark error
+        }
+        return marker
+    }
+
+    private fun tryForInput(builder: PsiBuilder): PsiBuilder.Marker? {
+        var input = tryExpr(builder) ?: return null
+        if (expect(builder, ZigTokenTypes.ELLIPSIS2)) {
+            tryExpr(builder)
+            input = input.precede()
+            input.done(ZigElementTypes.FOR_RANGE)
+        }
+        if (!expect(builder, ZigTokenTypes.COMMA) && builder.tokenType !== ZigTokenTypes.R_PAREN) {
+            // TODO: mark error
+        }
+        return input
     }
 
     private fun parseWhileStatement(builder: PsiBuilder): PsiBuilder.Marker? {
