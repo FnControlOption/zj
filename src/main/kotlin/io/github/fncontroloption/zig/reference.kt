@@ -359,7 +359,7 @@ private fun resolveMember(
         }
         is ZigCall -> {
             val callLhs = lhs.lhs ?: return
-            for (target in followAliasesAndBranches(callLhs, visited)) {
+            for (target in followReferencesRecursive(callLhs, visited)) {
                 val fnProto = target as? ZigFnProto ?: continue
                 val returnTypeExpr = fnProto.fnReturnTypeExpr?.expr ?: continue
                 if (returnTypeExpr.textMatches("type")) {
@@ -379,7 +379,7 @@ private fun resolveMember(
         }
         else -> {
             visited.remove(lhs)
-            for (target in followAliasesAndBranches(lhs, visited)) {
+            for (target in followReferencesRecursive(lhs, visited)) {
                 if (target != lhs) {
                     visited.remove(target)
                     resolveMember(target, name, visited, results)
@@ -475,7 +475,7 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
             if (isPossibleMethodAccess(callLhs)) {
                 paramIndex += 1
             }
-            return followAliasesAndBranches(callLhs, mutableSetOf()).mapNotNull { target ->
+            return followReferencesRecursive(callLhs, mutableSetOf()).mapNotNull { target ->
                 when (target) {
                     is ZigFnProto -> {
                         val paramDecl = target.fnParams?.fnParamDecls?.values?.elementAtOrNull(paramIndex)
@@ -502,7 +502,7 @@ fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
     }
 }
 
-fun followAliasesAndBranches(element: PsiElement, visited: MutableSet<PsiElement>): Sequence<PsiElement> {
+fun followReferencesRecursive(element: PsiElement, visited: MutableSet<PsiElement>): Sequence<PsiElement> {
     if (element in visited) {
         return emptySequence()
     }
@@ -513,7 +513,7 @@ fun followAliasesAndBranches(element: PsiElement, visited: MutableSet<PsiElement
             val elseExpr = element.elseBranch?.expr
             return sequenceOf(thenExpr, elseExpr)
                 .filterNotNull()
-                .flatMap { followAliasesAndBranches(it, visited) }
+                .flatMap { followReferencesRecursive(it, visited) }
         }
     }
     return resolveReferences(element)
@@ -525,12 +525,12 @@ fun followAliasesAndBranches(element: PsiElement, visited: MutableSet<PsiElement
                     if (parent is ZigVarDecl) {
                         val initExpr = parent.varDeclInitExpr?.expr
                         if (initExpr != null) {
-                            return@flatMap followAliasesAndBranches(initExpr, visited)
+                            return@flatMap followReferencesRecursive(initExpr, visited)
                         }
                     }
                 }
             }
-            followAliasesAndBranches(target, visited)
+            followReferencesRecursive(target, visited)
         }
         .ifEmpty { sequenceOf(element) }
 }
@@ -544,12 +544,12 @@ fun isPossibleMethodAccess(element: PsiElement): Boolean {
 }
 
 fun isImplicitSelfArg(element: PsiElement): Boolean {
-    for (target in followAliasesAndBranches(element, mutableSetOf())) {
+    for (target in followReferencesRecursive(element, mutableSetOf())) {
         when (target) {
             is ZigFile, is ZigContainerDecl -> return false
             is ZigCall -> {
                 val callLhs = target.lhs ?: return false
-                for (target in followAliasesAndBranches(callLhs, mutableSetOf())) {
+                for (target in followReferencesRecursive(callLhs, mutableSetOf())) {
                     val fnProto = target as? ZigFnProto ?: continue
                     val returnTypeExpr = fnProto.fnReturnTypeExpr?.expr ?: continue
                     if (returnTypeExpr.textMatches("type")) {

@@ -110,7 +110,7 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                         if (initExpr != null) {
                             var expr = initExpr.getExpr();
                             if (expr != null) {
-                                var it = ReferenceKt.followAliasesAndBranches(expr, new HashSet<>()).iterator();
+                                var it = ReferenceKt.followReferencesRecursive(expr, new HashSet<>()).iterator();
                                 while (it.hasNext()) {
                                     var target = it.next();
                                     if (target instanceof ZigFnProto) {
