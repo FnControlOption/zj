@@ -472,11 +472,8 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
             val call = parent.findParentOfType<ZigCall>() ?: return emptySequence()
             val callLhs = call.lhs ?: return emptySequence()
             var paramIndex = argIndex
-            if (callLhs is ZigFieldAccess) {
-                val accessLhs = callLhs.lhs ?: return emptySequence()
-                if (isImplicitSelfArg(accessLhs)) {
-                    paramIndex += 1
-                }
+            if (isPossibleMethodAccess(callLhs)) {
+                paramIndex += 1
             }
             return followAliasesAndBranches(callLhs, mutableSetOf()).mapNotNull { target ->
                 when (target) {
@@ -536,6 +533,14 @@ fun followAliasesAndBranches(element: PsiElement, visited: MutableSet<PsiElement
             followAliasesAndBranches(target, visited)
         }
         .ifEmpty { sequenceOf(element) }
+}
+
+fun isPossibleMethodAccess(element: PsiElement): Boolean {
+    if (element is ZigFieldAccess) {
+        val accessLhs = element.lhs ?: return false
+        return isImplicitSelfArg(accessLhs)
+    }
+    return false
 }
 
 fun isImplicitSelfArg(element: PsiElement): Boolean {
