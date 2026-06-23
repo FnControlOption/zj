@@ -224,3 +224,7 @@ const foo = foo17[bar].foo;
 const foo: *const Foo8 = &.{ .foo = bar };
 const foo = [_]Foo8{ .{ .foo = bar } };
 const foo: [len]Foo8 = .{ .{ .foo = bar } };
+test {
+    while (foo) {}
+    foo: inline while (a) |*b| : (c) d else e;
+}

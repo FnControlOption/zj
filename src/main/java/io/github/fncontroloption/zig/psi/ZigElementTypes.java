@@ -112,6 +112,8 @@ public interface ZigElementTypes {
     IElementType SWITCH_PRONG_LIST = new ZigElementType("SWITCH_PRONG_LIST");
     IElementType SWITCH_PRONG = new ZigElementType("SWITCH_PRONG");
     IElementType SWITCH_ITEM = new ZigElementType("SWITCH_ITEM");
+    IElementType WHILE = new ZigElementType("WHILE");
+    IElementType WHILE_CONTINUE_EXPR = new ZigElementType("WHILE_CONTINUE_EXPR");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

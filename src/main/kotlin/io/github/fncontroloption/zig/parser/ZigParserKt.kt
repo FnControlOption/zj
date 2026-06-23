@@ -62,7 +62,7 @@ class ZigParserKt : PsiParser {
 
     private fun parseContainerDeclTag(builder: PsiBuilder): PsiBuilder.Marker? {
         var expr: PsiBuilder.Marker? = null
-        return parseParenEnclosed(builder, null, ZigElementTypes.CONTAINER_TAG) {
+        val marker = parseParenEnclosed(builder, null, ZigElementTypes.CONTAINER_TAG) {
             if (expr == null) {
                 when (builder.tokenType) {
                     ZigTokenTypes.KEYWORD_ENUM -> {
@@ -90,6 +90,13 @@ class ZigParserKt : PsiParser {
                 null
             }
         }
+        if (marker == null) {
+            return null
+        }
+        if (expr == null) {
+            // TODO: mark error
+        }
+        return marker
     }
 
     private fun parseBlock(builder: PsiBuilder, allowLabel: Boolean = false): PsiBuilder.Marker? {
@@ -759,17 +766,7 @@ class ZigParserKt : PsiParser {
                 marker.done(ZigElementTypes.ERROR_VALUE)
                 return marker
             }
-            ZigTokenTypes.L_PAREN -> {
-                var expr: PsiBuilder.Marker? = null
-                return parseParenEnclosed(builder, null, ZigElementTypes.GROUPED_EXPRESSION) {
-                    if (expr == null) {
-                        expr = tryExpr(builder)
-                        expr
-                    } else {
-                        null
-                    }
-                }
-            }
+            ZigTokenTypes.L_PAREN -> return parseGroupedExpression(builder)
             else -> return null
         }
     }
@@ -1023,10 +1020,12 @@ class ZigParserKt : PsiParser {
         assert(builder.tokenType === ZigTokenTypes.KEYWORD_IF)
         val ifMarker = builder.mark()
         builder.advanceLexer()
-        parseCondition(builder)
-        val thenMarker = builder.mark()
+        if (parseCondition(builder) == null) {
+            // TODO: mark error
+        }
         parsePtrPayload(builder)
         var elseRequired = false;
+        val thenMarker = builder.mark()
         if (parseBlockExpr(builder) == null) {
             if (parseAssignExpr(builder) == null) {
                 // TODO: mark error
@@ -1039,18 +1038,15 @@ class ZigParserKt : PsiParser {
             elseRequired = true
         }
         thenMarker.done(ZigElementTypes.THEN)
-        if (builder.tokenType !== ZigTokenTypes.KEYWORD_ELSE) {
-            if (elseRequired) {
-                // TODO: mark error
-            }
-            ifMarker.done(ZigElementTypes.IF)
-            return ifMarker
+        if (builder.tokenType === ZigTokenTypes.KEYWORD_ELSE) {
+            val elseMarker = builder.mark()
+            builder.advanceLexer()
+            parsePayload(builder)
+            tryStatement(builder, false)
+            elseMarker.done(ZigElementTypes.ELSE)
+        } else if (elseRequired) {
+            // TODO: mark error
         }
-        val elseMarker = builder.mark()
-        builder.advanceLexer()
-        parsePayload(builder)
-        tryStatement(builder, false)
-        elseMarker.done(ZigElementTypes.ELSE)
         ifMarker.done(ZigElementTypes.IF)
         return ifMarker
     }
@@ -1141,9 +1137,11 @@ class ZigParserKt : PsiParser {
             marker.rollbackTo()
             return null
         }
-        parseCondition(builder)
-        val thenMarker = builder.mark()
+        if (parseCondition(builder) == null) {
+            // TODO: mark error
+        }
         parsePtrPayload(builder)
+        val thenMarker = builder.mark()
         if (bodyParseFn(builder) == null) {
             marker.rollbackTo()
             return null
@@ -1165,7 +1163,7 @@ class ZigParserKt : PsiParser {
 
     private fun parseCondition(builder: PsiBuilder): PsiBuilder.Marker? {
         var expr: PsiBuilder.Marker? = null
-        return parseParenEnclosed(builder, null, ZigElementTypes.CONDITION) {
+        val marker = parseParenEnclosed(builder, null, ZigElementTypes.CONDITION) {
             if (expr == null) {
                 expr = tryExpr(builder)
                 expr
@@ -1173,6 +1171,13 @@ class ZigParserKt : PsiParser {
                 null
             }
         }
+        if (marker == null) {
+            return null
+        }
+        if (expr == null) {
+            // TODO: mark error
+        }
+        return marker
     }
 
     private fun parseAssignExpr(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -1208,9 +1213,13 @@ class ZigParserKt : PsiParser {
     }
 
     private fun parseLoopStatement(builder: PsiBuilder): PsiBuilder.Marker? {
-        // TODO
-        // expect(builder, ZigTokenTypes.IDENTIFIER, ZigTokenTypes.COLON)
-        // val isInline = expect(builder, ZigTokenTypes.KEYWORD_INLINE)
+        val statement = parseForStatement(builder) ?: parseWhileStatement(builder)
+        if (statement != null) {
+            return statement
+        }
+        if (expect(builder, ZigTokenTypes.KEYWORD_INLINE)) {
+            // TODO: mark error
+        }
         return null
     }
 
@@ -1237,14 +1246,10 @@ class ZigParserKt : PsiParser {
     }
 
     private fun trySwitchSuffix(builder: PsiBuilder) {
-        if (builder.tokenType === ZigTokenTypes.L_PAREN) {
-            parseCondition(builder)
-        } else {
+        if (parseCondition(builder) == null) {
             // TODO: mark error
         }
-        if (builder.tokenType === ZigTokenTypes.L_BRACE) {
-            parseSwitchProngList(builder)
-        } else {
+        if (parseSwitchProngList(builder) == null) {
             // TODO: mark error
         }
     }
@@ -1344,6 +1349,98 @@ class ZigParserKt : PsiParser {
             // TODO: mark error
         }
         marker.done(ZigElementTypes.PAYLOAD)
+        return marker
+    }
+
+    private fun parseGroupedExpression(builder: PsiBuilder): PsiBuilder.Marker? {
+        var expr: PsiBuilder.Marker? = null
+        val marker = parseParenEnclosed(builder, null, ZigElementTypes.GROUPED_EXPRESSION) {
+            if (expr == null) {
+                expr = tryExpr(builder)
+                expr
+            } else {
+                null
+            }
+        }
+        if (marker == null) {
+            return null
+        }
+        if (expr == null) {
+            // TODO: mark error
+        }
+        return marker
+    }
+
+    private fun parseForStatement(builder: PsiBuilder): PsiBuilder.Marker? {
+        val forMarker = builder.mark()
+        expect(builder, ZigTokenTypes.IDENTIFIER, ZigTokenTypes.COLON)
+        expect(builder, ZigTokenTypes.KEYWORD_INLINE)
+        if (!expect(builder, ZigTokenTypes.KEYWORD_FOR)) {
+            forMarker.rollbackTo()
+            return null
+        }
+        // TODO
+        forMarker.rollbackTo()
+        return null
+    }
+
+    private fun parseWhileStatement(builder: PsiBuilder): PsiBuilder.Marker? {
+        val whileMarker = builder.mark()
+        expect(builder, ZigTokenTypes.IDENTIFIER, ZigTokenTypes.COLON)
+        expect(builder, ZigTokenTypes.KEYWORD_INLINE)
+        if (!expect(builder, ZigTokenTypes.KEYWORD_WHILE)) {
+            whileMarker.rollbackTo()
+            return null
+        }
+        if (parseCondition(builder) == null) {
+            // TODO: mark error
+        }
+        parsePtrPayload(builder)
+        if (expect(builder, ZigTokenTypes.COLON) && parseWhileContinueExpr(builder) == null) {
+            // TODO: mark error
+        }
+        var elseRequired = false
+        val thenMarker = builder.mark()
+        if (parseBlockExpr(builder) == null) {
+            if (parseAssignExpr(builder) == null) {
+                // TODO: mark error
+            }
+            if (expect(builder, ZigTokenTypes.SEMICOLON)) {
+                thenMarker.done(ZigElementTypes.THEN)
+                whileMarker.done(ZigElementTypes.WHILE)
+                return whileMarker
+            }
+            elseRequired = true
+        }
+        thenMarker.done(ZigElementTypes.THEN)
+        if (builder.tokenType === ZigTokenTypes.KEYWORD_ELSE) {
+            val elseMarker = builder.mark()
+            builder.advanceLexer()
+            tryStatement(builder, false)
+            elseMarker.done(ZigElementTypes.ELSE)
+        } else if (elseRequired) {
+            // TODO: mark error
+        }
+        whileMarker.done(ZigElementTypes.WHILE)
+        return whileMarker
+    }
+
+    private fun parseWhileContinueExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+        var expr: PsiBuilder.Marker? = null
+        val marker = parseParenEnclosed(builder, null, ZigElementTypes.WHILE_CONTINUE_EXPR) {
+            if (expr == null) {
+                expr = parseAssignExpr(builder)
+                expr
+            } else {
+                null
+            }
+        }
+        if (marker == null) {
+            return null
+        }
+        if (expr == null) {
+            // TODO: mark error
+        }
         return marker
     }
 
