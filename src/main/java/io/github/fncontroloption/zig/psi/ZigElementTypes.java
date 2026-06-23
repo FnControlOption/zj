@@ -10,6 +10,7 @@ public interface ZigElementTypes {
     IElementType CONTAINER_TAG_ENUM = new ZigElementType("CONTAINER_TAG_ENUM");
     IElementType CONTAINER_DECL_BODY = new ZigElementType("CONTAINER_DECL_BODY");
     IElementType BLOCK = new ZigElementType("BLOCK");
+    IElementType BLOCK_BODY = new ZigElementType("BLOCK_BODY");
     IElementType BUILTIN_CALL = new ZigElementType("BUILTIN_CALL");
     IElementType CALL = new ZigElementType("CALL");
     IElementType CALL_ARGS = new ZigElementType("CALL_ARGS");
@@ -129,6 +130,9 @@ public interface ZigElementTypes {
             }
             if (type == BLOCK) {
                 return new ZigBlock(node);
+            }
+            if (type == BLOCK_BODY) {
+                return new ZigBlockBody(node);
             }
             if (type == BUILTIN_CALL) {
                 return new ZigBuiltinCall(node);

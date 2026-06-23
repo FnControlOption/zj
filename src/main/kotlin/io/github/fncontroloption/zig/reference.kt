@@ -396,7 +396,7 @@ fun resolveIdentifierReference(element: PsiElement): PsiElement? {
         val target = when (parent) {
             is ZigContainerBody -> parent.containerMembers[name]
             is ZigFnDecl -> parent.fnProto.fnParams?.fnParamDecls[name]
-            is ZigBlock -> parent.varDeclProtos[name]
+            is ZigBlockBody -> parent.varDeclProtos[name]
             else -> null
         }
         if (target != null && target !is ZigContainerField) {

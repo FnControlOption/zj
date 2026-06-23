@@ -80,6 +80,11 @@ open class ZigPsiElement(node: ASTNode) : ASTWrapperPsiElement(node) {
 }
 
 class ZigBlock(node: ASTNode) : ZigPsiElement(node) {
+    val blockBody: ZigBlockBody?
+        get() = findChildByClass(ZigBlockBody::class.java)
+}
+
+class ZigBlockBody(node: ASTNode) : ZigPsiElement(node) {
     private var cachedVarDeclProtos: Map<String, ZigVarDeclProto>? = null
 
     val varDeclProtos: Map<String, ZigVarDeclProto>
@@ -373,13 +378,13 @@ class ZigVarDeclProto(node: ASTNode) : ZigNamedElement(node) {
 
     val scope: PsiElement?
         get() = PsiTreeUtil.findFirstParent(this, true) {
-            it is ZigBlock || it is ZigContainerDeclBody
+            it is ZigBlock || it is ZigContainerDecl
         }
 
     fun isLocal() = scope is ZigBlock
 
     fun isGlobal() = when (scope) {
-        null, is ZigContainerDeclBody -> true
+        null, is ZigContainerDecl -> true
         else -> false
     }
 
