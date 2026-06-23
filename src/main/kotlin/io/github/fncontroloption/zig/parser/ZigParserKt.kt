@@ -1185,6 +1185,27 @@ class ZigParserKt : PsiParser {
         return marker
     }
 
+    private val assignTable = mapOf(
+        Pair(ZigTokenTypes.ASTERISK_EQUAL, ZigElementTypes.ASSIGN_MUL),
+        Pair(ZigTokenTypes.SLASH_EQUAL, ZigElementTypes.ASSIGN_DIV),
+        Pair(ZigTokenTypes.PERCENT_EQUAL, ZigElementTypes.ASSIGN_MOD),
+        Pair(ZigTokenTypes.PLUS_EQUAL, ZigElementTypes.ASSIGN_ADD),
+        Pair(ZigTokenTypes.MINUS_EQUAL, ZigElementTypes.ASSIGN_SUB),
+        Pair(ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_EQUAL, ZigElementTypes.ASSIGN_SHL),
+        Pair(ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_PIPE_EQUAL, ZigElementTypes.ASSIGN_SHL_SAT),
+        Pair(ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_RIGHT_EQUAL, ZigElementTypes.ASSIGN_SHR),
+        Pair(ZigTokenTypes.AMPERSAND_EQUAL, ZigElementTypes.ASSIGN_BIT_AND),
+        Pair(ZigTokenTypes.CARET_EQUAL, ZigElementTypes.ASSIGN_BIT_XOR),
+        Pair(ZigTokenTypes.PIPE_EQUAL, ZigElementTypes.ASSIGN_BIT_OR),
+        Pair(ZigTokenTypes.ASTERISK_PERCENT_EQUAL, ZigElementTypes.ASSIGN_MUL_WRAP),
+        Pair(ZigTokenTypes.PLUS_PERCENT_EQUAL, ZigElementTypes.ASSIGN_ADD_WRAP),
+        Pair(ZigTokenTypes.MINUS_PERCENT_EQUAL, ZigElementTypes.ASSIGN_SUB_WRAP),
+        Pair(ZigTokenTypes.ASTERISK_PIPE_EQUAL, ZigElementTypes.ASSIGN_MUL_SAT),
+        Pair(ZigTokenTypes.PLUS_PIPE_EQUAL, ZigElementTypes.ASSIGN_ADD_SAT),
+        Pair(ZigTokenTypes.MINUS_PIPE_EQUAL, ZigElementTypes.ASSIGN_SUB_SAT),
+        Pair(ZigTokenTypes.EQUAL, ZigElementTypes.ASSIGN),
+    )
+
     private fun parseAssignExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         val expr = parseExpr(builder) ?: return null
         return finishAssignExpr(builder, expr)
@@ -1192,8 +1213,12 @@ class ZigParserKt : PsiParser {
 
     private fun parseSingleAssignExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         val lhs = parseExpr(builder) ?: return null
-        // TODO
-        return lhs
+        val assignType = assignTable[builder.tokenType] ?: return lhs
+        val assign = lhs.precede()
+        builder.advanceLexer()
+        tryExpr(builder)
+        assign.done(assignType)
+        return assign
     }
 
     private fun tryAssignExpr(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -1213,8 +1238,16 @@ class ZigParserKt : PsiParser {
     }
 
     private fun finishAssignExpr(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker {
-        // TODO
-        return lhs
+        if (builder.tokenType === ZigTokenTypes.COMMA) {
+            // TODO
+            return lhs
+        }
+        val assignType = assignTable[builder.tokenType] ?: return lhs
+        val assign = lhs.precede()
+        builder.advanceLexer()
+        tryExpr(builder)
+        assign.done(assignType)
+        return assign
     }
 
     private fun parseLoopStatement(builder: PsiBuilder): PsiBuilder.Marker? {

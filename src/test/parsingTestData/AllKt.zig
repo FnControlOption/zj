@@ -232,3 +232,11 @@ test {
     for (foo) {}
     foo: inline for (a, b..c,) |d, *e,| f else g;
 }
+test {
+    switch (foo) {
+        .a => b = c,
+        .d => e += f,
+    }
+    a = b;
+    c += d;
+}
