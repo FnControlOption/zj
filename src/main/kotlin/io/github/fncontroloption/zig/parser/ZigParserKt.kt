@@ -105,17 +105,23 @@ class ZigParserKt : PsiParser {
             return null
         }
 
+        // TODO: include label as part of BLOCK node
+        val marker = builder.mark()
         if (allowLabel) {
-            // TODO: include label as part of BLOCK node
             expect(builder, ZigTokenTypes.IDENTIFIER, ZigTokenTypes.COLON)
         }
-
-        return parseBraceEnclosed(builder, null, ZigElementTypes.BLOCK) {
+        val block = parseBraceEnclosed(builder, null, ZigElementTypes.BLOCK) {
             when (builder.tokenType) {
                 ZigTokenTypes.R_BRACE -> null
                 else -> tryStatement(builder, true)
             }
         }
+        if (block == null) {
+            marker.rollbackTo()
+            return null
+        }
+        marker.drop()
+        return block
     }
 
     private fun parseBlockExpr(builder: PsiBuilder): PsiBuilder.Marker? {
