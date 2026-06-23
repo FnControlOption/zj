@@ -12,16 +12,20 @@ import io.github.fncontroloption.zig.psi.ZigTokenTypes
 // Based on https://codeberg.org/ziglang/zig/src/commit/72d954e/lib/std/zig/Parse.zig
 /** @see com.intellij.java.syntax.parser.JavaParser */
 class ZigParserKt : PsiParser {
-    private val enclosureStack = ArrayDeque<IElementType>()
+    private class Enclosure(val type: IElementType?, val left: IElementType?, val right: IElementType?)
+
+    private val enclosureStack = ArrayDeque<Enclosure>()
     private val containerStack = ArrayDeque<IElementType>()
 
     override fun parse(root: IElementType, builder: PsiBuilder): ASTNode {
-        enclosureStack.addLast(root)
+        enclosureStack.addLast(Enclosure(root, null, null))
         containerStack.addLast(ZigTokenTypes.KEYWORD_STRUCT)
         val rootMarker = builder.mark()
         while (!builder.eof()) {
             if (parseContainerMember(builder) == null) {
+                val invalid = builder.mark()
                 builder.advanceLexer()
+                invalid.error("Unexpected token")
             }
         }
         rootMarker.done(root)
@@ -343,7 +347,7 @@ class ZigParserKt : PsiParser {
 
     private fun parseContainerField(builder: PsiBuilder): PsiBuilder.Marker? {
         val enclosure = enclosureStack.last()
-        when (enclosure) {
+        when (enclosure.type) {
             ZigParserDefinition.FILE, ZigElementTypes.CONTAINER_DECL_BODY -> {}
             else -> return null
         }
@@ -373,7 +377,7 @@ class ZigParserKt : PsiParser {
         }
         field.done(ZigElementTypes.CONTAINER_FIELD)
         if (!expect(builder, ZigTokenTypes.COMMA)) {
-            val terminator = when (enclosure) {
+            val terminator = when (enclosure.type) {
                 ZigParserDefinition.FILE -> null
                 ZigElementTypes.CONTAINER_DECL_BODY -> ZigTokenTypes.R_BRACE
                 else -> throw IllegalStateException()
@@ -1374,35 +1378,36 @@ class ZigParserKt : PsiParser {
     private fun parseParenEnclosed(
         builder: PsiBuilder,
         prefix: IElementType?,
-        type: IElementType,
+        type: IElementType?,
         parseMember: () -> PsiBuilder.Marker? = { null },
     ): PsiBuilder.Marker? {
-        return parseEnclosed(builder, prefix, ZigTokenTypes.L_PAREN, type, parseMember)
+        return parseEnclosed(builder, prefix, ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, type, parseMember)
     }
 
     private fun parseBracketEnclosed(
         builder: PsiBuilder,
         prefix: IElementType?,
-        type: IElementType,
+        type: IElementType?,
         parseMember: () -> PsiBuilder.Marker? = { null },
     ): PsiBuilder.Marker? {
-        return parseEnclosed(builder, prefix, ZigTokenTypes.L_BRACKET, type, parseMember)
+        return parseEnclosed(builder, prefix, ZigTokenTypes.L_BRACKET, ZigTokenTypes.R_BRACKET, type, parseMember)
     }
 
     private fun parseBraceEnclosed(
         builder: PsiBuilder,
         prefix: IElementType?,
-        type: IElementType,
-        parseMember: () -> PsiBuilder.Marker?,
+        type: IElementType?,
+        parseMember: () -> PsiBuilder.Marker? = { null },
     ): PsiBuilder.Marker? {
-        return parseEnclosed(builder, prefix, ZigTokenTypes.L_BRACE, type, parseMember)
+        return parseEnclosed(builder, prefix, ZigTokenTypes.L_BRACE, ZigTokenTypes.R_BRACE, type, parseMember)
     }
 
     private fun parseEnclosed(
         builder: PsiBuilder,
         prefix: IElementType?,
         left: IElementType,
-        type: IElementType,
+        right: IElementType,
+        type: IElementType?,
         parseMember: () -> PsiBuilder.Marker?,
     ): PsiBuilder.Marker? {
         val marker = builder.mark()
@@ -1414,37 +1419,36 @@ class ZigParserKt : PsiParser {
             marker.rollbackTo()
             return null
         }
-        enclosureStack.addLast(type)
-        var braces = 0
-        var brackets = 0
-        var parens = 0
-        when (left) {
-            ZigTokenTypes.L_BRACE -> braces++
-            ZigTokenTypes.L_BRACKET -> brackets++
-            ZigTokenTypes.L_PAREN -> parens++
-            else -> throw IllegalArgumentException("Unexpected token type $left")
-        }
+        val enclosure = Enclosure(type, left, right)
+        enclosureStack.addLast(enclosure)
         while (!builder.eof()) {
-            val depth = braces + brackets + parens
-            if (depth == 0) {
-                break
-            }
-            if (depth == 1 && parseMember() != null) {
+            if (parseMember() != null) {
                 continue
             }
-            when (builder.tokenType) {
-                ZigTokenTypes.L_BRACE -> braces++
-                ZigTokenTypes.R_BRACE -> braces--
-                ZigTokenTypes.L_BRACKET -> brackets++
-                ZigTokenTypes.R_BRACKET -> brackets--
-                ZigTokenTypes.L_PAREN -> parens++
-                ZigTokenTypes.R_PAREN -> parens--
+            if (builder.tokenType === right) {
+                builder.advanceLexer()
+                break
             }
-            builder.advanceLexer()
-            // TODO: mark error
+            if (enclosureStack.any { builder.tokenType === it.right}) {
+                break
+            }
+            when (builder.tokenType) {
+                ZigTokenTypes.L_BRACE -> parseBraceEnclosed(builder, null, null)
+                ZigTokenTypes.L_BRACKET -> parseBracketEnclosed(builder, null, null)
+                ZigTokenTypes.L_PAREN -> parseParenEnclosed(builder, null, null)
+                else -> {
+                    val invalid = builder.mark()
+                    builder.advanceLexer()
+                    invalid.error("Unexpected token")
+                }
+            }
         }
         enclosureStack.removeLast()
-        marker.done(type)
+        if (type != null) {
+            marker.done(type)
+        } else {
+            marker.drop()
+        }
         return marker
     }
 
