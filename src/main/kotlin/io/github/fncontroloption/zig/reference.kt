@@ -359,153 +359,16 @@ private fun resolveMember(
     visited: MutableSet<PsiElement>,
     results: MutableSet<ResolveResult>,
 ) {
-    if (lhs in visited) {
-        return
-    }
-    visited.add(lhs)
-    when (lhs) {
-        is ZigFile -> {
-            val member = lhs.containerMembers[name] ?: return
-            results.add(PsiElementResolveResult(member))
-        }
-        is ZigContainerDecl -> {
-            val containerBody = lhs.containerDeclBody ?: return
-            val member = containerBody.containerMembers[name] ?: return
-            results.add(PsiElementResolveResult(member))
-        }
-        is ZigAddressOf -> {
-            val expr = lhs.expr ?: return
-            resolveMember(expr, name, visited, results)
-        }
-        is ZigDeref -> {
-            val derefLhs = lhs.lhs ?: return
-            resolveMember(derefLhs, name, visited, results)
-        }
-        is ZigArrayAccess -> {
-            val accessLhs = lhs.lhs ?: return
-            resolveMember(accessLhs, name, visited, results)
-        }
-        is ZigSlice -> {
-            val sliceLhs = lhs.lhs ?: return
-            resolveMember(sliceLhs, name, visited, results)
-        }
-        is ZigUnwrapOptional -> {
-            val unwrapLhs = lhs.lhs ?: return
-            resolveMember(unwrapLhs, name, visited, results)
-        }
-        is ZigTry -> {
-            val expr = lhs.expr ?: return
-            resolveMember(expr, name, visited, results)
-        }
-        is ZigPointerType -> {
-            val child = lhs.child ?: return
-            resolveMember(child, name, visited, results)
-        }
-        is ZigArrayType -> {
-            val child = lhs.child ?: return
-            resolveMember(child, name, visited, results)
-        }
-        is ZigOptionalType -> {
-            val child = lhs.child ?: return
-            resolveMember(child, name, visited, results)
-        }
-        is ZigErrorUnion -> {
-            val rhs = lhs.rhs ?: return
-            resolveMember(rhs, name, visited, results)
-        }
-        is ZigCall -> {
-            val callLhs = lhs.lhs ?: return
-            for (target in followReferencesRecursive(callLhs, visited)) {
-                val fnProto = target as? ZigFnProto ?: continue
-                val returnTypeExpr = fnProto.fnReturnTypeExpr?.expr ?: continue
-                if (returnTypeExpr.textMatches("type")) {
-                    val fnDecl = fnProto.parent as? ZigFnDecl ?: continue
-                    val fnBody = fnDecl.fnBody ?: continue
-                    val psiTraverser = SyntaxTraverser.psiTraverser(fnBody).expand { it !is ZigContainerDecl }
-                    for (elem in psiTraverser) {
-                        if (elem is ZigReturn) {
-                            val returnExpr = elem.expr ?: continue
-                            resolveMember(returnExpr, name, visited, results)
-                        }
-                    }
-                } else {
-                    resolveMember(returnTypeExpr, name, visited, results)
-                }
+    for (expr in resolveContainerExpr(lhs, visited)) {
+        when (expr) {
+            is ZigFile -> {
+                val member = expr.containerMembers[name] ?: continue
+                results.add(PsiElementResolveResult(member))
             }
-        }
-        is ZigBlock -> {
-            val blockBody = lhs.blockBody ?: return
-            val psiTraverser = SyntaxTraverser.psiTraverser(blockBody).expand { it !is ZigContainerDecl }
-            for (elem in psiTraverser) {
-                if (elem is ZigBreak) {
-                    val breakExpr = elem.breakExpr ?: continue
-                    for (target in resolveReferences(elem)) {
-                        if (target == lhs) {
-                            resolveMember(breakExpr, name, visited, results)
-                        }
-                    }
-                }
-            }
-        }
-        else -> {
-            visited.remove(lhs)
-            for (target in followReferencesRecursive(lhs, visited)) {
-                if (target == lhs) {
-                    continue
-                }
-                when (target) {
-                    is ZigVarDeclProto -> {
-                        val typeExpr = target.declTypeExpr?.expr ?: return
-                        resolveMember(typeExpr, name, visited, results)
-                    }
-                    is ZigFnParamDecl -> {
-                        val typeExpr = target.fnParamTypeExpr?.expr ?: return
-                        resolveMember(typeExpr, name, visited, results)
-                    }
-                    is ZigContainerField -> {
-                        val typeExpr = target.containerFieldTypeExpr?.expr ?: return
-                        resolveMember(typeExpr, name, visited, results)
-                    }
-                    is ZigPayloadEntry -> {
-                        val payload = target.parent as? ZigPayload ?: continue
-                        when (val payloadParent = payload.parent) {
-                            is ZigIf -> {
-                                val expr = payloadParent.ifCondition?.expr ?: continue
-                                resolveMember(expr, name, visited, results)
-                            }
-                            is ZigWhile -> {
-                                val expr = payloadParent.whileCondition?.expr ?: continue
-                                resolveMember(expr, name, visited, results)
-                            }
-                            is ZigFor -> {
-                                val forInputs = payloadParent.forInputs?.forInputExprs ?: continue
-                                val payloadIndex = payload.payloadEntries.values.indexOf(target)
-                                val expr = forInputs.elementAtOrNull(payloadIndex) ?: continue
-                                resolveMember(expr, name, visited, results)
-                            }
-                            is ZigSwitchProng -> {
-                                if (payload.payloadEntries.values.first() != target) {
-                                    continue
-                                }
-                                for (switchItem in payloadParent.switchItems) {
-                                    val switchItemExpr = switchItem.switchItemExpr ?: continue
-                                    for (target in resolveReferences(switchItemExpr)) {
-                                        when (target) {
-                                            is ZigContainerField -> {
-                                                val typeExpr = target.containerFieldTypeExpr?.expr ?: continue
-                                                resolveMember(typeExpr, name, visited, results)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    else -> {
-                        visited.remove(target)
-                        resolveMember(target, name, visited, results)
-                    }
-                }
+            is ZigContainerDecl -> {
+                val containerBody = expr.containerDeclBody ?: continue
+                val member = containerBody.containerMembers[name] ?: continue
+                results.add(PsiElementResolveResult(member))
             }
         }
     }
@@ -710,4 +573,159 @@ fun isImplicitSelfArg(element: PsiElement): Boolean {
         }
     }
     return true
+}
+
+private fun resolveContainerExpr(lhs: PsiElement, visited: MutableSet<PsiElement>): Sequence<PsiElement> {
+    if (lhs in visited) {
+        return emptySequence()
+    }
+    visited.add(lhs)
+    return when (lhs) {
+        is ZigFile, is ZigContainerDecl -> sequenceOf(lhs)
+        is ZigAddressOf -> {
+            val expr = lhs.expr ?: return emptySequence()
+            resolveContainerExpr(expr, visited)
+        }
+        is ZigDeref -> {
+            val expr = lhs.lhs ?: return emptySequence()
+            resolveContainerExpr(expr, visited)
+        }
+        is ZigArrayAccess -> {
+            val expr = lhs.lhs ?: return emptySequence()
+            resolveContainerExpr(expr, visited)
+        }
+        is ZigSlice -> {
+            val expr = lhs.lhs ?: return emptySequence()
+            resolveContainerExpr(expr, visited)
+        }
+        is ZigUnwrapOptional -> {
+            val expr = lhs.lhs ?: return emptySequence()
+            resolveContainerExpr(expr, visited)
+        }
+        is ZigTry -> {
+            val expr = lhs.expr ?: return emptySequence()
+            resolveContainerExpr(expr, visited)
+        }
+        is ZigPointerType -> {
+            val typeExpr = lhs.child ?: return emptySequence()
+            resolveContainerExpr(typeExpr, visited)
+        }
+        is ZigArrayType -> {
+            val typeExpr = lhs.child ?: return emptySequence()
+            resolveContainerExpr(typeExpr, visited)
+        }
+        is ZigOptionalType -> {
+            val typeExpr = lhs.child ?: return emptySequence()
+            resolveContainerExpr(typeExpr, visited)
+        }
+        is ZigErrorUnion -> {
+            val typeExpr = lhs.rhs ?: return emptySequence()
+            resolveContainerExpr(typeExpr, visited)
+        }
+        is ZigCall -> {
+            val callLhs = lhs.lhs ?: return emptySequence()
+            followReferencesRecursive(callLhs, visited).flatMap { target ->
+                val fnProto = target as? ZigFnProto ?: return@flatMap emptySequence()
+                val returnTypeExpr = fnProto.fnReturnTypeExpr?.expr ?: return@flatMap emptySequence()
+                if (returnTypeExpr.textMatches("type")) {
+                    val fnDecl = fnProto.parent as? ZigFnDecl ?: return@flatMap emptySequence()
+                    val fnBody = fnDecl.fnBody ?: return@flatMap emptySequence()
+                    SyntaxTraverser.psiTraverser(fnBody)
+                        .expand { it !is ZigContainerDecl }
+                        .asSequence()
+                        .flatMap { elem ->
+                            if (elem is ZigReturn) {
+                                val expr = elem.expr ?: return@flatMap emptySequence()
+                                return@flatMap resolveContainerExpr(expr, visited)
+                            }
+                            emptySequence()
+                        }
+                } else {
+                    resolveContainerExpr(returnTypeExpr, visited)
+                }
+            }
+        }
+        is ZigBlock -> {
+            val blockBody = lhs.blockBody ?: return emptySequence()
+            SyntaxTraverser.psiTraverser(blockBody)
+                .expand { it !is ZigContainerDecl }
+                .asSequence()
+                .flatMap { elem ->
+                    if (elem is ZigBreak) {
+                        val breakExpr = elem.breakExpr ?: return@flatMap emptySequence()
+                        for (target in resolveReferences(elem)) {
+                            if (target == lhs) {
+                                return@flatMap resolveContainerExpr(breakExpr, visited)
+                            }
+                        }
+                    }
+                    emptySequence()
+                }
+        }
+        else -> {
+            visited.remove(lhs)
+            followReferencesRecursive(lhs, visited).flatMap { target ->
+                if (target == lhs) {
+                    return@flatMap emptySequence()
+                }
+                when (target) {
+                    is ZigVarDeclProto -> {
+                        val typeExpr = target.declTypeExpr?.expr ?: return@flatMap emptySequence()
+                        resolveContainerExpr(typeExpr, visited)
+                    }
+                    is ZigFnParamDecl -> {
+                        val typeExpr = target.fnParamTypeExpr?.expr ?: return@flatMap emptySequence()
+                        resolveContainerExpr(typeExpr, visited)
+                    }
+                    is ZigContainerField -> {
+                        val typeExpr = target.containerFieldTypeExpr?.expr ?: return@flatMap emptySequence()
+                        resolveContainerExpr(typeExpr, visited)
+                    }
+                    is ZigPayloadEntry -> {
+                        val payload = target.parent as? ZigPayload ?: return@flatMap emptySequence()
+                        when (val payloadParent = payload.parent) {
+                            is ZigIf -> {
+                                val expr = payloadParent.ifCondition?.expr ?: return@flatMap emptySequence()
+                                resolveContainerExpr(expr, visited)
+                            }
+                            is ZigWhile -> {
+                                val expr = payloadParent.whileCondition?.expr ?: return@flatMap emptySequence()
+                                resolveContainerExpr(expr, visited)
+                            }
+                            is ZigFor -> {
+                                val forInputs = payloadParent.forInputs?.forInputExprs ?: return@flatMap emptySequence()
+                                val payloadIndex = payload.payloadEntries.values.indexOf(target)
+                                val expr = forInputs.elementAtOrNull(payloadIndex) ?: return@flatMap emptySequence()
+                                resolveContainerExpr(expr, visited)
+                            }
+                            is ZigSwitchProng -> {
+                                if (payload.payloadEntries.values.first() != target) {
+                                    return@flatMap emptySequence()
+                                }
+                                payloadParent.switchItems
+                                    .flatMap { switchItem ->
+                                        val switchItemExpr = switchItem.switchItemExpr ?: return@flatMap emptySequence()
+                                        resolveReferences(switchItemExpr)
+                                    }
+                                    .flatMap { target ->
+                                        when (target) {
+                                            is ZigContainerField -> {
+                                                val typeExpr = target.containerFieldTypeExpr?.expr ?: return@flatMap emptySequence()
+                                                resolveContainerExpr(typeExpr, visited)
+                                            }
+                                            else -> emptySequence()
+                                        }
+                                    }
+                            }
+                            else -> emptySequence()
+                        }
+                    }
+                    else -> {
+                        visited.remove(target)
+                        resolveContainerExpr(target, visited)
+                    }
+                }
+            }
+        }
+    }
 }
