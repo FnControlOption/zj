@@ -15,14 +15,20 @@ import io.github.fncontroloption.zig.psi.ZigElementTypes
 import io.github.fncontroloption.zig.psi.ZigTokenTypes
 
 private val BRACE_ENCLOSED = TokenSet.create(
-    ZigElementTypes.BLOCK,
+    ZigElementTypes.BLOCK_BODY,
     ZigElementTypes.CONTAINER_DECL_BODY,
     ZigElementTypes.ERROR_SET_DECL,
+    ZigElementTypes.INIT_LIST,
+    ZigElementTypes.SWITCH_PRONG_LIST,
 )
 
 private val BLOCKS_COLLAPSED_BY_DEFAULT = TokenSet.create(
     ZigElementTypes.FN_DECL,
     ZigElementTypes.TEST_DECL,
+)
+
+private val PAREN_ENCLOSED = TokenSet.create(
+    ZigElementTypes.CALL_ARGS
 )
 
 class ZigFoldingBuilder : FoldingBuilderEx(), DumbAware {
@@ -37,13 +43,15 @@ class ZigFoldingBuilder : FoldingBuilderEx(), DumbAware {
             override fun visitElement(element: PsiElement) {
                 walkingState.elementStarted(element)
                 val node = element.node ?: return
-                if (node.elementType !in BRACE_ENCLOSED) {
-                    return
+                val delimiter = when (node.elementType) {
+                    in BRACE_ENCLOSED -> ZigTokenTypes.L_BRACE
+                    in PAREN_ENCLOSED -> ZigTokenTypes.L_PAREN
+                    else -> return
                 }
                 if (!node.textContains('\n')) {
                     return
                 }
-                val lbrace = node.findChildByType(ZigTokenTypes.L_BRACE) ?: return
+                val lbrace = node.findChildByType(delimiter) ?: return
                 val range = TextRange(lbrace.textRange.startOffset, node.textRange.endOffset)
                 descriptors.add(FoldingDescriptor(element, range))
             }
@@ -52,8 +60,12 @@ class ZigFoldingBuilder : FoldingBuilderEx(), DumbAware {
     }
 
     override fun isCollapsedByDefault(node: ASTNode): Boolean {
-        return node.elementType === ZigElementTypes.BLOCK && node.treeParent?.elementType in BLOCKS_COLLAPSED_BY_DEFAULT
+        return node.elementType === ZigElementTypes.BLOCK_BODY && node.treeParent?.elementType in BLOCKS_COLLAPSED_BY_DEFAULT
     }
 
-    override fun getPlaceholderText(node: ASTNode) = "{...}"
+    override fun getPlaceholderText(node: ASTNode) = when (node.elementType) {
+        in BRACE_ENCLOSED -> "{...}"
+        in PAREN_ENCLOSED -> "(...)"
+        else -> null
+    }
 }
