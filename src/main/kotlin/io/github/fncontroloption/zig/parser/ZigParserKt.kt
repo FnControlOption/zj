@@ -844,12 +844,15 @@ class ZigParserKt : PsiParser {
                 builder.error("Comparison operators cannot be chained");
             }
             builder.advanceLexer()
+            var catchResult: PsiBuilder.Marker? = null
             if (operToken === ZigTokenTypes.KEYWORD_CATCH) {
                 parsePayload(builder)
+                catchResult = builder.mark()
             }
             if (parseExprPrecedence(builder, info.prec + 1) == null) {
                 // TODO: mark error
             }
+            catchResult?.done(ZigElementTypes.CATCH_RESULT)
             expr = expr.precede()
             expr.done(info.nodeType)
             if (info.assoc == Assoc.NONE) {
@@ -1328,7 +1331,9 @@ class ZigParserKt : PsiParser {
             // TODO: mark error
         }
         parsePtrIndexPayload(builder)
+        val result = builder.mark()
         trySingleAssignExpr(builder)
+        result.done(ZigElementTypes.SWITCH_RESULT)
         marker.done(ZigElementTypes.SWITCH_PRONG)
         if (!expect(builder, ZigTokenTypes.COMMA) && builder.tokenType !== ZigTokenTypes.R_BRACE) {
             // TODO: mark error
@@ -1355,9 +1360,11 @@ class ZigParserKt : PsiParser {
         }
         val marker = builder.mark()
         builder.advanceLexer()
+        val entry = builder.mark()
         if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
             // TODO: mark error
         }
+        entry.done(ZigElementTypes.PAYLOAD_ENTRY)
         if (!expect(builder, ZigTokenTypes.PIPE)) {
             // TODO: mark error
         }
@@ -1365,15 +1372,26 @@ class ZigParserKt : PsiParser {
         return marker
     }
 
-    private fun parsePtrPayload(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parsePtrPayload(builder: PsiBuilder, includeIndex: Boolean = false): PsiBuilder.Marker? {
         if (builder.tokenType !== ZigTokenTypes.PIPE) {
             return null
         }
         val marker = builder.mark()
         builder.advanceLexer()
+        val entry = builder.mark()
         expect(builder, ZigTokenTypes.ASTERISK)
         if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
             // TODO: mark error
+        }
+        entry.done(ZigElementTypes.PAYLOAD_ENTRY)
+        if (includeIndex) {
+            if (expect(builder, ZigTokenTypes.COMMA)) {
+                val indexEntry = builder.mark()
+                if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
+                    // TODO: mark error
+                }
+                indexEntry.done(ZigElementTypes.PAYLOAD_ENTRY)
+            }
         }
         if (!expect(builder, ZigTokenTypes.PIPE)) {
             // TODO: mark error
@@ -1383,23 +1401,7 @@ class ZigParserKt : PsiParser {
     }
 
     private fun parsePtrIndexPayload(builder: PsiBuilder): PsiBuilder.Marker? {
-        if (builder.tokenType !== ZigTokenTypes.PIPE) {
-            return null
-        }
-        val marker = builder.mark()
-        builder.advanceLexer()
-        expect(builder, ZigTokenTypes.ASTERISK)
-        if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
-            // TODO: mark error
-        }
-        if (expect(builder, ZigTokenTypes.COMMA) && !expect(builder, ZigTokenTypes.IDENTIFIER)) {
-            // TODO: mark error
-        }
-        if (!expect(builder, ZigTokenTypes.PIPE)) {
-            // TODO: mark error
-        }
-        marker.done(ZigElementTypes.PAYLOAD)
-        return marker
+        return parsePtrPayload(builder, true)
     }
 
     private fun parseGroupedExpression(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -1467,10 +1469,12 @@ class ZigParserKt : PsiParser {
         val payload = builder.mark()
         builder.advanceLexer()
         while (!builder.eof()) {
+            val entry = builder.mark()
             expect(builder, ZigTokenTypes.ASTERISK)
             if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
                 // TODO: mark error
             }
+            entry.done(ZigElementTypes.PAYLOAD_ENTRY)
             if (expect(builder, ZigTokenTypes.PIPE)) {
                 break
             }

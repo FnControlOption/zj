@@ -297,6 +297,9 @@ class ZigAddressOf(node: ASTNode) : ZigPrefixOp(node)
 class ZigTry(node: ASTNode) : ZigPrefixOp(node)
 
 class ZigIf(node: ASTNode) : ZigPsiElement(node) {
+    val thenPayload: ZigPayload?
+        get() = findChildByClass(ZigPayload::class.java)
+
     val thenBranch: ZigThen?
         get() = findChildByClass(ZigThen::class.java)
 
@@ -310,6 +313,9 @@ class ZigThen(node: ASTNode) : ZigPsiElement(node) {
 }
 
 class ZigElse(node: ASTNode) : ZigPsiElement(node) {
+    val elsePayload: ZigPayload?
+        get() = findChildByClass(ZigPayload::class.java)
+
     val expr: ZigPsiElement?
         get() = lastChild as? ZigPsiElement
 }
@@ -326,9 +332,33 @@ class ZigSwitch(node: ASTNode) : ZigPsiElement(node) {
 
 class ZigSwitchProngList(node: ASTNode) : ZigPsiElement(node)
 
-class ZigSwitchProng(node: ASTNode) : ZigPsiElement(node)
+class ZigSwitchProng(node: ASTNode) : ZigPsiElement(node) {
+    val switchProngPayload: ZigPayload?
+        get() = findChildByClass(ZigPayload::class.java)
+
+}
 
 class ZigSwitchItem(node: ASTNode) : ZigPsiElement(node)
+
+class ZigSwitchResult(node: ASTNode) : ZigPsiElement(node)
+
+class ZigCatch(node: ASTNode) : ZigPsiElement(node) {
+    val catchPayload: ZigPayload?
+        get() = findChildByClass(ZigPayload::class.java)
+}
+
+class ZigCatchResult(node: ASTNode) : ZigPsiElement(node)
+
+class ZigWhile(node: ASTNode) : ZigPsiElement(node) {
+    val whilePayload: ZigPayload?
+        get() = findChildByClass(ZigPayload::class.java)
+}
+
+class ZigFor(node: ASTNode) : ZigPsiElement(node) {
+    val forPayload: ZigPayload?
+        get() = findChildByClass(ZigPayload::class.java)
+}
+
 
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {
@@ -522,6 +552,36 @@ class ZigContainerField(node: ASTNode) : ZigNamedElement(node), ZigStructureElem
         val text = if (name != null && type != null) "$name: $type" else name ?: type
         return PresentationData(text, null, AllIcons.Nodes.Field, null)
     }
+}
+
+class ZigPayload(node: ASTNode) : ZigPsiElement(node) {
+    private var cachedPayloadEntries: Map<String, ZigPayloadEntry>? = null
+
+    val payloadEntries: Map<String, ZigPayloadEntry>
+        get() {
+            var entries = cachedPayloadEntries
+            if (entries != null) {
+                return entries
+            }
+            entries = mutableMapOf()
+            for (entry in childrenOfType<ZigPayloadEntry>(this)) {
+                val name = entry.name
+                if (name != null) {
+                    entries[name] = entry
+                }
+            }
+            cachedPayloadEntries = entries
+            return entries
+        }
+
+    override fun subtreeChanged() {
+        super.subtreeChanged()
+        cachedPayloadEntries = null
+    }
+}
+
+class ZigPayloadEntry(node: ASTNode) : ZigNamedElement(node) {
+    fun isPointer() = findChildByType<PsiElement?>(ZigTokenTypes.ASTERISK) != null
 }
 
 fun createZigFile(project: Project, text: String): ZigFile {

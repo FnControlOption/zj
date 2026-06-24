@@ -397,6 +397,33 @@ fun resolveIdentifierReference(element: PsiElement): PsiElement? {
             is ZigContainerBody -> parent.containerMembers[name]
             is ZigFnDecl -> parent.fnProto.fnParams?.fnParamDecls[name]
             is ZigBlockBody -> parent.varDeclProtos[name]
+            is ZigThen -> {
+                parent = parent.parent
+                val payload = when (parent) {
+                    is ZigIf -> parent.thenPayload
+                    is ZigWhile -> parent.whilePayload
+                    is ZigFor -> parent.forPayload
+                    else -> null
+                }
+                payload?.payloadEntries[name]
+            }
+            is ZigElse -> parent.elsePayload?.payloadEntries[name]
+            is ZigSwitchResult -> {
+                parent = parent.parent
+                if (parent is ZigSwitchProng) {
+                    parent.switchProngPayload?.payloadEntries[name]
+                } else {
+                    null
+                }
+            }
+            is ZigCatchResult -> {
+                parent = parent.parent
+                if (parent is ZigCatch) {
+                    parent.catchPayload?.payloadEntries[name]
+                } else {
+                    null
+                }
+            }
             else -> null
         }
         if (target != null && target !is ZigContainerField) {
@@ -459,7 +486,7 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
             val expr = switch.switchCondition?.expr ?: return emptySequence()
             return sequenceOf(expr)
         }
-        is ZigSwitchProng -> {
+        is ZigSwitchResult -> {
             val switch = parent.findParentOfType<ZigSwitch>() ?: return emptySequence()
             return resolveInferredTypeExprs(switch)
         }

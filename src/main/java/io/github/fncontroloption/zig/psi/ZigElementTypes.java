@@ -75,6 +75,7 @@ public interface ZigElementTypes {
     IElementType IF = new ZigElementType("IF");
     IElementType CONDITION = new ZigElementType("CONDITION");
     IElementType PAYLOAD = new ZigElementType("PAYLOAD");
+    IElementType PAYLOAD_ENTRY = new ZigElementType("PAYLOAD_ENTRY");
     IElementType THEN = new ZigElementType("THEN");
     IElementType ELSE = new ZigElementType("ELSE");
     IElementType EQUAL_EQUAL = new ZigElementType("EQUAL_EQUAL");
@@ -104,6 +105,7 @@ public interface ZigElementTypes {
     IElementType BIT_OR = new ZigElementType("BIT_OR");
     IElementType ORELSE = new ZigElementType("ORELSE");
     IElementType CATCH = new ZigElementType("CATCH");
+    IElementType CATCH_RESULT = new ZigElementType("CATCH_RESULT");
     IElementType BOOL_AND = new ZigElementType("BOOL_AND");
     IElementType BOOL_OR = new ZigElementType("BOOL_OR");
     IElementType BOOL_NOT = new ZigElementType("BOOL_NOT");
@@ -130,6 +132,7 @@ public interface ZigElementTypes {
     IElementType SWITCH_PRONG_LIST = new ZigElementType("SWITCH_PRONG_LIST");
     IElementType SWITCH_PRONG = new ZigElementType("SWITCH_PRONG");
     IElementType SWITCH_ITEM = new ZigElementType("SWITCH_ITEM");
+    IElementType SWITCH_RESULT = new ZigElementType("SWITCH_RESULT");
     IElementType WHILE = new ZigElementType("WHILE");
     IElementType WHILE_CONTINUE_EXPR = new ZigElementType("WHILE_CONTINUE_EXPR");
     IElementType FOR = new ZigElementType("FOR");
@@ -279,6 +282,27 @@ public interface ZigElementTypes {
             }
             if (type == SWITCH_ITEM) {
                 return new ZigSwitchItem(node);
+            }
+            if (type == SWITCH_RESULT) {
+                return new ZigSwitchResult(node);
+            }
+            if (type == CATCH) {
+                return new ZigCatch(node);
+            }
+            if (type == CATCH_RESULT) {
+                return new ZigCatchResult(node);
+            }
+            if (type == WHILE) {
+                return new ZigWhile(node);
+            }
+            if (type == FOR) {
+                return new ZigFor(node);
+            }
+            if (type == PAYLOAD) {
+                return new ZigPayload(node);
+            }
+            if (type == PAYLOAD_ENTRY) {
+                return new ZigPayloadEntry(node);
             }
             return new ZigPsiElement(node); // TODO
         }
