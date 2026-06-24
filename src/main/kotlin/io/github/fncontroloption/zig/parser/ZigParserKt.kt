@@ -19,18 +19,12 @@ class ZigParserKt : PsiParser {
     private val containerStack = ArrayDeque<IElementType>()
 
     override fun parse(root: IElementType, builder: PsiBuilder): ASTNode {
-        enclosureStack.addLast(Enclosure(EnclosureType.CONTAINER, null, null))
         containerStack.addLast(root)
         val rootMarker = builder.mark()
-        while (!builder.eof()) {
-            if (parseContainerMember(builder) == null) {
-                val invalid = builder.mark()
-                builder.advanceLexer()
-                invalid.error("Unexpected token")
-            }
+        parseEnclosed(builder, Enclosure(EnclosureType.CONTAINER, null, null)) {
+            parseContainerMember(builder)
         }
         rootMarker.done(root)
-        enclosureStack.removeLast()
         containerStack.removeLast()
         return builder.treeBuilt
     }
@@ -1844,7 +1838,7 @@ class ZigParserKt : PsiParser {
     }
 
     private fun parseEnclosed(builder: PsiBuilder, enclosure: Enclosure, parseMember: () -> PsiBuilder.Marker?) {
-        if (!expect(builder, enclosure.left)) {
+        if (enclosure.left != null && !expect(builder, enclosure.left)) {
             return
         }
         enclosureStack.addLast(enclosure)
