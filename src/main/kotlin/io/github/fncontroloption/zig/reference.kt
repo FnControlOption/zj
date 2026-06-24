@@ -1,5 +1,6 @@
 package io.github.fncontroloption.zig
 
+import com.intellij.openapi.components.service
 import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.PsiElement
@@ -158,13 +159,15 @@ class ZigImportReference(element: ZigBuiltinCall) :
         if (!text.endsWith(".zig") && !text.endsWith(".zon")) {
             when (text) {
                 "std" -> {
-                    val projectService = myElement.project.getService(ZigProjectService::class.java)
-                    return projectService.stdFile
+                    val importService = myElement.project.service<ZigImportService>()
+                    return importService.stdFile
                 }
+                /*
                 "builtin" -> {
                     val projectService = myElement.project.getService(ZigProjectService::class.java)
                     return projectService.builtinFile
                 }
+                */
                 else -> {
                     // TODO: resolve imported modules
                     return null

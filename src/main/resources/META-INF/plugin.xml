@@ -54,6 +54,11 @@
     <lang.documentationProvider language="Zig" implementationClass="io.github.fncontroloption.zig.ZigDocumentationProvider"/>
     <spellchecker.support language="Zig" implementationClass="io.github.fncontroloption.zig.ZigSpellcheckingStrategy"/>
     <lang.braceMatcher language="Zig" implementationClass="io.github.fncontroloption.zig.ZigBraceMatcher"/>
+    <projectConfigurable parentId="language"
+                         instance="io.github.fncontroloption.zig.ZigSettingsConfigurable"
+                         id="io.github.fncontroloption.zig.ZigSettingsConfigurable"
+                         displayName="Zig"/>
+    <notificationGroup id="Zig" displayType="STICKY_BALLOON" hideFromSettings="true"/>
     <!--
     <fileType name="Simple File" implementationClass="org.intellij.sdk.language.SimpleFileType" fieldName="INSTANCE"
               language="Simple" extensions="simple"/>
