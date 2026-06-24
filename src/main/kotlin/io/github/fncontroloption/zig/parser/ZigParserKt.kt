@@ -1066,7 +1066,7 @@ class ZigParserKt : PsiParser {
                     return statement
                 }
             }
-            ZigTokenTypes.KEYWORD_IF -> return expectIfStatement(builder)
+            ZigTokenTypes.KEYWORD_IF -> return assertIfStatement(builder)
             // TODO
         }
         val labeledStatement = parseLabeledStatement(builder)
@@ -1089,7 +1089,7 @@ class ZigParserKt : PsiParser {
         }
     }
 
-    private fun expectIfStatement(builder: PsiBuilder): PsiBuilder.Marker {
+    private fun assertIfStatement(builder: PsiBuilder): PsiBuilder.Marker {
         assert(builder.tokenType === ZigTokenTypes.KEYWORD_IF)
         val ifMarker = builder.mark()
         builder.advanceLexer()
