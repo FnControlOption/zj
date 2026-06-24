@@ -240,3 +240,8 @@ test {
     a = b;
     c += d;
 }
+test {
+    comptime {}
+    comptime foo;
+    if (foo) bar else comptime baz;
+}

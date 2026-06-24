@@ -974,11 +974,23 @@ class ZigParserKt : PsiParser {
     }
 
     private fun tryStatement(builder: PsiBuilder, isBlockLevel: Boolean): PsiBuilder.Marker? {
-        if (expect(builder, ZigTokenTypes.KEYWORD_COMPTIME)) {
-            // TODO
-            return null
-        }
         when (builder.tokenType) {
+            ZigTokenTypes.KEYWORD_COMPTIME -> {
+                val marker = builder.mark()
+                builder.advanceLexer()
+                if (parseBlockExpr(builder) == null) {
+                    if (isBlockLevel) {
+                        tryVarDeclExprStatement(builder)
+                    } else {
+                        tryAssignExpr(builder)
+                        if (!expect(builder, ZigTokenTypes.SEMICOLON)) {
+                            // TODO: mark error
+                        }
+                    }
+                }
+                marker.done(ZigElementTypes.COMPTIME)
+                return marker
+            }
             // TODO
             ZigTokenTypes.KEYWORD_DEFER -> {
                 if (isBlockLevel) {
