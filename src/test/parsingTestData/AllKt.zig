@@ -266,3 +266,11 @@ test {
     }
 }
 fn foo() align(a) addrspace(b) linksection(c) callconv(d) Foo {}
+const foo = for (a) |*b| c else d;
+const foo = inline for (a) |*b| c else d;
+const foo = bar: for (a) |*b| c else d;
+const foo = bar: inline for (a) |*b| c else d;
+const foo = while (a) |*b| : (c) d else |e| f;
+const foo = inline while (a) |*b| : (c) d else |e| f;
+const foo = bar: while (a) |*b| : (c) d else |e| f;
+const foo = bar: inline while (a) |*b| : (c) d else |e| f;
