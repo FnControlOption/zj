@@ -30,7 +30,7 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
 
 private fun findDocHolder(element: PsiElement): PsiElement? {
     return when (element) {
-        is ZigContainerField, is ZigFnParamDecl -> element
+        is ZigContainerField, is ZigFnParamDecl, is ZigPayloadEntry -> element
         is ZigVarDeclProto -> when (val parent = element.parent) {
             is ZigVarDecl -> parent
             else -> null
