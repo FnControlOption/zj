@@ -296,18 +296,6 @@ private fun resolveMember(
     }
     visited.add(lhs)
     when (lhs) {
-        is ZigVarDeclProto -> {
-            val typeExpr = lhs.declTypeExpr?.expr ?: return
-            resolveMember(typeExpr, name, visited, results)
-        }
-        is ZigFnParamDecl -> {
-            val typeExpr = lhs.fnParamTypeExpr?.expr ?: return
-            resolveMember(typeExpr, name, visited, results)
-        }
-        is ZigContainerField -> {
-            val typeExpr = lhs.containerFieldTypeExpr?.expr ?: return
-            resolveMember(typeExpr, name, visited, results)
-        }
         is ZigFile -> {
             val member = lhs.containerMembers[name] ?: return
             results.add(PsiElementResolveResult(member))
@@ -380,9 +368,61 @@ private fun resolveMember(
         else -> {
             visited.remove(lhs)
             for (target in followReferencesRecursive(lhs, visited)) {
-                if (target != lhs) {
-                    visited.remove(target)
-                    resolveMember(target, name, visited, results)
+                if (target == lhs) {
+                    continue
+                }
+                when (target) {
+                    is ZigVarDeclProto -> {
+                        val typeExpr = target.declTypeExpr?.expr ?: return
+                        resolveMember(typeExpr, name, visited, results)
+                    }
+                    is ZigFnParamDecl -> {
+                        val typeExpr = target.fnParamTypeExpr?.expr ?: return
+                        resolveMember(typeExpr, name, visited, results)
+                    }
+                    is ZigContainerField -> {
+                        val typeExpr = target.containerFieldTypeExpr?.expr ?: return
+                        resolveMember(typeExpr, name, visited, results)
+                    }
+                    is ZigPayloadEntry -> {
+                        val payload = target.parent as? ZigPayload ?: continue
+                        when (val payloadParent = payload.parent) {
+                            is ZigIf -> {
+                                val expr = payloadParent.ifCondition?.expr ?: continue
+                                resolveMember(expr, name, visited, results)
+                            }
+                            is ZigWhile -> {
+                                val expr = payloadParent.whileCondition?.expr ?: continue
+                                resolveMember(expr, name, visited, results)
+                            }
+                            is ZigFor -> {
+                                val forInputs = payloadParent.forInputs?.forInputExprs ?: continue
+                                val payloadIndex = payload.payloadEntries.values.indexOf(target)
+                                val expr = forInputs.elementAtOrNull(payloadIndex) ?: continue
+                                resolveMember(expr, name, visited, results)
+                            }
+                            is ZigSwitchProng -> {
+                                if (payload.payloadEntries.values.first() != target) {
+                                    continue
+                                }
+                                for (switchItem in payloadParent.switchItems) {
+                                    val switchItemExpr = switchItem.switchItemExpr ?: continue
+                                    for (target in resolveReferences(switchItemExpr)) {
+                                        when (target) {
+                                            is ZigContainerField -> {
+                                                val typeExpr = target.containerFieldTypeExpr?.expr ?: continue
+                                                resolveMember(typeExpr, name, visited, results)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else -> {
+                        visited.remove(target)
+                        resolveMember(target, name, visited, results)
+                    }
                 }
             }
         }

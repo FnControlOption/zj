@@ -297,6 +297,9 @@ class ZigAddressOf(node: ASTNode) : ZigPrefixOp(node)
 class ZigTry(node: ASTNode) : ZigPrefixOp(node)
 
 class ZigIf(node: ASTNode) : ZigPsiElement(node) {
+    val ifCondition: ZigCondition?
+        get() = findChildByClass(ZigCondition::class.java)
+
     val thenPayload: ZigPayload?
         get() = findChildByClass(ZigPayload::class.java)
 
@@ -333,12 +336,17 @@ class ZigSwitch(node: ASTNode) : ZigPsiElement(node) {
 class ZigSwitchProngList(node: ASTNode) : ZigPsiElement(node)
 
 class ZigSwitchProng(node: ASTNode) : ZigPsiElement(node) {
+    val switchItems: Sequence<ZigSwitchItem>
+        get() = childrenOfType(this)
+
     val switchProngPayload: ZigPayload?
         get() = findChildByClass(ZigPayload::class.java)
-
 }
 
-class ZigSwitchItem(node: ASTNode) : ZigPsiElement(node)
+class ZigSwitchItem(node: ASTNode) : ZigPsiElement(node) {
+    val switchItemExpr: ZigPsiElement?
+        get() = findChildByClass(ZigPsiElement::class.java)
+}
 
 class ZigSwitchResult(node: ASTNode) : ZigPsiElement(node)
 
@@ -350,15 +358,25 @@ class ZigCatch(node: ASTNode) : ZigPsiElement(node) {
 class ZigCatchResult(node: ASTNode) : ZigPsiElement(node)
 
 class ZigWhile(node: ASTNode) : ZigPsiElement(node) {
+    val whileCondition: ZigCondition?
+        get() = findChildByClass(ZigCondition::class.java)
+
     val whilePayload: ZigPayload?
         get() = findChildByClass(ZigPayload::class.java)
 }
 
 class ZigFor(node: ASTNode) : ZigPsiElement(node) {
+    val forInputs: ZigForInputs?
+        get() = findChildByClass(ZigForInputs::class.java)
+
     val forPayload: ZigPayload?
         get() = findChildByClass(ZigPayload::class.java)
 }
 
+class ZigForInputs(node: ASTNode) : ZigPsiElement(node) {
+    val forInputExprs: Sequence<ZigPsiElement>
+        get() = childrenOfType(this)
+}
 
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {

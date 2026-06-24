@@ -298,6 +298,9 @@ public interface ZigElementTypes {
             if (type == FOR) {
                 return new ZigFor(node);
             }
+            if (type == FOR_INPUTS) {
+                return new ZigForInputs(node);
+            }
             if (type == PAYLOAD) {
                 return new ZigPayload(node);
             }
