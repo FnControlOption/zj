@@ -307,6 +307,12 @@ public interface ZigElementTypes {
             if (type == PAYLOAD_ENTRY) {
                 return new ZigPayloadEntry(node);
             }
+            if (type == BREAK) {
+                return new ZigBreak(node);
+            }
+            if (type == CONTINUE) {
+                return new ZigContinue(node);
+            }
             return new ZigPsiElement(node); // TODO
         }
     }

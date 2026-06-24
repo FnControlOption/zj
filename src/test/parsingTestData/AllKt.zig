@@ -245,3 +245,23 @@ test {
     comptime foo;
     if (foo) bar else comptime baz;
 }
+test {
+    foo: {
+        break :foo;
+        continue :foo;
+    }
+    foo: while (bar) {
+        break :foo;
+        continue :foo;
+    }
+    foo: for (bar) |baz| {
+        break :foo;
+        continue :foo;
+    }
+    foo: switch (bar) {
+        else => {
+            break :foo;
+            continue :foo;
+        }
+    }
+}
