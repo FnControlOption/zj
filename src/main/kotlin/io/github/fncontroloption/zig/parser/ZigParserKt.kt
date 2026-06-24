@@ -225,47 +225,19 @@ class ZigParserKt : PsiParser {
     }
 
     private fun parseAlign(builder: PsiBuilder): PsiBuilder.Marker? {
-        if (builder.tokenType !== ZigTokenTypes.KEYWORD_ALIGN) {
-            return null
-        }
-        val align = builder.mark()
-        builder.advanceLexer()
-        parseParenEnclosed(builder) { null } // TODO
-        align.done(ZigElementTypes.ALIGN)
-        return align
+        return parseParenEnclosedExpr(builder, ZigTokenTypes.KEYWORD_ALIGN, ZigElementTypes.ALIGN)
     }
 
     private fun parseAddrspace(builder: PsiBuilder): PsiBuilder.Marker? {
-        if (builder.tokenType !== ZigTokenTypes.KEYWORD_ADDRSPACE) {
-            return null
-        }
-        val addrspace = builder.mark()
-        builder.advanceLexer()
-        parseParenEnclosed(builder) { null } // TODO
-        addrspace.done(ZigElementTypes.ADDRSPACE)
-        return addrspace
+        return parseParenEnclosedExpr(builder, ZigTokenTypes.KEYWORD_ADDRSPACE, ZigElementTypes.ADDRSPACE)
     }
 
     private fun parseLinksection(builder: PsiBuilder): PsiBuilder.Marker? {
-        if (builder.tokenType !== ZigTokenTypes.KEYWORD_LINKSECTION) {
-            return null
-        }
-        val linksection = builder.mark()
-        builder.advanceLexer()
-        parseParenEnclosed(builder) { null } // TODO
-        linksection.done(ZigElementTypes.LINKSECTION)
-        return linksection
+        return parseParenEnclosedExpr(builder, ZigTokenTypes.KEYWORD_LINKSECTION, ZigElementTypes.LINKSECTION)
     }
 
     private fun parseCallconv(builder: PsiBuilder): PsiBuilder.Marker? {
-        if (builder.tokenType !== ZigTokenTypes.KEYWORD_CALLCONV) {
-            return null
-        }
-        val callconv = builder.mark()
-        builder.advanceLexer()
-        parseParenEnclosed(builder) { null } // TODO
-        callconv.done(ZigElementTypes.CALLCONV)
-        return callconv
+        return parseParenEnclosedExpr(builder, ZigTokenTypes.KEYWORD_CALLCONV, ZigElementTypes.CALLCONV)
     }
 
     private fun parseInitExpr(builder: PsiBuilder, terminator: IElementType) {
@@ -1699,6 +1671,36 @@ class ZigParserKt : PsiParser {
             }
             builder.advanceLexer()
         }
+    }
+
+    private fun parseParenEnclosedExpr(
+        builder: PsiBuilder,
+        prefix: IElementType,
+        type: IElementType,
+    ): PsiBuilder.Marker? {
+        if (builder.tokenType !== prefix) {
+            return null
+        }
+        val marker = builder.mark()
+        builder.advanceLexer()
+        if (builder.tokenType === ZigTokenTypes.L_PAREN) {
+            var expr: PsiBuilder.Marker? = null
+            parseParenEnclosed(builder) {
+                if (expr == null) {
+                    expr = tryExpr(builder)
+                    expr
+                } else {
+                    null
+                }
+            }
+            if (expr == null) {
+                // TODO: mark error
+            }
+        } else {
+            // TODO: mark error
+        }
+        marker.done(type)
+        return marker
     }
 
     private fun parseParenEnclosed(builder: PsiBuilder, parseMember: () -> PsiBuilder.Marker?) {

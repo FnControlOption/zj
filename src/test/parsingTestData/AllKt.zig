@@ -265,3 +265,4 @@ test {
         }
     }
 }
+fn foo() align(a) addrspace(b) linksection(c) callconv(d) Foo {}
