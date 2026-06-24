@@ -1475,15 +1475,12 @@ class ZigParserKt : PsiParser {
                 // TODO: mark error
             }
             entry.done(ZigElementTypes.PAYLOAD_ENTRY)
-            if (expect(builder, ZigTokenTypes.PIPE)) {
-                break
-            }
             if (!expect(builder, ZigTokenTypes.COMMA)) {
-                // TODO: mark error
-            }
-            if (expect(builder, ZigTokenTypes.PIPE)) {
                 break
             }
+        }
+        if (!expect(builder, ZigTokenTypes.PIPE)) {
+            // TODO: mark error
         }
         payload.done(ZigElementTypes.PAYLOAD)
     }
