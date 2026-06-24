@@ -282,3 +282,7 @@ const foo: while (a) |*b| : (c) d else |e| f = bar;
 const foo: inline while (a) |*b| : (c) d else |e| f = bar;
 const foo: bar: while (a) |*b| : (c) d else |e| f = baz;
 const foo: bar: inline while (a) |*b| : (c) d else |e| f = baz;
+const foo =
+    \\bar
+    \\baz
+;

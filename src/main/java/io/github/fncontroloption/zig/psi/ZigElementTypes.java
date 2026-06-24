@@ -138,6 +138,7 @@ public interface ZigElementTypes {
     IElementType FOR = new ZigElementType("FOR");
     IElementType FOR_INPUTS = new ZigElementType("FOR_INPUTS");
     IElementType FOR_RANGE = new ZigElementType("FOR_RANGE");
+    IElementType MULTILINE_STRING_LITERAL = new ZigElementType("MULTILINE_STRING_LITERAL");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

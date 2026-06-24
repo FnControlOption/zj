@@ -767,7 +767,14 @@ class ZigParserKt : PsiParser {
                 marker.done(ZigElementTypes.COMPTIME)
                 return marker
             }
-            ZigTokenTypes.MULTILINE_STRING_LITERAL_LINE -> return null // TODO
+            ZigTokenTypes.MULTILINE_STRING_LITERAL_LINE -> {
+                val marker = builder.mark()
+                while (builder.tokenType === ZigTokenTypes.MULTILINE_STRING_LITERAL_LINE) {
+                    builder.advanceLexer()
+                }
+                marker.done(ZigElementTypes.MULTILINE_STRING_LITERAL)
+                return marker
+            }
             ZigTokenTypes.IDENTIFIER -> {
                 if (builder.lookAhead(1) === ZigTokenTypes.COLON) {
                     when (builder.lookAhead(2)) {
