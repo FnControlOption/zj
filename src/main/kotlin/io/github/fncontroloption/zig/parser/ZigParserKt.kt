@@ -771,9 +771,18 @@ class ZigParserKt : PsiParser {
             ZigTokenTypes.IDENTIFIER -> {
                 if (builder.lookAhead(1) === ZigTokenTypes.COLON) {
                     when (builder.lookAhead(2)) {
-                        ZigTokenTypes.KEYWORD_INLINE -> return null // TODO
-                        ZigTokenTypes.KEYWORD_FOR -> return null // TODO
-                        ZigTokenTypes.KEYWORD_WHILE -> return null // TODO
+                        ZigTokenTypes.KEYWORD_INLINE -> {
+                            return when (builder.lookAhead(3)) {
+                                ZigTokenTypes.KEYWORD_FOR -> parseFor(builder, this::tryTypeExpr)
+                                ZigTokenTypes.KEYWORD_WHILE -> parseWhile(builder, this::tryTypeExpr)
+                                else -> {
+                                    // TODO: mark error
+                                    null
+                                }
+                            }
+                        }
+                        ZigTokenTypes.KEYWORD_FOR -> return parseFor(builder, this::tryTypeExpr)
+                        ZigTokenTypes.KEYWORD_WHILE -> return parseWhile(builder, this::tryTypeExpr)
                         ZigTokenTypes.KEYWORD_SWITCH -> return assertSwitchExpr(builder)
                         ZigTokenTypes.L_BRACE -> return parseBlockExpr(builder)
                     }
@@ -783,9 +792,18 @@ class ZigParserKt : PsiParser {
                 marker.done(ZigElementTypes.IDENTIFIER)
                 return marker
             }
-            ZigTokenTypes.KEYWORD_INLINE -> return null // TODO
-            ZigTokenTypes.KEYWORD_FOR -> return null // TODO
-            ZigTokenTypes.KEYWORD_WHILE -> return null // TODO
+            ZigTokenTypes.KEYWORD_INLINE -> {
+                return when (builder.lookAhead(1)) {
+                    ZigTokenTypes.KEYWORD_FOR -> parseFor(builder, this::tryTypeExpr)
+                    ZigTokenTypes.KEYWORD_WHILE -> parseWhile(builder, this::tryTypeExpr)
+                    else -> {
+                        // TODO: mark error
+                        null
+                    }
+                }
+            }
+            ZigTokenTypes.KEYWORD_FOR -> return parseFor(builder, this::tryTypeExpr)
+            ZigTokenTypes.KEYWORD_WHILE -> return parseWhile(builder, this::tryTypeExpr)
             ZigTokenTypes.PERIOD -> {
                 when (builder.lookAhead(1)) {
                     ZigTokenTypes.IDENTIFIER -> {
