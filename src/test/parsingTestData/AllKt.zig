@@ -292,3 +292,6 @@ test {
     suspend {}
     suspend foo;
 }
+test {
+    if (foo) bar, baz = qux;
+}

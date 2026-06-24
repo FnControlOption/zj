@@ -1368,14 +1368,26 @@ class ZigParserKt : PsiParser {
 
     private fun finishAssignExpr(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker {
         if (builder.tokenType === ZigTokenTypes.COMMA) {
-            // TODO
-            return lhs
+            return finishAssignDestructureExpr(builder, lhs)
         }
         val assignType = assignTable[builder.tokenType] ?: return lhs
         val assign = lhs.precede()
         builder.advanceLexer()
         tryExpr(builder)
         assign.done(assignType)
+        return assign
+    }
+
+    private fun finishAssignDestructureExpr(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker {
+        val assign = lhs.precede()
+        while (expect(builder, ZigTokenTypes.COMMA)) {
+            tryExpr(builder)
+        }
+        if (!expect(builder, ZigTokenTypes.EQUAL)) {
+            // TODO: mark error
+        }
+        tryExpr(builder)
+        assign.done(ZigElementTypes.ASSIGN)
         return assign
     }
 
