@@ -51,8 +51,6 @@ ZigFile:ParsingTestData.zig(0,790)
           ZigTypeExpr(TYPE_EXPR)(93,103)
             ZigPointerType(POINTER_TYPE)(93,103)
               PsiElement([)('[')(93,94)
-              ZigPsiElement(TYPE_LENGTH)(94,94)
-                <empty list>
               PsiElement(])(']')(94,95)
               ZigPsiElement(POINTER_MODIFIERS)(95,100)
                 PsiElement(const)('const')(95,100)
