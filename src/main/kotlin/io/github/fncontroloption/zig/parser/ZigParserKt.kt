@@ -156,6 +156,14 @@ class ZigParserKt : PsiParser {
         return null
     }
 
+    private fun tryBlockExprStatement(builder: PsiBuilder): PsiBuilder.Marker? {
+        val expr = parseBlockExprStatement(builder)
+        if (expr == null) {
+            // TODO: mark error
+        }
+        return expr
+    }
+
     private fun parseBuiltinCall(builder: PsiBuilder): PsiBuilder.Marker? {
         val call = builder.mark()
         if (!expect(builder, ZigTokenTypes.BUILTIN)) {
@@ -1102,12 +1110,25 @@ class ZigParserKt : PsiParser {
                 marker.done(ZigElementTypes.COMPTIME)
                 return marker
             }
-            // TODO
+            ZigTokenTypes.KEYWORD_NOSUSPEND -> {
+                val marker = builder.mark()
+                builder.advanceLexer()
+                tryBlockExprStatement(builder)
+                marker.done(ZigElementTypes.NOSUSPEND)
+                return marker
+            }
+            ZigTokenTypes.KEYWORD_SUSPEND -> {
+                val marker = builder.mark()
+                builder.advanceLexer()
+                tryBlockExprStatement(builder)
+                marker.done(ZigElementTypes.SUSPEND)
+                return marker
+            }
             ZigTokenTypes.KEYWORD_DEFER -> {
                 if (isBlockLevel) {
                     val statement = builder.mark()
                     builder.advanceLexer()
-                    parseBlockExprStatement(builder)
+                    tryBlockExprStatement(builder)
                     statement.done(ZigElementTypes.DEFER)
                     return statement
                 }
@@ -1116,7 +1137,7 @@ class ZigParserKt : PsiParser {
                 if (isBlockLevel) {
                     val statement = builder.mark()
                     builder.advanceLexer()
-                    parseBlockExprStatement(builder)
+                    tryBlockExprStatement(builder)
                     statement.done(ZigElementTypes.ERRDEFER)
                     return statement
                 }

@@ -69,6 +69,7 @@ public interface ZigElementTypes {
     IElementType CONTINUE = new ZigElementType("CONTINUE");
     IElementType COMPTIME = new ZigElementType("COMPTIME");
     IElementType NOSUSPEND = new ZigElementType("NOSUSPEND");
+    IElementType SUSPEND = new ZigElementType("SUSPEND");
     IElementType RESUME = new ZigElementType("RESUME");
     IElementType RETURN = new ZigElementType("RETURN");
     IElementType GROUPED_EXPRESSION = new ZigElementType("GROUPED_EXPRESSION");

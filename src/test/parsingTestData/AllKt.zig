@@ -286,3 +286,9 @@ const foo =
     \\bar
     \\baz
 ;
+test {
+    nosuspend {}
+    nosuspend foo;
+    suspend {}
+    suspend foo;
+}
