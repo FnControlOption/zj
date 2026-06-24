@@ -381,6 +381,9 @@ class ZigForInputs(node: ASTNode) : ZigPsiElement(node) {
 class ZigBreak(node: ASTNode) : ZigPsiElement(node) {
     val breakLabel: PsiElement?
         get() = findChildByType(ZigTokenTypes.IDENTIFIER)
+
+    val breakExpr: ZigPsiElement?
+        get() = findChildByClass(ZigPsiElement::class.java)
 }
 
 class ZigContinue(node: ASTNode) : ZigPsiElement(node) {

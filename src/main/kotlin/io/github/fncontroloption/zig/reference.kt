@@ -430,6 +430,20 @@ private fun resolveMember(
                 }
             }
         }
+        is ZigBlock -> {
+            val blockBody = lhs.blockBody ?: return
+            val psiTraverser = SyntaxTraverser.psiTraverser(blockBody).expand { it !is ZigContainerDecl }
+            for (elem in psiTraverser) {
+                if (elem is ZigBreak) {
+                    val breakExpr = elem.breakExpr ?: continue
+                    for (target in resolveReferences(elem)) {
+                        if (target == lhs) {
+                            resolveMember(breakExpr, name, visited, results)
+                        }
+                    }
+                }
+            }
+        }
         else -> {
             visited.remove(lhs)
             for (target in followReferencesRecursive(lhs, visited)) {
