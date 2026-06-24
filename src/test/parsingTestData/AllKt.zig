@@ -295,3 +295,10 @@ test {
 test {
     if (foo) bar, baz = qux;
 }
+const foo = asm volatile (bar)
+const foo = asm volatile (bar
+    : [a] "b" (c),
+      [d] "e" (-> f)
+    : [g] "h" (i),
+      [j] "k" (l)
+    : m);

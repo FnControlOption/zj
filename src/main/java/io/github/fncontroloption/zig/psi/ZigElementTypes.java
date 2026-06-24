@@ -140,6 +140,12 @@ public interface ZigElementTypes {
     IElementType FOR_INPUTS = new ZigElementType("FOR_INPUTS");
     IElementType FOR_RANGE = new ZigElementType("FOR_RANGE");
     IElementType MULTILINE_STRING_LITERAL = new ZigElementType("MULTILINE_STRING_LITERAL");
+    IElementType ASM = new ZigElementType("ASM");
+    IElementType ASM_OUTPUT_LIST = new ZigElementType("ASM_OUTPUT_LIST");
+    IElementType ASM_OUTPUT = new ZigElementType("ASM_OUTPUT");
+    IElementType ASM_INPUT_LIST = new ZigElementType("ASM_INPUT_LIST");
+    IElementType ASM_INPUT = new ZigElementType("ASM_INPUT");
+    IElementType ASM_CLOBBERS = new ZigElementType("ASM_CLOBBERS");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

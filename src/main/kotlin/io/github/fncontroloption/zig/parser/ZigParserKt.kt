@@ -965,7 +965,7 @@ class ZigParserKt : PsiParser {
 
     private fun parsePrimaryExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         when (builder.tokenType) {
-            ZigTokenTypes.KEYWORD_ASM -> return null // TODO
+            ZigTokenTypes.KEYWORD_ASM -> return assertAsmExpr(builder)
             ZigTokenTypes.KEYWORD_IF -> return parseIf(builder, this::tryExpr)
             ZigTokenTypes.KEYWORD_BREAK -> {
                 val expr = builder.mark()
@@ -1757,6 +1757,164 @@ class ZigParserKt : PsiParser {
             // TODO: mark error
         }
         marker.done(ZigElementTypes.WHILE_CONTINUE_EXPR)
+        return marker
+    }
+
+    private fun assertAsmExpr(builder: PsiBuilder): PsiBuilder.Marker {
+        assert(builder.tokenType === ZigTokenTypes.KEYWORD_ASM)
+        val marker = builder.mark()
+        builder.advanceLexer()
+        expect(builder, ZigTokenTypes.KEYWORD_VOLATILE)
+        var expr: PsiBuilder.Marker? = null
+        var outputList: PsiBuilder.Marker? = null
+        var inputList: PsiBuilder.Marker? = null
+        var clobbers: PsiBuilder.Marker? = null
+        parseParenEnclosed(builder) {
+            if (expr == null) {
+                expr = tryExpr(builder)
+                expr
+            } else if (outputList == null) {
+                outputList = parseAsmIOList(builder, ZigElementTypes.ASM_OUTPUT_LIST, this::parseAsmOutputItem)
+                outputList
+            } else if (inputList == null) {
+                inputList = parseAsmIOList(builder, ZigElementTypes.ASM_INPUT_LIST, this::parseAsmInputItem)
+                inputList
+            } else if (clobbers == null) {
+                clobbers = parseClobbers(builder)
+                clobbers
+            } else {
+                null
+            }
+        }
+        if (expr == null) {
+            // TODO: mark error
+        }
+        marker.done(ZigElementTypes.ASM)
+        return marker
+    }
+
+    private fun parseAsmIOList(builder: PsiBuilder, type: IElementType, parseItem: (PsiBuilder) -> PsiBuilder.Marker?): PsiBuilder.Marker? {
+        if (builder.tokenType !== ZigTokenTypes.COLON) {
+            return null
+        }
+        val marker = builder.mark()
+        builder.advanceLexer()
+        while (!builder.eof()) {
+            if (parseItem(builder) == null) {
+                break
+            }
+            if (!expect(builder, ZigTokenTypes.COMMA)
+                && builder.tokenType !== ZigTokenTypes.COLON
+                && builder.tokenType !== ZigTokenTypes.R_PAREN) {
+                // TODO: mark error
+            }
+        }
+        marker.done(type)
+        return marker
+    }
+
+    private fun parseAsmOutputItem(builder: PsiBuilder): PsiBuilder.Marker? {
+        if (builder.tokenType !== ZigTokenTypes.L_BRACKET) {
+            return null
+        }
+        val marker = builder.mark()
+        var identifier: PsiBuilder.Marker? = null
+        parseBracketEnclosed(builder) {
+            if (identifier == null) {
+                if (builder.tokenType === ZigTokenTypes.IDENTIFIER) {
+                    identifier = builder.mark()
+                    builder.advanceLexer()
+                    identifier.drop()
+                }
+                identifier
+            } else {
+                null
+            }
+        }
+        if (identifier == null) {
+            // TODO: mark error
+        }
+        if (!expect(builder, ZigTokenTypes.STRING_LITERAL)) {
+            // TODO: mark error
+        }
+        var expr: PsiBuilder.Marker? = null
+        parseParenEnclosed(builder) {
+            if (expr == null) {
+                when (builder.tokenType) {
+                    ZigTokenTypes.ARROW -> {
+                        expr = builder.mark()
+                        builder.advanceLexer()
+                        val typeExpr = builder.mark()
+                        tryTypeExpr(builder)
+                        typeExpr.done(ZigElementTypes.TYPE_EXPR)
+                        expr!!.drop()
+                    }
+                    ZigTokenTypes.IDENTIFIER -> {
+                        expr = builder.mark()
+                        builder.advanceLexer()
+                        expr.done(ZigElementTypes.IDENTIFIER)
+                    }
+                }
+                expr
+            } else {
+                null
+            }
+        }
+        if (expr == null) {
+            // TODO: mark error
+        }
+        marker.done(ZigElementTypes.ASM_OUTPUT)
+        return marker
+    }
+
+    private fun parseAsmInputItem(builder: PsiBuilder): PsiBuilder.Marker? {
+        if (builder.tokenType !== ZigTokenTypes.L_BRACKET) {
+            return null
+        }
+        val marker = builder.mark()
+        var identifier: PsiBuilder.Marker? = null
+        parseBracketEnclosed(builder) {
+            if (identifier == null) {
+                if (builder.tokenType === ZigTokenTypes.IDENTIFIER) {
+                    identifier = builder.mark()
+                    builder.advanceLexer()
+                    identifier.drop()
+                }
+                identifier
+            } else {
+                null
+            }
+        }
+        if (identifier == null) {
+            // TODO: mark error
+        }
+        if (!expect(builder, ZigTokenTypes.STRING_LITERAL)) {
+            // TODO: mark error
+        }
+        var expr: PsiBuilder.Marker? = null
+        parseParenEnclosed(builder) {
+            if (expr == null) {
+                expr = tryExpr(builder)
+                expr
+            } else {
+                null
+            }
+        }
+        if (expr == null) {
+            // TODO: mark error
+        }
+        marker.done(ZigElementTypes.ASM_INPUT)
+        return marker
+    }
+
+    private fun parseClobbers(builder: PsiBuilder): PsiBuilder.Marker? {
+        if (builder.tokenType !== ZigTokenTypes.COLON) {
+            return null
+        }
+        val marker = builder.mark()
+        builder.advanceLexer()
+        tryExpr(builder)
+        marker.done(ZigElementTypes.ASM_CLOBBERS)
         return marker
     }
 
