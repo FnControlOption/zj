@@ -1479,10 +1479,12 @@ class ZigParserKt : PsiParser {
         while (!builder.eof()) {
             val entry = builder.mark()
             expect(builder, ZigTokenTypes.ASTERISK)
-            if (!expect(builder, ZigTokenTypes.IDENTIFIER)) {
+            if (expect(builder, ZigTokenTypes.IDENTIFIER)) {
+                entry.done(ZigElementTypes.PAYLOAD_ENTRY)
+            } else {
+                entry.drop()
                 // TODO: mark error
             }
-            entry.done(ZigElementTypes.PAYLOAD_ENTRY)
             if (!expect(builder, ZigTokenTypes.COMMA)) {
                 break
             }
