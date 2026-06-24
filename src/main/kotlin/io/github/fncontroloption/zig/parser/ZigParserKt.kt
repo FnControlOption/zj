@@ -145,9 +145,7 @@ class ZigParserKt : PsiParser {
         val assignExpr = parseAssignExpr(builder)
         if (assignExpr != null) {
             if (!expect(builder, ZigTokenTypes.SEMICOLON)) {
-                // TODO
-                statement.rollbackTo()
-                return null
+                // TODO: mark error
             }
             statement.done(ZigElementTypes.EXPR_STATEMENT)
             return statement
@@ -973,7 +971,7 @@ class ZigParserKt : PsiParser {
 
     private fun parsePrimaryExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         when (builder.tokenType) {
-            // TODO
+            ZigTokenTypes.KEYWORD_ASM -> return null // TODO
             ZigTokenTypes.KEYWORD_IF -> return parseIf(builder, this::tryExpr)
             ZigTokenTypes.KEYWORD_BREAK -> {
                 val expr = builder.mark()
@@ -1143,7 +1141,9 @@ class ZigParserKt : PsiParser {
                 }
             }
             ZigTokenTypes.KEYWORD_IF -> return assertIfStatement(builder)
-            // TODO
+            ZigTokenTypes.KEYWORD_ENUM, ZigTokenTypes.KEYWORD_STRUCT, ZigTokenTypes.KEYWORD_UNION -> {
+                // TODO: parse C-style container
+            }
         }
         val labeledStatement = parseLabeledStatement(builder)
         if (labeledStatement != null) {
@@ -1158,7 +1158,7 @@ class ZigParserKt : PsiParser {
                 return null
             }
             if (!expect(builder, ZigTokenTypes.SEMICOLON)) {
-                // TODO mark error
+                // TODO: mark error
             }
             statement.done(ZigElementTypes.EXPR_STATEMENT)
             return statement
@@ -1213,14 +1213,6 @@ class ZigParserKt : PsiParser {
     }
 
     private fun tryVarDeclExprStatement(builder: PsiBuilder): PsiBuilder.Marker? {
-        /*
-        val prevToken = builder.rawLookup(-1)
-        if (prevToken === ZigTokenTypes.EQUAL_ANGLE_BRACKET_RIGHT) {
-            // e.g. `switch (a) { .b => c = d, ... }`
-            return null
-        }
-        */
-
         val statement = builder.mark()
         val scratch = mutableListOf<PsiBuilder.Marker>()
 
@@ -1244,26 +1236,17 @@ class ZigParserKt : PsiParser {
 
         assert(scratch.isNotEmpty())
 
-        if (!expect(builder, ZigTokenTypes.EQUAL)) {
-            if (scratch.size > 1) {
-                // TODO
-                statement.rollbackTo()
-                return null
+        if (scratch.size > 1 || scratch[0].tokenType === ZigElementTypes.VAR_DECL_PROTO) {
+            if (!expect(builder, ZigTokenTypes.EQUAL)) {
+                // TODO: mark error
             }
-            val lhs = scratch[0]
-            if (lhs.tokenType === ZigElementTypes.VAR_DECL_PROTO) {
-                // TODO
-                statement.rollbackTo()
-                return null
-            }
-            val expr = finishAssignExpr(builder, lhs)
+        } else if (!expect(builder, ZigTokenTypes.EQUAL)) {
+            finishAssignExpr(builder, scratch[0])
             if (!expect(builder, ZigTokenTypes.SEMICOLON)) {
-                // TODO
-                statement.rollbackTo()
-                return null
+                // TODO: mark error
             }
             statement.done(ZigElementTypes.EXPR_STATEMENT)
-            return expr
+            return statement
         }
 
         parseInitExpr(builder, ZigTokenTypes.SEMICOLON)
