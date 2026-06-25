@@ -334,3 +334,5 @@ const foo = bar: {
 };
 const foo = (foo23).foo;
 const foo = @as(Foo8, bar).foo;
+const foo = @as(Foo3, .a);
+const foo = @as(Foo8, .{ .foo = bar });

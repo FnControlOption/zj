@@ -502,6 +502,18 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
                         }
                     }
                 }
+                is ZigBuiltinCall -> {
+                    when (call.builtin.text) {
+                        "@as" -> {
+                            if (argIndex != 1) {
+                                return emptySequence()
+                            }
+                            val typeExpr = parent.exprs.elementAt(0)
+                            sequenceOf(typeExpr)
+                        }
+                        else -> emptySequence()
+                    }
+                }
                 else -> emptySequence()
             }
         }
