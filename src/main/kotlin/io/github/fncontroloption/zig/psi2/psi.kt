@@ -216,9 +216,6 @@ class ZigErrorUnion(node: ASTNode) : ASTWrapperPsiElement(node) {
 class ZigErrorValue(node: ASTNode) : ASTWrapperPsiElement(node) {
 }
 
-class ZigExpressionStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
-}
-
 class ZigFieldAccess(node: ASTNode) : ASTWrapperPsiElement(node) {
 }
 

@@ -157,16 +157,13 @@ class ZigParser : PsiParser {
             return blockExpr
         }
         // Otherwise, require semicolon after expression
-        val statement = builder.mark()
         val assignExpr = parseAssignExpr(builder)
         if (assignExpr != null) {
             if (!expect(builder, ZigTokenType.SEMICOLON)) {
                 // TODO: mark error
             }
-            statement.done(ZigElementType.EXPRESSION_STATEMENT)
-            return statement
+            return assignExpr
         }
-        statement.rollbackTo()
         return null
     }
 
@@ -1135,16 +1132,14 @@ class ZigParser : PsiParser {
         if (isBlockLevel) {
             return tryVarDeclExprStatement(builder)
         } else {
-            val statement = builder.mark()
-            if (tryAssignExpr(builder) == null) {
-                statement.rollbackTo()
+            val expr = tryAssignExpr(builder)
+            if (expr == null) {
                 return null
             }
             if (!expect(builder, ZigTokenType.SEMICOLON)) {
                 // TODO: mark error
             }
-            statement.done(ZigElementType.EXPRESSION_STATEMENT)
-            return statement
+            return expr
         }
     }
 
@@ -1224,12 +1219,12 @@ class ZigParser : PsiParser {
                 // TODO: mark error
             }
         } else if (!expect(builder, ZigTokenType.EQUAL)) {
-            finishAssignExpr(builder, scratch[0])
+            statement.drop()
+            val expr = finishAssignExpr(builder, scratch[0])
             if (!expect(builder, ZigTokenType.SEMICOLON)) {
                 // TODO: mark error
             }
-            statement.done(ZigElementType.EXPRESSION_STATEMENT)
-            return statement
+            return expr;
         }
 
         tryExpr(builder)
