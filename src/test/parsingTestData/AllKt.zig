@@ -333,3 +333,4 @@ const foo = bar: {
     break :bar baz.buzz;
 };
 const foo = (foo23).foo;
+const foo = @as(Foo8, bar).foo;
