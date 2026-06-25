@@ -919,15 +919,12 @@ class ZigParserKt : PsiParser {
                 builder.error("Comparison operators cannot be chained");
             }
             builder.advanceLexer()
-            var catchResult: PsiBuilder.Marker? = null
             if (operToken === ZigTokenTypes.KEYWORD_CATCH) {
                 parsePayload(builder)
-                catchResult = builder.mark()
             }
             if (parseExprPrecedence(builder, info.prec + 1) == null) {
                 // TODO: mark error
             }
-            catchResult?.done(ZigElementTypes.CATCH_RESULT)
             expr = expr.precede()
             expr.done(info.nodeType)
             if (info.assoc == Assoc.NONE) {

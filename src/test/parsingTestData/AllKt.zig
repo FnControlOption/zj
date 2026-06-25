@@ -321,3 +321,10 @@ test {
     var foo22: Foo8 = bar;
     foo22 = .{ .foo = bar };
 }
+const foo23: Foo8 = bar;
+const foo24: ?Foo8 = bar;
+const foo25 = foo24 orelse foo23;
+const foo = foo25.foo;
+const foo26: Error!Foo8 = bar;
+const foo27 = foo26 catch foo23;
+const foo = foo27.foo;

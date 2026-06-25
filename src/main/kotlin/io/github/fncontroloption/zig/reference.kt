@@ -376,6 +376,7 @@ private fun resolveMember(
 
 fun resolveIdentifierReference(element: PsiElement): PsiElement? {
     val name = element.text
+    var element = element
     var parent = element.parent
     while (parent != null) {
         val target = when (parent) {
@@ -401,9 +402,8 @@ fun resolveIdentifierReference(element: PsiElement): PsiElement? {
                     null
                 }
             }
-            is ZigCatchResult -> {
-                parent = parent.parent
-                if (parent is ZigCatch) {
+            is ZigCatch -> {
+                if (element == parent.catchRhs) {
                     parent.catchPayload?.payloadEntries[name]
                 } else {
                     null
@@ -414,6 +414,7 @@ fun resolveIdentifierReference(element: PsiElement): PsiElement? {
         if (target != null && target !is ZigContainerField) {
             return target
         }
+        element = parent
         parent = parent.parent
     }
     return null
@@ -605,9 +606,19 @@ private fun resolveContainerExpr(lhs: PsiElement, visited: MutableSet<PsiElement
             val expr = lhs.lhs ?: return emptySequence()
             resolveContainerExpr(expr, visited)
         }
+        is ZigOrelse -> {
+            sequenceOf(lhs.orelseLhs, lhs.orelseRhs)
+                .filterNotNull()
+                .flatMap { resolveContainerExpr(it, visited) }
+        }
         is ZigTry -> {
             val expr = lhs.expr ?: return emptySequence()
             resolveContainerExpr(expr, visited)
+        }
+        is ZigCatch -> {
+            sequenceOf(lhs.catchLhs, lhs.catchRhs)
+                .filterNotNull()
+                .flatMap { resolveContainerExpr(it, visited) }
         }
         is ZigPointerType -> {
             val typeExpr = lhs.child ?: return emptySequence()

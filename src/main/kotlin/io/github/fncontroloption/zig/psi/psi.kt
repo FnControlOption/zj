@@ -351,11 +351,15 @@ class ZigSwitchItem(node: ASTNode) : ZigPsiElement(node) {
 class ZigSwitchResult(node: ASTNode) : ZigPsiElement(node)
 
 class ZigCatch(node: ASTNode) : ZigPsiElement(node) {
+    val catchLhs: ZigPsiElement?
+        get() = firstChild as? ZigPsiElement
+
     val catchPayload: ZigPayload?
         get() = findChildByClass(ZigPayload::class.java)
-}
 
-class ZigCatchResult(node: ASTNode) : ZigPsiElement(node)
+    val catchRhs: ZigPsiElement?
+        get() = lastChild as? ZigPsiElement
+}
 
 class ZigWhile(node: ASTNode) : ZigNamedElement(node) {
     val whileCondition: ZigCondition?
@@ -394,6 +398,14 @@ class ZigContinue(node: ASTNode) : ZigPsiElement(node) {
 class ZigAssign(node: ASTNode) : ZigPsiElement(node) {
     val lhs: ZigPsiElement?
         get() = firstChild as? ZigPsiElement
+}
+
+class ZigOrelse(node: ASTNode) : ZigPsiElement(node) {
+    val orelseLhs: ZigPsiElement?
+        get() = firstChild as? ZigPsiElement
+
+    val orelseRhs: ZigPsiElement?
+        get() = lastChild as? ZigPsiElement
 }
 
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {

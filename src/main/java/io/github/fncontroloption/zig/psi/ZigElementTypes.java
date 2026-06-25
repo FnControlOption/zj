@@ -107,7 +107,6 @@ public interface ZigElementTypes {
     IElementType BIT_OR = new ZigElementType("BIT_OR");
     IElementType ORELSE = new ZigElementType("ORELSE");
     IElementType CATCH = new ZigElementType("CATCH");
-    IElementType CATCH_RESULT = new ZigElementType("CATCH_RESULT");
     IElementType BOOL_AND = new ZigElementType("BOOL_AND");
     IElementType BOOL_OR = new ZigElementType("BOOL_OR");
     IElementType BOOL_NOT = new ZigElementType("BOOL_NOT");
@@ -298,9 +297,6 @@ public interface ZigElementTypes {
             if (type == CATCH) {
                 return new ZigCatch(node);
             }
-            if (type == CATCH_RESULT) {
-                return new ZigCatchResult(node);
-            }
             if (type == WHILE) {
                 return new ZigWhile(node);
             }
@@ -324,6 +320,9 @@ public interface ZigElementTypes {
             }
             if (type == ASSIGN) {
                 return new ZigAssign(node);
+            }
+            if (type == ORELSE) {
+                return new ZigOrelse(node);
             }
             return new ZigPsiElement(node); // TODO
         }
