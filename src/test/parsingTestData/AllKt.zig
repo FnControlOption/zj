@@ -302,3 +302,16 @@ const foo = asm volatile (bar
     : [g] "h" (i),
       [j] "k" (l)
     : m);
+fn foo18(T: type) T {}
+fn foo19(T: type) ?T {}
+const foo = foo18(Foo8).foo;
+const foo = foo18(?Foo8).?.foo;
+const foo = foo19(Foo8).?.foo;
+const Foo20 = struct {
+    fn fizz(self: @This(), T: type) T {}
+    fn buzz(self: @This(), T: type) ?T {}
+};
+const foo20: Foo20 = bar;
+const foo = foo20.fizz(Foo8).foo;
+const foo = foo20.fizz(?Foo8).?.foo;
+const foo = foo20.buzz(Foo8).?.foo;

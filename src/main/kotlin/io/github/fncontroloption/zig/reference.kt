@@ -627,7 +627,7 @@ private fun resolveContainerExpr(lhs: PsiElement, visited: MutableSet<PsiElement
             followReferencesRecursive(callLhs, visited).flatMap { target ->
                 val fnProto = target as? ZigFnProto ?: return@flatMap emptySequence()
                 val returnTypeExpr = fnProto.fnReturnTypeExpr?.expr ?: return@flatMap emptySequence()
-                if (returnTypeExpr.textMatches("type")) {
+                val containerExprs = if (returnTypeExpr.textMatches("type")) {
                     val fnDecl = fnProto.parent as? ZigFnDecl ?: return@flatMap emptySequence()
                     val fnBody = fnDecl.fnBody ?: return@flatMap emptySequence()
                     SyntaxTraverser.psiTraverser(fnBody)
@@ -642,6 +642,27 @@ private fun resolveContainerExpr(lhs: PsiElement, visited: MutableSet<PsiElement
                         }
                 } else {
                     resolveContainerExpr(returnTypeExpr, visited)
+                }
+                val callArgs = lhs.callArgs ?: return@flatMap containerExprs
+                val fnParamDecls = fnProto.fnParams?.fnParamDecls?.values ?: return@flatMap containerExprs
+                containerExprs.flatMap { expr ->
+                    // Check if container expression is a generic parameter of the called function
+                    val paramIndex = fnParamDecls.indexOf(expr)
+                    if (paramIndex >= 0) {
+                        // Use the corresponding call argument
+                        var argIndex = paramIndex
+                        if (isPossibleMethodAccess(callLhs)) {
+                            argIndex -= 1
+                        }
+                        val arg = callArgs.exprs.elementAtOrNull(argIndex)
+                        if (arg != null) {
+                            resolveContainerExpr(arg, visited)
+                        } else {
+                            emptySequence()
+                        }
+                    } else {
+                        sequenceOf(expr)
+                    }
                 }
             }
         }
@@ -675,7 +696,11 @@ private fun resolveContainerExpr(lhs: PsiElement, visited: MutableSet<PsiElement
                     }
                     is ZigFnParamDecl -> {
                         val typeExpr = target.fnParamTypeExpr?.expr ?: return@flatMap emptySequence()
-                        resolveContainerExpr(typeExpr, visited)
+                        if (typeExpr.textMatches("type")) {
+                            sequenceOf(target)
+                        } else {
+                            resolveContainerExpr(typeExpr, visited)
+                        }
                     }
                     is ZigContainerField -> {
                         val typeExpr = target.containerFieldTypeExpr?.expr ?: return@flatMap emptySequence()
