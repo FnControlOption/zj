@@ -48,8 +48,8 @@
     <lang.foldingBuilder language="Zig" implementationClass="io.github.fncontroloption.zig.ZigFoldingBuilder"/>
     <lang.psiStructureViewFactory language="Zig"
                                   implementationClass="io.github.fncontroloption.zig.ZigStructureViewFactory"/>
-    <codeStyleSettingsProvider implementation="io.github.fncontroloption.zig.codeStyle.ZigCodeStyleSettingsProvider"/>
-    <langCodeStyleSettingsProvider implementation="io.github.fncontroloption.zig.codeStyle.ZigLanguageCodeStyleSettingsProvider"/>
+    <codeStyleSettingsProvider implementation="io.github.fncontroloption.zig.ZigCodeStyleSettingsProvider"/>
+    <langCodeStyleSettingsProvider implementation="io.github.fncontroloption.zig.ZigLanguageCodeStyleSettingsProvider"/>
     <lang.commenter language="Zig" implementationClass="io.github.fncontroloption.zig.ZigCommenter"/>
     <lang.documentationProvider language="Zig" implementationClass="io.github.fncontroloption.zig.ZigDocumentationProvider"/>
     <spellchecker.support language="Zig" implementationClass="io.github.fncontroloption.zig.ZigSpellcheckingStrategy"/>

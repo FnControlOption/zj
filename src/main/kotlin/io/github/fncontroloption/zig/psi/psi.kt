@@ -58,7 +58,7 @@ interface ZigContainerBody : PsiElement {
         }
 }
 
-class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage.INSTANCE), ZigContainerBody {
+class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage), ZigContainerBody {
     override var cachedMembers: Map<String, ZigNamedElement>? = null
 
     override fun subtreeChanged() {
@@ -66,7 +66,7 @@ class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLan
         cachedMembers = null
     }
 
-    override fun getFileType(): FileType = ZigFileType.INSTANCE
+    override fun getFileType(): FileType = ZigFileType
 
     override fun toString() = "ZigFile:$name"
 
@@ -645,7 +645,7 @@ class ZigPayloadEntry(node: ASTNode) : ZigNamedElement(node) {
 
 fun createZigFile(project: Project, text: String): ZigFile {
     val fileFactory = PsiFileFactory.getInstance(project)
-    val file = fileFactory.createFileFromText("dummy.zig",ZigLanguage.INSTANCE, text)
+    val file = fileFactory.createFileFromText("dummy.zig",ZigLanguage, text)
     return file as ZigFile
 }
 
