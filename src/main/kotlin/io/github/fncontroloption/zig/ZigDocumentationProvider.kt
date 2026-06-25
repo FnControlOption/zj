@@ -29,6 +29,7 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
 }
 
 private fun findDocHolder(element: PsiElement): PsiElement? {
+    /* TODO
     return when (element) {
         is ZigContainerField, is ZigFnParamDecl, is ZigPayloadEntry -> element
         is ZigVarDeclProto -> when (val parent = element.parent) {
@@ -41,9 +42,12 @@ private fun findDocHolder(element: PsiElement): PsiElement? {
         }
         else -> null
     }
+     */
+    return null
 }
 
 private fun findDoc(element: PsiElement): String? {
+    /* TODO
     val list = mutableListOf<String>()
     var prev = element.prevSibling
     while (true) {
@@ -65,4 +69,6 @@ private fun findDoc(element: PsiElement): String? {
     }
     list.reverse()
     return list.joinToString("")
+     */
+    return null
 }

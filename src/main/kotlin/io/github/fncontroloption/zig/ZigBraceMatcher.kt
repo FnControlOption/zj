@@ -4,12 +4,12 @@ import com.intellij.lang.BracePair
 import com.intellij.lang.PairedBraceMatcher
 import com.intellij.psi.PsiFile
 import com.intellij.psi.tree.IElementType
-import io.github.fncontroloption.zig.psi.ZigTokenTypes
+import io.github.fncontroloption.zig.psi2.ZigTokenType
 
 private val PAIRS = arrayOf(
-    BracePair(ZigTokenTypes.L_PAREN, ZigTokenTypes.R_PAREN, false),
-    BracePair(ZigTokenTypes.L_BRACE, ZigTokenTypes.R_BRACE, true),
-    BracePair(ZigTokenTypes.L_BRACKET, ZigTokenTypes.R_BRACKET, false),
+    BracePair(ZigTokenType.L_PAREN, ZigTokenType.R_PAREN, false),
+    BracePair(ZigTokenType.L_BRACE, ZigTokenType.R_BRACE, true),
+    BracePair(ZigTokenType.L_BRACKET, ZigTokenType.R_BRACKET, false),
 )
 
 class ZigBraceMatcher : PairedBraceMatcher {

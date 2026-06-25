@@ -23,6 +23,7 @@ import io.github.fncontroloption.zig.psi.*
 
 class ZigReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
+        /* TODO
         registrar.registerReferenceProvider(
             PlatformPatterns.psiElement(ZigIdentifier::class.java),
             ZigIdentifierReferenceProvider,
@@ -55,9 +56,11 @@ class ZigReferenceContributor : PsiReferenceContributor() {
             PlatformPatterns.psiElement(ZigContinue::class.java),
             ZigContinueReferenceProvider,
         )
+         */
     }
 }
 
+/* TODO
 object ZigIdentifierReferenceProvider : PsiReferenceProvider() {
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
         val identifier = element as ZigIdentifier
@@ -814,3 +817,4 @@ private fun resolveContainerExpr(lhs: PsiElement, visited: MutableSet<PsiElement
         else -> emptySequence()
     }
 }
+ */

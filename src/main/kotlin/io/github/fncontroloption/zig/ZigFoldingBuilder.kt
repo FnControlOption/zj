@@ -11,6 +11,7 @@ import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiRecursiveVisitor
 import com.intellij.psi.PsiWalkingState
 import com.intellij.psi.tree.TokenSet
+/* TODO
 import io.github.fncontroloption.zig.psi.ZigElementTypes
 import io.github.fncontroloption.zig.psi.ZigTokenTypes
 
@@ -30,6 +31,7 @@ private val BLOCKS_COLLAPSED_BY_DEFAULT = TokenSet.create(
 private val PAREN_ENCLOSED = TokenSet.create(
     ZigElementTypes.CALL_ARGS
 )
+ */
 
 class ZigFoldingBuilder : FoldingBuilderEx(), DumbAware {
     override fun buildFoldRegions(
@@ -38,6 +40,7 @@ class ZigFoldingBuilder : FoldingBuilderEx(), DumbAware {
         quick: Boolean
     ): Array<out FoldingDescriptor> {
         val descriptors = mutableListOf<FoldingDescriptor>()
+        /* TODO
         root.accept(object : PsiElementVisitor(), PsiRecursiveVisitor {
             val walkingState = object : PsiWalkingState(this) {}
             override fun visitElement(element: PsiElement) {
@@ -56,16 +59,22 @@ class ZigFoldingBuilder : FoldingBuilderEx(), DumbAware {
                 descriptors.add(FoldingDescriptor(element, range))
             }
         })
+         */
         return descriptors.toTypedArray()
     }
 
     override fun isCollapsedByDefault(node: ASTNode): Boolean {
+        /* TODO
         return node.elementType === ZigElementTypes.BLOCK_BODY && node.treeParent?.elementType in BLOCKS_COLLAPSED_BY_DEFAULT
+         */
+        return false
     }
 
     override fun getPlaceholderText(node: ASTNode) = when (node.elementType) {
+        /* TODO
         in BRACE_ENCLOSED -> "{...}"
         in PAREN_ENCLOSED -> "(...)"
+         */
         else -> null
     }
 }

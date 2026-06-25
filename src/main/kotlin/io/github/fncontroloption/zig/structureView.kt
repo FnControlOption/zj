@@ -13,7 +13,9 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SyntaxTraverser
+/* TODO
 import io.github.fncontroloption.zig.psi.ZigStructureElement
+ */
 
 class ZigStructureViewFactory : PsiStructureViewFactory {
     override fun getStructureViewBuilder(psiFile: PsiFile) = ZigStructureViewBuilder(psiFile)
@@ -52,6 +54,7 @@ class ZigStructureViewElement(val element: NavigatablePsiElement) : StructureVie
 
     override fun getChildren(): Array<out TreeElement> {
         val treeElements = mutableListOf<TreeElement>()
+        /* TODO
         val psiTraverser = SyntaxTraverser.psiTraverser(element).expand {
             it === element || it !is ZigStructureElement || !it.isViewable()
         }
@@ -63,6 +66,7 @@ class ZigStructureViewElement(val element: NavigatablePsiElement) : StructureVie
                 treeElements.add(ZigStructureViewElement(elem))
             }
         }
+         */
         return treeElements.toTypedArray()
     }
 }

@@ -5,8 +5,8 @@ import com.intellij.openapi.fileTypes.SyntaxHighlighterBase
 import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
 import io.github.fncontroloption.zig.ZigLexerAdapter
-import io.github.fncontroloption.zig.psi.ZigTokenSets
-import io.github.fncontroloption.zig.psi.ZigTokenTypes
+import io.github.fncontroloption.zig.psi2.ZigTokenSets
+import io.github.fncontroloption.zig.psi2.ZigTokenType
 
 private val IDENTIFIER_KEYS = arrayOf(ZigHighlightingColors.IDENTIFIER)
 private val NUMBER_KEYS = arrayOf(ZigHighlightingColors.NUMBER)
@@ -29,16 +29,16 @@ class ZigSyntaxHighlighter : SyntaxHighlighterBase() {
     override fun getHighlightingLexer() = ZigLexerAdapter()
 
     override fun getTokenHighlights(tokenType: IElementType): Array<TextAttributesKey> {
-        if (tokenType == ZigTokenTypes.IDENTIFIER) {
+        if (tokenType == ZigTokenType.IDENTIFIER) {
             return IDENTIFIER_KEYS
         }
-        if (tokenType == ZigTokenTypes.NUMBER_LITERAL) {
+        if (tokenType == ZigTokenType.NUMBER_LITERAL) {
             return NUMBER_KEYS
         }
         if (ZigTokenSets.KEYWORDS.contains(tokenType)) {
             return KEYWORD_KEYS
         }
-        if (ZigTokenSets.STRINGS.contains(tokenType) || tokenType == ZigTokenTypes.CHAR_LITERAL) {
+        if (ZigTokenSets.STRINGS.contains(tokenType) || tokenType == ZigTokenType.CHAR_LITERAL) {
             return STRING_KEYS
         }
         if (ZigTokenSets.DOC_COMMENTS.contains(tokenType)) {
@@ -50,13 +50,13 @@ class ZigSyntaxHighlighter : SyntaxHighlighterBase() {
         if (ZigTokenSets.OPERATION_SIGNS.contains(tokenType)) {
             return OPERATION_SIGN_KEYS
         }
-        if (tokenType == ZigTokenTypes.PERIOD) {
+        if (tokenType == ZigTokenType.PERIOD) {
             return DOT_KEYS
         }
-        if (tokenType == ZigTokenTypes.SEMICOLON) {
+        if (tokenType == ZigTokenType.SEMICOLON) {
             return SEMICOLON_KEYS
         }
-        if (tokenType == ZigTokenTypes.COMMA) {
+        if (tokenType == ZigTokenType.COMMA) {
             return COMMA_KEYS
         }
         if (ZigTokenSets.PARENTHESES.contains(tokenType)) {
@@ -65,10 +65,10 @@ class ZigSyntaxHighlighter : SyntaxHighlighterBase() {
         if (ZigTokenSets.BRACKETS.contains(tokenType)) {
             return BRACKETS_KEYS
         }
-        if (tokenType == ZigTokenTypes.LINE_COMMENT) {
+        if (tokenType == ZigTokenType.LINE_COMMENT) {
             return LINE_COMMENT_KEYS
         }
-        if (tokenType == ZigTokenTypes.BUILTIN) {
+        if (tokenType == ZigTokenType.BUILTIN) {
             return BUILTIN_KEYS
         }
         if (tokenType == TokenType.BAD_CHARACTER) {

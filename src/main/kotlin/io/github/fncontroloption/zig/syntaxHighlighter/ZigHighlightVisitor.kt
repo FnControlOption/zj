@@ -7,9 +7,14 @@ import com.intellij.codeInsight.daemon.impl.analysis.HighlightInfoHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.parentOfType
+/* TODO
 import io.github.fncontroloption.zig.followReferencesRecursive
 import io.github.fncontroloption.zig.psi.*
+ */
+import io.github.fncontroloption.zig.psi2.ZigFile
+/* TODO
 import io.github.fncontroloption.zig.resolveReferences
+ */
 import java.util.regex.Pattern
 
 private val PRIMITIVES = setOf(
@@ -63,6 +68,7 @@ class ZigHighlightVisitor : HighlightVisitor {
     }
 
     private fun createHighlightInfo(element: PsiElement): HighlightInfo? {
+        /* TODO
         return when (element) {
             is ZigFnProto -> {
                 val identifier = element.nameIdentifier ?: return null
@@ -152,6 +158,8 @@ class ZigHighlightVisitor : HighlightVisitor {
 
             else -> null
         }
+         */
+        return null
     }
 
     override fun analyze(
@@ -171,6 +179,7 @@ class ZigHighlightVisitor : HighlightVisitor {
 
     override fun clone() = ZigHighlightVisitor()
 
+    /* TODO
     private fun createHighlightInfo(element: PsiElement, type: HighlightInfoType): HighlightInfo? {
         return HighlightInfo.newHighlightInfo(type).range(element).create()
     }
@@ -184,4 +193,5 @@ class ZigHighlightVisitor : HighlightVisitor {
         }
         return null
     }
+     */
 }

@@ -7,7 +7,7 @@ import com.intellij.spellchecker.inspections.CommentSplitter
 import com.intellij.spellchecker.tokenizer.SpellcheckingStrategy
 import com.intellij.spellchecker.tokenizer.TokenConsumer
 import com.intellij.spellchecker.tokenizer.Tokenizer
-import io.github.fncontroloption.zig.psi.ZigTokenSets
+import io.github.fncontroloption.zig.psi2.ZigTokenSets
 
 class ZigSpellcheckingStrategy : SpellcheckingStrategy() {
     override fun getTokenizer(element: PsiElement?): Tokenizer<*> {

@@ -6,7 +6,7 @@ package io.github.fncontroloption.zig;
 import com.intellij.lexer.FlexLexer;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.TokenType;
-import io.github.fncontroloption.zig.psi.ZigTokenTypes;
+import io.github.fncontroloption.zig.psi2.ZigTokenType;
 
 // Based on https://codeberg.org/ziglang/zig/src/commit/72d954e/lib/std/zig/tokenizer.zig
 
@@ -803,7 +803,7 @@ class ZigLexer implements FlexLexer {
             }  // fall though
             case 323: break;
             case MULTILINE_STRING: {
-              yybegin(YYINITIAL); return ZigTokenTypes.MULTILINE_STRING_LITERAL_LINE;
+              yybegin(YYINITIAL); return ZigTokenType.MULTILINE_STRING_LITERAL_LINE;
             }  // fall though
             case 324: break;
             case COMMENT: {
@@ -827,22 +827,22 @@ class ZigLexer implements FlexLexer {
           // fall through
           case 126: break;
           case 3:
-            { return ZigTokenTypes.BANG;
+            { return ZigTokenType.BANG;
             }
           // fall through
           case 127: break;
           case 4:
-            { type = ZigTokenTypes.STRING_LITERAL; yybegin(STRING);
+            { type = ZigTokenType.STRING_LITERAL; yybegin(STRING);
             }
           // fall through
           case 128: break;
           case 5:
-            { return ZigTokenTypes.PERCENT;
+            { return ZigTokenType.PERCENT;
             }
           // fall through
           case 129: break;
           case 6:
-            { return ZigTokenTypes.AMPERSAND;
+            { return ZigTokenType.AMPERSAND;
             }
           // fall through
           case 130: break;
@@ -852,117 +852,117 @@ class ZigLexer implements FlexLexer {
           // fall through
           case 131: break;
           case 8:
-            { return ZigTokenTypes.L_PAREN;
+            { return ZigTokenType.L_PAREN;
             }
           // fall through
           case 132: break;
           case 9:
-            { return ZigTokenTypes.R_PAREN;
+            { return ZigTokenType.R_PAREN;
             }
           // fall through
           case 133: break;
           case 10:
-            { return ZigTokenTypes.ASTERISK;
+            { return ZigTokenType.ASTERISK;
             }
           // fall through
           case 134: break;
           case 11:
-            { return ZigTokenTypes.PLUS;
+            { return ZigTokenType.PLUS;
             }
           // fall through
           case 135: break;
           case 12:
-            { return ZigTokenTypes.COMMA;
+            { return ZigTokenType.COMMA;
             }
           // fall through
           case 136: break;
           case 13:
-            { return ZigTokenTypes.MINUS;
+            { return ZigTokenType.MINUS;
             }
           // fall through
           case 137: break;
           case 14:
-            { return ZigTokenTypes.PERIOD;
+            { return ZigTokenType.PERIOD;
             }
           // fall through
           case 138: break;
           case 15:
-            { return ZigTokenTypes.SLASH;
+            { return ZigTokenType.SLASH;
             }
           // fall through
           case 139: break;
           case 16:
-            { return ZigTokenTypes.NUMBER_LITERAL;
+            { return ZigTokenType.NUMBER_LITERAL;
             }
           // fall through
           case 140: break;
           case 17:
-            { return ZigTokenTypes.COLON;
+            { return ZigTokenType.COLON;
             }
           // fall through
           case 141: break;
           case 18:
-            { return ZigTokenTypes.SEMICOLON;
+            { return ZigTokenType.SEMICOLON;
             }
           // fall through
           case 142: break;
           case 19:
-            { return ZigTokenTypes.ANGLE_BRACKET_LEFT;
+            { return ZigTokenType.ANGLE_BRACKET_LEFT;
             }
           // fall through
           case 143: break;
           case 20:
-            { return ZigTokenTypes.EQUAL;
+            { return ZigTokenType.EQUAL;
             }
           // fall through
           case 144: break;
           case 21:
-            { return ZigTokenTypes.ANGLE_BRACKET_RIGHT;
+            { return ZigTokenType.ANGLE_BRACKET_RIGHT;
             }
           // fall through
           case 145: break;
           case 22:
-            { return ZigTokenTypes.QUESTION_MARK;
+            { return ZigTokenType.QUESTION_MARK;
             }
           // fall through
           case 146: break;
           case 23:
-            { return ZigTokenTypes.IDENTIFIER;
+            { return ZigTokenType.IDENTIFIER;
             }
           // fall through
           case 147: break;
           case 24:
-            { return ZigTokenTypes.L_BRACKET;
+            { return ZigTokenType.L_BRACKET;
             }
           // fall through
           case 148: break;
           case 25:
-            { return ZigTokenTypes.R_BRACKET;
+            { return ZigTokenType.R_BRACKET;
             }
           // fall through
           case 149: break;
           case 26:
-            { return ZigTokenTypes.CARET;
+            { return ZigTokenType.CARET;
             }
           // fall through
           case 150: break;
           case 27:
-            { return ZigTokenTypes.L_BRACE;
+            { return ZigTokenType.L_BRACE;
             }
           // fall through
           case 151: break;
           case 28:
-            { return ZigTokenTypes.PIPE;
+            { return ZigTokenType.PIPE;
             }
           // fall through
           case 152: break;
           case 29:
-            { return ZigTokenTypes.R_BRACE;
+            { return ZigTokenType.R_BRACE;
             }
           // fall through
           case 153: break;
           case 30:
-            { return ZigTokenTypes.TILDE;
+            { return ZigTokenType.TILDE;
             }
           // fall through
           case 154: break;
@@ -977,7 +977,7 @@ class ZigLexer implements FlexLexer {
           // fall through
           case 156: break;
           case 33:
-            { yybegin(YYINITIAL); return ZigTokenTypes.CHAR_LITERAL;
+            { yybegin(YYINITIAL); return ZigTokenType.CHAR_LITERAL;
             }
           // fall through
           case 157: break;
@@ -987,137 +987,137 @@ class ZigLexer implements FlexLexer {
           // fall through
           case 158: break;
           case 35:
-            { yybegin(YYINITIAL); return ZigTokenTypes.MULTILINE_STRING_LITERAL_LINE;
+            { yybegin(YYINITIAL); return ZigTokenType.MULTILINE_STRING_LITERAL_LINE;
             }
           // fall through
           case 159: break;
           case 36:
-            { return ZigTokenTypes.BANG_EQUAL;
+            { return ZigTokenType.BANG_EQUAL;
             }
           // fall through
           case 160: break;
           case 37:
-            { return ZigTokenTypes.PERCENT_EQUAL;
+            { return ZigTokenType.PERCENT_EQUAL;
             }
           // fall through
           case 161: break;
           case 38:
-            { return ZigTokenTypes.AMPERSAND_EQUAL;
+            { return ZigTokenType.AMPERSAND_EQUAL;
             }
           // fall through
           case 162: break;
           case 39:
-            { return ZigTokenTypes.ASTERISK_PERCENT;
+            { return ZigTokenType.ASTERISK_PERCENT;
             }
           // fall through
           case 163: break;
           case 40:
-            { return ZigTokenTypes.ASTERISK_EQUAL;
+            { return ZigTokenType.ASTERISK_EQUAL;
             }
           // fall through
           case 164: break;
           case 41:
-            { return ZigTokenTypes.ASTERISK_PIPE;
+            { return ZigTokenType.ASTERISK_PIPE;
             }
           // fall through
           case 165: break;
           case 42:
-            { return ZigTokenTypes.PLUS_PERCENT;
+            { return ZigTokenType.PLUS_PERCENT;
             }
           // fall through
           case 166: break;
           case 43:
-            { return ZigTokenTypes.PLUS_PLUS;
+            { return ZigTokenType.PLUS_PLUS;
             }
           // fall through
           case 167: break;
           case 44:
-            { return ZigTokenTypes.PLUS_EQUAL;
+            { return ZigTokenType.PLUS_EQUAL;
             }
           // fall through
           case 168: break;
           case 45:
-            { return ZigTokenTypes.PLUS_PIPE;
+            { return ZigTokenType.PLUS_PIPE;
             }
           // fall through
           case 169: break;
           case 46:
-            { return ZigTokenTypes.MINUS_PERCENT;
+            { return ZigTokenType.MINUS_PERCENT;
             }
           // fall through
           case 170: break;
           case 47:
-            { return ZigTokenTypes.MINUS_EQUAL;
+            { return ZigTokenType.MINUS_EQUAL;
             }
           // fall through
           case 171: break;
           case 48:
-            { return ZigTokenTypes.ARROW;
+            { return ZigTokenType.ARROW;
             }
           // fall through
           case 172: break;
           case 49:
-            { return ZigTokenTypes.MINUS_PIPE;
+            { return ZigTokenType.MINUS_PIPE;
             }
           // fall through
           case 173: break;
           case 50:
-            { return ZigTokenTypes.PERIOD_ASTERISK;
+            { return ZigTokenType.PERIOD_ASTERISK;
             }
           // fall through
           case 174: break;
           case 51:
-            { return ZigTokenTypes.ELLIPSIS2;
+            { return ZigTokenType.ELLIPSIS2;
             }
           // fall through
           case 175: break;
           case 52:
-            { type = ZigTokenTypes.LINE_COMMENT; yybegin(COMMENT);
+            { type = ZigTokenType.LINE_COMMENT; yybegin(COMMENT);
             }
           // fall through
           case 176: break;
           case 53:
-            { return ZigTokenTypes.SLASH_EQUAL;
+            { return ZigTokenType.SLASH_EQUAL;
             }
           // fall through
           case 177: break;
           case 54:
-            { return ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT;
+            { return ZigTokenType.ANGLE_BRACKET_ANGLE_BRACKET_LEFT;
             }
           // fall through
           case 178: break;
           case 55:
-            { return ZigTokenTypes.ANGLE_BRACKET_LEFT_EQUAL;
+            { return ZigTokenType.ANGLE_BRACKET_LEFT_EQUAL;
             }
           // fall through
           case 179: break;
           case 56:
-            { return ZigTokenTypes.EQUAL_EQUAL;
+            { return ZigTokenType.EQUAL_EQUAL;
             }
           // fall through
           case 180: break;
           case 57:
-            { return ZigTokenTypes.EQUAL_ANGLE_BRACKET_RIGHT;
+            { return ZigTokenType.EQUAL_ANGLE_BRACKET_RIGHT;
             }
           // fall through
           case 181: break;
           case 58:
-            { return ZigTokenTypes.ANGLE_BRACKET_RIGHT_EQUAL;
+            { return ZigTokenType.ANGLE_BRACKET_RIGHT_EQUAL;
             }
           // fall through
           case 182: break;
           case 59:
-            { return ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_RIGHT;
+            { return ZigTokenType.ANGLE_BRACKET_ANGLE_BRACKET_RIGHT;
             }
           // fall through
           case 183: break;
           case 60:
-            { type = ZigTokenTypes.IDENTIFIER; yybegin(STRING);
+            { type = ZigTokenType.IDENTIFIER; yybegin(STRING);
             }
           // fall through
           case 184: break;
           case 61:
-            { return ZigTokenTypes.BUILTIN;
+            { return ZigTokenType.BUILTIN;
             }
           // fall through
           case 185: break;
@@ -1127,312 +1127,312 @@ class ZigLexer implements FlexLexer {
           // fall through
           case 186: break;
           case 63:
-            { return ZigTokenTypes.CARET_EQUAL;
+            { return ZigTokenType.CARET_EQUAL;
             }
           // fall through
           case 187: break;
           case 64:
-            { return ZigTokenTypes.KEYWORD_FN;
+            { return ZigTokenType.KEYWORD_FN;
             }
           // fall through
           case 188: break;
           case 65:
-            { return ZigTokenTypes.KEYWORD_IF;
+            { return ZigTokenType.KEYWORD_IF;
             }
           // fall through
           case 189: break;
           case 66:
-            { return ZigTokenTypes.KEYWORD_OR;
+            { return ZigTokenType.KEYWORD_OR;
             }
           // fall through
           case 190: break;
           case 67:
-            { return ZigTokenTypes.PIPE_EQUAL;
+            { return ZigTokenType.PIPE_EQUAL;
             }
           // fall through
           case 191: break;
           case 68:
-            { return ZigTokenTypes.PIPE_PIPE;
+            { return ZigTokenType.PIPE_PIPE;
             }
           // fall through
           case 192: break;
           case 69:
-            { return ZigTokenTypes.ASTERISK_PERCENT_EQUAL;
+            { return ZigTokenType.ASTERISK_PERCENT_EQUAL;
             }
           // fall through
           case 193: break;
           case 70:
-            { return ZigTokenTypes.ASTERISK_PIPE_EQUAL;
+            { return ZigTokenType.ASTERISK_PIPE_EQUAL;
             }
           // fall through
           case 194: break;
           case 71:
-            { return ZigTokenTypes.PLUS_PERCENT_EQUAL;
+            { return ZigTokenType.PLUS_PERCENT_EQUAL;
             }
           // fall through
           case 195: break;
           case 72:
-            { return ZigTokenTypes.PLUS_PIPE_EQUAL;
+            { return ZigTokenType.PLUS_PIPE_EQUAL;
             }
           // fall through
           case 196: break;
           case 73:
-            { return ZigTokenTypes.MINUS_PERCENT_EQUAL;
+            { return ZigTokenType.MINUS_PERCENT_EQUAL;
             }
           // fall through
           case 197: break;
           case 74:
-            { return ZigTokenTypes.MINUS_PIPE_EQUAL;
+            { return ZigTokenType.MINUS_PIPE_EQUAL;
             }
           // fall through
           case 198: break;
           case 75:
-            { return ZigTokenTypes.ELLIPSIS3;
+            { return ZigTokenType.ELLIPSIS3;
             }
           // fall through
           case 199: break;
           case 76:
-            { type = ZigTokenTypes.CONTAINER_DOC_COMMENT; yybegin(COMMENT);
+            { type = ZigTokenType.CONTAINER_DOC_COMMENT; yybegin(COMMENT);
             }
           // fall through
           case 200: break;
           case 77:
-            { type = ZigTokenTypes.DOC_COMMENT; yybegin(COMMENT);
+            { type = ZigTokenType.DOC_COMMENT; yybegin(COMMENT);
             }
           // fall through
           case 201: break;
           case 78:
-            { return ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_EQUAL;
+            { return ZigTokenType.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_EQUAL;
             }
           // fall through
           case 202: break;
           case 79:
-            { return ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_PIPE;
+            { return ZigTokenType.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_PIPE;
             }
           // fall through
           case 203: break;
           case 80:
-            { return ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_RIGHT_EQUAL;
+            { return ZigTokenType.ANGLE_BRACKET_ANGLE_BRACKET_RIGHT_EQUAL;
             }
           // fall through
           case 204: break;
           case 81:
-            { return ZigTokenTypes.KEYWORD_AND;
+            { return ZigTokenType.KEYWORD_AND;
             }
           // fall through
           case 205: break;
           case 82:
-            { return ZigTokenTypes.KEYWORD_ASM;
+            { return ZigTokenType.KEYWORD_ASM;
             }
           // fall through
           case 206: break;
           case 83:
-            { return ZigTokenTypes.KEYWORD_FOR;
+            { return ZigTokenType.KEYWORD_FOR;
             }
           // fall through
           case 207: break;
           case 84:
-            { return ZigTokenTypes.KEYWORD_PUB;
+            { return ZigTokenType.KEYWORD_PUB;
             }
           // fall through
           case 208: break;
           case 85:
-            { return ZigTokenTypes.KEYWORD_TRY;
+            { return ZigTokenType.KEYWORD_TRY;
             }
           // fall through
           case 209: break;
           case 86:
-            { return ZigTokenTypes.KEYWORD_VAR;
+            { return ZigTokenType.KEYWORD_VAR;
             }
           // fall through
           case 210: break;
           case 87:
-            { return ZigTokenTypes.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_PIPE_EQUAL;
+            { return ZigTokenType.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_PIPE_EQUAL;
             }
           // fall through
           case 211: break;
           case 88:
-            { return ZigTokenTypes.KEYWORD_ELSE;
+            { return ZigTokenType.KEYWORD_ELSE;
             }
           // fall through
           case 212: break;
           case 89:
-            { return ZigTokenTypes.KEYWORD_ENUM;
+            { return ZigTokenType.KEYWORD_ENUM;
             }
           // fall through
           case 213: break;
           case 90:
-            { return ZigTokenTypes.KEYWORD_TEST;
+            { return ZigTokenType.KEYWORD_TEST;
             }
           // fall through
           case 214: break;
           case 91:
-            { return ZigTokenTypes.KEYWORD_ALIGN;
+            { return ZigTokenType.KEYWORD_ALIGN;
             }
           // fall through
           case 215: break;
           case 92:
-            { return ZigTokenTypes.KEYWORD_BREAK;
+            { return ZigTokenType.KEYWORD_BREAK;
             }
           // fall through
           case 216: break;
           case 93:
-            { return ZigTokenTypes.KEYWORD_CATCH;
+            { return ZigTokenType.KEYWORD_CATCH;
             }
           // fall through
           case 217: break;
           case 94:
-            { return ZigTokenTypes.KEYWORD_CONST;
+            { return ZigTokenType.KEYWORD_CONST;
             }
           // fall through
           case 218: break;
           case 95:
-            { return ZigTokenTypes.KEYWORD_DEFER;
+            { return ZigTokenType.KEYWORD_DEFER;
             }
           // fall through
           case 219: break;
           case 96:
-            { return ZigTokenTypes.KEYWORD_ERROR;
+            { return ZigTokenType.KEYWORD_ERROR;
             }
           // fall through
           case 220: break;
           case 97:
-            { return ZigTokenTypes.KEYWORD_UNION;
+            { return ZigTokenType.KEYWORD_UNION;
             }
           // fall through
           case 221: break;
           case 98:
-            { return ZigTokenTypes.KEYWORD_WHILE;
+            { return ZigTokenType.KEYWORD_WHILE;
             }
           // fall through
           case 222: break;
           case 99:
-            { return ZigTokenTypes.KEYWORD_EXPORT;
+            { return ZigTokenType.KEYWORD_EXPORT;
             }
           // fall through
           case 223: break;
           case 100:
-            { return ZigTokenTypes.KEYWORD_EXTERN;
+            { return ZigTokenType.KEYWORD_EXTERN;
             }
           // fall through
           case 224: break;
           case 101:
-            { return ZigTokenTypes.KEYWORD_INLINE;
+            { return ZigTokenType.KEYWORD_INLINE;
             }
           // fall through
           case 225: break;
           case 102:
-            { return ZigTokenTypes.KEYWORD_OPAQUE;
+            { return ZigTokenType.KEYWORD_OPAQUE;
             }
           // fall through
           case 226: break;
           case 103:
-            { return ZigTokenTypes.KEYWORD_ORELSE;
+            { return ZigTokenType.KEYWORD_ORELSE;
             }
           // fall through
           case 227: break;
           case 104:
-            { return ZigTokenTypes.KEYWORD_PACKED;
+            { return ZigTokenType.KEYWORD_PACKED;
             }
           // fall through
           case 228: break;
           case 105:
-            { return ZigTokenTypes.KEYWORD_RESUME;
+            { return ZigTokenType.KEYWORD_RESUME;
             }
           // fall through
           case 229: break;
           case 106:
-            { return ZigTokenTypes.KEYWORD_RETURN;
+            { return ZigTokenType.KEYWORD_RETURN;
             }
           // fall through
           case 230: break;
           case 107:
-            { return ZigTokenTypes.KEYWORD_STRUCT;
+            { return ZigTokenType.KEYWORD_STRUCT;
             }
           // fall through
           case 231: break;
           case 108:
-            { return ZigTokenTypes.KEYWORD_SWITCH;
+            { return ZigTokenType.KEYWORD_SWITCH;
             }
           // fall through
           case 232: break;
           case 109:
-            { return ZigTokenTypes.KEYWORD_ANYTYPE;
+            { return ZigTokenType.KEYWORD_ANYTYPE;
             }
           // fall through
           case 233: break;
           case 110:
-            { return ZigTokenTypes.KEYWORD_NOALIAS;
+            { return ZigTokenType.KEYWORD_NOALIAS;
             }
           // fall through
           case 234: break;
           case 111:
-            { return ZigTokenTypes.KEYWORD_SUSPEND;
+            { return ZigTokenType.KEYWORD_SUSPEND;
             }
           // fall through
           case 235: break;
           case 112:
-            { return ZigTokenTypes.KEYWORD_ANYFRAME;
+            { return ZigTokenType.KEYWORD_ANYFRAME;
             }
           // fall through
           case 236: break;
           case 113:
-            { return ZigTokenTypes.KEYWORD_CALLCONV;
+            { return ZigTokenType.KEYWORD_CALLCONV;
             }
           // fall through
           case 237: break;
           case 114:
-            { return ZigTokenTypes.KEYWORD_COMPTIME;
+            { return ZigTokenType.KEYWORD_COMPTIME;
             }
           // fall through
           case 238: break;
           case 115:
-            { return ZigTokenTypes.KEYWORD_CONTINUE;
+            { return ZigTokenType.KEYWORD_CONTINUE;
             }
           // fall through
           case 239: break;
           case 116:
-            { return ZigTokenTypes.KEYWORD_ERRDEFER;
+            { return ZigTokenType.KEYWORD_ERRDEFER;
             }
           // fall through
           case 240: break;
           case 117:
-            { return ZigTokenTypes.KEYWORD_NOINLINE;
+            { return ZigTokenType.KEYWORD_NOINLINE;
             }
           // fall through
           case 241: break;
           case 118:
-            { return ZigTokenTypes.KEYWORD_VOLATILE;
+            { return ZigTokenType.KEYWORD_VOLATILE;
             }
           // fall through
           case 242: break;
           case 119:
-            { return ZigTokenTypes.KEYWORD_ADDRSPACE;
+            { return ZigTokenType.KEYWORD_ADDRSPACE;
             }
           // fall through
           case 243: break;
           case 120:
-            { return ZigTokenTypes.KEYWORD_ALLOWZERO;
+            { return ZigTokenType.KEYWORD_ALLOWZERO;
             }
           // fall through
           case 244: break;
           case 121:
-            { return ZigTokenTypes.KEYWORD_NOSUSPEND;
+            { return ZigTokenType.KEYWORD_NOSUSPEND;
             }
           // fall through
           case 245: break;
           case 122:
-            { return ZigTokenTypes.KEYWORD_LINKSECTION;
+            { return ZigTokenType.KEYWORD_LINKSECTION;
             }
           // fall through
           case 246: break;
           case 123:
-            { return ZigTokenTypes.KEYWORD_THREADLOCAL;
+            { return ZigTokenType.KEYWORD_THREADLOCAL;
             }
           // fall through
           case 247: break;
           case 124:
-            { return ZigTokenTypes.KEYWORD_UNREACHABLE;
+            { return ZigTokenType.KEYWORD_UNREACHABLE;
             }
           // fall through
           case 248: break;
