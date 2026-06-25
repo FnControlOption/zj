@@ -328,3 +328,7 @@ const foo = foo25.foo;
 const foo26: Error!Foo8 = bar;
 const foo27 = foo26 catch foo23;
 const foo = foo27.foo;
+const foo = bar: {
+    const baz = qux orelse break :bar fizz;
+    break :bar baz.buzz;
+};
