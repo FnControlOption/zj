@@ -338,3 +338,6 @@ const foo = @as(Foo3, .a);
 const foo = @as(Foo8, .{ .foo = bar });
 const foo28: @TypeOf(foo23) = bar;
 const foo = foo28.foo;
+const Foo30 = struct { Foo3, Foo8 };
+const foo = Foo30{ .a, .{ .foo = baz } };
+const foo: Foo30 = .{ .a, .{ .foo = baz } };

@@ -420,7 +420,7 @@ fun resolveIdentifierReference(element: PsiElement): PsiElement? {
     return null
 }
 
-fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
+fun resolveInferredTypeExprs(element: PsiElement): Sequence<PsiElement> {
     var element = element
     var parent = element.parent
     if (element is ZigEnumLiteral && parent is ZigCall) {
@@ -455,13 +455,29 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
                     }
                 }
             } else {
-                val arrayInit = parent.findParentOfType<ZigArrayInit>() ?: return emptySequence()
-                if (arrayInit.isTypeInferred()) {
-                    return resolveInferredTypeExprs(arrayInit)
+                val initList = parent.parent as? ZigInitList ?: return emptySequence()
+                val initIndex = initList.initListEntries.indexOf(parent)
+                assert(initIndex >= 0)
+                val arrayInit = initList.parent as? ZigArrayInit ?: return emptySequence()
+                val inferredTypeExprs = if (arrayInit.isTypeInferred()) {
+                    resolveInferredTypeExprs(arrayInit)
+                } else {
+                    val typeExpr = arrayInit.initTypeExpr?.expr ?: return emptySequence()
+                    sequenceOf(typeExpr)
                 }
-                val typeExpr = arrayInit.initTypeExpr?.expr ?: return emptySequence()
-                // TODO: handle tuples
-                sequenceOf(typeExpr)
+                inferredTypeExprs.flatMap { typeExpr ->
+                    followReferencesRecursive(typeExpr, mutableSetOf()).mapNotNull { target ->
+                        when (target) {
+                            is ZigContainerDecl -> {
+                                // TODO: handle optional tuples, pointers to tuples, arrays of tuples, etc.
+                                val body = target.containerDeclBody ?: return@mapNotNull null
+                                val field = body.containerFields.elementAtOrNull(initIndex) ?: return@mapNotNull null
+                                field.containerFieldTypeExpr?.expr
+                            }
+                            else -> target
+                        }
+                    }
+                }
             }
         }
         is ZigReturn -> {

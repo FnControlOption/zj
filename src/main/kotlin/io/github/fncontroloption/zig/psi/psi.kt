@@ -133,6 +133,9 @@ class ZigContainerDecl(node: ASTNode) : ZigPsiElement(node), ZigStructureElement
 }
 
 class ZigContainerDeclBody(node: ASTNode) : ZigPsiElement(node), ZigContainerBody {
+    val containerFields: Sequence<ZigContainerField>
+        get() = childrenOfType<ZigContainerField>(this)
+
     override var cachedMembers: Map<String, ZigNamedElement>? = null
 
     override fun subtreeChanged() {
@@ -249,7 +252,10 @@ class ZigArrayInit(node: ASTNode) : ZigPsiElement(node) {
     fun isTypeInferred() = findChildByType<PsiElement?>(ZigTokenTypes.PERIOD) != null
 }
 
-class ZigInitList(node: ASTNode) : ZigPsiElement(node)
+class ZigInitList(node: ASTNode) : ZigPsiElement(node) {
+    val initListEntries: Sequence<ZigInitListEntry>
+        get() = childrenOfType<ZigInitListEntry>(this)
+}
 
 class ZigInitListEntry(node: ASTNode) : ZigPsiElement(node) {
     val fieldName: PsiElement?
