@@ -587,6 +587,10 @@ private fun resolveContainerExpr(lhs: PsiElement, visited: MutableSet<PsiElement
     return when (lhs) {
         is ZigBreak, is ZigContinue -> emptySequence()
         is ZigFile, is ZigContainerDecl -> sequenceOf(lhs)
+        is ZigGroupedExpression -> {
+            val expr = lhs.expr ?: return emptySequence()
+            resolveContainerExpr(expr, visited)
+        }
         is ZigAddressOf -> {
             val expr = lhs.expr ?: return emptySequence()
             resolveContainerExpr(expr, visited)

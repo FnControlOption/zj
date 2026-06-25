@@ -324,6 +324,9 @@ public interface ZigElementTypes {
             if (type == ORELSE) {
                 return new ZigOrelse(node);
             }
+            if (type == GROUPED_EXPRESSION) {
+                return new ZigGroupedExpression(node);
+            }
             return new ZigPsiElement(node); // TODO
         }
     }

@@ -332,3 +332,4 @@ const foo = bar: {
     const baz = qux orelse break :bar fizz;
     break :bar baz.buzz;
 };
+const foo = (foo23).foo;

@@ -408,6 +408,11 @@ class ZigOrelse(node: ASTNode) : ZigPsiElement(node) {
         get() = lastChild as? ZigPsiElement
 }
 
+class ZigGroupedExpression(node: ASTNode) : ZigPsiElement(node) {
+    val expr: ZigPsiElement?
+        get() = findChildByClass(ZigPsiElement::class.java)
+}
+
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {
         return findChildByType(ZigTokenTypes.IDENTIFIER)
