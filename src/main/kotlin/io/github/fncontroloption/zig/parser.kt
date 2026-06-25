@@ -1,18 +1,32 @@
-package io.github.fncontroloption.zig.parser
+package io.github.fncontroloption.zig
 
 import com.intellij.lang.ASTNode
+import com.intellij.lang.ParserDefinition
 import com.intellij.lang.PsiBuilder
 import com.intellij.lang.PsiParser
+import com.intellij.openapi.project.Project
+import com.intellij.psi.FileViewProvider
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
 import io.github.fncontroloption.zig.psi.ZigElementTypes
+import io.github.fncontroloption.zig.psi.ZigFile
 import io.github.fncontroloption.zig.psi.ZigFileElementType
 import io.github.fncontroloption.zig.psi.ZigTokenSets
 import io.github.fncontroloption.zig.psi.ZigTokenTypes
 
+class ZigParserDefinition : ParserDefinition {
+    override fun createLexer(project: Project?) = ZigLexerAdapter()
+    override fun getCommentTokens() = ZigTokenSets.COMMENTS
+    override fun getStringLiteralElements() = ZigTokenSets.STRINGS
+    override fun createParser(project: Project?) = ZigParser()
+    override fun getFileNodeType() = ZigFileElementType
+    override fun createFile(viewProvider: FileViewProvider) = ZigFile(viewProvider)
+    override fun createElement(node: ASTNode) = ZigElementTypes.Factory.createElement(node)
+}
+
 // Based on https://codeberg.org/ziglang/zig/src/commit/72d954e/lib/std/zig/Parse.zig
 /** @see com.intellij.java.syntax.parser.JavaParser */
-class ZigParserKt : PsiParser {
+class ZigParser : PsiParser {
     private enum class EnclosureType { CONTAINER, OTHER }
     private class Enclosure(val type: EnclosureType, val left: IElementType?, val right: IElementType?)
 

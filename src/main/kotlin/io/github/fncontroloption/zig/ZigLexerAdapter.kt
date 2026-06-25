@@ -1,4 +1,4 @@
-package io.github.fncontroloption.zig.lexer
+package io.github.fncontroloption.zig
 
 import com.intellij.lexer.FlexAdapter
 

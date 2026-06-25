@@ -38,7 +38,7 @@
   <extensions defaultExtensionNs="com.intellij">
     <fileType name="Zig" implementationClass="io.github.fncontroloption.zig.ZigFileType" fieldName="INSTANCE"
               language="Zig" extensions="zig"/>
-    <lang.parserDefinition language="Zig" implementationClass="io.github.fncontroloption.zig.parser.ZigParserDefinition"/>
+    <lang.parserDefinition language="Zig" implementationClass="io.github.fncontroloption.zig.ZigParserDefinition"/>
     <lang.syntaxHighlighterFactory language="Zig"
                                    implementationClass="io.github.fncontroloption.zig.syntaxHighlighter.ZigSyntaxHighlighterFactory"/>
     <highlightVisitor implementation="io.github.fncontroloption.zig.syntaxHighlighter.ZigHighlightVisitor"/>

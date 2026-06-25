@@ -1,7 +1,6 @@
 package io.github.fncontroloption.zig;
 
 import com.intellij.testFramework.ParsingTestCase;
-import io.github.fncontroloption.zig.parser.ZigParserDefinition;
 
 public class ZigParsingTest extends ParsingTestCase {
 

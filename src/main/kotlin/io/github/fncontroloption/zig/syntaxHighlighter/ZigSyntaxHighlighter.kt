@@ -4,7 +4,7 @@ import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.fileTypes.SyntaxHighlighterBase
 import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
-import io.github.fncontroloption.zig.lexer.ZigLexerAdapter
+import io.github.fncontroloption.zig.ZigLexerAdapter
 import io.github.fncontroloption.zig.psi.ZigTokenSets
 import io.github.fncontroloption.zig.psi.ZigTokenTypes
 
