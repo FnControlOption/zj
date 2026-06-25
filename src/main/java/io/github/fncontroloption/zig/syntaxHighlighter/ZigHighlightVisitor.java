@@ -6,6 +6,7 @@ import com.intellij.codeInsight.daemon.impl.HighlightVisitor;
 import com.intellij.codeInsight.daemon.impl.analysis.HighlightInfoHolder;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.PsiTreeUtil;
 import io.github.fncontroloption.zig.ReferenceKt;
 import io.github.fncontroloption.zig.psi.*;
 import org.jetbrains.annotations.NotNull;
@@ -137,14 +138,9 @@ public class ZigHighlightVisitor implements HighlightVisitor {
                     yield null;
                 }
 
-                var parent = field.getParent();
-                while (parent != null) {
-                    if (parent instanceof ZigContainerDecl containerDecl) {
-                        if (containerDecl.isEnum()) {
-                            yield createHighlightInfo(identifier, ZigHighlightInfoTypes.CONSTANT);
-                        }
-                    }
-                    parent = parent.getParent();
+                var containerDecl = PsiTreeUtil.getParentOfType(field, ZigContainerDecl.class);
+                if (containerDecl != null && containerDecl.isEnum()) {
+                    yield createHighlightInfo(identifier, ZigHighlightInfoTypes.CONSTANT);
                 }
 
                 yield createHighlightInfo(identifier, ZigHighlightInfoTypes.INSTANCE_FIELD);
