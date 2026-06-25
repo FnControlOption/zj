@@ -722,6 +722,10 @@ private fun resolveContainerExpr(lhs: PsiElement, visited: MutableSet<PsiElement
             val expr = callArgs.exprs.firstOrNull() ?: return emptySequence()
             resolveContainerExpr(expr, visited)
         }
+        is ZigBuiltinCall if lhs.builtin.text == "@TypeOf" -> {
+            val callArgs = lhs.builtinCallArgs ?: return emptySequence()
+            callArgs.exprs.flatMap { resolveContainerExpr(it, visited) }
+        }
         is ZigIdentifier, is ZigFieldAccess, is ZigBuiltinCall -> {
             visited.remove(lhs)
             followReferencesRecursive(lhs, visited).flatMap { target ->
