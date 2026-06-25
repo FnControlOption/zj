@@ -391,6 +391,11 @@ class ZigContinue(node: ASTNode) : ZigPsiElement(node) {
         get() = findChildByType(ZigTokenTypes.IDENTIFIER)
 }
 
+class ZigAssign(node: ASTNode) : ZigPsiElement(node) {
+    val lhs: ZigPsiElement?
+        get() = firstChild as? ZigPsiElement
+}
+
 sealed class ZigNamedElement(node: ASTNode) : ZigPsiElement(node), PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {
         return findChildByType(ZigTokenTypes.IDENTIFIER)

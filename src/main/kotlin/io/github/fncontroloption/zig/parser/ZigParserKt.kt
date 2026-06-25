@@ -1248,12 +1248,15 @@ class ZigParserKt : PsiParser {
             // TODO: mark error
         }
 
-        if (scratch.size == 1 && scratch[0].tokenType === ZigElementTypes.VAR_DECL_PROTO) {
-            statement.done(ZigElementTypes.VAR_DECL)
-            return statement
+        if (scratch.size == 1) {
+            if (scratch[0].tokenType === ZigElementTypes.VAR_DECL_PROTO) {
+                statement.done(ZigElementTypes.VAR_DECL)
+            } else {
+                statement.done(ZigElementTypes.ASSIGN)
+            }
+        } else {
+            statement.done(ZigElementTypes.ASSIGN_DESTRUCTURE)
         }
-
-        statement.done(ZigElementTypes.ASSIGN)
         return statement
     }
 
@@ -1339,7 +1342,9 @@ class ZigParserKt : PsiParser {
         val assignType = assignTable[builder.tokenType] ?: return lhs
         val assign = lhs.precede()
         builder.advanceLexer()
+        val init = builder.mark()
         tryExpr(builder)
+        init.done(ZigElementTypes.INIT_EXPR)
         assign.done(assignType)
         return assign
     }
@@ -1380,8 +1385,10 @@ class ZigParserKt : PsiParser {
         if (!expect(builder, ZigTokenTypes.EQUAL)) {
             // TODO: mark error
         }
+        val init = builder.mark()
         tryExpr(builder)
-        assign.done(ZigElementTypes.ASSIGN)
+        init.done(ZigElementTypes.INIT_EXPR)
+        assign.done(ZigElementTypes.ASSIGN_DESTRUCTURE)
         return assign
     }
 

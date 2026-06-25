@@ -315,3 +315,9 @@ const foo20: Foo20 = bar;
 const foo = foo20.fizz(Foo8).foo;
 const foo = foo20.fizz(?Foo8).?.foo;
 const foo = foo20.buzz(Foo8).?.foo;
+test {
+    var foo21: Foo3 = bar;
+    foo21 = .a;
+    var foo22: Foo8 = bar;
+    foo22 = .{ .foo = bar };
+}

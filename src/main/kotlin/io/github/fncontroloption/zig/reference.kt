@@ -438,7 +438,10 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<ZigPsiElement> {
                     val typeExpr = parent.containerFieldTypeExpr?.expr ?: return emptySequence()
                     return sequenceOf(typeExpr)
                 }
-                // is ZigAssign -> return emptySequence() // TODO
+                is ZigAssign -> {
+                    val expr = parent.lhs ?: return emptySequence()
+                    return sequenceOf(expr)
+                }
                 else -> return emptySequence()
             }
         }

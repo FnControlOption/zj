@@ -65,6 +65,7 @@ public interface ZigElementTypes {
     IElementType ASSIGN_ADD_SAT = new ZigElementType("ASSIGN_ADD_SAT");
     IElementType ASSIGN_SUB_SAT = new ZigElementType("ASSIGN_SUB_SAT");
     IElementType ASSIGN = new ZigElementType("ASSIGN");
+    IElementType ASSIGN_DESTRUCTURE = new ZigElementType("ASSIGN_DESTRUCTURE");
     IElementType BREAK = new ZigElementType("BREAK");
     IElementType CONTINUE = new ZigElementType("CONTINUE");
     IElementType COMPTIME = new ZigElementType("COMPTIME");
@@ -320,6 +321,9 @@ public interface ZigElementTypes {
             }
             if (type == CONTINUE) {
                 return new ZigContinue(node);
+            }
+            if (type == ASSIGN) {
+                return new ZigAssign(node);
             }
             return new ZigPsiElement(node); // TODO
         }
