@@ -341,3 +341,6 @@ const foo = foo28.foo;
 const Foo30 = struct { Foo3, Foo8 };
 const foo = Foo30{ .a, .{ .foo = baz } };
 const foo: Foo30 = .{ .a, .{ .foo = baz } };
+test {
+    foo, var bar = baz;
+}
