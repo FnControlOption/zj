@@ -7,392 +7,394 @@ import com.intellij.psi.FileViewProvider
 import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigLanguage
 
+sealed class ZigElement(node: ASTNode) : ASTWrapperPsiElement(node)
+
 class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage) {
     override fun getFileType() = ZigFileType
     override fun toString() = "ZigFile:$name"
 }
 
-class ZigAdd(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAdd(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAddSat(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAddSat(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAddWrap(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAddWrap(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAddressOf(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAddressOf(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAddrspaceModifier(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAddrspaceModifier(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAlignModifier(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAlignModifier(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAnyframeLiteral(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAnyframeLiteral(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAnyframeType(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAnyframeType(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigArrayAccess(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigArrayAccess(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigArrayCat(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigArrayCat(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigArrayType(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigArrayType(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAsm(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAsm(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAsmClobbers(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAsmClobbers(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAsmInputItem(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAsmInputItem(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAsmOutputItem(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAsmOutputItem(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssign(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssign(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignAdd(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignAdd(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignAddSat(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignAddSat(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignAddWrap(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignAddWrap(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignBitAnd(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignBitAnd(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignBitOr(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignBitOr(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignBitXor(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignBitXor(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignDestructure(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignDestructure(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignDiv(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignDiv(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignMod(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignMod(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignMul(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignMul(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignMulSat(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignMulSat(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignMulWrap(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignMulWrap(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignShl(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignShl(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignShlSat(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignShlSat(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignShr(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignShr(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignSub(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignSub(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignSubSat(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignSubSat(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigAssignSubWrap(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigAssignSubWrap(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigBangEqual(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigBangEqual(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigBitAnd(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigBitAnd(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigBitNot(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigBitNot(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigBitOr(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigBitOr(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigBitXor(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigBitXor(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigBlock(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigBoolAnd(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigBoolAnd(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigBoolNot(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigBoolNot(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigBoolOr(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigBoolOr(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigBreak(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigBreak(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigBuiltinCall(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigBuiltinCall(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigCall(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigCall(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigCallArgs(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigCallArgs(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigCallconvModifier(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigCallconvModifier(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigCatch(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigCatch(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigCharLiteral(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigCharLiteral(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigComptime(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigComptime(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigConditionElement(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigConditionElement(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigContainerDecl(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigContainerDecl(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigContainerField(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigContainerField(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigContainerTag(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigContainerTag(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigContainerTagEnum(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigContainerTagEnum(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigContinue(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigContinue(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigDefer(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigDefer(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigDeref(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigDeref(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigDiv(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigDiv(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigElseElement(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigElseElement(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigEnumLiteral(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigEnumLiteral(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigEqualEqual(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigEqualEqual(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigErrdefer(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigErrdefer(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigErrorSetDecl(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigErrorSetDecl(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigErrorSetItem(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigErrorSetItem(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigErrorUnion(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigErrorUnion(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigErrorValue(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigErrorValue(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigFieldAccess(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigFieldAccess(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigFnDecl(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigFnDecl(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigFnProto(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigFnProto(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigFor(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigForInput(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigForInput(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigGreaterOrEqual(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigGreaterOrEqual(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigGreaterThan(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigGreaterThan(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigGroupedExpression(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigGroupedExpression(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigIdentifier(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigIdentifier(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigIf(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigIf(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigIndexes(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigIndexes(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigLessOrEqual(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigLessOrEqual(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigLessThan(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigLessThan(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigLinksectionModifier(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigLinksectionModifier(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigListInit(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigListInit(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigListInitItem(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigListInitItem(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigMergeErrorSets(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigMergeErrorSets(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigMod(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigMod(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigMul(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigMul(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigMulSat(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigMulSat(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigMulWrap(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigMulWrap(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigMultilineStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigMultilineStringLiteral(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigNegation(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigNegation(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigNegationWrap(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigNegationWrap(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigNosuspend(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigNosuspend(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigNumberLiteral(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigNumberLiteral(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigOptionalType(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigOptionalType(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigOrelse(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigOrelse(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigParamDecl(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigParamDecl(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigPayloadItem(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigPayloadItem(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigPointerType(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigPointerType(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigResume(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigResume(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigReturn(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigReturn(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigShl(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigShl(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigShlSat(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigShlSat(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigShr(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigShr(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigSlice(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigSlice(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigSliceEnd(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigSliceEnd(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigSliceSentinel(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigSliceSentinel(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigStringLiteral(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigSub(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigSub(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigSubSat(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigSubSat(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigSubWrap(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigSubWrap(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigSuspend(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigSuspend(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigSwitch(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigSwitch(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigSwitchItem(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigSwitchItem(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigSwitchProng(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigSwitchProng(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigTestDecl(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigTestDecl(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigThenElement(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigThenElement(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigTry(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigTry(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigTypeElement(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigTypeElement(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigTypeLength(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigTypeLength(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigTypeSentinel(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigTypeSentinel(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigUnreachableLiteral(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigUnreachableLiteral(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigUnwrapOptional(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigUnwrapOptional(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigVarargs(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigVarargs(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigVarDecl(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigVarDecl(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigVarProto(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigVarProto(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigWhile(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigWhile(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigWhileContinueExpr(node: ASTNode) : ASTWrapperPsiElement(node) {
+class ZigWhileContinueExpr(node: ASTNode) : ZigElement(node) {
 }
 
