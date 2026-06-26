@@ -6,6 +6,7 @@ import com.intellij.lang.ASTNode
 import com.intellij.psi.FileViewProvider
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNameIdentifierOwner
+import com.intellij.psi.util.elementType
 import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigLanguage
@@ -402,10 +403,37 @@ class ZigUnwrapOptional(node: ASTNode) : ZigElement(node) {
 class ZigVarargs(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigVarDecl(node: ASTNode) : ZigElement(node) {
+enum class ZigMutability { CONST, VAR }
+
+interface ZigVarDeclOrProto : PsiNameIdentifierOwner {
+    val mutabilityElement: PsiElement
+
+    val mutability: ZigMutability
+        get() = when (mutabilityElement.elementType) {
+            ZigTokenType.KEYWORD_CONST -> ZigMutability.CONST
+            ZigTokenType.KEYWORD_VAR -> ZigMutability.VAR
+            else -> throw IllegalStateException()
+        }
 }
 
-class ZigVarProto(node: ASTNode) : ZigElement(node) {
+class ZigVarDecl(node: ASTNode) : ZigElement(node), ZigVarDeclOrProto {
+    override val mutabilityElement: PsiElement
+        get() = findNotNullChildByType(ZigTokenSets.MUT_TOKENS)
+
+    override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
+    override fun getName() = nameIdentifier?.text
+    override fun setName(name: String) = throw IncorrectOperationException() // TODO
+    override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
+}
+
+class ZigVarProto(node: ASTNode) : ZigElement(node), ZigVarDeclOrProto {
+    override val mutabilityElement: PsiElement
+        get() = findNotNullChildByType(ZigTokenSets.MUT_TOKENS)
+
+    override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
+    override fun getName() = nameIdentifier?.text
+    override fun setName(name: String) = throw IncorrectOperationException() // TODO
+    override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
 class ZigWhile(node: ASTNode) : ZigElement(node) {

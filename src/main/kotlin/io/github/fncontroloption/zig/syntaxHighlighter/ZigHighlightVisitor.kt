@@ -14,7 +14,9 @@ import io.github.fncontroloption.zig.psi.*
 import io.github.fncontroloption.zig.psi2.ZigFile
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
+import io.github.fncontroloption.zig.psi2.ZigMutability
 import io.github.fncontroloption.zig.psi2.ZigParamDecl
+import io.github.fncontroloption.zig.psi2.ZigVarDeclOrProto
 /* TODO
 import io.github.fncontroloption.zig.resolveReferences
  */
@@ -88,10 +90,10 @@ class ZigHighlightVisitor : HighlightVisitor {
                 createHighlightInfo(identifier, ZigHighlightInfoTypes.PARAMETER)
             }
 
-            /* TODO
-            is ZigVarDeclProto -> {
+            is ZigVarDeclOrProto -> {
                 val identifier = element.nameIdentifier ?: return null
 
+                /* TODO
                 if (element.isConst()) {
                     val parent = element.parent
                     if (parent is ZigVarDecl) {
@@ -115,9 +117,15 @@ class ZigHighlightVisitor : HighlightVisitor {
                     ZigVarDeclProto.Type.GLOBAL_CONST -> ZigHighlightInfoTypes.CONSTANT
                     ZigVarDeclProto.Type.GLOBAL_VAR -> ZigHighlightInfoTypes.STATIC_FIELD
                 }
+                 */
+                val type = when (element.mutability) {
+                    ZigMutability.CONST -> ZigHighlightInfoTypes.LOCAL_VARIABLE
+                    ZigMutability.VAR -> ZigHighlightInfoTypes.REASSIGNED_LOCAL_VARIABLE
+                }
                 createHighlightInfo(identifier, type)
             }
 
+            /* TODO
             is ZigContainerField -> {
                 val identifier = element.nameIdentifier ?: return null
 
