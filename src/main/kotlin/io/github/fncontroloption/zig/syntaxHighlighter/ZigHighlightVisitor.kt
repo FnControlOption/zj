@@ -144,7 +144,6 @@ class ZigHighlightVisitor : HighlightVisitor {
                 createHighlightInfo(identifier, ZigHighlightInfoTypes.CONSTANT)
             }
 
-            /* TODO
             is ZigIdentifier -> {
                 val text = element.text
 
@@ -152,9 +151,13 @@ class ZigHighlightVisitor : HighlightVisitor {
                     return createHighlightInfo(element, ZigHighlightInfoTypes.KEYWORD)
                 }
 
+                /* TODO
                 createHighlightInfoFromReference(element, element)
+                 */
+                null
             }
 
+            /* TODO
             is ZigFieldAccess -> {
                 val name = element.fieldName ?: return null
                 createHighlightInfoFromReference(element, name)

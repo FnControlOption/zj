@@ -344,3 +344,4 @@ const foo: Foo30 = .{ .a, .{ .foo = baz } };
 test {
     foo, var bar = baz;
 }
+const foo = u42;
