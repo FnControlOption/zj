@@ -219,6 +219,8 @@ class ZigElseElement(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigEnumLiteral(node: ASTNode) : ZigElement(node) {
+    val identifierElement: PsiElement?
+        get() = findChildByType(ZigTokenType.IDENTIFIER)
 }
 
 class ZigEqualEqual(node: ASTNode) : ZigElement(node) {
