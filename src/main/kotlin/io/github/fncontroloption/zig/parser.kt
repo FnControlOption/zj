@@ -324,7 +324,7 @@ class ZigParser : PsiParser {
     private fun tryFnParamDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         val decl = builder.mark()
         if (expect(builder, ZigTokenType.ELLIPSIS3)) {
-            decl.done(ZigElementType.VARARGS)
+            decl.drop()
             expect(builder, ZigTokenType.COMMA)
             if (builder.tokenType !== ZigTokenType.R_PAREN) {
                 // TODO: mark error

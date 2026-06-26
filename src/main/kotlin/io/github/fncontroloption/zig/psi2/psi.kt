@@ -425,9 +425,6 @@ class ZigUnreachableLiteral(node: ASTNode) : ZigElement(node) {
 class ZigUnwrapOptional(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigVarargs(node: ASTNode) : ZigElement(node) {
-}
-
 enum class ZigMutability { CONST, VAR }
 
 interface ZigVarDeclOrProto : PsiNameIdentifierOwner {
