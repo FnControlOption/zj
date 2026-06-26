@@ -156,7 +156,7 @@ class ZigBuiltinCall(node: ASTNode) : ZigElement(node) {
 class ZigCall(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigCallArgs(node: ASTNode) : ZigElement(node) {
+class ZigCallArg(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigCallconvModifier(node: ASTNode) : ZigElement(node) {

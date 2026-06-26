@@ -181,8 +181,11 @@ class ZigParser : PsiParser {
             call.rollbackTo()
             return null
         }
-        if (parseCallArgs(builder) == null) {
+        if (builder.tokenType !== ZigTokenType.L_PAREN) {
             // TODO: mark error
+        }
+        parseParenEnclosed(builder) {
+            tryCallArg(builder)
         }
         call.done(ZigElementType.BUILTIN_CALL)
         return call
@@ -617,28 +620,21 @@ class ZigParser : PsiParser {
     }
 
     private fun parseCall(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker? {
-        if (parseCallArgs(builder) == null) {
+        if (builder.tokenType !== ZigTokenType.L_PAREN) {
             return null
+        }
+        parseParenEnclosed(builder) {
+            tryCallArg(builder)
         }
         val call = lhs.precede()
         call.done(ZigElementType.CALL)
         return call
     }
 
-    private fun parseCallArgs(builder: PsiBuilder): PsiBuilder.Marker? {
-        if (builder.tokenType !== ZigTokenType.L_PAREN) {
-            return null
-        }
-        val marker = builder.mark()
-        parseParenEnclosed(builder) {
-            tryCallArg(builder)
-        }
-        marker.done(ZigElementType.CALL_ARGS)
-        return marker
-    }
-
     private fun tryCallArg(builder: PsiBuilder): PsiBuilder.Marker? {
-        val arg = tryExpr(builder) ?: return null
+        val expr = tryExpr(builder) ?: return null
+        val arg = expr.precede()
+        arg.done(ZigElementType.CALL_ARG)
         if (!expect(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_PAREN) {
             // TODO: mark error
         }
