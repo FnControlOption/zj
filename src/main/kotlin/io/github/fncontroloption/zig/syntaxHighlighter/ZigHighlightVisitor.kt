@@ -7,10 +7,6 @@ import com.intellij.codeInsight.daemon.impl.analysis.HighlightInfoHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.parentOfType
-/* TODO
-import io.github.fncontroloption.zig.followReferencesRecursive
-import io.github.fncontroloption.zig.psi.*
- */
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigContainerKind
@@ -21,9 +17,6 @@ import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigMutability
 import io.github.fncontroloption.zig.psi2.ZigParamDecl
 import io.github.fncontroloption.zig.psi2.ZigVarDeclOrProto
-/* TODO
-import io.github.fncontroloption.zig.resolveReferences
- */
 import java.util.regex.Pattern
 
 private val PRIMITIVES = setOf(
