@@ -13,9 +13,27 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SyntaxTraverser
-/* TODO
-import io.github.fncontroloption.zig.psi.ZigStructureElement
- */
+import com.intellij.psi.util.findParentInFile
+import io.github.fncontroloption.zig.psi2.ZigBlock
+import io.github.fncontroloption.zig.psi2.ZigContainerDecl
+import io.github.fncontroloption.zig.psi2.ZigContainerField
+import io.github.fncontroloption.zig.psi2.ZigFnDecl
+import io.github.fncontroloption.zig.psi2.ZigTestDecl
+import io.github.fncontroloption.zig.psi2.ZigVarDecl
+
+private fun shouldIncludeInStructureView(element: NavigatablePsiElement): Boolean {
+    return when (element) {
+        is ZigContainerDecl,
+        is ZigContainerField,
+        is ZigFnDecl,
+        is ZigTestDecl -> true
+        is ZigVarDecl -> {
+            val scope = element.findParentInFile { it is ZigBlock || it is ZigContainerDecl }
+            scope !is ZigBlock // i.e. scope == null || scope is ZigContainerDecl
+        }
+        else -> false
+    }
+}
 
 class ZigStructureViewFactory : PsiStructureViewFactory {
     override fun getStructureViewBuilder(psiFile: PsiFile) = ZigStructureViewBuilder(psiFile)
@@ -54,19 +72,17 @@ class ZigStructureViewElement(val element: NavigatablePsiElement) : StructureVie
 
     override fun getChildren(): Array<out TreeElement> {
         val treeElements = mutableListOf<TreeElement>()
-        /* TODO
         val psiTraverser = SyntaxTraverser.psiTraverser(element).expand {
-            it === element || it !is ZigStructureElement || !it.isViewable()
+            it === element || it !is NavigatablePsiElement || !shouldIncludeInStructureView(it)
         }
         for (elem in psiTraverser) {
             if (elem === element) {
                 continue
             }
-            if (elem is ZigStructureElement && elem.isViewable()) {
+            if (elem is NavigatablePsiElement && shouldIncludeInStructureView(elem)) {
                 treeElements.add(ZigStructureViewElement(elem))
             }
         }
-         */
         return treeElements.toTypedArray()
     }
 }
