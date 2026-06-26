@@ -11,27 +11,26 @@ import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiRecursiveVisitor
 import com.intellij.psi.PsiWalkingState
 import com.intellij.psi.tree.TokenSet
-/* TODO
-import io.github.fncontroloption.zig.psi.ZigElementTypes
-import io.github.fncontroloption.zig.psi.ZigTokenTypes
+import io.github.fncontroloption.zig.psi2.ZigElementType
+import io.github.fncontroloption.zig.psi2.ZigTokenType
 
 private val BRACE_ENCLOSED = TokenSet.create(
-    ZigElementTypes.BLOCK_BODY,
-    ZigElementTypes.CONTAINER_DECL_BODY,
-    ZigElementTypes.ERROR_SET_DECL,
-    ZigElementTypes.INIT_LIST,
-    ZigElementTypes.SWITCH_PRONG_LIST,
+    ZigElementType.BLOCK,
+    ZigElementType.CONTAINER_DECL,
+    ZigElementType.ERROR_SET_DECL,
+    ZigElementType.LIST_INIT,
+    ZigElementType.SWITCH,
 )
 
 private val BLOCKS_COLLAPSED_BY_DEFAULT = TokenSet.create(
-    ZigElementTypes.FN_DECL,
-    ZigElementTypes.TEST_DECL,
+    ZigElementType.FN_DECL,
+    ZigElementType.TEST_DECL,
 )
 
 private val PAREN_ENCLOSED = TokenSet.create(
-    ZigElementTypes.CALL_ARGS
+    ZigElementType.BUILTIN_CALL,
+    ZigElementType.CALL,
 )
- */
 
 class ZigFoldingBuilder : FoldingBuilderEx(), DumbAware {
     override fun buildFoldRegions(
@@ -40,15 +39,14 @@ class ZigFoldingBuilder : FoldingBuilderEx(), DumbAware {
         quick: Boolean
     ): Array<out FoldingDescriptor> {
         val descriptors = mutableListOf<FoldingDescriptor>()
-        /* TODO
         root.accept(object : PsiElementVisitor(), PsiRecursiveVisitor {
             val walkingState = object : PsiWalkingState(this) {}
             override fun visitElement(element: PsiElement) {
                 walkingState.elementStarted(element)
                 val node = element.node ?: return
                 val delimiter = when (node.elementType) {
-                    in BRACE_ENCLOSED -> ZigTokenTypes.L_BRACE
-                    in PAREN_ENCLOSED -> ZigTokenTypes.L_PAREN
+                    in BRACE_ENCLOSED -> ZigTokenType.L_BRACE
+                    in PAREN_ENCLOSED -> ZigTokenType.L_PAREN
                     else -> return
                 }
                 if (!node.textContains('\n')) {
@@ -59,22 +57,16 @@ class ZigFoldingBuilder : FoldingBuilderEx(), DumbAware {
                 descriptors.add(FoldingDescriptor(element, range))
             }
         })
-         */
         return descriptors.toTypedArray()
     }
 
     override fun isCollapsedByDefault(node: ASTNode): Boolean {
-        /* TODO
-        return node.elementType === ZigElementTypes.BLOCK_BODY && node.treeParent?.elementType in BLOCKS_COLLAPSED_BY_DEFAULT
-         */
-        return false
+        return node.elementType === ZigElementType.BLOCK && node.treeParent?.elementType in BLOCKS_COLLAPSED_BY_DEFAULT
     }
 
     override fun getPlaceholderText(node: ASTNode) = when (node.elementType) {
-        /* TODO
         in BRACE_ENCLOSED -> "{...}"
         in PAREN_ENCLOSED -> "(...)"
-         */
         else -> null
     }
 }
