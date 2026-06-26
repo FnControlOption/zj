@@ -248,6 +248,12 @@ class ZigFieldAccess(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigFnDecl(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
+    val returnTypeElement: ZigTypeElement?
+        get() = findChildByClass(ZigTypeElement::class.java)
+
+    val body: ZigBlock?
+        get() = findChildByClass(ZigBlock::class.java)
+
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = nameIdentifier?.text
     override fun setName(name: String) = throw IncorrectOperationException() // TODO
@@ -433,11 +439,16 @@ interface ZigVarDeclOrProto : PsiNameIdentifierOwner {
             ZigTokenType.KEYWORD_VAR -> ZigMutability.VAR
             else -> throw IllegalStateException()
         }
+
+    val typeElement: ZigTypeElement?
 }
 
 class ZigVarDecl(node: ASTNode) : ZigElement(node), ZigVarDeclOrProto {
     override val mutabilityElement: PsiElement
         get() = findNotNullChildByType(ZigTokenSets.MUT_TOKENS)
+
+    override val typeElement: ZigTypeElement?
+        get() = findChildByClass(ZigTypeElement::class.java)
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = nameIdentifier?.text
@@ -448,6 +459,9 @@ class ZigVarDecl(node: ASTNode) : ZigElement(node), ZigVarDeclOrProto {
 class ZigVarProto(node: ASTNode) : ZigElement(node), ZigVarDeclOrProto {
     override val mutabilityElement: PsiElement
         get() = findNotNullChildByType(ZigTokenSets.MUT_TOKENS)
+
+    override val typeElement: ZigTypeElement?
+        get() = findChildByClass(ZigTypeElement::class.java)
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = nameIdentifier?.text

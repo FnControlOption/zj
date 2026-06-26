@@ -7,18 +7,24 @@ import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
-import io.github.fncontroloption.zig.psi.*
+import io.github.fncontroloption.zig.psi2.ZigContainerField
+import io.github.fncontroloption.zig.psi2.ZigFnDecl
+import io.github.fncontroloption.zig.psi2.ZigParamDecl
+import io.github.fncontroloption.zig.psi2.ZigPayloadItem
+import io.github.fncontroloption.zig.psi2.ZigTokenType
+import io.github.fncontroloption.zig.psi2.ZigVarDecl
+import io.github.fncontroloption.zig.psi2.ZigVarProto
 import org.jetbrains.annotations.Nls
 
 class ZigDocumentationProvider : AbstractDocumentationProvider() {
     override fun generateDoc(element: PsiElement, originalElement: PsiElement?): @Nls String? {
-        val docHolder = findDocHolder(element) ?: return null
+        val definition = getDefinition(element) ?: return null
         val sb = StringBuilder()
-        HtmlChunk.text(element.text)
+        HtmlChunk.text(definition)
             .wrapWith(DocumentationMarkup.PRE_ELEMENT)
             .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
             .appendTo(sb)
-        val doc = findDoc(docHolder)
+        val doc = findDoc(element)
         if (doc != null) {
             HtmlChunk.raw(convertMarkdownToHtml(doc))
                 .wrapWith(DocumentationMarkup.CONTENT_ELEMENT)
@@ -28,31 +34,36 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
     }
 }
 
-private fun findDocHolder(element: PsiElement): PsiElement? {
-    /* TODO
+private fun getDefinition(element: PsiElement): String? {
     return when (element) {
-        is ZigContainerField, is ZigFnParamDecl, is ZigPayloadEntry -> element
-        is ZigVarDeclProto -> when (val parent = element.parent) {
-            is ZigVarDecl -> parent
-            else -> null
+        is ZigContainerField -> element.text
+        is ZigFnDecl -> {
+            val text = element.text
+            val body = element.body ?: return text
+            text.substring(0, body.textRangeInParent.startOffset)
         }
-        is ZigFnProto -> when (val parent = element.parent) {
-            is ZigFnDecl -> parent
-            else -> null
+        is ZigParamDecl -> element.text
+        is ZigPayloadItem -> element.text
+        is ZigVarDecl -> {
+            val text = element.text
+            val typeElement = element.typeElement
+            if (typeElement == null) {
+                val newline = text.indexOf('\n')
+                return if (newline < 0) text else "${text.substring(0, newline)} ..."
+            }
+            text.substring(0, typeElement.textRangeInParent.endOffset)
         }
+        is ZigVarProto -> element.text
         else -> null
     }
-     */
-    return null
 }
 
 private fun findDoc(element: PsiElement): String? {
-    /* TODO
     val list = mutableListOf<String>()
     var prev = element.prevSibling
     while (true) {
         when (prev) {
-            is PsiComment if prev.tokenType == ZigTokenTypes.DOC_COMMENT -> {
+            is PsiComment if prev.tokenType == ZigTokenType.DOC_COMMENT -> {
                 val text = prev.text
                 assert(text.startsWith("///"))
                 list.add(text.substring(3))
@@ -69,6 +80,4 @@ private fun findDoc(element: PsiElement): String? {
     }
     list.reverse()
     return list.joinToString("")
-     */
-    return null
 }
