@@ -48,6 +48,9 @@ class ZigArrayAccess(node: ASTNode) : ZigElement(node) {
 class ZigArrayCat(node: ASTNode) : ZigElement(node) {
 }
 
+class ZigArrayIndex(node: ASTNode) : ZigElement(node) {
+}
+
 class ZigArrayType(node: ASTNode) : ZigElement(node) {
 }
 
@@ -275,9 +278,6 @@ class ZigIdentifier(node: ASTNode) : ZigElement(node) {
 class ZigIf(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigIndexes(node: ASTNode) : ZigElement(node) {
-}
-
 class ZigLessOrEqual(node: ASTNode) : ZigElement(node) {
 }
 
@@ -363,7 +363,7 @@ class ZigShr(node: ASTNode) : ZigElement(node) {
 class ZigSlice(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigSliceEnd(node: ASTNode) : ZigElement(node) {
+class ZigSliceIndexes(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigSliceSentinel(node: ASTNode) : ZigElement(node) {

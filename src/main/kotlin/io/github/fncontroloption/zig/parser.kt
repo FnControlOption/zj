@@ -644,21 +644,25 @@ class ZigParser : PsiParser {
     private fun parseSuffixOp(builder: PsiBuilder): IElementType? {
         when (builder.tokenType) {
             ZigTokenType.L_BRACKET -> {
-                var startExpr: PsiBuilder.Marker? = null
-                var endExpr: PsiBuilder.Marker? = null
+                var arrayIndex: PsiBuilder.Marker? = null
+                var sliceIndexes: PsiBuilder.Marker? = null
                 var sentinel: PsiBuilder.Marker? = null
-                val indexes = builder.mark()
                 parseBracketEnclosed(builder) {
-                    if (startExpr == null) {
-                        startExpr = tryExpr(builder)
-                        startExpr
-                    } else if (endExpr == null) {
+                    if (arrayIndex == null) {
+                        val expr = tryExpr(builder)
+                        if (expr != null) {
+                            arrayIndex = expr.precede()
+                            arrayIndex.done(ZigElementType.ARRAY_INDEX)
+                        }
+                        arrayIndex
+                    } else if (sliceIndexes == null) {
                         if (builder.tokenType === ZigTokenType.ELLIPSIS2) {
-                            endExpr = builder.mark()
+                            sliceIndexes = arrayIndex.precede()
+                            arrayIndex.drop()
                             builder.advanceLexer()
                             parseExpr(builder)
-                            endExpr.done(ZigElementType.SLICE_END)
-                            endExpr
+                            sliceIndexes.done(ZigElementType.SLICE_INDEXES)
+                            sliceIndexes
                         } else {
                             null
                         }
@@ -676,8 +680,7 @@ class ZigParser : PsiParser {
                         null
                     }
                 }
-                indexes.done(ZigElementType.INDEXES)
-                if (endExpr != null) {
+                if (sliceIndexes != null) {
                     return ZigElementType.SLICE
                 }
                 return ZigElementType.ARRAY_ACCESS
