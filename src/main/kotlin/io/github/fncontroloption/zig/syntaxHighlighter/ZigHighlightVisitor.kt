@@ -74,7 +74,7 @@ class ZigHighlightVisitor : HighlightVisitor {
                 val paramTypeExpr = element.fnParamTypeExpr ?: return null
                 val paramType = paramTypeExpr.expr
                 if (paramType is ZigIdentifier && paramType.textMatches("type")) {
-                    createHighlightInfo(identifier, ZigHighlightInfoTypes.TYPE_PARAMETER)
+                    return createHighlightInfo(identifier, ZigHighlightInfoTypes.TYPE_PARAMETER)
                 }
 
                 createHighlightInfo(identifier, ZigHighlightInfoTypes.PARAMETER)
@@ -92,7 +92,7 @@ class ZigHighlightVisitor : HighlightVisitor {
                             if (expr != null) {
                                 for (target in followReferencesRecursive(expr, mutableSetOf())) {
                                     if (target is ZigFnProto) {
-                                        createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD)
+                                        return createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD)
                                     }
                                 }
                             }
@@ -114,7 +114,7 @@ class ZigHighlightVisitor : HighlightVisitor {
 
                 val containerDecl = element.parentOfType<ZigContainerDecl>()
                 if (containerDecl != null && containerDecl.isEnum()) {
-                    createHighlightInfo(identifier, ZigHighlightInfoTypes.CONSTANT)
+                    return createHighlightInfo(identifier, ZigHighlightInfoTypes.CONSTANT)
                 }
 
                 createHighlightInfo(identifier, ZigHighlightInfoTypes.INSTANCE_FIELD)
@@ -124,7 +124,7 @@ class ZigHighlightVisitor : HighlightVisitor {
                 val text = element.text
 
                 if (PRIMITIVES.contains(text) || INT_PATTERN.matcher(text).matches()) {
-                    createHighlightInfo(element, ZigHighlightInfoTypes.KEYWORD)
+                    return createHighlightInfo(element, ZigHighlightInfoTypes.KEYWORD)
                 }
 
                 createHighlightInfoFromReference(element, element)
