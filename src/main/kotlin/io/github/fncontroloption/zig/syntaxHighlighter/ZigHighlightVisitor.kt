@@ -12,6 +12,7 @@ import io.github.fncontroloption.zig.followReferencesRecursive
 import io.github.fncontroloption.zig.psi.*
  */
 import io.github.fncontroloption.zig.psi2.ZigFile
+import io.github.fncontroloption.zig.psi2.ZigFnDecl
 /* TODO
 import io.github.fncontroloption.zig.resolveReferences
  */
@@ -68,13 +69,13 @@ class ZigHighlightVisitor : HighlightVisitor {
     }
 
     private fun createHighlightInfo(element: PsiElement): HighlightInfo? {
-        /* TODO
         return when (element) {
-            is ZigFnProto -> {
+            is ZigFnDecl -> {
                 val identifier = element.nameIdentifier ?: return null
                 createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD)
             }
 
+            /* TODO
             is ZigFnParamDecl -> {
                 val identifier = element.nameIdentifier ?: return null
                 val paramTypeExpr = element.fnParamTypeExpr ?: return null
@@ -155,11 +156,10 @@ class ZigHighlightVisitor : HighlightVisitor {
                 val name = element.testName ?: return null
                 createHighlightInfoFromReference(element, name)
             }
+             */
 
             else -> null
         }
-         */
-        return null
     }
 
     override fun analyze(
@@ -179,11 +179,11 @@ class ZigHighlightVisitor : HighlightVisitor {
 
     override fun clone() = ZigHighlightVisitor()
 
-    /* TODO
     private fun createHighlightInfo(element: PsiElement, type: HighlightInfoType): HighlightInfo? {
         return HighlightInfo.newHighlightInfo(type).range(element).create()
     }
 
+    /* TODO
     private fun createHighlightInfoFromReference(element: PsiElement, range: PsiElement): HighlightInfo? {
         for (target in resolveReferences(element)) {
             val info = createHighlightInfo(target)

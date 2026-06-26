@@ -4,6 +4,9 @@ import com.intellij.extapi.psi.ASTWrapperPsiElement
 import com.intellij.extapi.psi.PsiFileBase
 import com.intellij.lang.ASTNode
 import com.intellij.psi.FileViewProvider
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiNameIdentifierOwner
+import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigLanguage
 
@@ -221,7 +224,11 @@ class ZigErrorValue(node: ASTNode) : ZigElement(node) {
 class ZigFieldAccess(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigFnDecl(node: ASTNode) : ZigElement(node) {
+class ZigFnDecl(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
+    override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
+    override fun getName() = nameIdentifier?.text
+    override fun setName(name: String) = throw IncorrectOperationException() // TODO
+    override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
 class ZigFnProto(node: ASTNode) : ZigElement(node) {
