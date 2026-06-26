@@ -309,7 +309,14 @@ class ZigOptionalType(node: ASTNode) : ZigElement(node) {
 class ZigOrelse(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigParamDecl(node: ASTNode) : ZigElement(node) {
+class ZigParamDecl(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
+    val typeElement: ZigTypeElement?
+        get() = findChildByClass(ZigTypeElement::class.java)
+
+    override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
+    override fun getName() = nameIdentifier?.text
+    override fun setName(name: String) = throw IncorrectOperationException() // TODO
+    override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
 class ZigPayloadItem(node: ASTNode) : ZigElement(node) {
@@ -376,6 +383,8 @@ class ZigTry(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigTypeElement(node: ASTNode) : ZigElement(node) {
+    val innerElement: ZigElement?
+        get() = findChildByClass(ZigElement::class.java)
 }
 
 class ZigTypeLength(node: ASTNode) : ZigElement(node) {

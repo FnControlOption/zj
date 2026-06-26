@@ -13,6 +13,8 @@ import io.github.fncontroloption.zig.psi.*
  */
 import io.github.fncontroloption.zig.psi2.ZigFile
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
+import io.github.fncontroloption.zig.psi2.ZigIdentifier
+import io.github.fncontroloption.zig.psi2.ZigParamDecl
 /* TODO
 import io.github.fncontroloption.zig.resolveReferences
  */
@@ -75,11 +77,10 @@ class ZigHighlightVisitor : HighlightVisitor {
                 createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD)
             }
 
-            /* TODO
-            is ZigFnParamDecl -> {
+            is ZigParamDecl -> {
                 val identifier = element.nameIdentifier ?: return null
-                val paramTypeExpr = element.fnParamTypeExpr ?: return null
-                val paramType = paramTypeExpr.expr
+                val paramTypeElement = element.typeElement ?: return null
+                val paramType = paramTypeElement.innerElement
                 if (paramType is ZigIdentifier && paramType.textMatches("type")) {
                     return createHighlightInfo(identifier, ZigHighlightInfoTypes.TYPE_PARAMETER)
                 }
@@ -87,6 +88,7 @@ class ZigHighlightVisitor : HighlightVisitor {
                 createHighlightInfo(identifier, ZigHighlightInfoTypes.PARAMETER)
             }
 
+            /* TODO
             is ZigVarDeclProto -> {
                 val identifier = element.nameIdentifier ?: return null
 
