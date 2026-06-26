@@ -11,6 +11,9 @@ import com.intellij.psi.util.parentOfType
 import io.github.fncontroloption.zig.followReferencesRecursive
 import io.github.fncontroloption.zig.psi.*
  */
+import io.github.fncontroloption.zig.psi2.ZigContainerDecl
+import io.github.fncontroloption.zig.psi2.ZigContainerField
+import io.github.fncontroloption.zig.psi2.ZigContainerKind
 import io.github.fncontroloption.zig.psi2.ZigFile
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
@@ -125,18 +128,17 @@ class ZigHighlightVisitor : HighlightVisitor {
                 createHighlightInfo(identifier, type)
             }
 
-            /* TODO
             is ZigContainerField -> {
                 val identifier = element.nameIdentifier ?: return null
-
                 val containerDecl = element.parentOfType<ZigContainerDecl>()
-                if (containerDecl != null && containerDecl.isEnum()) {
-                    return createHighlightInfo(identifier, ZigHighlightInfoTypes.CONSTANT)
+                val type = when (containerDecl?.containerKind) {
+                    ZigContainerKind.ENUM -> ZigHighlightInfoTypes.CONSTANT
+                    else -> ZigHighlightInfoTypes.INSTANCE_FIELD
                 }
-
-                createHighlightInfo(identifier, ZigHighlightInfoTypes.INSTANCE_FIELD)
+                createHighlightInfo(identifier, type)
             }
 
+            /* TODO
             is ZigIdentifier -> {
                 val text = element.text
 

@@ -174,10 +174,27 @@ class ZigComptime(node: ASTNode) : ZigElement(node) {
 class ZigConditionElement(node: ASTNode) : ZigElement(node) {
 }
 
+enum class ZigContainerKind { STRUCT, OPAQUE, ENUM, UNION }
+
 class ZigContainerDecl(node: ASTNode) : ZigElement(node) {
+    val containerKindElement: PsiElement
+        get() = findNotNullChildByType(ZigTokenSets.CONTAINERS)
+
+    val containerKind: ZigContainerKind
+        get() = when (containerKindElement.elementType) {
+            ZigTokenType.KEYWORD_STRUCT -> ZigContainerKind.STRUCT
+            ZigTokenType.KEYWORD_OPAQUE -> ZigContainerKind.OPAQUE
+            ZigTokenType.KEYWORD_ENUM -> ZigContainerKind.ENUM
+            ZigTokenType.KEYWORD_UNION -> ZigContainerKind.UNION
+            else -> throw IllegalStateException()
+        }
 }
 
-class ZigContainerField(node: ASTNode) : ZigElement(node) {
+class ZigContainerField(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
+    override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
+    override fun getName() = nameIdentifier?.text
+    override fun setName(name: String) = throw IncorrectOperationException() // TODO
+    override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
 class ZigContainerTag(node: ASTNode) : ZigElement(node) {
