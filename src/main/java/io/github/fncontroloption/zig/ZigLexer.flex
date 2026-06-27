@@ -178,13 +178,15 @@ import io.github.fncontroloption.zig.psi2.ZigTokenType;
 <MULTILINE_STRING> {
   [\r\x01-\x09\x0b-\x0c\x0e-\x1f\x7f] { yybegin(YYINITIAL); return TokenType.BAD_CHARACTER; }
   <<EOF>> { yybegin(YYINITIAL); return ZigTokenType.MULTILINE_STRING_LITERAL_LINE; }
-  \r?\n { yybegin(YYINITIAL); return ZigTokenType.MULTILINE_STRING_LITERAL_LINE; }
+  \n { yypushback(1); yybegin(YYINITIAL); return ZigTokenType.MULTILINE_STRING_LITERAL_LINE; }
+  \r\n { yypushback(2); yybegin(YYINITIAL); return ZigTokenType.MULTILINE_STRING_LITERAL_LINE; }
   [^] {}
 }
 
 <COMMENT> {
   [\r\x01-\x09\x0b-\x0c\x0e-\x1f\x7f] { yybegin(YYINITIAL); return TokenType.BAD_CHARACTER; }
   <<EOF>> { yybegin(YYINITIAL); return type; }
-  \r?\n { yybegin(YYINITIAL); return type; }
+  \n { yypushback(1); yybegin(YYINITIAL); return type; }
+  \r\n { yypushback(2); yybegin(YYINITIAL); return type; }
   [^] {}
 }
