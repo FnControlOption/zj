@@ -92,7 +92,7 @@ class ZigParser : PsiParser {
                                 var enumExpr: PsiBuilder.Marker? = null
                                 parseEnclosed(builder, ZigTokenType.R_PAREN) {
                                     if (enumExpr == null) {
-                                        enumExpr = tryExpr(builder)
+                                        enumExpr = parseExpr(builder)
                                         enumExpr
                                     } else {
                                         null
@@ -113,11 +113,11 @@ class ZigParser : PsiParser {
                                 expr = enum
                             }
 
-                            else -> expr = tryExpr(builder)
+                            else -> expr = parseExpr(builder)
                         }
                     }
 
-                    else -> expr = tryExpr(builder)
+                    else -> expr = parseExpr(builder)
                 }
                 expr
             } else {
@@ -658,7 +658,7 @@ class ZigParser : PsiParser {
                 var sentinel: PsiBuilder.Marker? = null
                 parseEnclosed(builder, ZigTokenType.R_BRACKET) {
                     if (arrayIndex == null) {
-                        val expr = tryExpr(builder)
+                        val expr = parseExpr(builder)
                         if (expr != null) {
                             arrayIndex = expr.precede()
                             arrayIndex.done(ZigElementType.ARRAY_INDEX)
@@ -1285,7 +1285,7 @@ class ZigParser : PsiParser {
         var expr: PsiBuilder.Marker? = null
         parseEnclosed(builder, ZigTokenType.R_PAREN) {
             if (expr == null) {
-                expr = tryExpr(builder)
+                expr = parseExpr(builder)
                 expr
             } else {
                 null
@@ -1510,7 +1510,7 @@ class ZigParser : PsiParser {
         var expr: PsiBuilder.Marker? = null
         parseEnclosed(builder, ZigTokenType.R_PAREN) {
             if (expr == null) {
-                expr = tryExpr(builder)
+                expr = parseExpr(builder)
                 expr
             } else {
                 null
@@ -1608,7 +1608,7 @@ class ZigParser : PsiParser {
         }
         var hasInput = false
         parseEnclosed(builder, ZigTokenType.R_PAREN) {
-            val input = tryForInput(builder)
+            val input = parseForInput(builder)
             if (input != null) {
                 hasInput = true
             }
@@ -1620,9 +1620,9 @@ class ZigParser : PsiParser {
         expectToken(builder, ZigTokenType.R_PAREN)
     }
 
-    private fun tryForInput(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parseForInput(builder: PsiBuilder): PsiBuilder.Marker? {
         val input = builder.mark()
-        if (tryExpr(builder) == null) {
+        if (parseExpr(builder) == null) {
             input.rollbackTo()
             return null
         }
@@ -1736,7 +1736,7 @@ class ZigParser : PsiParser {
             var clobbers: PsiBuilder.Marker? = null
             parseEnclosed(builder, ZigTokenType.R_PAREN) {
                 if (expr == null) {
-                    expr = tryExpr(builder)
+                    expr = parseExpr(builder)
                     expr
                 } else if (outputList == null) {
                     outputList = parseAsmIOList(builder, this::parseAsmOutputItem)
@@ -1863,7 +1863,7 @@ class ZigParser : PsiParser {
             var expr: PsiBuilder.Marker? = null
             parseEnclosed(builder, ZigTokenType.R_PAREN) {
                 if (expr == null) {
-                    expr = tryExpr(builder)
+                    expr = parseExpr(builder)
                     expr
                 } else {
                     null
@@ -1931,7 +1931,7 @@ class ZigParser : PsiParser {
             var expr: PsiBuilder.Marker? = null
             parseEnclosed(builder, ZigTokenType.R_PAREN) {
                 if (expr == null) {
-                    expr = tryExpr(builder)
+                    expr = parseExpr(builder)
                     expr
                 } else {
                     null
