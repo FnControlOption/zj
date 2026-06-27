@@ -14,6 +14,12 @@ private val PAIRS = arrayOf(
 
 class ZigBraceMatcher : PairedBraceMatcher {
     override fun getPairs() = PAIRS
-    override fun isPairedBracesAllowedBeforeType(lbraceType: IElementType, contextType: IElementType?) = false
-    override fun getCodeConstructStart(file: PsiFile?, openingBraceOffset: Int) = openingBraceOffset // TODO
+
+    override fun isPairedBracesAllowedBeforeType(lbraceType: IElementType, contextType: IElementType?): Boolean {
+        return true
+    }
+
+    override fun getCodeConstructStart(file: PsiFile?, openingBraceOffset: Int): Int {
+        return openingBraceOffset // TODO
+    }
 }
