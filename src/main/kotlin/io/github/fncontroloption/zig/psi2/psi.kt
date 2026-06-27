@@ -186,6 +186,9 @@ class ZigCallconvModifier(node: ASTNode) : ZigElement(node) {
 class ZigCatch(node: ASTNode) : ZigElement(node) {
 }
 
+class ZigCatchPayload(node: ASTNode) : ZigElement(node) {
+}
+
 class ZigCharLiteral(node: ASTNode) : ZigElement(node) {
 }
 
@@ -252,6 +255,9 @@ class ZigDiv(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigElseElement(node: ASTNode) : ZigElement(node) {
+}
+
+class ZigElsePayload(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigEnumLiteral(node: ASTNode) : ZigElement(node) {
@@ -351,6 +357,9 @@ class ZigFor(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigForInput(node: ASTNode) : ZigElement(node) {
+}
+
+class ZigForPayload(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigGreaterOrEqual(node: ASTNode) : ZigElement(node) {
@@ -480,6 +489,9 @@ class ZigSwitch(node: ASTNode) : ZigElement(node) {
 class ZigSwitchItem(node: ASTNode) : ZigElement(node) {
 }
 
+class ZigSwitchPayload(node: ASTNode) : ZigElement(node) {
+}
+
 class ZigSwitchProng(node: ASTNode) : ZigElement(node) {
 }
 
@@ -495,6 +507,9 @@ class ZigTestDecl(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigThenElement(node: ASTNode) : ZigElement(node) {
+}
+
+class ZigThenPayload(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigTry(node: ASTNode) : ZigElement(node) {
