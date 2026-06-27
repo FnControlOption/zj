@@ -176,7 +176,7 @@ class ZigParser : PsiParser {
     private fun tryBlockExprStatement(builder: PsiBuilder): PsiBuilder.Marker? {
         val expr = parseBlockExprStatement(builder)
         if (expr == null) {
-            // TODO: mark error
+            builder.mark().error("Expected block or expression")
         }
         return expr
     }

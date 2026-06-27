@@ -22,6 +22,10 @@ public class ZigParsingTest extends ParsingTestCase {
   }
   */
 
+  public void testErrors2() {
+    doTest(true);
+  }
+
   public void testParsingTestData() {
     doTest(true);
   }
