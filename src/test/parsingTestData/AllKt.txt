@@ -1799,6 +1799,8 @@ ZigFile:AllKt.zig(0,7423)
       ZigIdentifier(IDENTIFIER)(2713,2716)
         PsiElement(an identifier)('bar')(2713,2716)
       PsiElement([)('[')(2716,2717)
+      PsiErrorElement:Expected expression(2717,2717)
+        <empty list>
       PsiWhiteSpace(' ')(2717,2718)
       PsiElement(])(']')(2718,2719)
     PsiElement(;)(';')(2719,2720)

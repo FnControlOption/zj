@@ -98,9 +98,7 @@ class ZigParser : PsiParser {
                                         null
                                     }
                                 }
-                                if (enumExpr == null) {
-                                    // TODO: mark error
-                                }
+                                checkExpectedExpr(builder, enumExpr)
                                 expectToken(builder, ZigTokenType.R_PAREN)
                                 enum.done(ZigElementType.CONTAINER_TAG_ENUM)
                                 expr = enum
@@ -124,9 +122,7 @@ class ZigParser : PsiParser {
                 null
             }
         }
-        if (expr == null) {
-            // TODO: mark error
-        }
+        checkExpectedExpr(builder, expr)
         expectToken(builder, ZigTokenType.R_PAREN)
         marker.done(ZigElementType.CONTAINER_TAG)
         return marker
@@ -675,9 +671,7 @@ class ZigParser : PsiParser {
                         null
                     }
                 }
-                if (arrayIndex == null) {
-                    // TODO: mark error
-                }
+                checkExpectedExpr(builder, arrayIndex)
                 expectToken(builder, ZigTokenType.R_BRACKET)
                 if (sliceIndexes != null) {
                     return ZigElementType.SLICE
@@ -848,9 +842,7 @@ class ZigParser : PsiParser {
 
     private fun tryExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         val expr = parseExpr(builder)
-        if (expr == null) {
-            // TODO: mark error
-        }
+        checkExpectedExpr(builder, expr)
         return expr
     }
 
@@ -1270,9 +1262,7 @@ class ZigParser : PsiParser {
                 null
             }
         }
-        if (expr == null) {
-            // TODO: mark error
-        }
+        checkExpectedExpr(builder, expr)
         expectToken(builder, ZigTokenType.R_PAREN)
         marker.done(ZigElementType.CONDITION)
         return marker
@@ -1495,9 +1485,7 @@ class ZigParser : PsiParser {
                 null
             }
         }
-        if (expr == null) {
-            // TODO: mark error
-        }
+        checkExpectedExpr(builder, expr)
         expectToken(builder, ZigTokenType.R_PAREN)
         marker.done(ZigElementType.GROUPED_EXPRESSION)
         return marker
@@ -1722,9 +1710,7 @@ class ZigParser : PsiParser {
                     null
                 }
             }
-            if (expr == null) {
-                // TODO: mark error
-            }
+            checkExpectedExpr(builder, expr)
             expectToken(builder, ZigTokenType.R_PAREN)
         }
         marker.done(ZigElementType.ASM)
@@ -1840,9 +1826,7 @@ class ZigParser : PsiParser {
                     null
                 }
             }
-            if (expr == null) {
-                // TODO: mark error
-            }
+            checkExpectedExpr(builder, expr)
             expectToken(builder, ZigTokenType.R_PAREN)
         }
         marker.done(ZigElementType.ASM_INPUT_ITEM)
@@ -1908,9 +1892,7 @@ class ZigParser : PsiParser {
                     null
                 }
             }
-            if (expr == null) {
-                // TODO: mark error
-            }
+            checkExpectedExpr(builder, expr)
             expectToken(builder, ZigTokenType.R_PAREN)
         }
         marker.done(type)
@@ -1969,6 +1951,12 @@ class ZigParser : PsiParser {
             }
         }
         enclosureStack.removeLast()
+    }
+
+    private fun checkExpectedExpr(builder: PsiBuilder, marker: PsiBuilder.Marker?) {
+        if (marker == null) {
+            builder.mark().error("Expected expression")
+        }
     }
 
     private fun expectToken(builder: PsiBuilder, expectedType: IElementType): Boolean {
