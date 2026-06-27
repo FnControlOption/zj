@@ -1164,10 +1164,9 @@ class ZigParser : PsiParser {
             elseRequired = true
         }
         thenMarker.done(ZigElementType.THEN)
-        if (builder.tokenType === ZigTokenType.KEYWORD_ELSE) {
-            val elseMarker = builder.mark()
-            builder.advanceLexer()
+        if (expect(builder, ZigTokenType.KEYWORD_ELSE)) {
             parsePayload(builder)
+            val elseMarker = builder.mark()
             tryStatement(builder, false)
             elseMarker.done(ZigElementType.ELSE)
         } else if (elseRequired) {
@@ -1259,10 +1258,9 @@ class ZigParser : PsiParser {
             // TODO: mark error
         }
         thenMarker.done(ZigElementType.THEN)
-        if (builder.tokenType === ZigTokenType.KEYWORD_ELSE) {
-            val elseMarker = builder.mark()
-            builder.advanceLexer()
+        if (expect(builder, ZigTokenType.KEYWORD_ELSE)) {
             parsePayload(builder)
+            val elseMarker = builder.mark()
             if (bodyParseFn(builder) == null) {
                 // TODO: mark error
             }
@@ -1526,9 +1524,8 @@ class ZigParser : PsiParser {
             // TODO: mark error
         }
         thenMarker.done(ZigElementType.THEN)
-        if (builder.tokenType === ZigTokenType.KEYWORD_ELSE) {
+        if (expect(builder, ZigTokenType.KEYWORD_ELSE)) {
             val elseMarker = builder.mark()
-            builder.advanceLexer()
             if (bodyParseFn(builder) == null) {
                 // TODO: mark error
             }
@@ -1554,9 +1551,8 @@ class ZigParser : PsiParser {
             elseRequired = true
         }
         thenMarker.done(ZigElementType.THEN)
-        if (builder.tokenType === ZigTokenType.KEYWORD_ELSE) {
+        if (expect(builder, ZigTokenType.KEYWORD_ELSE)) {
             val elseMarker = builder.mark()
-            builder.advanceLexer()
             tryStatement(builder, false)
             elseMarker.done(ZigElementType.ELSE)
         } else if (elseRequired) {
@@ -1640,10 +1636,9 @@ class ZigParser : PsiParser {
             // TODO: mark error
         }
         thenMarker.done(ZigElementType.THEN)
-        if (builder.tokenType === ZigTokenType.KEYWORD_ELSE) {
-            val elseMarker = builder.mark()
-            builder.advanceLexer()
+        if (expect(builder, ZigTokenType.KEYWORD_ELSE)) {
             parsePayload(builder)
+            val elseMarker = builder.mark()
             if (bodyParseFn(builder) == null) {
                 // TODO: mark error
             }
@@ -1669,10 +1664,9 @@ class ZigParser : PsiParser {
             elseRequired = true
         }
         thenMarker.done(ZigElementType.THEN)
-        if (builder.tokenType === ZigTokenType.KEYWORD_ELSE) {
-            val elseMarker = builder.mark()
-            builder.advanceLexer()
+        if (expect(builder, ZigTokenType.KEYWORD_ELSE)) {
             parsePayload(builder)
+            val elseMarker = builder.mark()
             tryStatement(builder, false)
             elseMarker.done(ZigElementType.ELSE)
         } else if (elseRequired) {
