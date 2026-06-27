@@ -62,15 +62,11 @@ class ZigParser : PsiParser {
         }
         containerStack.addLast(containerToken!!)
         parseContainerDeclTag(builder)
-        if (eatToken(builder, ZigTokenType.L_BRACE)) {
+        if (expectToken(builder, ZigTokenType.L_BRACE)) {
             parseEnclosed(builder, ZigTokenType.R_BRACE, EnclosureType.CONTAINER) {
                 parseContainerMember(builder)
             }
-            if (!eatToken(builder, ZigTokenType.R_BRACE)) {
-                // TODO: mark error
-            }
-        } else {
-            // TODO: mark error
+            expectToken(builder, ZigTokenType.R_BRACE)
         }
         containerStack.removeLast()
         container.done(ZigElementType.CONTAINER_DECL)
@@ -105,9 +101,7 @@ class ZigParser : PsiParser {
                                 if (enumExpr == null) {
                                     // TODO: mark error
                                 }
-                                if (!eatToken(builder, ZigTokenType.R_PAREN)) {
-                                    // TODO: mark error
-                                }
+                                expectToken(builder, ZigTokenType.R_PAREN)
                                 enum.done(ZigElementType.CONTAINER_TAG_ENUM)
                                 expr = enum
                             }
@@ -133,9 +127,7 @@ class ZigParser : PsiParser {
         if (expr == null) {
             // TODO: mark error
         }
-        if (!eatToken(builder, ZigTokenType.R_PAREN)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.R_PAREN)
         marker.done(ZigElementType.CONTAINER_TAG)
         return marker
     }
@@ -157,9 +149,7 @@ class ZigParser : PsiParser {
         parseEnclosed(builder, ZigTokenType.R_BRACE) {
             tryStatement(builder, true)
         }
-        if (!eatToken(builder, ZigTokenType.R_BRACE)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.R_BRACE)
         marker.done(ZigElementType.BLOCK)
         return marker
     }
@@ -177,9 +167,7 @@ class ZigParser : PsiParser {
         // Otherwise, require semicolon after expression
         val assignExpr = parseAssignExpr(builder)
         if (assignExpr != null) {
-            if (!eatToken(builder, ZigTokenType.SEMICOLON)) {
-                // TODO: mark error
-            }
+            expectToken(builder, ZigTokenType.SEMICOLON)
             return assignExpr
         }
         return null
@@ -199,15 +187,11 @@ class ZigParser : PsiParser {
             call.rollbackTo()
             return null
         }
-        if (eatToken(builder, ZigTokenType.L_PAREN)) {
+        if (expectToken(builder, ZigTokenType.L_PAREN)) {
             parseEnclosed(builder, ZigTokenType.R_PAREN) {
                 tryCallArg(builder)
             }
-            if (!eatToken(builder, ZigTokenType.R_PAREN)) {
-                // TODO: mark error
-            }
-        } else {
-            // TODO: mark error
+            expectToken(builder, ZigTokenType.R_PAREN)
         }
         call.done(ZigElementType.BUILTIN_CALL)
         return call
@@ -233,9 +217,7 @@ class ZigParser : PsiParser {
             return null
         }
         tryExpr(builder)
-        if (!eatToken(builder, ZigTokenType.SEMICOLON)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.SEMICOLON)
         decl.done(ZigElementType.VAR_DECL)
         return decl
     }
@@ -297,15 +279,11 @@ class ZigParser : PsiParser {
             proto.rollbackTo()
             return null
         }
-        if (eatToken(builder, ZigTokenType.L_PAREN)) {
+        if (expectToken(builder, ZigTokenType.L_PAREN)) {
             parseEnclosed(builder, ZigTokenType.R_PAREN) {
                 tryFnParamDecl(builder)
             }
-            if (!eatToken(builder, ZigTokenType.R_PAREN)) {
-                // TODO: mark error
-            }
-        } else {
-            // TODO: mark error
+            expectToken(builder, ZigTokenType.R_PAREN)
         }
         parseAlign(builder)
         parseAddrspace(builder)
@@ -387,9 +365,7 @@ class ZigParser : PsiParser {
         parseEnclosed(builder, ZigTokenType.R_BRACE) {
             parseErrorSetMember(builder)
         }
-        if (!eatToken(builder, ZigTokenType.R_BRACE)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.R_BRACE)
         marker.done(ZigElementType.ERROR_SET_DECL)
         return marker
     }
@@ -575,9 +551,7 @@ class ZigParser : PsiParser {
                         TypeLengthState.DONE -> null
                     }
                 }
-                if (!eatToken(builder, ZigTokenType.R_BRACKET)) {
-                    // TODO: mark error
-                }
+                expectToken(builder, ZigTokenType.R_BRACKET)
                 val hasModifiers = parsePointerModifiers(builder)
                 if (tryTypeExpr(builder) == null) {
                     expr.rollbackTo()
@@ -659,9 +633,7 @@ class ZigParser : PsiParser {
         parseEnclosed(builder, ZigTokenType.R_PAREN) {
             tryCallArg(builder)
         }
-        if (!eatToken(builder, ZigTokenType.R_PAREN)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.R_PAREN)
         val call = lhs.precede()
         call.done(ZigElementType.CALL)
         return call
@@ -720,9 +692,7 @@ class ZigParser : PsiParser {
                 if (arrayIndex == null) {
                     // TODO: mark error
                 }
-                if (!eatToken(builder, ZigTokenType.R_BRACKET)) {
-                    // TODO: mark error
-                }
+                expectToken(builder, ZigTokenType.R_BRACKET)
                 if (sliceIndexes != null) {
                     return ZigElementType.SLICE
                 }
@@ -865,9 +835,7 @@ class ZigParser : PsiParser {
                         parseEnclosed(builder, ZigTokenType.R_BRACE) {
                             tryInitListEntry(builder)
                         }
-                        if (!eatToken(builder, ZigTokenType.R_BRACE)) {
-                            // TODO: mark error
-                        }
+                        expectToken(builder, ZigTokenType.R_BRACE)
                         marker.done(ZigElementType.LIST_INIT)
                         return marker
                     }
@@ -1097,9 +1065,7 @@ class ZigParser : PsiParser {
         parseEnclosed(builder, ZigTokenType.R_BRACE) {
             tryInitListEntry(builder)
         }
-        if (!eatToken(builder, ZigTokenType.R_BRACE)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.R_BRACE)
         init.done(ZigElementType.LIST_INIT)
         return init
     }
@@ -1129,9 +1095,7 @@ class ZigParser : PsiParser {
                         tryVarDeclExprStatement(builder)
                     } else {
                         tryAssignExpr(builder)
-                        if (!eatToken(builder, ZigTokenType.SEMICOLON)) {
-                            // TODO: mark error
-                        }
+                        expectToken(builder, ZigTokenType.SEMICOLON)
                     }
                 }
                 marker.done(ZigElementType.COMPTIME)
@@ -1185,9 +1149,7 @@ class ZigParser : PsiParser {
             if (expr == null) {
                 return null
             }
-            if (!eatToken(builder, ZigTokenType.SEMICOLON)) {
-                // TODO: mark error
-            }
+            expectToken(builder, ZigTokenType.SEMICOLON)
             return expr
         }
     }
@@ -1263,22 +1225,16 @@ class ZigParser : PsiParser {
         assert(scratch.isNotEmpty())
 
         if (scratch.size > 1 || scratch[0].tokenType === ZigElementType.VAR_PROTO) {
-            if (!eatToken(builder, ZigTokenType.EQUAL)) {
-                // TODO: mark error
-            }
+            expectToken(builder, ZigTokenType.EQUAL)
         } else if (!eatToken(builder, ZigTokenType.EQUAL)) {
             statement.drop()
             val expr = finishAssignExpr(builder, scratch[0])
-            if (!eatToken(builder, ZigTokenType.SEMICOLON)) {
-                // TODO: mark error
-            }
+            expectToken(builder, ZigTokenType.SEMICOLON)
             return expr;
         }
 
         tryExpr(builder)
-        if (!eatToken(builder, ZigTokenType.SEMICOLON)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.SEMICOLON)
 
         if (scratch.size == 1) {
             if (scratch[0].tokenType === ZigElementType.VAR_PROTO) {
@@ -1338,9 +1294,7 @@ class ZigParser : PsiParser {
         if (expr == null) {
             // TODO: mark error
         }
-        if (!eatToken(builder, ZigTokenType.R_PAREN)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.R_PAREN)
         marker.done(ZigElementType.CONDITION)
         return marker
     }
@@ -1414,9 +1368,7 @@ class ZigParser : PsiParser {
         while (eatToken(builder, ZigTokenType.COMMA)) {
             tryExpr(builder)
         }
-        if (!eatToken(builder, ZigTokenType.EQUAL)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.EQUAL)
         tryExpr(builder)
         assign.done(ZigElementType.ASSIGN_DESTRUCTURE)
         return assign
@@ -1459,16 +1411,13 @@ class ZigParser : PsiParser {
         if (parseCondition(builder) == null) {
             // TODO: mark error
         }
-        if (!eatToken(builder, ZigTokenType.L_BRACE)) {
-            // TODO: mark error
+        if (!expectToken(builder, ZigTokenType.L_BRACE)) {
             return
         }
         parseEnclosed(builder, ZigTokenType.R_BRACE) {
             parseSwitchProng(builder)
         }
-        if (!eatToken(builder, ZigTokenType.R_BRACE)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.R_BRACE)
     }
 
     private fun parseSwitchProng(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -1485,9 +1434,7 @@ class ZigParser : PsiParser {
                 }
             }
         }
-        if (!eatToken(builder, ZigTokenType.EQUAL_ANGLE_BRACKET_RIGHT)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.EQUAL_ANGLE_BRACKET_RIGHT)
         parsePtrIndexPayload(builder, ZigElementType.SWITCH_PAYLOAD)
         trySingleAssignExpr(builder)
         marker.done(ZigElementType.SWITCH_PRONG)
@@ -1517,13 +1464,9 @@ class ZigParser : PsiParser {
         val payload = builder.mark()
         builder.advanceLexer()
         val entry = builder.mark()
-        if (!eatToken(builder, ZigTokenType.IDENTIFIER)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.IDENTIFIER)
         entry.done(ZigElementType.PAYLOAD_ITEM)
-        if (!eatToken(builder, ZigTokenType.PIPE)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.PIPE)
         payload.done(type)
         return payload
     }
@@ -1540,22 +1483,16 @@ class ZigParser : PsiParser {
         builder.advanceLexer()
         val entry = builder.mark()
         eatToken(builder, ZigTokenType.ASTERISK)
-        if (!eatToken(builder, ZigTokenType.IDENTIFIER)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.IDENTIFIER)
         entry.done(ZigElementType.PAYLOAD_ITEM)
         if (includeIndex) {
             if (eatToken(builder, ZigTokenType.COMMA)) {
                 val indexEntry = builder.mark()
-                if (!eatToken(builder, ZigTokenType.IDENTIFIER)) {
-                    // TODO: mark error
-                }
+                expectToken(builder, ZigTokenType.IDENTIFIER)
                 indexEntry.done(ZigElementType.PAYLOAD_ITEM)
             }
         }
-        if (!eatToken(builder, ZigTokenType.PIPE)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.PIPE)
         payload.done(type)
         return payload
     }
@@ -1582,9 +1519,7 @@ class ZigParser : PsiParser {
         if (expr == null) {
             // TODO: mark error
         }
-        if (!eatToken(builder, ZigTokenType.R_PAREN)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.R_PAREN)
         marker.done(ZigElementType.GROUPED_EXPRESSION)
         return marker
     }
@@ -1662,16 +1597,13 @@ class ZigParser : PsiParser {
                 break
             }
         }
-        if (!eatToken(builder, ZigTokenType.PIPE)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.PIPE)
         payload.done(ZigElementType.FOR_PAYLOAD)
         return forMarker
     }
 
     private fun parseForInputs(builder: PsiBuilder) {
-        if (!eatToken(builder, ZigTokenType.L_PAREN)) {
-            // TODO: mark error
+        if (!expectToken(builder, ZigTokenType.L_PAREN)) {
             return
         }
         var hasInput = false
@@ -1685,9 +1617,7 @@ class ZigParser : PsiParser {
         if (!hasInput) {
             // TODO: mark error
         }
-        if (!eatToken(builder, ZigTokenType.R_PAREN)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.R_PAREN)
     }
 
     private fun tryForInput(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -1789,9 +1719,7 @@ class ZigParser : PsiParser {
         if (expr == null) {
             // TODO: mark error
         }
-        if (!eatToken(builder, ZigTokenType.R_PAREN)) {
-            // TODO: mark error
-        }
+        expectToken(builder, ZigTokenType.R_PAREN)
         marker.done(ZigElementType.WHILE_CONTINUE_EXPR)
         return marker
     }
@@ -1801,7 +1729,7 @@ class ZigParser : PsiParser {
         val marker = builder.mark()
         builder.advanceLexer()
         eatToken(builder, ZigTokenType.KEYWORD_VOLATILE)
-        if (eatToken(builder, ZigTokenType.L_PAREN)) {
+        if (expectToken(builder, ZigTokenType.L_PAREN)) {
             var expr: PsiBuilder.Marker? = null
             var outputList: PsiBuilder.Marker? = null
             var inputList: PsiBuilder.Marker? = null
@@ -1826,11 +1754,7 @@ class ZigParser : PsiParser {
             if (expr == null) {
                 // TODO: mark error
             }
-            if (!eatToken(builder, ZigTokenType.R_PAREN)) {
-                // TODO: mark error
-            }
-        } else {
-            // TODO: mark error
+            expectToken(builder, ZigTokenType.R_PAREN)
         }
         marker.done(ZigElementType.ASM)
         return marker
@@ -1878,13 +1802,9 @@ class ZigParser : PsiParser {
         if (identifier == null) {
             // TODO: mark error
         }
-        if (!eatToken(builder, ZigTokenType.R_BRACKET)) {
-            // TODO: mark error
-        }
-        if (!eatToken(builder, ZigTokenType.STRING_LITERAL)) {
-            // TODO: mark error
-        }
-        if (eatToken(builder, ZigTokenType.L_PAREN)) {
+        expectToken(builder, ZigTokenType.R_BRACKET)
+        expectToken(builder, ZigTokenType.STRING_LITERAL)
+        if (expectToken(builder, ZigTokenType.L_PAREN)) {
             var expr: PsiBuilder.Marker? = null
             parseEnclosed(builder, ZigTokenType.R_PAREN) {
                 if (expr == null) {
@@ -1909,11 +1829,7 @@ class ZigParser : PsiParser {
             if (expr == null) {
                 // TODO: mark error
             }
-            if (!eatToken(builder, ZigTokenType.R_PAREN)) {
-                // TODO: mark error
-            }
-        } else {
-            // TODO: mark error
+            expectToken(builder, ZigTokenType.R_PAREN)
         }
         marker.done(ZigElementType.ASM_OUTPUT_ITEM)
         return marker
@@ -1941,13 +1857,9 @@ class ZigParser : PsiParser {
         if (identifier == null) {
             // TODO: mark error
         }
-        if (!eatToken(builder, ZigTokenType.R_BRACKET)) {
-            // TODO: mark error
-        }
-        if (!eatToken(builder, ZigTokenType.STRING_LITERAL)) {
-            // TODO: mark error
-        }
-        if (eatToken(builder, ZigTokenType.L_PAREN)) {
+        expectToken(builder, ZigTokenType.R_BRACKET)
+        expectToken(builder, ZigTokenType.STRING_LITERAL)
+        if (expectToken(builder, ZigTokenType.L_PAREN)) {
             var expr: PsiBuilder.Marker? = null
             parseEnclosed(builder, ZigTokenType.R_PAREN) {
                 if (expr == null) {
@@ -1960,11 +1872,7 @@ class ZigParser : PsiParser {
             if (expr == null) {
                 // TODO: mark error
             }
-            if (!eatToken(builder, ZigTokenType.R_PAREN)) {
-                // TODO: mark error
-            }
-        } else {
-            // TODO: mark error
+            expectToken(builder, ZigTokenType.R_PAREN)
         }
         marker.done(ZigElementType.ASM_INPUT_ITEM)
         return marker
@@ -2019,7 +1927,7 @@ class ZigParser : PsiParser {
         }
         val marker = builder.mark()
         builder.advanceLexer()
-        if (eatToken(builder, ZigTokenType.L_PAREN)) {
+        if (expectToken(builder, ZigTokenType.L_PAREN)) {
             var expr: PsiBuilder.Marker? = null
             parseEnclosed(builder, ZigTokenType.R_PAREN) {
                 if (expr == null) {
@@ -2032,11 +1940,7 @@ class ZigParser : PsiParser {
             if (expr == null) {
                 // TODO: mark error
             }
-            if (!eatToken(builder, ZigTokenType.R_PAREN)) {
-                // TODO: mark error
-            }
-        } else {
-            // TODO: mark error
+            expectToken(builder, ZigTokenType.R_PAREN)
         }
         marker.done(type)
         return marker
@@ -2094,6 +1998,16 @@ class ZigParser : PsiParser {
             }
         }
         enclosureStack.removeLast()
+    }
+
+    private fun expectToken(builder: PsiBuilder, expectedType: IElementType): Boolean {
+        if (eatToken(builder, expectedType)) {
+            return true
+        } else {
+            val actual = builder.tokenType?.toString() ?: "EOF"
+            builder.mark().error("Expected '$expectedType', found '$actual'")
+            return false
+        }
     }
 
     private fun eatToken(builder: PsiBuilder, expectedType: IElementType?): Boolean {
