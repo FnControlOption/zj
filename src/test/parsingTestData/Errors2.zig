@@ -4,3 +4,6 @@ test {
     suspend;
     nosuspend;
 }
+fn foo() {}
+extern fn foo(..., bar: Bar) Foo;
+fn foo(bar: Bar baz: Baz) Foo {}

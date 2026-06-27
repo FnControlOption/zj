@@ -2617,7 +2617,8 @@ ZigFile:AllKt.zig(0,7395)
         PsiElement())(')')(3843,3844)
         PsiWhiteSpace(' ')(3844,3845)
         ZigTypeElement(TYPE)(3845,3845)
-          <empty list>
+          PsiErrorElement:Expected return type expression(3845,3845)
+            <empty list>
         ZigBlock(BLOCK)(3845,3847)
           PsiElement({)('{')(3845,3846)
           PsiElement(})('}')(3846,3847)
@@ -2736,7 +2737,8 @@ ZigFile:AllKt.zig(0,7395)
             PsiElement())(')')(4013,4014)
             PsiWhiteSpace(' ')(4014,4015)
             ZigTypeElement(TYPE)(4015,4015)
-              <empty list>
+              PsiErrorElement:Expected return type expression(4015,4015)
+                <empty list>
             ZigBlock(BLOCK)(4015,4017)
               PsiElement({)('{')(4015,4016)
               PsiElement(})('}')(4016,4017)

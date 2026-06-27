@@ -292,7 +292,7 @@ class ZigParser : PsiParser {
         eatToken(builder, ZigTokenType.BANG)
         val returnType = builder.mark()
         if (parseTypeExpr(builder) == null) {
-            // TODO: mark error
+            builder.mark().error("Expected return type expression")
             if (terminators == null) {
                 proto.rollbackTo()
                 return null
@@ -331,7 +331,7 @@ class ZigParser : PsiParser {
             decl.drop()
             eatToken(builder, ZigTokenType.COMMA)
             if (builder.tokenType !== ZigTokenType.R_PAREN) {
-                // TODO: mark error
+                builder.mark().error("Function prototype has parameter after varargs")
             }
             return decl
         }
@@ -347,7 +347,7 @@ class ZigParser : PsiParser {
         }
         decl.done(ZigElementType.PARAM_DECL)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_PAREN) {
-            // TODO: mark error
+            builder.mark().error("Expected ',' after parameter")
         }
         return decl
     }
