@@ -415,16 +415,25 @@ class ZigParser : PsiParser {
             val type = builder.mark()
             tryTypeExpr(builder)
             type.done(ZigElementType.TYPE)
-        } else if (containerType === ZigTokenType.KEYWORD_STRUCT) {
-            val typeExpr = parseTypeExpr(builder)
-            if (typeExpr == null) {
+        } else when (containerType) {
+            ZigTokenType.KEYWORD_STRUCT -> {
+                val typeExpr = parseTypeExpr(builder)
+                if (typeExpr == null) {
+                    field.rollbackTo()
+                    return null
+                }
+                typeExpr.precede().done(ZigElementType.TYPE)
+            }
+            ZigTokenType.KEYWORD_ENUM, ZigTokenType.KEYWORD_UNION -> {
+                if (!eatToken(builder, ZigTokenType.IDENTIFIER)) {
+                    field.rollbackTo()
+                    return null
+                }
+            }
+            else -> {
                 field.rollbackTo()
                 return null
             }
-            typeExpr.precede().done(ZigElementType.TYPE)
-        } else if (!eatToken(builder, ZigTokenType.IDENTIFIER)) {
-            field.rollbackTo()
-            return null
         }
         parseAlign(builder)
         if (eatToken(builder, ZigTokenType.EQUAL)) {
