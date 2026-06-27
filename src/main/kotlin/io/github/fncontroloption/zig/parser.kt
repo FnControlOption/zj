@@ -28,7 +28,7 @@ class ZigParserDefinition : ParserDefinition {
 /** @see com.intellij.java.syntax.parser.JavaParser */
 class ZigParser : PsiParser {
     private enum class EnclosureType { CONTAINER, OTHER }
-    private class Enclosure(val type: EnclosureType, val left: IElementType?, val right: IElementType?)
+    private class Enclosure(val type: EnclosureType, val right: IElementType?)
 
     private val enclosureStack = ArrayDeque<Enclosure>()
     private val containerStack = ArrayDeque<IElementType>()
@@ -36,7 +36,7 @@ class ZigParser : PsiParser {
     override fun parse(root: IElementType, builder: PsiBuilder): ASTNode {
         containerStack.addLast(root)
         val rootMarker = builder.mark()
-        parseEnclosed(builder, Enclosure(EnclosureType.CONTAINER, null, null)) {
+        parseEnclosed(builder, null, EnclosureType.CONTAINER) {
             parseContainerMember(builder)
         }
         rootMarker.done(root)
@@ -62,8 +62,15 @@ class ZigParser : PsiParser {
         }
         containerStack.addLast(containerToken!!)
         parseContainerDeclTag(builder)
-        parseBraceEnclosed(builder, EnclosureType.CONTAINER) {
-            parseContainerMember(builder)
+        if (expect(builder, ZigTokenType.L_BRACE)) {
+            parseEnclosed(builder, ZigTokenType.R_BRACE, EnclosureType.CONTAINER) {
+                parseContainerMember(builder)
+            }
+            if (!expect(builder, ZigTokenType.R_BRACE)) {
+                // TODO: mark error
+            }
+        } else {
+            // TODO: mark error
         }
         containerStack.removeLast()
         container.done(ZigElementType.CONTAINER_DECL)
@@ -75,8 +82,9 @@ class ZigParser : PsiParser {
             return null
         }
         val marker = builder.mark()
+        builder.advanceLexer()
         var expr: PsiBuilder.Marker? = null
-        parseParenEnclosed(builder) {
+        parseEnclosed(builder, ZigTokenType.R_PAREN) {
             if (expr == null) {
                 when (builder.tokenType) {
                     ZigTokenType.KEYWORD_ENUM -> {
@@ -84,8 +92,9 @@ class ZigParser : PsiParser {
                             ZigTokenType.L_PAREN -> {
                                 val enum = builder.mark()
                                 builder.advanceLexer()
+                                builder.advanceLexer()
                                 var enumExpr: PsiBuilder.Marker? = null
-                                parseParenEnclosed(builder) {
+                                parseEnclosed(builder, ZigTokenType.R_PAREN) {
                                     if (enumExpr == null) {
                                         enumExpr = tryExpr(builder)
                                         enumExpr
@@ -94,6 +103,9 @@ class ZigParser : PsiParser {
                                     }
                                 }
                                 if (enumExpr == null) {
+                                    // TODO: mark error
+                                }
+                                if (!expect(builder, ZigTokenType.R_PAREN)) {
                                     // TODO: mark error
                                 }
                                 enum.done(ZigElementType.CONTAINER_TAG_ENUM)
@@ -121,6 +133,9 @@ class ZigParser : PsiParser {
         if (expr == null) {
             // TODO: mark error
         }
+        if (!expect(builder, ZigTokenType.R_PAREN)) {
+            // TODO: mark error
+        }
         marker.done(ZigElementType.CONTAINER_TAG)
         return marker
     }
@@ -135,12 +150,15 @@ class ZigParser : PsiParser {
         if (allowLabel) {
             expect(builder, ZigTokenType.IDENTIFIER, ZigTokenType.COLON)
         }
-        if (builder.tokenType !== ZigTokenType.L_BRACE) {
+        if (!expect(builder, ZigTokenType.L_BRACE)) {
             marker.rollbackTo()
             return null
         }
-        parseBraceEnclosed(builder) {
+        parseEnclosed(builder, ZigTokenType.R_BRACE) {
             tryStatement(builder, true)
+        }
+        if (!expect(builder, ZigTokenType.R_BRACE)) {
+            // TODO: mark error
         }
         marker.done(ZigElementType.BLOCK)
         return marker
@@ -181,11 +199,15 @@ class ZigParser : PsiParser {
             call.rollbackTo()
             return null
         }
-        if (builder.tokenType !== ZigTokenType.L_PAREN) {
+        if (expect(builder, ZigTokenType.L_PAREN)) {
+            parseEnclosed(builder, ZigTokenType.R_PAREN) {
+                tryCallArg(builder)
+            }
+            if (!expect(builder, ZigTokenType.R_PAREN)) {
+                // TODO: mark error
+            }
+        } else {
             // TODO: mark error
-        }
-        parseParenEnclosed(builder) {
-            tryCallArg(builder)
         }
         call.done(ZigElementType.BUILTIN_CALL)
         return call
@@ -275,11 +297,15 @@ class ZigParser : PsiParser {
             proto.rollbackTo()
             return null
         }
-        if (builder.tokenType !== ZigTokenType.L_PAREN) {
+        if (expect(builder, ZigTokenType.L_PAREN)) {
+            parseEnclosed(builder, ZigTokenType.R_PAREN) {
+                tryFnParamDecl(builder)
+            }
+            if (!expect(builder, ZigTokenType.R_PAREN)) {
+                // TODO: mark error
+            }
+        } else {
             // TODO: mark error
-        }
-        parseParenEnclosed(builder) {
-            tryFnParamDecl(builder)
         }
         parseAlign(builder)
         parseAddrspace(builder)
@@ -354,12 +380,15 @@ class ZigParser : PsiParser {
         }
         val marker = builder.mark()
         builder.advanceLexer()
-        if (builder.tokenType !== ZigTokenType.L_BRACE) {
+        if (!expect(builder, ZigTokenType.L_BRACE)) {
             marker.rollbackTo()
             return null
         }
-        parseBraceEnclosed(builder) {
+        parseEnclosed(builder, ZigTokenType.R_BRACE) {
             parseErrorSetMember(builder)
+        }
+        if (!expect(builder, ZigTokenType.R_BRACE)) {
+            // TODO: mark error
         }
         marker.done(ZigElementType.ERROR_SET_DECL)
         return marker
@@ -492,9 +521,10 @@ class ZigParser : PsiParser {
             }
             ZigTokenType.L_BRACKET -> {
                 val expr = builder.mark()
+                builder.advanceLexer()
                 var isArray = false
                 var lengthState = TypeLengthState.START
-                parseBracketEnclosed(builder) {
+                parseEnclosed(builder, ZigTokenType.R_BRACKET) {
                     when (lengthState) {
                         TypeLengthState.START -> {
                             val length = builder.mark()
@@ -544,6 +574,9 @@ class ZigParser : PsiParser {
 
                         TypeLengthState.DONE -> null
                     }
+                }
+                if (!expect(builder, ZigTokenType.R_BRACKET)) {
+                    // TODO: mark error
                 }
                 val hasModifiers = parsePointerModifiers(builder)
                 if (tryTypeExpr(builder) == null) {
@@ -620,11 +653,14 @@ class ZigParser : PsiParser {
     }
 
     private fun parseCall(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker? {
-        if (builder.tokenType !== ZigTokenType.L_PAREN) {
+        if (!expect(builder, ZigTokenType.L_PAREN)) {
             return null
         }
-        parseParenEnclosed(builder) {
+        parseEnclosed(builder, ZigTokenType.R_PAREN) {
             tryCallArg(builder)
+        }
+        if (!expect(builder, ZigTokenType.R_PAREN)) {
+            // TODO: mark error
         }
         val call = lhs.precede()
         call.done(ZigElementType.CALL)
@@ -644,10 +680,11 @@ class ZigParser : PsiParser {
     private fun parseSuffixOp(builder: PsiBuilder): IElementType? {
         when (builder.tokenType) {
             ZigTokenType.L_BRACKET -> {
+                builder.advanceLexer()
                 var arrayIndex: PsiBuilder.Marker? = null
                 var sliceIndexes: PsiBuilder.Marker? = null
                 var sentinel: PsiBuilder.Marker? = null
-                parseBracketEnclosed(builder) {
+                parseEnclosed(builder, ZigTokenType.R_BRACKET) {
                     if (arrayIndex == null) {
                         val expr = tryExpr(builder)
                         if (expr != null) {
@@ -679,6 +716,12 @@ class ZigParser : PsiParser {
                     } else {
                         null
                     }
+                }
+                if (arrayIndex == null) {
+                    // TODO: mark error
+                }
+                if (!expect(builder, ZigTokenType.R_BRACKET)) {
+                    // TODO: mark error
                 }
                 if (sliceIndexes != null) {
                     return ZigElementType.SLICE
@@ -818,8 +861,12 @@ class ZigParser : PsiParser {
                     ZigTokenType.L_BRACE -> {
                         val marker = builder.mark()
                         builder.advanceLexer()
-                        parseBraceEnclosed(builder) {
+                        builder.advanceLexer()
+                        parseEnclosed(builder, ZigTokenType.R_BRACE) {
                             tryInitListEntry(builder)
+                        }
+                        if (!expect(builder, ZigTokenType.R_BRACE)) {
+                            // TODO: mark error
                         }
                         marker.done(ZigElementType.LIST_INIT)
                         return marker
@@ -1043,12 +1090,15 @@ class ZigParser : PsiParser {
 
     private fun parseCurlySuffixExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         val lhs = parseTypeExpr(builder) ?: return null
-        if (builder.tokenType !== ZigTokenType.L_BRACE) {
+        if (!expect(builder, ZigTokenType.L_BRACE)) {
             return lhs
         }
         val init = lhs.precede()
-        parseBraceEnclosed(builder) {
+        parseEnclosed(builder, ZigTokenType.R_BRACE) {
             tryInitListEntry(builder)
+        }
+        if (!expect(builder, ZigTokenType.R_BRACE)) {
+            // TODO: mark error
         }
         init.done(ZigElementType.LIST_INIT)
         return init
@@ -1275,8 +1325,9 @@ class ZigParser : PsiParser {
             return null
         }
         val marker = builder.mark()
+        builder.advanceLexer()
         var expr: PsiBuilder.Marker? = null
-        parseParenEnclosed(builder) {
+        parseEnclosed(builder, ZigTokenType.R_PAREN) {
             if (expr == null) {
                 expr = tryExpr(builder)
                 expr
@@ -1285,6 +1336,9 @@ class ZigParser : PsiParser {
             }
         }
         if (expr == null) {
+            // TODO: mark error
+        }
+        if (!expect(builder, ZigTokenType.R_PAREN)) {
             // TODO: mark error
         }
         marker.done(ZigElementType.CONDITION)
@@ -1405,11 +1459,15 @@ class ZigParser : PsiParser {
         if (parseCondition(builder) == null) {
             // TODO: mark error
         }
-        if (builder.tokenType !== ZigTokenType.L_BRACE) {
+        if (!expect(builder, ZigTokenType.L_BRACE)) {
             // TODO: mark error
+            return
         }
-        parseBraceEnclosed(builder) {
+        parseEnclosed(builder, ZigTokenType.R_BRACE) {
             parseSwitchProng(builder)
+        }
+        if (!expect(builder, ZigTokenType.R_BRACE)) {
+            // TODO: mark error
         }
     }
 
@@ -1511,8 +1569,9 @@ class ZigParser : PsiParser {
             return null
         }
         val marker = builder.mark()
+        builder.advanceLexer()
         var expr: PsiBuilder.Marker? = null
-        parseParenEnclosed(builder) {
+        parseEnclosed(builder, ZigTokenType.R_PAREN) {
             if (expr == null) {
                 expr = tryExpr(builder)
                 expr
@@ -1521,6 +1580,9 @@ class ZigParser : PsiParser {
             }
         }
         if (expr == null) {
+            // TODO: mark error
+        }
+        if (!expect(builder, ZigTokenType.R_PAREN)) {
             // TODO: mark error
         }
         marker.done(ZigElementType.GROUPED_EXPRESSION)
@@ -1608,12 +1670,12 @@ class ZigParser : PsiParser {
     }
 
     private fun parseForInputs(builder: PsiBuilder) {
-        if (builder.tokenType !== ZigTokenType.L_PAREN) {
+        if (!expect(builder, ZigTokenType.L_PAREN)) {
             // TODO: mark error
             return
         }
         var hasInput = false
-        parseParenEnclosed(builder) {
+        parseEnclosed(builder, ZigTokenType.R_PAREN) {
             val input = tryForInput(builder)
             if (input != null) {
                 hasInput = true
@@ -1621,6 +1683,9 @@ class ZigParser : PsiParser {
             input
         }
         if (!hasInput) {
+            // TODO: mark error
+        }
+        if (!expect(builder, ZigTokenType.R_PAREN)) {
             // TODO: mark error
         }
     }
@@ -1711,8 +1776,9 @@ class ZigParser : PsiParser {
             return null
         }
         val marker = builder.mark()
+        builder.advanceLexer()
         var expr: PsiBuilder.Marker? = null
-        parseParenEnclosed(builder) {
+        parseEnclosed(builder, ZigTokenType.R_PAREN) {
             if (expr == null) {
                 expr = parseAssignExpr(builder)
                 expr
@@ -1721,6 +1787,9 @@ class ZigParser : PsiParser {
             }
         }
         if (expr == null) {
+            // TODO: mark error
+        }
+        if (!expect(builder, ZigTokenType.R_PAREN)) {
             // TODO: mark error
         }
         marker.done(ZigElementType.WHILE_CONTINUE_EXPR)
@@ -1732,28 +1801,35 @@ class ZigParser : PsiParser {
         val marker = builder.mark()
         builder.advanceLexer()
         expect(builder, ZigTokenType.KEYWORD_VOLATILE)
-        var expr: PsiBuilder.Marker? = null
-        var outputList: PsiBuilder.Marker? = null
-        var inputList: PsiBuilder.Marker? = null
-        var clobbers: PsiBuilder.Marker? = null
-        parseParenEnclosed(builder) {
-            if (expr == null) {
-                expr = tryExpr(builder)
-                expr
-            } else if (outputList == null) {
-                outputList = parseAsmIOList(builder, this::parseAsmOutputItem)
-                outputList
-            } else if (inputList == null) {
-                inputList = parseAsmIOList(builder, this::parseAsmInputItem)
-                inputList
-            } else if (clobbers == null) {
-                clobbers = parseClobbers(builder)
-                clobbers
-            } else {
-                null
+        if (expect(builder, ZigTokenType.L_PAREN)) {
+            var expr: PsiBuilder.Marker? = null
+            var outputList: PsiBuilder.Marker? = null
+            var inputList: PsiBuilder.Marker? = null
+            var clobbers: PsiBuilder.Marker? = null
+            parseEnclosed(builder, ZigTokenType.R_PAREN) {
+                if (expr == null) {
+                    expr = tryExpr(builder)
+                    expr
+                } else if (outputList == null) {
+                    outputList = parseAsmIOList(builder, this::parseAsmOutputItem)
+                    outputList
+                } else if (inputList == null) {
+                    inputList = parseAsmIOList(builder, this::parseAsmInputItem)
+                    inputList
+                } else if (clobbers == null) {
+                    clobbers = parseClobbers(builder)
+                    clobbers
+                } else {
+                    null
+                }
             }
-        }
-        if (expr == null) {
+            if (expr == null) {
+                // TODO: mark error
+            }
+            if (!expect(builder, ZigTokenType.R_PAREN)) {
+                // TODO: mark error
+            }
+        } else {
             // TODO: mark error
         }
         marker.done(ZigElementType.ASM)
@@ -1785,8 +1861,9 @@ class ZigParser : PsiParser {
             return null
         }
         val marker = builder.mark()
+        builder.advanceLexer()
         var identifier: PsiBuilder.Marker? = null
-        parseBracketEnclosed(builder) {
+        parseEnclosed(builder, ZigTokenType.R_BRACKET) {
             if (identifier == null) {
                 if (builder.tokenType === ZigTokenType.IDENTIFIER) {
                     identifier = builder.mark()
@@ -1801,31 +1878,41 @@ class ZigParser : PsiParser {
         if (identifier == null) {
             // TODO: mark error
         }
+        if (!expect(builder, ZigTokenType.R_BRACKET)) {
+            // TODO: mark error
+        }
         if (!expect(builder, ZigTokenType.STRING_LITERAL)) {
             // TODO: mark error
         }
-        var expr: PsiBuilder.Marker? = null
-        parseParenEnclosed(builder) {
-            if (expr == null) {
-                when (builder.tokenType) {
-                    ZigTokenType.ARROW -> {
-                        expr = builder.mark()
-                        builder.advanceLexer()
-                        tryTypeExpr(builder)
-                        expr!!.drop()
+        if (expect(builder, ZigTokenType.L_PAREN)) {
+            var expr: PsiBuilder.Marker? = null
+            parseEnclosed(builder, ZigTokenType.R_PAREN) {
+                if (expr == null) {
+                    when (builder.tokenType) {
+                        ZigTokenType.ARROW -> {
+                            expr = builder.mark()
+                            builder.advanceLexer()
+                            tryTypeExpr(builder)
+                            expr!!.drop()
+                        }
+                        ZigTokenType.IDENTIFIER -> {
+                            expr = builder.mark()
+                            builder.advanceLexer()
+                            expr.done(ZigElementType.IDENTIFIER)
+                        }
                     }
-                    ZigTokenType.IDENTIFIER -> {
-                        expr = builder.mark()
-                        builder.advanceLexer()
-                        expr.done(ZigElementType.IDENTIFIER)
-                    }
+                    expr
+                } else {
+                    null
                 }
-                expr
-            } else {
-                null
             }
-        }
-        if (expr == null) {
+            if (expr == null) {
+                // TODO: mark error
+            }
+            if (!expect(builder, ZigTokenType.R_PAREN)) {
+                // TODO: mark error
+            }
+        } else {
             // TODO: mark error
         }
         marker.done(ZigElementType.ASM_OUTPUT_ITEM)
@@ -1837,8 +1924,9 @@ class ZigParser : PsiParser {
             return null
         }
         val marker = builder.mark()
+        builder.advanceLexer()
         var identifier: PsiBuilder.Marker? = null
-        parseBracketEnclosed(builder) {
+        parseEnclosed(builder, ZigTokenType.R_BRACKET) {
             if (identifier == null) {
                 if (builder.tokenType === ZigTokenType.IDENTIFIER) {
                     identifier = builder.mark()
@@ -1853,19 +1941,29 @@ class ZigParser : PsiParser {
         if (identifier == null) {
             // TODO: mark error
         }
+        if (!expect(builder, ZigTokenType.R_BRACKET)) {
+            // TODO: mark error
+        }
         if (!expect(builder, ZigTokenType.STRING_LITERAL)) {
             // TODO: mark error
         }
-        var expr: PsiBuilder.Marker? = null
-        parseParenEnclosed(builder) {
-            if (expr == null) {
-                expr = tryExpr(builder)
-                expr
-            } else {
-                null
+        if (expect(builder, ZigTokenType.L_PAREN)) {
+            var expr: PsiBuilder.Marker? = null
+            parseEnclosed(builder, ZigTokenType.R_PAREN) {
+                if (expr == null) {
+                    expr = tryExpr(builder)
+                    expr
+                } else {
+                    null
+                }
             }
-        }
-        if (expr == null) {
+            if (expr == null) {
+                // TODO: mark error
+            }
+            if (!expect(builder, ZigTokenType.R_PAREN)) {
+                // TODO: mark error
+            }
+        } else {
             // TODO: mark error
         }
         marker.done(ZigElementType.ASM_INPUT_ITEM)
@@ -1921,9 +2019,9 @@ class ZigParser : PsiParser {
         }
         val marker = builder.mark()
         builder.advanceLexer()
-        if (builder.tokenType === ZigTokenType.L_PAREN) {
+        if (expect(builder, ZigTokenType.L_PAREN)) {
             var expr: PsiBuilder.Marker? = null
-            parseParenEnclosed(builder) {
+            parseEnclosed(builder, ZigTokenType.R_PAREN) {
                 if (expr == null) {
                     expr = tryExpr(builder)
                     expr
@@ -1934,6 +2032,9 @@ class ZigParser : PsiParser {
             if (expr == null) {
                 // TODO: mark error
             }
+            if (!expect(builder, ZigTokenType.R_PAREN)) {
+                // TODO: mark error
+            }
         } else {
             // TODO: mark error
         }
@@ -1941,33 +2042,15 @@ class ZigParser : PsiParser {
         return marker
     }
 
-    private fun parseParenEnclosed(builder: PsiBuilder, parseMember: () -> PsiBuilder.Marker?) {
-        val enclosure = Enclosure(EnclosureType.OTHER, ZigTokenType.L_PAREN, ZigTokenType.R_PAREN)
-        parseEnclosed(builder, enclosure, parseMember)
-    }
-
-    private fun parseBracketEnclosed(builder: PsiBuilder, parseMember: () -> PsiBuilder.Marker?) {
-        val enclosure = Enclosure(EnclosureType.OTHER, ZigTokenType.L_BRACKET, ZigTokenType.R_BRACKET)
-        parseEnclosed(builder, enclosure, parseMember)
-    }
-
-    private fun parseBraceEnclosed(
+    private fun parseEnclosed(
         builder: PsiBuilder,
+        right: IElementType?,
         type: EnclosureType = EnclosureType.OTHER,
         parseMember: () -> PsiBuilder.Marker?,
     ) {
-        val enclosure = Enclosure(type, ZigTokenType.L_BRACE, ZigTokenType.R_BRACE)
-        parseEnclosed(builder, enclosure, parseMember)
-    }
-
-    private fun parseEnclosed(builder: PsiBuilder, enclosure: Enclosure, parseMember: () -> PsiBuilder.Marker?) {
-        if (enclosure.left != null && !expect(builder, enclosure.left)) {
-            return
-        }
-        enclosureStack.addLast(enclosure)
+        enclosureStack.addLast(Enclosure(type, right))
         while (!builder.eof()) {
-            if (builder.tokenType === enclosure.right) {
-                builder.advanceLexer()
+            if (builder.tokenType === right) {
                 break
             }
             if (enclosureStack.any { builder.tokenType === it.right}) {
@@ -1976,14 +2059,37 @@ class ZigParser : PsiParser {
             if (parseMember() != null) {
                 continue
             }
-            when (builder.tokenType) {
-                ZigTokenType.L_BRACE -> parseBraceEnclosed(builder) { null }
-                ZigTokenType.L_BRACKET -> parseBracketEnclosed(builder) { null }
-                ZigTokenType.L_PAREN -> parseParenEnclosed(builder) { null }
-                else -> {
-                    val invalid = builder.mark()
-                    builder.advanceLexer()
-                    invalid.error("Unexpected token")
+            val type = builder.tokenType
+            with(builder.mark()) {
+                builder.advanceLexer()
+                error("Unexpected token")
+            }
+            when (type) {
+                ZigTokenType.L_BRACE -> {
+                    parseEnclosed(builder, ZigTokenType.R_BRACE) { null }
+                    if (builder.tokenType === ZigTokenType.R_BRACE) {
+                        val invalid = builder.mark()
+                        builder.advanceLexer()
+                        invalid.error("Unexpected token")
+                    }
+                }
+                ZigTokenType.L_BRACKET -> {
+                    parseEnclosed(builder, ZigTokenType.R_BRACKET) { null }
+                    if (builder.tokenType === ZigTokenType.R_BRACKET) {
+                        with(builder.mark()) {
+                            builder.advanceLexer()
+                            error("Unexpected token")
+                        }
+                    }
+                }
+                ZigTokenType.L_PAREN -> {
+                    parseEnclosed(builder, ZigTokenType.R_PAREN) { null }
+                    if (builder.tokenType === ZigTokenType.R_PAREN) {
+                        with(builder.mark()) {
+                            builder.advanceLexer()
+                            error("Unexpected token")
+                        }
+                    }
                 }
             }
         }
