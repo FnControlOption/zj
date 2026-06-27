@@ -20,3 +20,4 @@ const foo = asm volatile (bar : [baz] "qux" (-> ));
 const foo: if (bar) else = baz;
 const foo: while (bar) else = baz;
 const foo: for (bar) |baz| else = qux;
+const foo = bar(baz qux);

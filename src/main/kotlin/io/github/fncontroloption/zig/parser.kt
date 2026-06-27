@@ -630,7 +630,7 @@ class ZigParser : PsiParser {
         val arg = expr.precede()
         arg.done(ZigElementType.CALL_ARG)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_PAREN) {
-            // TODO: mark error
+            builder.mark().error("Expected ',' after argument")
         }
         return arg
     }
