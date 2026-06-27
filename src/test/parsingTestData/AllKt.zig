@@ -345,3 +345,4 @@ test {
     foo, var bar = baz;
 }
 const foo = u42;
+const Foo = struct { Bar };
