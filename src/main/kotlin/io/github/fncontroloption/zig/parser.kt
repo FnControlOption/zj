@@ -822,7 +822,7 @@ class ZigParser : PsiParser {
                         builder.advanceLexer()
                         builder.advanceLexer()
                         parseEnclosed(builder, ZigTokenType.R_BRACE) {
-                            tryInitListEntry(builder)
+                            parseInitListEntry(builder)
                         }
                         expectToken(builder, ZigTokenType.R_BRACE)
                         marker.done(ZigElementType.LIST_INIT)
@@ -1056,23 +1056,23 @@ class ZigParser : PsiParser {
         }
         val init = lhs.precede()
         parseEnclosed(builder, ZigTokenType.R_BRACE) {
-            tryInitListEntry(builder)
+            parseInitListEntry(builder)
         }
         expectToken(builder, ZigTokenType.R_BRACE)
         init.done(ZigElementType.LIST_INIT)
         return init
     }
 
-    private fun tryInitListEntry(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parseInitListEntry(builder: PsiBuilder): PsiBuilder.Marker? {
         val entry = builder.mark()
         if (eatTokens(builder, ZigTokenType.PERIOD, ZigTokenType.IDENTIFIER, ZigTokenType.EQUAL)) {
             tryExpr(builder)
-        } else if (tryExpr(builder) == null) {
+        } else if (parseExpr(builder) == null) {
             entry.rollbackTo()
             return null
         }
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_BRACE) {
-            // TODO: mark error
+            builder.mark().error("Expected ',' after initializer")
         }
         entry.done(ZigElementType.LIST_INIT_ITEM)
         return entry
