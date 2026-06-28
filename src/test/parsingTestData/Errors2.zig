@@ -80,3 +80,9 @@ const Foo = struct {
 const foo = bar.;
 const foo = bar + ;
 const foo = try;
+test {
+    if {}
+}
+const foo = if bar;
+const foo = while bar;
+const foo = switch {};

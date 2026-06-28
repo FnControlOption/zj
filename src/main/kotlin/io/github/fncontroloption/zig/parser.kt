@@ -1156,9 +1156,7 @@ class ZigParser : PsiParser {
         assert(builder.tokenType === ZigTokenType.KEYWORD_IF)
         val ifMarker = builder.mark()
         builder.advanceLexer()
-        if (parseCondition(builder) == null) {
-            // TODO: mark error
-        }
+        tryCondition(builder)
         parsePtrPayload(builder, ZigElementType.THEN_PAYLOAD)
         var elseRequired = false;
         val thenMarker = builder.mark()
@@ -1255,9 +1253,7 @@ class ZigParser : PsiParser {
             marker.rollbackTo()
             return null
         }
-        if (parseCondition(builder) == null) {
-            // TODO: mark error
-        }
+        tryCondition(builder)
         parsePtrPayload(builder, ZigElementType.THEN_PAYLOAD)
         val thenMarker = builder.mark()
         tryBody(builder)
@@ -1272,12 +1268,12 @@ class ZigParser : PsiParser {
         return marker
     }
 
-    private fun parseCondition(builder: PsiBuilder): PsiBuilder.Marker? {
-        if (builder.tokenType !== ZigTokenType.L_PAREN) {
+    private fun tryCondition(builder: PsiBuilder): PsiBuilder.Marker? {
+        val marker = builder.mark()
+        if (!expectToken(builder, ZigTokenType.L_PAREN)) {
+            marker.drop()
             return null
         }
-        val marker = builder.mark()
-        builder.advanceLexer()
         var expr: PsiBuilder.Marker? = null
         parseEnclosed(builder, ZigTokenType.R_PAREN) {
             if (expr == null) {
@@ -1407,9 +1403,7 @@ class ZigParser : PsiParser {
     }
 
     private fun trySwitchSuffix(builder: PsiBuilder) {
-        if (parseCondition(builder) == null) {
-            // TODO: mark error
-        }
+        tryCondition(builder)
         if (!expectToken(builder, ZigTokenType.L_BRACE)) {
             return
         }
@@ -1680,9 +1674,7 @@ class ZigParser : PsiParser {
             whileMarker.rollbackTo()
             return null
         }
-        if (parseCondition(builder) == null) {
-            // TODO: mark error
-        }
+        tryCondition(builder)
         parsePtrPayload(builder, ZigElementType.THEN_PAYLOAD)
         if (eatToken(builder, ZigTokenType.COLON) && parseWhileContinueExpr(builder) == null) {
             // TODO: mark error
