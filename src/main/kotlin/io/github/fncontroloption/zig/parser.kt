@@ -484,7 +484,7 @@ class ZigParser : PsiParser {
             ZigTokenType.ASTERISK -> {
                 val expr = builder.mark()
                 builder.advanceLexer()
-                parsePointerModifiers(builder)
+                pointerModifiers(builder)?.drop()
                 tryTypeExpr(builder)
                 expr.done(ZigElementType.POINTER_TYPE)
                 return expr
@@ -546,12 +546,14 @@ class ZigParser : PsiParser {
                     }
                 }
                 expectToken(builder, ZigTokenType.R_BRACKET)
-                val hasModifiers = parsePointerModifiers(builder)
+                val modifiers = pointerModifiers(builder)
+                if (isArray) {
+                    modifiers?.error("Pointer modifier not allowed on array child type")
+                } else {
+                    modifiers?.drop()
+                }
                 tryTypeExpr(builder)
                 if (isArray) {
-                    if (hasModifiers) {
-                        // TODO: mark error
-                    }
                     expr.done(ZigElementType.ARRAY_TYPE)
                 } else {
                     expr.done(ZigElementType.POINTER_TYPE)
@@ -562,10 +564,11 @@ class ZigParser : PsiParser {
         }
     }
 
-    private fun parsePointerModifiers(builder: PsiBuilder): Boolean {
+    private fun pointerModifiers(builder: PsiBuilder): PsiBuilder.Marker? {
         if (builder.tokenType !in ZigTokenSets.POINTER_MODIFIERS) {
-            return false
+            return null
         }
+        val marker = builder.mark()
         while (!builder.eof()) {
             when (builder.tokenType) {
                 ZigTokenType.KEYWORD_ALIGN -> {
@@ -586,7 +589,7 @@ class ZigParser : PsiParser {
                 else -> break
             }
         }
-        return true
+        return marker
     }
 
     private fun parseErrorUnionExpr(builder: PsiBuilder): PsiBuilder.Marker? {
