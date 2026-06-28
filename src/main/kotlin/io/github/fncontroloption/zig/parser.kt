@@ -1178,7 +1178,7 @@ class ZigParser : PsiParser {
             tryStatement(builder)
             elseMarker.done(ZigElementType.ELSE)
         } else if (elseRequired) {
-            // TODO: mark error
+            builder.mark().error("Expected ';' or 'else' after statement")
         }
         ifMarker.done(ZigElementType.IF)
         return ifMarker
@@ -1550,7 +1550,7 @@ class ZigParser : PsiParser {
             tryStatement(builder)
             elseMarker.done(ZigElementType.ELSE)
         } else if (elseRequired) {
-            // TODO: mark error
+            builder.mark().error("Expected ';' or 'else' after statement")
         }
         forMarker.done(ZigElementType.FOR)
         return forMarker
@@ -1660,7 +1660,7 @@ class ZigParser : PsiParser {
             tryStatement(builder)
             elseMarker.done(ZigElementType.ELSE)
         } else if (elseRequired) {
-            // TODO: mark error
+            builder.mark().error("Expected ';' or 'else' after statement")
         }
         whileMarker.done(ZigElementType.WHILE)
         return whileMarker

@@ -91,3 +91,8 @@ test {
     while (foo);
     for (foo) |bar|;
 }
+test {
+    if (foo) bar
+    while (foo) bar
+    for (foo) |bar| baz
+}
