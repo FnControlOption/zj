@@ -235,8 +235,6 @@ object ZigTokenSets {
         ZigTokenType.KEYWORD_NOINLINE
     )
 
-    @JvmField val SEMICOLON_BRACE = TokenSet.create(ZigTokenType.SEMICOLON, ZigTokenType.L_BRACE)
-
     @JvmField val TEST_NAME = TokenSet.create(ZigTokenType.STRING_LITERAL, ZigTokenType.IDENTIFIER)
 
     @JvmField val NOALIAS_COMPTIME = TokenSet.create(ZigTokenType.KEYWORD_NOALIAS, ZigTokenType.KEYWORD_COMPTIME)
@@ -245,8 +243,6 @@ object ZigTokenSets {
 
     @JvmField val ASTERISK_BRACKET_PAREN =
         TokenSet.create(ZigTokenType.ASTERISK, ZigTokenType.R_BRACKET, ZigTokenType.R_PAREN)
-
-    @JvmField val COMMA_BRACE = TokenSet.create(ZigTokenType.COMMA, ZigTokenType.R_BRACE)
 
     @JvmField val POINTER_MODIFIERS = TokenSet.create(
         ZigTokenType.KEYWORD_ALIGN,

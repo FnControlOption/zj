@@ -913,7 +913,7 @@ class ZigParser : PsiParser {
                 break
             }
             if (info.prec == bannedPrec) {
-                builder.error("Comparison operators cannot be chained");
+                builder.error("Comparison operators cannot be chained")
             }
             builder.advanceLexer()
             if (operToken === ZigTokenType.KEYWORD_CATCH) {
@@ -1160,7 +1160,7 @@ class ZigParser : PsiParser {
         builder.advanceLexer()
         tryCondition(builder)
         parsePtrPayload(builder, ZigElementType.THEN_PAYLOAD)
-        var elseRequired = false;
+        var elseRequired = false
         val thenMarker = builder.mark()
         if (parseBlockExpr(builder) == null) {
             if (parseAssignExpr(builder) == null) {
@@ -1552,7 +1552,7 @@ class ZigParser : PsiParser {
 
     private fun parseForStatement(builder: PsiBuilder): PsiBuilder.Marker? {
         val forMarker = forPrefix(builder) ?: return null
-        var elseRequired = false;
+        var elseRequired = false
         val thenMarker = builder.mark()
         if (parseBlockExpr(builder) == null) {
             if (parseAssignExpr(builder) == null) {
@@ -1890,34 +1890,6 @@ class ZigParser : PsiParser {
         tryExpr(builder)
         marker.done(ZigElementType.ASM_CLOBBERS)
         return marker
-    }
-
-    private fun parseUntil(builder: PsiBuilder, terminator: IElementType) {
-        parseUntil(builder) { it === terminator }
-    }
-
-    private fun parseUntil(builder: PsiBuilder, terminators: TokenSet) {
-        parseUntil(builder) { it in terminators }
-    }
-
-    private inline fun parseUntil(builder: PsiBuilder, terminator: (IElementType?) -> Boolean) {
-        var braces = 0
-        var brackets = 0
-        var parens = 0
-        while (!builder.eof()) {
-            if (braces == 0 && brackets == 0 && parens == 0 && terminator(builder.tokenType)) {
-                break
-            }
-            when (builder.tokenType) {
-                ZigTokenType.L_BRACE -> braces++
-                ZigTokenType.R_BRACE -> braces--
-                ZigTokenType.L_BRACKET -> brackets++
-                ZigTokenType.R_BRACKET -> brackets--
-                ZigTokenType.L_PAREN -> parens++
-                ZigTokenType.R_PAREN -> parens--
-            }
-            builder.advanceLexer()
-        }
     }
 
     private fun parseParenEnclosedExpr(
