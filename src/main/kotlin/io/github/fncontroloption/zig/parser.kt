@@ -1225,7 +1225,7 @@ class ZigParser : PsiParser {
     private fun tryVarDeclExprStatement(builder: PsiBuilder): PsiBuilder.Marker? {
         val statement = parseVarDeclExprStatement(builder)
         if (statement == null) {
-            // TODO: mark error
+            builder.mark().error("Expected expression or var decl")
         }
         return null
     }
@@ -1254,7 +1254,7 @@ class ZigParser : PsiParser {
             statement.drop()
             val expr = finishAssignExpr(builder, scratch[0])
             expectToken(builder, ZigTokenType.SEMICOLON)
-            return expr;
+            return expr
         }
 
         tryExpr(builder)
@@ -1354,7 +1354,7 @@ class ZigParser : PsiParser {
     private fun tryAssignExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         val expr = parseAssignExpr(builder)
         if (expr == null) {
-            // TODO: mark error
+            builder.mark().error("Expected expression or assignment")
         }
         return expr
     }

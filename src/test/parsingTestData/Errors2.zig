@@ -129,3 +129,20 @@ test {
 test {
     for (foo) |bar| {} else
 }
+test {
+    comptime
+}
+test {
+    if (foo)
+        bar
+    else
+        comptime;
+    while (foo)
+        bar
+    else
+        comptime;
+    for (foo) |bar|
+        baz
+    else
+        comptime;
+}
