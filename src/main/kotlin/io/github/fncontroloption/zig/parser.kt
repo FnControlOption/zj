@@ -185,7 +185,7 @@ class ZigParser : PsiParser {
         }
         if (expectToken(builder, ZigTokenType.L_PAREN)) {
             parseEnclosed(builder, ZigTokenType.R_PAREN) {
-                tryCallArg(builder)
+                parseCallArg(builder)
             }
             expectToken(builder, ZigTokenType.R_PAREN)
         }
@@ -613,7 +613,7 @@ class ZigParser : PsiParser {
             return null
         }
         parseEnclosed(builder, ZigTokenType.R_PAREN) {
-            tryCallArg(builder)
+            parseCallArg(builder)
         }
         expectToken(builder, ZigTokenType.R_PAREN)
         val call = lhs.precede()
@@ -621,8 +621,8 @@ class ZigParser : PsiParser {
         return call
     }
 
-    private fun tryCallArg(builder: PsiBuilder): PsiBuilder.Marker? {
-        val expr = tryExpr(builder) ?: return null
+    private fun parseCallArg(builder: PsiBuilder): PsiBuilder.Marker? {
+        val expr = parseExpr(builder) ?: return null
         val arg = expr.precede()
         arg.done(ZigElementType.CALL_ARG)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_PAREN) {
