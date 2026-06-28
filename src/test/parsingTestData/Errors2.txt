@@ -1278,8 +1278,8 @@ ZigFile:Errors2.zig(0,3064)
       ZigListInitItem(LIST_INIT_ITEM)(1621,1624)
         ZigIdentifier(IDENTIFIER)(1621,1624)
           PsiElement(an identifier)('bar')(1621,1624)
-        PsiErrorElement:Expected ',' after initializer(1624,1624)
-          <empty list>
+      PsiErrorElement:Expected ',' after initializer(1624,1624)
+        <empty list>
       PsiWhiteSpace(' ')(1624,1625)
       ZigListInitItem(LIST_INIT_ITEM)(1625,1628)
         ZigIdentifier(IDENTIFIER)(1625,1628)

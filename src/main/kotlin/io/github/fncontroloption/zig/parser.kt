@@ -368,8 +368,8 @@ class ZigParser : PsiParser {
             field.rollbackTo()
             return null
         }
-        eatToken(builder, ZigTokenType.COMMA)
         field.done(ZigElementType.ERROR_SET_ITEM)
+        eatToken(builder, ZigTokenType.COMMA)
         return field
     }
 
@@ -1071,10 +1071,10 @@ class ZigParser : PsiParser {
             entry.rollbackTo()
             return null
         }
+        entry.done(ZigElementType.LIST_INIT_ITEM)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_BRACE) {
             builder.mark().error("Expected ',' after initializer")
         }
-        entry.done(ZigElementType.LIST_INIT_ITEM)
         return entry
     }
 
