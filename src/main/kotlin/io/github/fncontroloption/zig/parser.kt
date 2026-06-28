@@ -1189,10 +1189,29 @@ class ZigParser : PsiParser {
         if (statement != null) {
             return statement
         }
-        if (!eatTokens(builder, ZigTokenType.IDENTIFIER, ZigTokenType.COLON)) {
-            return null
+        val marker = builder.mark()
+        if (eatTokens(builder, ZigTokenType.IDENTIFIER, ZigTokenType.COLON)) {
+            val subMarker = builder.mark()
+            if (parseTypeExpr(builder) != null) {
+                val a = parseAlign(builder)
+                val b = parseAddrspace(builder)
+                val c = parseLinksection(builder)
+                val d = eatToken(builder, ZigTokenType.EQUAL)
+                if (d) {
+                    parseExpr(builder)
+                    eatToken(builder, ZigTokenType.SEMICOLON)
+                }
+                if (a != null || b != null || c != null || d) {
+                    subMarker.drop()
+                    marker.error("Expected 'var' or 'const' before variable declaration")
+                    return marker
+                }
+            }
+            subMarker.rollbackTo()
+            marker.error("Expected 'while', 'for', 'inline', or '{'")
+            return marker
         }
-        // TODO: mark error
+        marker.drop()
         return null
     }
 

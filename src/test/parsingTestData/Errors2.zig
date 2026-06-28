@@ -96,3 +96,11 @@ test {
     while (foo) bar
     for (foo) |bar| baz
 }
+test {
+    foo: Foo align(bar)
+    foo: Foo addrspace(bar)
+    foo: Foo linksection(bar)
+    foo: Foo = bar;
+    foo: Foo align(a) addrspace(b) linksection(c) = d;
+    foo:
+}
