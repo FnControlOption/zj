@@ -6,6 +6,7 @@ import com.intellij.lang.PsiBuilder
 import com.intellij.lang.PsiParser
 import com.intellij.openapi.project.Project
 import com.intellij.psi.FileViewProvider
+import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
 import io.github.fncontroloption.zig.psi2.ZigElementType
@@ -1949,7 +1950,7 @@ class ZigParser : PsiParser {
             val type = builder.tokenType
             with(builder.mark()) {
                 builder.advanceLexer()
-                error("Unexpected token")
+                error("Unexpected '${tokenSymbol(type)}'")
             }
             when (type) {
                 ZigTokenType.L_BRACE -> {
@@ -1957,7 +1958,7 @@ class ZigParser : PsiParser {
                     if (builder.tokenType === ZigTokenType.R_BRACE) {
                         val invalid = builder.mark()
                         builder.advanceLexer()
-                        invalid.error("Unexpected token")
+                        invalid.error("Unexpected '}'")
                     }
                 }
                 ZigTokenType.L_BRACKET -> {
@@ -1965,7 +1966,7 @@ class ZigParser : PsiParser {
                     if (builder.tokenType === ZigTokenType.R_BRACKET) {
                         with(builder.mark()) {
                             builder.advanceLexer()
-                            error("Unexpected token")
+                            error("Unexpected ']'")
                         }
                     }
                 }
@@ -1974,7 +1975,7 @@ class ZigParser : PsiParser {
                     if (builder.tokenType === ZigTokenType.R_PAREN) {
                         with(builder.mark()) {
                             builder.advanceLexer()
-                            error("Unexpected token")
+                            error("Unexpected ')'")
                         }
                     }
                 }
@@ -1993,8 +1994,7 @@ class ZigParser : PsiParser {
         if (eatToken(builder, expectedType)) {
             return true
         } else {
-            val actual = builder.tokenType?.toString() ?: "EOF"
-            builder.mark().error("Expected '$expectedType', found '$actual'")
+            builder.mark().error("Expected '$expectedType', found '${tokenSymbol(builder.tokenType)}'")
             return false
         }
     }
@@ -2026,4 +2026,10 @@ class ZigParser : PsiParser {
         }
         return false
     }
+}
+
+private fun tokenSymbol(type: IElementType?) = when (type) {
+    null -> "EOF"
+    TokenType.BAD_CHARACTER -> "bad character"
+    else -> type.toString()
 }
