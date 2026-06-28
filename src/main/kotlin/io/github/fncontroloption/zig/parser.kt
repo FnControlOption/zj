@@ -28,16 +28,13 @@ class ZigParserDefinition : ParserDefinition {
 // Based on https://codeberg.org/ziglang/zig/src/commit/72d954e/lib/std/zig/Parse.zig
 /** @see com.intellij.java.syntax.parser.JavaParser */
 class ZigParser : PsiParser {
-    private enum class EnclosureType { CONTAINER, OTHER }
-    private class Enclosure(val type: EnclosureType, val right: IElementType?)
-
-    private val enclosureStack = ArrayDeque<Enclosure>()
+    private val enclosureStack = ArrayDeque<IElementType?>()
     private val containerStack = ArrayDeque<IElementType>()
 
     override fun parse(root: IElementType, builder: PsiBuilder): ASTNode {
-        containerStack.addLast(root)
+        containerStack.addLast(ZigFileElementType)
         val rootMarker = builder.mark()
-        parseEnclosed(builder, null, EnclosureType.CONTAINER) {
+        parseEnclosed(builder, null) {
             parseContainerMember(builder)
         }
         rootMarker.done(root)
@@ -64,7 +61,7 @@ class ZigParser : PsiParser {
         containerStack.addLast(containerToken!!)
         parseContainerDeclTag(builder)
         if (expectToken(builder, ZigTokenType.L_BRACE)) {
-            parseEnclosed(builder, ZigTokenType.R_BRACE, EnclosureType.CONTAINER) {
+            parseEnclosed(builder, ZigTokenType.R_BRACE) {
                 parseContainerMember(builder)
             }
             expectToken(builder, ZigTokenType.R_BRACE)
@@ -397,12 +394,6 @@ class ZigParser : PsiParser {
     }
 
     private fun parseContainerField(builder: PsiBuilder): PsiBuilder.Marker? {
-        val enclosure = enclosureStack.last()
-        when (enclosure.type) {
-            EnclosureType.CONTAINER -> {}
-            else -> return null
-        }
-
         val prevToken = builder.rawLookup(-1)
         if (prevToken in ZigTokenSets.MUT_TOKENS) {
             return null
@@ -1930,15 +1921,14 @@ class ZigParser : PsiParser {
     private fun parseEnclosed(
         builder: PsiBuilder,
         right: IElementType?,
-        type: EnclosureType = EnclosureType.OTHER,
         parseMember: () -> PsiBuilder.Marker?,
     ) {
-        enclosureStack.addLast(Enclosure(type, right))
+        enclosureStack.addLast(right)
         while (!builder.eof()) {
             if (builder.tokenType === right) {
                 break
             }
-            if (enclosureStack.any { builder.tokenType === it.right}) {
+            if (enclosureStack.any { builder.tokenType === it }) {
                 break
             }
             if (parseMember() != null) {
