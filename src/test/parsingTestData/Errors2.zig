@@ -69,3 +69,5 @@ test {
     inline;
     foo: inline;
 }
+const Foo = fn (#) Foo;
+const Foo = fn (noalias) Foo;

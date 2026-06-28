@@ -272,7 +272,7 @@ class ZigParser : PsiParser {
         }
         if (expectToken(builder, ZigTokenType.L_PAREN)) {
             parseEnclosed(builder, ZigTokenType.R_PAREN) {
-                tryFnParamDecl(builder)
+                parseFnParamDecl(builder)
             }
             expectToken(builder, ZigTokenType.R_PAREN)
         }
@@ -316,7 +316,7 @@ class ZigParser : PsiParser {
         return decl
     }
 
-    private fun tryFnParamDecl(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parseFnParamDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         val decl = builder.mark()
         if (eatToken(builder, ZigTokenType.ELLIPSIS3)) {
             decl.drop()
@@ -327,10 +327,15 @@ class ZigParser : PsiParser {
             return decl
         }
         eatToken(builder, ZigTokenSets.NOALIAS_COMPTIME)
-        eatTokens(builder, ZigTokenType.IDENTIFIER, ZigTokenType.COLON)
+        val hasName = eatTokens(builder, ZigTokenType.IDENTIFIER, ZigTokenType.COLON)
         if (!eatToken(builder, ZigTokenType.KEYWORD_ANYTYPE)) {
             val type = builder.mark()
-            tryTypeExpr(builder)
+            if (hasName) {
+                tryTypeExpr(builder)
+            } else if (parseTypeExpr(builder) == null) {
+                decl.rollbackTo()
+                return null
+            }
             type.done(ZigElementType.TYPE)
         }
         decl.done(ZigElementType.PARAM_DECL)
