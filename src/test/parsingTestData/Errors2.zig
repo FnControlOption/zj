@@ -146,3 +146,6 @@ test {
     else
         comptime;
 }
+const foo = switch (bar) {
+    baz =>
+};

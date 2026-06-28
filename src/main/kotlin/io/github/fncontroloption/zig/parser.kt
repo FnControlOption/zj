@@ -1362,7 +1362,7 @@ class ZigParser : PsiParser {
     private fun trySingleAssignExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         val expr = parseSingleAssignExpr(builder)
         if (expr == null) {
-            // TODO: mark error
+            builder.mark().error("Expected expression or assignment")
         }
         return expr
     }
