@@ -944,7 +944,7 @@ class ZigParser : PsiParser {
     private fun tryPrefixExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         val expr = parsePrefixExpr(builder)
         if (expr == null) {
-            // TODO: mark error
+            builder.mark().error("Expected prefix expression")
         }
         return expr
     }

@@ -79,3 +79,4 @@ const Foo = struct {
 };
 const foo = bar.;
 const foo = bar + ;
+const foo = try;

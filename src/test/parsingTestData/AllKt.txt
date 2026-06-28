@@ -1051,6 +1051,8 @@ ZigFile:AllKt.zig(0,7423)
     PsiWhiteSpace(' ')(1566,1567)
     ZigTry(TRY)(1567,1570)
       PsiElement(try)('try')(1567,1570)
+      PsiErrorElement:Expected prefix expression(1570,1570)
+        <empty list>
     PsiWhiteSpace(' ')(1570,1571)
     PsiElement(;)(';')(1571,1572)
   PsiWhiteSpace('\n')(1572,1573)
