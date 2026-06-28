@@ -1777,8 +1777,9 @@ class ZigParser : PsiParser {
             }
             if (!eatToken(builder, ZigTokenType.COMMA)
                 && builder.tokenType !== ZigTokenType.COLON
-                && builder.tokenType !== ZigTokenType.R_PAREN) {
-                // TODO: mark error
+                && builder.tokenType !== ZigTokenType.R_PAREN
+            ) {
+                builder.mark().error("Expected ','")
             }
         }
         marker.drop()
@@ -1805,7 +1806,7 @@ class ZigParser : PsiParser {
             }
         }
         if (identifier == null) {
-            // TODO: mark error
+            builder.mark().error("Expected an identifier")
         }
         expectToken(builder, ZigTokenType.R_BRACKET)
         expectToken(builder, ZigTokenType.STRING_LITERAL)
@@ -1832,7 +1833,7 @@ class ZigParser : PsiParser {
                 }
             }
             if (expr == null) {
-                // TODO: mark error
+                builder.mark().error("Expected an identifier")
             }
             expectToken(builder, ZigTokenType.R_PAREN)
         }
@@ -1860,7 +1861,7 @@ class ZigParser : PsiParser {
             }
         }
         if (identifier == null) {
-            // TODO: mark error
+            builder.mark().error("Expected an identifier")
         }
         expectToken(builder, ZigTokenType.R_BRACKET)
         expectToken(builder, ZigTokenType.STRING_LITERAL)
