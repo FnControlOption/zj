@@ -448,7 +448,7 @@ class ZigParser : PsiParser {
                 else -> ZigTokenType.R_BRACE
             }
             if (builder.tokenType !== terminator) {
-                // TODO: mark error
+                builder.mark().error("Expected ',' after field")
             }
         }
         return field

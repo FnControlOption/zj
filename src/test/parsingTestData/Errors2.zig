@@ -73,3 +73,7 @@ const Foo = fn (#) Foo;
 const Foo = fn (noalias) Foo;
 const foo = .{#};
 const foo = .{ bar baz };
+const Foo = struct {
+    bar: Bar
+    const baz = qux;
+};
