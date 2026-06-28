@@ -1937,7 +1937,7 @@ class ZigParser : PsiParser {
             val type = builder.tokenType
             with(builder.mark()) {
                 builder.advanceLexer()
-                error("Unexpected '${tokenSymbol(type)}'")
+                error("Unexpected token: ${tokenSymbol(type)}")
             }
             when (type) {
                 ZigTokenType.L_BRACE -> {
@@ -1945,7 +1945,7 @@ class ZigParser : PsiParser {
                     if (builder.tokenType === ZigTokenType.R_BRACE) {
                         val invalid = builder.mark()
                         builder.advanceLexer()
-                        invalid.error("Unexpected '}'")
+                        invalid.error("Unexpected token: }")
                     }
                 }
                 ZigTokenType.L_BRACKET -> {
@@ -1953,7 +1953,7 @@ class ZigParser : PsiParser {
                     if (builder.tokenType === ZigTokenType.R_BRACKET) {
                         with(builder.mark()) {
                             builder.advanceLexer()
-                            error("Unexpected ']'")
+                            error("Unexpected token: ]")
                         }
                     }
                 }
@@ -1962,7 +1962,7 @@ class ZigParser : PsiParser {
                     if (builder.tokenType === ZigTokenType.R_PAREN) {
                         with(builder.mark()) {
                             builder.advanceLexer()
-                            error("Unexpected ')'")
+                            error("Unexpected token: )")
                         }
                     }
                 }
