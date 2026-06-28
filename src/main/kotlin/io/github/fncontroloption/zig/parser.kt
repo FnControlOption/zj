@@ -1564,7 +1564,7 @@ class ZigParser : PsiParser {
             forMarker.rollbackTo()
             return null
         }
-        parseForInputs(builder)
+        tryForInputs(builder)
         if (builder.tokenType !== ZigTokenType.PIPE) {
             // TODO: mark error
             return forMarker
@@ -1589,7 +1589,7 @@ class ZigParser : PsiParser {
         return forMarker
     }
 
-    private fun parseForInputs(builder: PsiBuilder) {
+    private fun tryForInputs(builder: PsiBuilder) {
         if (!expectToken(builder, ZigTokenType.L_PAREN)) {
             return
         }
