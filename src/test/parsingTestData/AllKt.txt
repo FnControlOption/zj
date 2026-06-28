@@ -380,6 +380,8 @@ ZigFile:AllKt.zig(0,7423)
       ZigIdentifier(IDENTIFIER)(529,532)
         PsiElement(an identifier)('bar')(529,532)
       PsiElement(.)('.')(532,533)
+      PsiErrorElement:Expected pointer dereference, optional unwrap, or field access(533,533)
+        <empty list>
     PsiWhiteSpace(' ')(533,534)
     PsiElement(;)(';')(534,535)
   PsiWhiteSpace('\n')(535,536)

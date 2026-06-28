@@ -77,3 +77,4 @@ const Foo = struct {
     bar: Bar
     const baz = qux;
 };
+const foo = bar.;

@@ -704,8 +704,8 @@ class ZigParser : PsiParser {
                         return null
                     }
                     else -> {
-                        // TODO: mark error
                         builder.advanceLexer()
+                        builder.mark().error("Expected pointer dereference, optional unwrap, or field access")
                         return ZigElementType.FIELD_ACCESS
                     }
                 }
