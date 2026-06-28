@@ -78,3 +78,4 @@ const Foo = struct {
     const baz = qux;
 };
 const foo = bar.;
+const foo = bar + ;

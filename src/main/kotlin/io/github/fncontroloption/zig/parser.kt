@@ -921,9 +921,8 @@ class ZigParser : PsiParser {
             if (operToken === ZigTokenType.KEYWORD_CATCH) {
                 parsePayload(builder, ZigElementType.CATCH_PAYLOAD)
             }
-            if (parseExprPrecedence(builder, info.prec + 1) == null) {
-                // TODO: mark error
-            }
+            val rhs = parseExprPrecedence(builder, info.prec + 1)
+            checkExpectedExpr(builder, rhs)
             expr = expr.precede()
             expr.done(info.nodeType)
             if (info.assoc == Assoc.NONE) {

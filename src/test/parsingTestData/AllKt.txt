@@ -1013,6 +1013,8 @@ ZigFile:AllKt.zig(0,7423)
         PsiElement(an identifier)('bar')(1520,1523)
       PsiWhiteSpace(' ')(1523,1524)
       PsiElement(+)('+')(1524,1525)
+      PsiErrorElement:Expected expression(1525,1525)
+        <empty list>
     PsiWhiteSpace(' ')(1525,1526)
     PsiElement(;)(';')(1526,1527)
   PsiWhiteSpace('\n')(1527,1528)
