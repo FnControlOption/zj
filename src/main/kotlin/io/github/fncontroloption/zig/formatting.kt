@@ -197,10 +197,6 @@ class ZigFormattingBlock(
     }
 
     override fun getChildAttributes(newChildIndex: Int): ChildAttributes {
-        for (i in 0..<newChildIndex) {
-            val block = subBlocks[i]
-            println(block)
-        }
         val indent = when (myNode.elementType) {
             in BRACE_ENCLOSED,
             in BRACKET_ENCLOSED,
