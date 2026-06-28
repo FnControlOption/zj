@@ -260,16 +260,16 @@ class ZigParser : PsiParser {
         return parseParenEnclosedExpr(builder, ZigTokenType.KEYWORD_CALLCONV, ZigElementType.CALLCONV_MODIFIER)
     }
 
-    private fun parseFnProto(builder: PsiBuilder, requireName: Boolean, terminators: TokenSet?): PsiBuilder.Marker? {
+    private fun parseFnProto(builder: PsiBuilder, expectName: Boolean): PsiBuilder.Marker? {
         val proto = builder.mark()
         if (!eatToken(builder, ZigTokenType.KEYWORD_FN)) {
             proto.rollbackTo()
             return null
         }
-        val hasName = eatToken(builder, ZigTokenType.IDENTIFIER)
-        if (!hasName && requireName) {
-            proto.rollbackTo()
-            return null
+        if (expectName) {
+            expectToken(builder, ZigTokenType.IDENTIFIER)
+        } else {
+            eatToken(builder, ZigTokenType.IDENTIFIER)
         }
         if (expectToken(builder, ZigTokenType.L_PAREN)) {
             parseEnclosed(builder, ZigTokenType.R_PAREN) {
@@ -285,11 +285,6 @@ class ZigParser : PsiParser {
         val returnType = builder.mark()
         if (parseTypeExpr(builder) == null) {
             builder.mark().error("Expected return type expression")
-            if (terminators == null) {
-                proto.rollbackTo()
-                return null
-            }
-            parseUntil(builder, terminators)
         }
         returnType.done(ZigElementType.TYPE)
         proto.done(ZigElementType.FN_PROTO)
@@ -304,7 +299,7 @@ class ZigParser : PsiParser {
         } else {
             eatToken(builder, ZigTokenSets.EXPORT_INLINE)
         }
-        val proto = parseFnProto(builder, true, ZigTokenSets.SEMICOLON_BRACE)
+        val proto = parseFnProto(builder, true)
         if (proto == null) {
             decl.rollbackTo()
             return null
@@ -750,7 +745,7 @@ class ZigParser : PsiParser {
                 return marker
             }
             ZigTokenType.BUILTIN -> return parseBuiltinCall(builder)
-            ZigTokenType.KEYWORD_FN -> return parseFnProto(builder, false, null)
+            ZigTokenType.KEYWORD_FN -> return parseFnProto(builder, false)
             ZigTokenType.KEYWORD_IF -> return parseIf(builder, this::tryTypeExpr)
             ZigTokenType.KEYWORD_SWITCH -> return assertSwitchExpr(builder)
             in ZigTokenSets.EXTERN_PACKED, in ZigTokenSets.CONTAINERS -> return parseContainerDecl(builder)

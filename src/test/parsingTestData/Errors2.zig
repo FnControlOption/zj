@@ -149,3 +149,6 @@ test {
 const foo = switch (bar) {
     baz =>
 };
+fn () Foo {}
+fn foo() {}
+const foo = fn ();
