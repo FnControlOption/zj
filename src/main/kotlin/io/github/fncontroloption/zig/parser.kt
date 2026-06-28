@@ -768,8 +768,12 @@ class ZigParser : PsiParser {
                                 ZigTokenType.KEYWORD_FOR -> parseFor(builder, this::tryTypeExpr)
                                 ZigTokenType.KEYWORD_WHILE -> parseWhile(builder, this::tryTypeExpr)
                                 else -> {
-                                    // TODO: mark error
-                                    null
+                                    val marker = builder.mark()
+                                    builder.advanceLexer()
+                                    builder.advanceLexer()
+                                    builder.advanceLexer()
+                                    marker.error("Expected 'while' or 'for'")
+                                    marker
                                 }
                             }
                         }
@@ -789,8 +793,10 @@ class ZigParser : PsiParser {
                     ZigTokenType.KEYWORD_FOR -> parseFor(builder, this::tryTypeExpr)
                     ZigTokenType.KEYWORD_WHILE -> parseWhile(builder, this::tryTypeExpr)
                     else -> {
-                        // TODO: mark error
-                        null
+                        val marker = builder.mark()
+                        builder.advanceLexer()
+                        marker.error("Expected 'while' or 'for'")
+                        marker
                     }
                 }
             }
@@ -1003,8 +1009,12 @@ class ZigParser : PsiParser {
                                 ZigTokenType.KEYWORD_FOR -> parseFor(builder, this::tryExpr)
                                 ZigTokenType.KEYWORD_WHILE -> parseWhile(builder, this::tryExpr)
                                 else -> {
-                                    // TODO: mark error
-                                    null
+                                    val marker = builder.mark()
+                                    builder.advanceLexer()
+                                    builder.advanceLexer()
+                                    builder.advanceLexer()
+                                    marker.error("Expected 'while' or 'for'")
+                                    marker
                                 }
                             }
                         }
@@ -1019,8 +1029,10 @@ class ZigParser : PsiParser {
                     ZigTokenType.KEYWORD_FOR -> parseFor(builder, this::tryExpr)
                     ZigTokenType.KEYWORD_WHILE -> parseWhile(builder, this::tryExpr)
                     else -> {
-                        // TODO: mark error
-                        null
+                        val marker = builder.mark()
+                        builder.advanceLexer()
+                        marker.error("Expected 'while' or 'for'")
+                        marker
                     }
                 }
             }
@@ -1348,9 +1360,14 @@ class ZigParser : PsiParser {
         if (statement != null) {
             return statement
         }
-        if (eatToken(builder, ZigTokenType.KEYWORD_INLINE)) {
-            // TODO: mark error
+        val marker = builder.mark()
+        if (eatToken(builder, ZigTokenType.KEYWORD_INLINE)
+            || eatTokens(builder, ZigTokenType.IDENTIFIER, ZigTokenType.COLON, ZigTokenType.KEYWORD_INLINE)
+        ) {
+            marker.error("Expected 'while' or 'for'")
+            return marker
         }
+        marker.drop()
         return null
     }
 

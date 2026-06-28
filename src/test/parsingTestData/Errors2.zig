@@ -61,3 +61,11 @@ const foo = switch (bar) {
     baz... => qux,
 };
 const foo = for (bar..) |baz| qux;
+const foo: inline = bar;
+const foo: bar: inline = baz;
+const foo = inline;
+const foo = bar: inline;
+test {
+    inline;
+    foo: inline;
+}
