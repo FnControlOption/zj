@@ -211,9 +211,9 @@ class ZigParser : PsiParser {
         proto.drop()
         if (expectToken(builder, ZigTokenType.EQUAL)) {
             tryExpr(builder)
-            expectToken(builder, ZigTokenType.SEMICOLON)
         }
         decl.done(ZigElementType.VAR_DECL)
+        expectToken(builder, ZigTokenType.SEMICOLON)
         return decl
     }
 
@@ -305,9 +305,12 @@ class ZigParser : PsiParser {
             return null
         }
         proto.drop()
-        if (!eatToken(builder, ZigTokenType.SEMICOLON)) {
-            parseBlock(builder)
+        if (builder.tokenType === ZigTokenType.SEMICOLON) {
+            decl.done(ZigElementType.FN_DECL)
+            builder.advanceLexer()
+            return decl
         }
+        parseBlock(builder)
         decl.done(ZigElementType.FN_DECL)
         return decl
     }
@@ -1092,15 +1095,17 @@ class ZigParser : PsiParser {
             ZigTokenType.KEYWORD_COMPTIME -> {
                 val marker = builder.mark()
                 builder.advanceLexer()
-                if (parseBlockExpr(builder) == null) {
-                    if (isBlockLevel) {
-                        tryVarDeclExprStatement(builder)
-                    } else {
-                        tryAssignExpr(builder)
-                        expectToken(builder, ZigTokenType.SEMICOLON)
-                    }
+                if (parseBlockExpr(builder) != null) {
+                    marker.done(ZigElementType.COMPTIME)
+                    return marker
+                }
+                if (isBlockLevel) {
+                    tryVarDeclExpr(builder)
+                } else {
+                    tryAssignExpr(builder)
                 }
                 marker.done(ZigElementType.COMPTIME)
+                expectToken(builder, ZigTokenType.SEMICOLON)
                 return marker
             }
             ZigTokenType.KEYWORD_NOSUSPEND -> {
@@ -1145,13 +1150,16 @@ class ZigParser : PsiParser {
         if (labeledStatement != null) {
             return labeledStatement
         }
-        if (isBlockLevel) {
-            return parseVarDeclExprStatement(builder)
+        val expr = if (isBlockLevel) {
+            parseVarDeclExpr(builder)
         } else {
-            val expr = parseAssignExpr(builder) ?: return null
-            expectToken(builder, ZigTokenType.SEMICOLON)
-            return expr
+            parseAssignExpr(builder)
         }
+        if (expr == null) {
+            return null
+        }
+        expectToken(builder, ZigTokenType.SEMICOLON)
+        return expr
     }
 
     private fun assertIfStatement(builder: PsiBuilder): PsiBuilder.Marker {
@@ -1166,9 +1174,10 @@ class ZigParser : PsiParser {
             if (parseAssignExpr(builder) == null) {
                 builder.mark().error("Expected block or assignment")
             }
-            if (eatToken(builder, ZigTokenType.SEMICOLON)) {
+            if (builder.tokenType === ZigTokenType.SEMICOLON) {
                 thenMarker.done(ZigElementType.THEN)
                 ifMarker.done(ZigElementType.IF)
+                builder.advanceLexer()
                 return ifMarker
             }
             elseRequired = true
@@ -1201,11 +1210,11 @@ class ZigParser : PsiParser {
                 val d = eatToken(builder, ZigTokenType.EQUAL)
                 if (d) {
                     parseExpr(builder)
-                    eatToken(builder, ZigTokenType.SEMICOLON)
                 }
                 if (a != null || b != null || c != null || d) {
                     subMarker.drop()
                     marker.error("Expected 'var' or 'const' before variable declaration")
+                    eatToken(builder, ZigTokenType.SEMICOLON)
                     return marker
                 }
             }
@@ -1217,15 +1226,15 @@ class ZigParser : PsiParser {
         return null
     }
 
-    private fun tryVarDeclExprStatement(builder: PsiBuilder): PsiBuilder.Marker? {
-        val statement = parseVarDeclExprStatement(builder)
+    private fun tryVarDeclExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+        val statement = parseVarDeclExpr(builder)
         if (statement == null) {
             builder.mark().error("Expected expression or var decl")
         }
         return null
     }
 
-    private fun parseVarDeclExprStatement(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parseVarDeclExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         val statement = builder.mark()
         val scratch = mutableListOf<PsiBuilder.Marker>()
 
@@ -1247,13 +1256,10 @@ class ZigParser : PsiParser {
             expectToken(builder, ZigTokenType.EQUAL)
         } else if (!eatToken(builder, ZigTokenType.EQUAL)) {
             statement.drop()
-            val expr = finishAssignExpr(builder, scratch[0])
-            expectToken(builder, ZigTokenType.SEMICOLON)
-            return expr
+            return finishAssignExpr(builder, scratch[0])
         }
 
         tryExpr(builder)
-        expectToken(builder, ZigTokenType.SEMICOLON)
 
         if (scratch.size == 1) {
             if (scratch[0].tokenType === ZigElementType.VAR_PROTO) {
@@ -1558,9 +1564,10 @@ class ZigParser : PsiParser {
             if (parseAssignExpr(builder) == null) {
                 builder.mark().error("Expected block or assignment")
             }
-            if (eatToken(builder, ZigTokenType.SEMICOLON)) {
+            if (builder.tokenType === ZigTokenType.SEMICOLON) {
                 thenMarker.done(ZigElementType.THEN)
                 forMarker.done(ZigElementType.FOR)
+                builder.advanceLexer()
                 return forMarker
             }
             elseRequired = true
@@ -1670,9 +1677,10 @@ class ZigParser : PsiParser {
             if (parseAssignExpr(builder) == null) {
                 builder.mark().error("Expected block or assignment")
             }
-            if (eatToken(builder, ZigTokenType.SEMICOLON)) {
+            if (builder.tokenType === ZigTokenType.SEMICOLON) {
                 thenMarker.done(ZigElementType.THEN)
                 whileMarker.done(ZigElementType.WHILE)
+                builder.advanceLexer()
                 return whileMarker
             }
             elseRequired = true
