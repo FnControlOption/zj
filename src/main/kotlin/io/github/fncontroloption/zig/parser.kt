@@ -1162,7 +1162,7 @@ class ZigParser : PsiParser {
         val thenMarker = builder.mark()
         if (parseBlockExpr(builder) == null) {
             if (parseAssignExpr(builder) == null) {
-                // TODO: mark error
+                builder.mark().error("Expected block or assignment")
             }
             if (eatToken(builder, ZigTokenType.SEMICOLON)) {
                 thenMarker.done(ZigElementType.THEN)
@@ -1535,7 +1535,7 @@ class ZigParser : PsiParser {
         val thenMarker = builder.mark()
         if (parseBlockExpr(builder) == null) {
             if (parseAssignExpr(builder) == null) {
-                // TODO: mark error
+                builder.mark().error("Expected block or assignment")
             }
             if (eatToken(builder, ZigTokenType.SEMICOLON)) {
                 thenMarker.done(ZigElementType.THEN)
@@ -1644,7 +1644,7 @@ class ZigParser : PsiParser {
         val thenMarker = builder.mark()
         if (parseBlockExpr(builder) == null) {
             if (parseAssignExpr(builder) == null) {
-                // TODO: mark error
+                builder.mark().error("Expected block or assignment")
             }
             if (eatToken(builder, ZigTokenType.SEMICOLON)) {
                 thenMarker.done(ZigElementType.THEN)

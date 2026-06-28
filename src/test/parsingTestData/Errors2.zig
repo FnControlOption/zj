@@ -86,3 +86,8 @@ test {
 const foo = if bar;
 const foo = while bar;
 const foo = switch {};
+test {
+    if (foo);
+    while (foo);
+    for (foo) |bar|;
+}
