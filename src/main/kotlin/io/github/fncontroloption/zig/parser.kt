@@ -1698,18 +1698,19 @@ class ZigParser : PsiParser {
         }
         tryCondition(builder)
         parsePtrPayload(builder, ZigElementType.THEN_PAYLOAD)
-        if (eatToken(builder, ZigTokenType.COLON) && parseWhileContinueExpr(builder) == null) {
-            // TODO: mark error
-        }
+        parseWhileContinueExpr(builder)
         return whileMarker
     }
 
     private fun parseWhileContinueExpr(builder: PsiBuilder): PsiBuilder.Marker? {
-        if (builder.tokenType !== ZigTokenType.L_PAREN) {
+        if (!eatToken(builder, ZigTokenType.COLON)) {
             return null
         }
         val marker = builder.mark()
-        builder.advanceLexer()
+        if (!expectToken(builder, ZigTokenType.L_PAREN)) {
+            marker.drop()
+            return null
+        }
         var expr: PsiBuilder.Marker? = null
         parseEnclosed(builder, ZigTokenType.R_PAREN) {
             if (expr == null) {
@@ -1720,7 +1721,7 @@ class ZigParser : PsiParser {
             }
         }
         if (expr == null) {
-            // TODO: mark error
+            builder.mark().error("Expected expression or assignment")
         }
         expectToken(builder, ZigTokenType.R_PAREN)
         marker.done(ZigElementType.WHILE_CONTINUE_EXPR)

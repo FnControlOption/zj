@@ -114,3 +114,5 @@ const foo = for (bar) | | baz;
 const foo = for (bar) |* | baz;
 const foo = for (bar) |*a b| baz;
 const foo = for () |bar| baz;
+const foo = while (bar) : baz;
+const foo = while (bar) : () baz;
