@@ -1451,7 +1451,7 @@ class ZigParser : PsiParser {
         trySingleAssignExpr(builder)
         marker.done(ZigElementType.SWITCH_PRONG)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_BRACE) {
-            // TODO: mark error
+            builder.mark().error("Expected ',' after switch prong")
         }
         return marker
     }

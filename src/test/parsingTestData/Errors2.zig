@@ -104,3 +104,7 @@ test {
     foo: Foo align(a) addrspace(b) linksection(c) = d;
     foo:
 }
+const foo = switch (bar) {
+    baz => qux
+    fizz => buzz
+};
