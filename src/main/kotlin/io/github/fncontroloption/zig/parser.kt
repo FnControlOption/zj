@@ -1735,7 +1735,7 @@ class ZigParser : PsiParser {
                     inputList = parseAsmIOList(builder, this::parseAsmInputItem)
                     inputList
                 } else if (clobbers == null) {
-                    clobbers = parseClobbers(builder)
+                    clobbers = parseAsmClobbers(builder)
                     clobbers
                 } else {
                     null
@@ -1864,7 +1864,7 @@ class ZigParser : PsiParser {
         return marker
     }
 
-    private fun parseClobbers(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parseAsmClobbers(builder: PsiBuilder): PsiBuilder.Marker? {
         if (builder.tokenType !== ZigTokenType.COLON) {
             return null
         }
