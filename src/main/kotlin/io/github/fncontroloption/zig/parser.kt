@@ -1083,7 +1083,11 @@ class ZigParser : PsiParser {
     private fun tryStatement(builder: PsiBuilder, isBlockLevel: Boolean = false): PsiBuilder.Marker? {
         val statement = parseStatement(builder, isBlockLevel)
         if (statement == null) {
-            // TODO: mark error
+            if (isBlockLevel) {
+                builder.mark().error("Expected expression or var decl")
+            } else {
+                builder.mark().error("Expected expression or assignment")
+            }
         }
         return statement
     }

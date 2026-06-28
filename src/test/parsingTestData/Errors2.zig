@@ -120,3 +120,12 @@ const foo: [len]align(bar) const volatile allowzero addrspace(baz) Foo = qux;
 const foo = asm (bar : [] "baz" () : [] "qux" () : );
 const foo = asm (bar : [a] "b" (c) [d] "e" (f));
 const foo = asm (bar : : [a] "b" (c) [d] "e" (f));
+test {
+    if (foo) {} else
+}
+test {
+    while (foo) {} else
+}
+test {
+    for (foo) |bar| {} else
+}
