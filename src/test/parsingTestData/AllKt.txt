@@ -3169,6 +3169,8 @@ ZigFile:AllKt.zig(0,7423)
           ZigIdentifier(IDENTIFIER)(4546,4549)
             PsiElement(an identifier)('foo')(4546,4549)
         PsiElement())(')')(4549,4550)
+        PsiErrorElement:Expected loop payload(4550,4550)
+          <empty list>
         PsiWhiteSpace(' ')(4550,4551)
         ZigThenElement(THEN)(4551,4553)
           ZigBlock(BLOCK)(4551,4553)

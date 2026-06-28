@@ -1585,21 +1585,26 @@ class ZigParser : PsiParser {
         }
         tryForInputs(builder)
         if (builder.tokenType !== ZigTokenType.PIPE) {
-            // TODO: mark error
+            builder.mark().error("Expected loop payload")
             return forMarker
         }
         val payload = builder.mark()
         builder.advanceLexer()
         while (!builder.eof()) {
-            val entry = builder.mark()
-            eatToken(builder, ZigTokenType.ASTERISK)
-            if (eatToken(builder, ZigTokenType.IDENTIFIER)) {
-                entry.done(ZigElementType.PAYLOAD_ITEM)
-            } else {
-                entry.drop()
-                // TODO: mark error
+            val item = builder.mark()
+            if (eatToken(builder, ZigTokenType.ASTERISK)) {
+                expectToken(builder, ZigTokenType.IDENTIFIER)
+            } else if (!expectToken(builder, ZigTokenType.IDENTIFIER)) {
+                item.drop()
+                break
             }
-            if (!eatToken(builder, ZigTokenType.COMMA)) {
+            item.done(ZigElementType.PAYLOAD_ITEM)
+            when (builder.tokenType) {
+                ZigTokenType.COMMA -> builder.advanceLexer()
+                ZigTokenType.PIPE -> break
+                else -> builder.mark().error("Expected ',' after for capture")
+            }
+            if (builder.tokenType === ZigTokenType.PIPE) {
                 break
             }
         }
@@ -1612,17 +1617,15 @@ class ZigParser : PsiParser {
         if (!expectToken(builder, ZigTokenType.L_PAREN)) {
             return
         }
-        var hasInput = false
+        var lastInput: PsiBuilder.Marker? = null
         parseEnclosed(builder, ZigTokenType.R_PAREN) {
             val input = parseForInput(builder)
             if (input != null) {
-                hasInput = true
+                lastInput = input
             }
             input
         }
-        if (!hasInput) {
-            // TODO: mark error
-        }
+        checkExpectedExpr(builder, lastInput)
         expectToken(builder, ZigTokenType.R_PAREN)
     }
 
@@ -1637,7 +1640,7 @@ class ZigParser : PsiParser {
         }
         input.done(ZigElementType.FOR_INPUT)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_PAREN) {
-            // TODO: mark error
+            builder.mark().error("Expected ',' after for operand")
         }
         return input
     }

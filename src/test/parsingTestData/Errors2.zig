@@ -108,3 +108,9 @@ const foo = switch (bar) {
     baz => qux
     fizz => buzz
 };
+const foo = for (a b) |c, d| bar;
+const foo = for (bar) baz;
+const foo = for (bar) | | baz;
+const foo = for (bar) |* | baz;
+const foo = for (bar) |*a b| baz;
+const foo = for () |bar| baz;
