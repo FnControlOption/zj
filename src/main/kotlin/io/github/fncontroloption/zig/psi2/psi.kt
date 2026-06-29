@@ -19,14 +19,14 @@ import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigIdentifierReference
 import io.github.fncontroloption.zig.ZigLanguage
 
-sealed class ZigElement(node: ASTNode) : ASTWrapperPsiElement(node)
+sealed interface ZigElement : PsiElement
 
-sealed interface ZigPayload : PsiElement {
+sealed interface ZigPayload : ZigElement {
     val items: Sequence<ZigPayloadItem>
         get() = firstChild.siblings().filterIsInstance<ZigPayloadItem>()
 }
 
-class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage) {
+class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage), ZigElement {
     val members: Sequence<ZigElement>
         get() = firstChild?.siblings()?.filterIsInstance<ZigElement>() ?: emptySequence()
 
@@ -34,76 +34,76 @@ class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLan
     override fun toString() = "ZigFile:$name"
 }
 
-class ZigAdd(node: ASTNode) : ZigElement(node) {
+class ZigAdd(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAddSat(node: ASTNode) : ZigElement(node) {
+class ZigAddSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAddWrap(node: ASTNode) : ZigElement(node) {
+class ZigAddWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAddressOf(node: ASTNode) : ZigElement(node) {
+class ZigAddressOf(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAddrspaceModifier(node: ASTNode) : ZigElement(node) {
+class ZigAddrspaceModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAlignModifier(node: ASTNode) : ZigElement(node) {
+class ZigAlignModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAnyframeLiteral(node: ASTNode) : ZigElement(node) {
+class ZigAnyframeLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAnyframeType(node: ASTNode) : ZigElement(node) {
+class ZigAnyframeType(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigArrayAccess(node: ASTNode) : ZigElement(node) {
+class ZigArrayAccess(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigArrayCat(node: ASTNode) : ZigElement(node) {
+class ZigArrayCat(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigArrayIndex(node: ASTNode) : ZigElement(node) {
+class ZigArrayIndex(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigArrayType(node: ASTNode) : ZigElement(node) {
+class ZigArrayType(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAsm(node: ASTNode) : ZigElement(node) {
+class ZigAsm(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAsmClobbers(node: ASTNode) : ZigElement(node) {
+class ZigAsmClobbers(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAsmInputItem(node: ASTNode) : ZigElement(node) {
+class ZigAsmInputItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAsmOutputItem(node: ASTNode) : ZigElement(node) {
+class ZigAsmOutputItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssign(node: ASTNode) : ZigElement(node) {
+class ZigAssign(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignAdd(node: ASTNode) : ZigElement(node) {
+class ZigAssignAdd(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignAddSat(node: ASTNode) : ZigElement(node) {
+class ZigAssignAddSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignAddWrap(node: ASTNode) : ZigElement(node) {
+class ZigAssignAddWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignBitAnd(node: ASTNode) : ZigElement(node) {
+class ZigAssignBitAnd(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignBitOr(node: ASTNode) : ZigElement(node) {
+class ZigAssignBitOr(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignBitXor(node: ASTNode) : ZigElement(node) {
+class ZigAssignBitXor(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignDestructure(node: ASTNode) : ZigElement(node) {
+class ZigAssignDestructure(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val variables: Sequence<ZigElement>
         get() =
             firstChild
@@ -121,55 +121,55 @@ class ZigAssignDestructure(node: ASTNode) : ZigElement(node) {
                 ?.firstNotNullOfOrNull { it as? ZigElement }
 }
 
-class ZigAssignDiv(node: ASTNode) : ZigElement(node) {
+class ZigAssignDiv(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignMod(node: ASTNode) : ZigElement(node) {
+class ZigAssignMod(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignMul(node: ASTNode) : ZigElement(node) {
+class ZigAssignMul(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignMulSat(node: ASTNode) : ZigElement(node) {
+class ZigAssignMulSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignMulWrap(node: ASTNode) : ZigElement(node) {
+class ZigAssignMulWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignShl(node: ASTNode) : ZigElement(node) {
+class ZigAssignShl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignShlSat(node: ASTNode) : ZigElement(node) {
+class ZigAssignShlSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignShr(node: ASTNode) : ZigElement(node) {
+class ZigAssignShr(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignSub(node: ASTNode) : ZigElement(node) {
+class ZigAssignSub(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignSubSat(node: ASTNode) : ZigElement(node) {
+class ZigAssignSubSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigAssignSubWrap(node: ASTNode) : ZigElement(node) {
+class ZigAssignSubWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigBangEqual(node: ASTNode) : ZigElement(node) {
+class ZigBangEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigBitAnd(node: ASTNode) : ZigElement(node) {
+class ZigBitAnd(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigBitNot(node: ASTNode) : ZigElement(node) {
+class ZigBitNot(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigBitOr(node: ASTNode) : ZigElement(node) {
+class ZigBitOr(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigBitXor(node: ASTNode) : ZigElement(node) {
+class ZigBitXor(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigBlock(node: ASTNode) : ZigElement(node) {
+class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val statements: Sequence<ZigElement>
         get() =
             firstChild
@@ -178,31 +178,31 @@ class ZigBlock(node: ASTNode) : ZigElement(node) {
                 .filter { it !is ZigLabelDecl }
 }
 
-class ZigBoolAnd(node: ASTNode) : ZigElement(node) {
+class ZigBoolAnd(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigBoolNot(node: ASTNode) : ZigElement(node) {
+class ZigBoolNot(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigBoolOr(node: ASTNode) : ZigElement(node) {
+class ZigBoolOr(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigBreak(node: ASTNode) : ZigElement(node) {
+class ZigBreak(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigBuiltinCall(node: ASTNode) : ZigElement(node) {
+class ZigBuiltinCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigCall(node: ASTNode) : ZigElement(node) {
+class ZigCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigCallArg(node: ASTNode) : ZigElement(node) {
+class ZigCallArg(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigCallconvModifier(node: ASTNode) : ZigElement(node) {
+class ZigCallconvModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigCatch(node: ASTNode) : ZigElement(node) {
+class ZigCatch(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val leftOperand: ZigElement?
         get() = firstChild as? ZigElement
 
@@ -213,21 +213,21 @@ class ZigCatch(node: ASTNode) : ZigElement(node) {
         get() = if (lastChild !is ZigCatchPayload) lastChild as? ZigElement else null
 }
 
-class ZigCatchPayload(node: ASTNode) : ZigElement(node), ZigPayload {
+class ZigCatchPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
 }
 
-class ZigCharLiteral(node: ASTNode) : ZigElement(node) {
+class ZigCharLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigComptime(node: ASTNode) : ZigElement(node) {
+class ZigComptime(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigConditionElement(node: ASTNode) : ZigElement(node) {
+class ZigConditionElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 enum class ZigContainerKind { STRUCT, OPAQUE, ENUM, UNION }
 
-class ZigContainerDecl(node: ASTNode) : ZigElement(node) {
+class ZigContainerDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val containerKindElement: PsiElement
         get() = findNotNullChildByType(ZigTokenSets.CONTAINERS)
 
@@ -253,7 +253,7 @@ class ZigContainerDecl(node: ASTNode) : ZigElement(node) {
     }
 }
 
-class ZigContainerField(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
+class ZigContainerField(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiNameIdentifierOwner {
     val typeElement: ZigTypeElement?
         get() = findChildByClass(ZigTypeElement::class.java)
 
@@ -270,25 +270,25 @@ class ZigContainerField(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwne
     }
 }
 
-class ZigContainerTag(node: ASTNode) : ZigElement(node) {
+class ZigContainerTag(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigContainerTagEnum(node: ASTNode) : ZigElement(node) {
+class ZigContainerTagEnum(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigContinue(node: ASTNode) : ZigElement(node) {
+class ZigContinue(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigDefer(node: ASTNode) : ZigElement(node) {
+class ZigDefer(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigDeref(node: ASTNode) : ZigElement(node) {
+class ZigDeref(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigDiv(node: ASTNode) : ZigElement(node) {
+class ZigDiv(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigElseElement(node: ASTNode) : ZigElement(node) {
+class ZigElseElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val payload: ZigElsePayload?
         get() = when (val parent = parent) {
             is ZigIf -> parent.elsePayload
@@ -297,36 +297,36 @@ class ZigElseElement(node: ASTNode) : ZigElement(node) {
         }
 }
 
-class ZigElsePayload(node: ASTNode) : ZigElement(node), ZigPayload {
+class ZigElsePayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
 }
 
-class ZigEnumLiteral(node: ASTNode) : ZigElement(node) {
+class ZigEnumLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val identifierElement: PsiElement?
         get() = findChildByType(ZigTokenType.IDENTIFIER)
 }
 
-class ZigEqualEqual(node: ASTNode) : ZigElement(node) {
+class ZigEqualEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigErrdefer(node: ASTNode) : ZigElement(node) {
+class ZigErrdefer(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigErrorSetDecl(node: ASTNode) : ZigElement(node) {
+class ZigErrorSetDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigErrorSetItem(node: ASTNode) : ZigElement(node) {
+class ZigErrorSetItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigErrorUnion(node: ASTNode) : ZigElement(node) {
+class ZigErrorUnion(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigErrorValue(node: ASTNode) : ZigElement(node) {
+class ZigErrorValue(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigFieldAccess(node: ASTNode) : ZigElement(node) {
+class ZigFieldAccess(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigFnDecl(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
+class ZigFnDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiNameIdentifierOwner {
     val pubTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.KEYWORD_PUB)
 
@@ -390,37 +390,37 @@ class ZigFnDecl(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
     }
 }
 
-class ZigFnProto(node: ASTNode) : ZigElement(node) {
+class ZigFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigFor(node: ASTNode) : ZigElement(node) {
+class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val payload: ZigForPayload?
         get() = findChildByClass(ZigForPayload::class.java)
 }
 
-class ZigForInput(node: ASTNode) : ZigElement(node) {
+class ZigForInput(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigForPayload(node: ASTNode) : ZigElement(node), ZigPayload {
+class ZigForPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
 }
 
-class ZigGreaterOrEqual(node: ASTNode) : ZigElement(node) {
+class ZigGreaterOrEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigGreaterThan(node: ASTNode) : ZigElement(node) {
+class ZigGreaterThan(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigGroupedExpression(node: ASTNode) : ZigElement(node) {
+class ZigGroupedExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigIdentifier(node: ASTNode) : ZigElement(node) {
+class ZigIdentifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val identifierElement: PsiElement?
         get() = findChildByType(ZigTokenType.IDENTIFIER)
 
     override fun getReferences() = arrayOf(ZigIdentifierReference(this))
 }
 
-class ZigIf(node: ASTNode) : ZigElement(node) {
+class ZigIf(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val thenPayload: ZigThenPayload?
         get() = findChildByClass(ZigThenPayload::class.java)
 
@@ -428,64 +428,64 @@ class ZigIf(node: ASTNode) : ZigElement(node) {
         get() = findChildByClass(ZigElsePayload::class.java)
 }
 
-class ZigLabelDecl(node: ASTNode) : ZigElement(node) {
+class ZigLabelDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigLabelRef(node: ASTNode) : ZigElement(node) {
+class ZigLabelRef(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigLessOrEqual(node: ASTNode) : ZigElement(node) {
+class ZigLessOrEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigLessThan(node: ASTNode) : ZigElement(node) {
+class ZigLessThan(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigLinksectionModifier(node: ASTNode) : ZigElement(node) {
+class ZigLinksectionModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigListInit(node: ASTNode) : ZigElement(node) {
+class ZigListInit(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigListInitItem(node: ASTNode) : ZigElement(node) {
+class ZigListInitItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigMergeErrorSets(node: ASTNode) : ZigElement(node) {
+class ZigMergeErrorSets(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigMod(node: ASTNode) : ZigElement(node) {
+class ZigMod(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigMul(node: ASTNode) : ZigElement(node) {
+class ZigMul(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigMulSat(node: ASTNode) : ZigElement(node) {
+class ZigMulSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigMulWrap(node: ASTNode) : ZigElement(node) {
+class ZigMulWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigMultilineStringLiteral(node: ASTNode) : ZigElement(node) {
+class ZigMultilineStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigNegation(node: ASTNode) : ZigElement(node) {
+class ZigNegation(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigNegationWrap(node: ASTNode) : ZigElement(node) {
+class ZigNegationWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigNosuspend(node: ASTNode) : ZigElement(node) {
+class ZigNosuspend(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigNumberLiteral(node: ASTNode) : ZigElement(node) {
+class ZigNumberLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigOptionalType(node: ASTNode) : ZigElement(node) {
+class ZigOptionalType(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigOrelse(node: ASTNode) : ZigElement(node) {
+class ZigOrelse(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigParamDecl(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
+class ZigParamDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiNameIdentifierOwner {
     val typeElement: ZigTypeElement?
         get() = findChildByClass(ZigTypeElement::class.java)
 
@@ -495,70 +495,70 @@ class ZigParamDecl(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
-class ZigPayloadItem(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
+class ZigPayloadItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiNameIdentifierOwner {
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = nameIdentifier?.text
     override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
-class ZigPointerType(node: ASTNode) : ZigElement(node) {
+class ZigPointerType(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigResume(node: ASTNode) : ZigElement(node) {
+class ZigResume(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigReturn(node: ASTNode) : ZigElement(node) {
+class ZigReturn(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigShl(node: ASTNode) : ZigElement(node) {
+class ZigShl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigShlSat(node: ASTNode) : ZigElement(node) {
+class ZigShlSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigShr(node: ASTNode) : ZigElement(node) {
+class ZigShr(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigSlice(node: ASTNode) : ZigElement(node) {
+class ZigSlice(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigSliceIndexes(node: ASTNode) : ZigElement(node) {
+class ZigSliceIndexes(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigSliceSentinel(node: ASTNode) : ZigElement(node) {
+class ZigSliceSentinel(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigStringLiteral(node: ASTNode) : ZigElement(node) {
+class ZigStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigSub(node: ASTNode) : ZigElement(node) {
+class ZigSub(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigSubSat(node: ASTNode) : ZigElement(node) {
+class ZigSubSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigSubWrap(node: ASTNode) : ZigElement(node) {
+class ZigSubWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigSuspend(node: ASTNode) : ZigElement(node) {
+class ZigSuspend(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigSwitch(node: ASTNode) : ZigElement(node) {
+class ZigSwitch(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigSwitchItem(node: ASTNode) : ZigElement(node) {
+class ZigSwitchItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigSwitchPayload(node: ASTNode) : ZigElement(node), ZigPayload {
+class ZigSwitchPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
 }
 
-class ZigSwitchProng(node: ASTNode) : ZigElement(node) {
+class ZigSwitchProng(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val payload: ZigSwitchPayload?
         get() = findChildByClass(ZigSwitchPayload::class.java)
 }
 
-class ZigTestDecl(node: ASTNode) : ZigElement(node) {
+class ZigTestDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val nameElement: PsiElement?
         get() = findChildByType(ZigTokenSets.TEST_NAME)
 
@@ -569,7 +569,7 @@ class ZigTestDecl(node: ASTNode) : ZigElement(node) {
     }
 }
 
-class ZigThenElement(node: ASTNode) : ZigElement(node) {
+class ZigThenElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val payload: ZigPayload?
         get() = when (val parent = parent) {
             is ZigIf -> parent.thenPayload
@@ -579,32 +579,32 @@ class ZigThenElement(node: ASTNode) : ZigElement(node) {
         }
 }
 
-class ZigThenPayload(node: ASTNode) : ZigElement(node), ZigPayload {
+class ZigThenPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
 }
 
-class ZigTry(node: ASTNode) : ZigElement(node) {
+class ZigTry(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigTypeElement(node: ASTNode) : ZigElement(node) {
+class ZigTypeElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val innerElement: ZigElement?
         get() = findChildByClass(ZigElement::class.java)
 }
 
-class ZigTypeLength(node: ASTNode) : ZigElement(node) {
+class ZigTypeLength(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigTypeSentinel(node: ASTNode) : ZigElement(node) {
+class ZigTypeSentinel(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigUnreachableLiteral(node: ASTNode) : ZigElement(node) {
+class ZigUnreachableLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigUnwrapOptional(node: ASTNode) : ZigElement(node) {
+class ZigUnwrapOptional(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 enum class ZigMutability { CONST, VAR }
 
-interface ZigVarDeclOrProto : PsiNameIdentifierOwner {
+sealed interface ZigVarDeclOrProto : ZigElement, PsiNameIdentifierOwner {
     val mutabilityElement: PsiElement
 
     val mutability: ZigMutability
@@ -617,7 +617,7 @@ interface ZigVarDeclOrProto : PsiNameIdentifierOwner {
     val typeElement: ZigTypeElement?
 }
 
-class ZigVarDecl(node: ASTNode) : ZigElement(node), ZigVarDeclOrProto {
+class ZigVarDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto {
     val pubTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.KEYWORD_PUB)
 
@@ -652,7 +652,7 @@ class ZigVarDecl(node: ASTNode) : ZigElement(node), ZigVarDeclOrProto {
     }
 }
 
-class ZigVarProto(node: ASTNode) : ZigElement(node), ZigVarDeclOrProto {
+class ZigVarProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto {
     override val mutabilityElement: PsiElement
         get() = findNotNullChildByType(ZigTokenSets.MUT_TOKENS)
 
@@ -665,7 +665,7 @@ class ZigVarProto(node: ASTNode) : ZigElement(node), ZigVarDeclOrProto {
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
-class ZigWhile(node: ASTNode) : ZigElement(node) {
+class ZigWhile(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val thenPayload: ZigThenPayload?
         get() = findChildByClass(ZigThenPayload::class.java)
 
@@ -673,7 +673,7 @@ class ZigWhile(node: ASTNode) : ZigElement(node) {
         get() = findChildByClass(ZigElsePayload::class.java)
 }
 
-class ZigWhileContinueExpr(node: ASTNode) : ZigElement(node) {
+class ZigWhileContinueExpr(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 fun createZigFile(project: Project, text: String): ZigFile {

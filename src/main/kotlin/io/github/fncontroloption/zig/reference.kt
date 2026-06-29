@@ -2,6 +2,7 @@ package io.github.fncontroloption.zig
 
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiPolyVariantReference
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.ResolveResult
@@ -334,8 +335,8 @@ fun resolveIdentifierReference(element: PsiElement): PsiElement? {
     var parent = element.parent
     while (parent != null) {
         val target = when (parent) {
-            is ZigFile -> parent.members.find { it.name == name }
-            is ZigContainerDecl -> parent.members.find { it.name == name }
+            is ZigFile -> parent.members.find { it is PsiNameIdentifierOwner && it.name == name }
+            is ZigContainerDecl -> parent.members.find { it is PsiNameIdentifierOwner && it.name == name }
             is ZigFnDecl -> parent.parameters.find { it.name == name }
             is ZigBlock -> parent.statements.firstNotNullOfOrNull { statement ->
                 when (statement) {
