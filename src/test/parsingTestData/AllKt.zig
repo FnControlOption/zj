@@ -346,3 +346,6 @@ test {
 }
 const foo = u42;
 const Foo = struct { Bar };
+test {
+    for (foo, bar..) |baz, qux| {}
+}

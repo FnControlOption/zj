@@ -1636,7 +1636,7 @@ class ZigParser : PsiParser {
             return null
         }
         if (eatToken(builder, ZigTokenType.ELLIPSIS2)) {
-            tryExpr(builder)
+            parseExpr(builder)
         }
         input.done(ZigElementType.FOR_INPUT)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_PAREN) {

@@ -1113,8 +1113,6 @@ ZigFile:Errors2.zig(0,3064)
         ZigIdentifier(IDENTIFIER)(1378,1381)
           PsiElement(an identifier)('bar')(1378,1381)
         PsiElement(..)('..')(1381,1383)
-        PsiErrorElement:Expected expression(1383,1383)
-          <empty list>
       PsiElement())(')')(1383,1384)
       PsiWhiteSpace(' ')(1384,1385)
       ZigForPayload(FOR_PAYLOAD)(1385,1390)
