@@ -350,3 +350,8 @@ test {
     for (foo, bar..) |baz, qux| {}
 }
 const foo = 3.14;
+test {
+    struct {
+        fn foo() void {}
+    }.foo();
+}

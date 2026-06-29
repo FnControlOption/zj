@@ -1133,8 +1133,7 @@ class ZigParser : PsiParser {
             }
             ZigTokenType.KEYWORD_IF -> return assertIfStatement(builder)
             ZigTokenType.KEYWORD_ENUM, ZigTokenType.KEYWORD_STRUCT, ZigTokenType.KEYWORD_UNION -> {
-                // TODO: parse C-style container
-                return null
+                // TODO: report error if C-style container
             }
         }
         val labeledStatement = parseLabeledStatement(builder)
