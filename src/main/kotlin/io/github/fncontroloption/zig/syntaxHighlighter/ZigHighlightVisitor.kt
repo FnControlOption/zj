@@ -17,6 +17,7 @@ import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigMutability
 import io.github.fncontroloption.zig.psi2.ZigParamDecl
 import io.github.fncontroloption.zig.psi2.ZigVarDeclOrProto
+import io.github.fncontroloption.zig.resolveReferences
 import java.util.regex.Pattern
 
 private val PRIMITIVES = setOf(
@@ -144,10 +145,7 @@ class ZigHighlightVisitor : HighlightVisitor {
                     return createHighlightInfo(element, ZigHighlightInfoTypes.KEYWORD)
                 }
 
-                /* TODO
                 createHighlightInfoFromReference(element, element)
-                 */
-                null
             }
 
             /* TODO
@@ -192,7 +190,6 @@ class ZigHighlightVisitor : HighlightVisitor {
         return HighlightInfo.newHighlightInfo(type).range(element).create()
     }
 
-    /* TODO
     private fun createHighlightInfoFromReference(element: PsiElement, range: PsiElement): HighlightInfo? {
         for (target in resolveReferences(element)) {
             val info = createHighlightInfo(target)
@@ -202,5 +199,4 @@ class ZigHighlightVisitor : HighlightVisitor {
         }
         return null
     }
-     */
 }

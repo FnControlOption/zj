@@ -11,3 +11,4 @@ fn foo5(foo6: u42) void {
     const foo8, var foo9 = .{ 42, 42 };
     _ = .{ foo8, foo9 };
 }
+const foo10 = foo5;

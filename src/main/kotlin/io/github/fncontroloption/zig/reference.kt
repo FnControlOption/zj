@@ -2,7 +2,9 @@ package io.github.fncontroloption.zig
 
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiPolyVariantReference
 import com.intellij.psi.PsiReferenceBase
+import com.intellij.psi.ResolveResult
 import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
 import io.github.fncontroloption.zig.psi2.ZigBlock
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
@@ -495,13 +497,13 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<PsiElement> {
         else -> emptySequence()
     }
 }
+*/
 
 fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
     return element.references.asSequence().flatMap { reference ->
         if (reference is PsiPolyVariantReference) {
             reference.multiResolve(false)
                 .asSequence()
-                .filter(ResolveResult::isValidResult)
                 .mapNotNull(ResolveResult::getElement)
         } else {
             sequenceOf(reference.resolve()).filterNotNull()
@@ -509,6 +511,7 @@ fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
     }
 }
 
+/* TODO
 fun followReferencesRecursive(element: PsiElement, visited: MutableSet<PsiElement>): Sequence<PsiElement> {
     if (element in visited) {
         return emptySequence()
