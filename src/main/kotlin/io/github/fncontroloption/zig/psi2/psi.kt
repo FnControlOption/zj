@@ -6,10 +6,13 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.projectView.PresentationData
 import com.intellij.lang.ASTNode
 import com.intellij.navigation.ItemPresentation
+import com.intellij.openapi.project.Project
 import com.intellij.psi.FileViewProvider
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.util.elementType
+import com.intellij.psi.util.siblings
 import com.intellij.ui.RowIcon
 import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.ZigFileType
@@ -32,6 +35,9 @@ inline fun <reified T : PsiElement> childrenOfType(element: PsiElement): Sequenc
 sealed class ZigElement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage) {
+    val members: Sequence<ZigElement>
+        get() = childrenOfType<ZigElement>(this)
+
     override fun getFileType() = ZigFileType
     override fun toString() = "ZigFile:$name"
 }
@@ -225,7 +231,7 @@ class ZigContainerField(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwne
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = nameIdentifier?.text
-    override fun setName(name: String) = throw IncorrectOperationException() // TODO
+    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
     override fun getPresentation(): ItemPresentation {
@@ -307,7 +313,7 @@ class ZigFnDecl(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = nameIdentifier?.text
-    override fun setName(name: String) = throw IncorrectOperationException() // TODO
+    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
     override fun getPresentation(): ItemPresentation {
@@ -372,6 +378,8 @@ class ZigGroupedExpression(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigIdentifier(node: ASTNode) : ZigElement(node) {
+    val identifierElement: PsiElement?
+        get() = findChildByType(ZigTokenType.IDENTIFIER)
 }
 
 class ZigIf(node: ASTNode) : ZigElement(node) {
@@ -440,7 +448,7 @@ class ZigParamDecl(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = nameIdentifier?.text
-    override fun setName(name: String) = throw IncorrectOperationException() // TODO
+    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
@@ -563,9 +571,18 @@ class ZigVarDecl(node: ASTNode) : ZigElement(node), ZigVarDeclOrProto {
     override val typeElement: ZigTypeElement?
         get() = findChildByClass(ZigTypeElement::class.java)
 
+    val equalTokenElement: PsiElement?
+        get() = findChildByType(ZigTokenType.EQUAL)
+
+    val initializer: ZigElement?
+        get() =
+            equalTokenElement
+                ?.siblings(forward = true, withSelf = false)
+                ?.firstNotNullOfOrNull { it as? ZigElement }
+
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = nameIdentifier?.text
-    override fun setName(name: String) = throw IncorrectOperationException() // TODO
+    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
     override fun getPresentation(): ItemPresentation {
@@ -588,7 +605,7 @@ class ZigVarProto(node: ASTNode) : ZigElement(node), ZigVarDeclOrProto {
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = nameIdentifier?.text
-    override fun setName(name: String) = throw IncorrectOperationException() // TODO
+    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
@@ -598,3 +615,30 @@ class ZigWhile(node: ASTNode) : ZigElement(node) {
 class ZigWhileContinueExpr(node: ASTNode) : ZigElement(node) {
 }
 
+fun createZigFile(project: Project, text: String): ZigFile {
+    val fileFactory = PsiFileFactory.getInstance(project)
+    val file = fileFactory.createFileFromText("dummy.zig",ZigLanguage, text)
+    return file as ZigFile
+}
+
+fun createZigIdentifier(project: Project, name: String): ZigIdentifier {
+    val file = createZigFile(project, "const dummy = $name;")
+    val varDecl = file.members.first() as ZigVarDecl
+    return varDecl.initializer as ZigIdentifier
+}
+
+fun createZigIdentifierElement(project: Project, name: String): PsiElement {
+    val identifier = createZigIdentifier(project, name)
+    val element = identifier.identifierElement!!
+    assert(element.elementType == ZigTokenType.IDENTIFIER)
+    return element
+}
+
+fun replaceZigIdentifierElement(parent: PsiElement, oldElement: PsiElement?, newName: String): PsiElement {
+    if (oldElement == null) {
+        throw IncorrectOperationException()
+    }
+    val newElement = createZigIdentifierElement(parent.project, newName)
+    oldElement.replace(newElement)
+    return parent
+}
