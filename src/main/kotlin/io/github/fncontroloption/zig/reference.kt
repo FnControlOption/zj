@@ -7,11 +7,16 @@ import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.ResolveResult
 import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
 import io.github.fncontroloption.zig.psi2.ZigBlock
+import io.github.fncontroloption.zig.psi2.ZigCatch
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
 import io.github.fncontroloption.zig.psi2.ZigContainerField
+import io.github.fncontroloption.zig.psi2.ZigElseElement
 import io.github.fncontroloption.zig.psi2.ZigFile
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
+import io.github.fncontroloption.zig.psi2.ZigSwitchItem
+import io.github.fncontroloption.zig.psi2.ZigSwitchProng
+import io.github.fncontroloption.zig.psi2.ZigThenElement
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 import io.github.fncontroloption.zig.psi2.ZigVarProto
 import io.github.fncontroloption.zig.psi2.replaceZigIdentifierElement
@@ -341,34 +346,10 @@ fun resolveIdentifierReference(element: PsiElement): PsiElement? {
                     else -> null
                 }
             }
-            /* TODO
-            is ZigThen -> {
-                parent = parent.parent
-                val payload = when (parent) {
-                    is ZigIf -> parent.thenPayload
-                    is ZigWhile -> parent.whilePayload
-                    is ZigFor -> parent.forPayload
-                    else -> null
-                }
-                payload?.payloadEntries[name]
-            }
-            is ZigElse -> parent.elsePayload?.payloadEntries[name]
-            is ZigSwitchResult -> {
-                parent = parent.parent
-                if (parent is ZigSwitchProng) {
-                    parent.switchProngPayload?.payloadEntries[name]
-                } else {
-                    null
-                }
-            }
-            is ZigCatch -> {
-                if (element == parent.catchRhs) {
-                    parent.catchPayload?.payloadEntries[name]
-                } else {
-                    null
-                }
-            }
-             */
+            is ZigThenElement -> parent.payload?.items?.find { it.name == name }
+            is ZigElseElement -> parent.payload?.items?.find { it.name == name }
+            is ZigSwitchProng if element !is ZigSwitchItem -> parent.payload?.items?.find { it.name == name }
+            is ZigCatch if element !== parent.leftOperand -> parent.payload?.items?.find { it.name == name }
             else -> null
         }
         if (target != null && target !is ZigContainerField) {

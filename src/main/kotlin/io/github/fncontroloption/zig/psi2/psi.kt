@@ -21,6 +21,11 @@ import io.github.fncontroloption.zig.ZigLanguage
 
 sealed class ZigElement(node: ASTNode) : ASTWrapperPsiElement(node)
 
+sealed interface ZigPayload : PsiElement {
+    val items: Sequence<ZigPayloadItem>
+        get() = firstChild.siblings().filterIsInstance<ZigPayloadItem>()
+}
+
 class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage) {
     val members: Sequence<ZigElement>
         get() =
@@ -202,9 +207,17 @@ class ZigCallconvModifier(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigCatch(node: ASTNode) : ZigElement(node) {
+    val leftOperand: ZigElement?
+        get() = firstChild as? ZigElement
+
+    val payload: ZigCatchPayload?
+        get() = findChildByClass(ZigCatchPayload::class.java)
+
+    val rightOperand: ZigElement?
+        get() = if (lastChild !is ZigCatchPayload) lastChild as? ZigElement else null
 }
 
-class ZigCatchPayload(node: ASTNode) : ZigElement(node) {
+class ZigCatchPayload(node: ASTNode) : ZigElement(node), ZigPayload {
 }
 
 class ZigCharLiteral(node: ASTNode) : ZigElement(node) {
@@ -280,9 +293,15 @@ class ZigDiv(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigElseElement(node: ASTNode) : ZigElement(node) {
+    val payload: ZigElsePayload?
+        get() = when (val parent = parent) {
+            is ZigIf -> parent.elsePayload
+            is ZigWhile -> parent.elsePayload
+            else -> null
+        }
 }
 
-class ZigElsePayload(node: ASTNode) : ZigElement(node) {
+class ZigElsePayload(node: ASTNode) : ZigElement(node), ZigPayload {
 }
 
 class ZigEnumLiteral(node: ASTNode) : ZigElement(node) {
@@ -382,12 +401,14 @@ class ZigFnProto(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigFor(node: ASTNode) : ZigElement(node) {
+    val payload: ZigForPayload?
+        get() = findChildByClass(ZigForPayload::class.java)
 }
 
 class ZigForInput(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigForPayload(node: ASTNode) : ZigElement(node) {
+class ZigForPayload(node: ASTNode) : ZigElement(node), ZigPayload {
 }
 
 class ZigGreaterOrEqual(node: ASTNode) : ZigElement(node) {
@@ -407,6 +428,11 @@ class ZigIdentifier(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigIf(node: ASTNode) : ZigElement(node) {
+    val thenPayload: ZigThenPayload?
+        get() = findChildByClass(ZigThenPayload::class.java)
+
+    val elsePayload: ZigElsePayload?
+        get() = findChildByClass(ZigElsePayload::class.java)
 }
 
 class ZigLabelDecl(node: ASTNode) : ZigElement(node) {
@@ -476,7 +502,11 @@ class ZigParamDecl(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
-class ZigPayloadItem(node: ASTNode) : ZigElement(node) {
+class ZigPayloadItem(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
+    override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
+    override fun getName() = nameIdentifier?.text
+    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
+    override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
 class ZigPointerType(node: ASTNode) : ZigElement(node) {
@@ -527,10 +557,12 @@ class ZigSwitch(node: ASTNode) : ZigElement(node) {
 class ZigSwitchItem(node: ASTNode) : ZigElement(node) {
 }
 
-class ZigSwitchPayload(node: ASTNode) : ZigElement(node) {
+class ZigSwitchPayload(node: ASTNode) : ZigElement(node), ZigPayload {
 }
 
 class ZigSwitchProng(node: ASTNode) : ZigElement(node) {
+    val payload: ZigSwitchPayload?
+        get() = findChildByClass(ZigSwitchPayload::class.java)
 }
 
 class ZigTestDecl(node: ASTNode) : ZigElement(node) {
@@ -545,9 +577,16 @@ class ZigTestDecl(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigThenElement(node: ASTNode) : ZigElement(node) {
+    val payload: ZigPayload?
+        get() = when (val parent = parent) {
+            is ZigIf -> parent.thenPayload
+            is ZigWhile -> parent.thenPayload
+            is ZigFor -> parent.payload
+            else -> null
+        }
 }
 
-class ZigThenPayload(node: ASTNode) : ZigElement(node) {
+class ZigThenPayload(node: ASTNode) : ZigElement(node), ZigPayload {
 }
 
 class ZigTry(node: ASTNode) : ZigElement(node) {
@@ -634,6 +673,11 @@ class ZigVarProto(node: ASTNode) : ZigElement(node), ZigVarDeclOrProto {
 }
 
 class ZigWhile(node: ASTNode) : ZigElement(node) {
+    val thenPayload: ZigThenPayload?
+        get() = findChildByClass(ZigThenPayload::class.java)
+
+    val elsePayload: ZigElsePayload?
+        get() = findChildByClass(ZigElsePayload::class.java)
 }
 
 class ZigWhileContinueExpr(node: ASTNode) : ZigElement(node) {

@@ -12,3 +12,10 @@ fn foo5(foo6: u42) void {
     _ = .{ foo8, foo9 };
 }
 const foo10 = foo5;
+const foo11 = if (undefined) |*foo12| foo12 else |foo13| foo13;
+const foo14 = while (undefined) |*foo15| foo15 else |foo16| foo16;
+const foo17 = for (undefined, undefined) |*foo18, foo19| .{ foo18, foo19 };
+const foo20 = switch (undefined) {
+    undefined => |*foo21, foo22| .{ foo21, foo22 },
+};
+const foo23 = undefined catch |foo24| foo24;
