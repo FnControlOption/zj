@@ -25,6 +25,67 @@ import io.github.fncontroloption.zig.psi2.ZigVarDecl
 import io.github.fncontroloption.zig.psi2.ZigVarProto
 import io.github.fncontroloption.zig.psi2.replaceZigIdentifierElement
 
+fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
+    return element.references.asSequence().flatMap { reference ->
+        if (reference is PsiPolyVariantReference) {
+            val results = reference.multiResolve(false)
+            results.asSequence().mapNotNull(ResolveResult::getElement)
+        } else {
+            val target = reference.resolve()
+            if (target != null) sequenceOf(target) else emptySequence()
+        }
+    }
+}
+
+private fun resolveIdentifierReference(element: PsiElement): PsiElement? {
+    val name = element.text
+    var element = element
+    var parent = element.parent
+    while (parent != null) {
+        val target = when (parent) {
+            is ZigFile -> parent.members.firstOrNull {
+                it is PsiNameIdentifierOwner && it !is ZigContainerField && it.name == name
+            }
+
+            is ZigContainerDecl -> parent.members.firstOrNull {
+                it is PsiNameIdentifierOwner && it !is ZigContainerField && it.name == name
+            }
+
+            is ZigFnDecl -> parent.parameters.firstOrNull { it.name == name }
+
+            is ZigBlock -> parent.statements.firstNotNullOfOrNull { statement ->
+                when (statement) {
+                    is ZigVarDecl -> if (statement.name == name) statement else null
+
+                    is ZigAssignDestructure -> statement.variables.firstOrNull { variable ->
+                        variable is ZigVarProto && variable.name == name
+                    }
+
+                    else -> null
+                }
+            }
+
+            is ZigThenElement -> parent.payload?.items?.firstOrNull { it.name == name }
+
+            is ZigElseElement -> parent.payload?.items?.firstOrNull { it.name == name }
+
+            is ZigSwitchProng if element !is ZigSwitchItem ->
+                parent.payload?.items?.firstOrNull { it.name == name }
+
+            is ZigCatch if element !== parent.leftOperand ->
+                parent.payload?.items?.firstOrNull { it.name == name }
+
+            else -> null
+        }
+        if (target != null) {
+            return target
+        }
+        element = parent
+        parent = parent.parent
+    }
+    return null
+}
+
 class ZigIdentifierReference(element: ZigIdentifier) :
     PsiReferenceBase<ZigIdentifier>(element, TextRange(0, element.textLength), true) {
 
@@ -280,42 +341,7 @@ private fun resolveMember(
         }
     }
 }
- */
 
-fun resolveIdentifierReference(element: PsiElement): PsiElement? {
-    val name = element.text
-    var element = element
-    var parent = element.parent
-    while (parent != null) {
-        val target = when (parent) {
-            is ZigFile -> parent.members.find { it is PsiNameIdentifierOwner && it.name == name }
-            is ZigContainerDecl -> parent.members.find { it is PsiNameIdentifierOwner && it.name == name }
-            is ZigFnDecl -> parent.parameters.find { it.name == name }
-            is ZigBlock -> parent.statements.firstNotNullOfOrNull { statement ->
-                when (statement) {
-                    is ZigVarDecl -> if (statement.name == name) statement else null
-                    is ZigAssignDestructure -> statement.variables.firstOrNull { variable ->
-                        variable is ZigVarProto && variable.name == name
-                    }
-                    else -> null
-                }
-            }
-            is ZigThenElement -> parent.payload?.items?.find { it.name == name }
-            is ZigElseElement -> parent.payload?.items?.find { it.name == name }
-            is ZigSwitchProng if element !is ZigSwitchItem -> parent.payload?.items?.find { it.name == name }
-            is ZigCatch if element !== parent.leftOperand -> parent.payload?.items?.find { it.name == name }
-            else -> null
-        }
-        if (target != null && target !is ZigContainerField) {
-            return target
-        }
-        element = parent
-        parent = parent.parent
-    }
-    return null
-}
-
-/* TODO
 fun resolveInferredTypeExprs(element: PsiElement): Sequence<PsiElement> {
     var element = element
     var parent = element.parent
@@ -432,21 +458,7 @@ fun resolveInferredTypeExprs(element: PsiElement): Sequence<PsiElement> {
         else -> emptySequence()
     }
 }
-*/
 
-fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
-    return element.references.asSequence().flatMap { reference ->
-        if (reference is PsiPolyVariantReference) {
-            reference.multiResolve(false)
-                .asSequence()
-                .mapNotNull(ResolveResult::getElement)
-        } else {
-            sequenceOf(reference.resolve()).filterNotNull()
-        }
-    }
-}
-
-/* TODO
 fun followReferencesRecursive(element: PsiElement, visited: MutableSet<PsiElement>): Sequence<PsiElement> {
     if (element in visited) {
         return emptySequence()
