@@ -349,3 +349,4 @@ const Foo = struct { Bar };
 test {
     for (foo, bar..) |baz, qux| {}
 }
+const foo = 3.14;

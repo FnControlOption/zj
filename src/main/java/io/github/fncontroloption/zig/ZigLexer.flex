@@ -137,7 +137,7 @@ import io.github.fncontroloption.zig.psi2.ZigTokenType;
 
   [a-zA-Z_][a-zA-Z_0-9]* { return ZigTokenType.IDENTIFIER; }
 
-  [0-9][_a-zA-Z0-9]*("."[_a-zA-Z0-9]*[eEpP][-+]?[_a-zA-Z0-9]*)?
+  [0-9][_a-zA-Z0-9]* ("."[_a-zA-Z0-9]+)? ([eEpP][-+]?[_a-zA-Z0-9]*)?
   { return ZigTokenType.NUMBER_LITERAL; }
 
   ' { yybegin(CHAR); }
