@@ -7,6 +7,7 @@ import com.intellij.codeInsight.daemon.impl.analysis.HighlightInfoHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.parentOfType
+import io.github.fncontroloption.zig.psi2.ZigCall
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigContainerKind
@@ -134,6 +135,9 @@ class ZigHighlightVisitor : HighlightVisitor {
             }
 
             is ZigEnumLiteral -> {
+                if (element.parent is ZigCall) {
+                    return null // TODO
+                }
                 val identifier = element.identifierElement ?: return null
                 createHighlightInfo(identifier, ZigHighlightInfoTypes.CONSTANT)
             }
