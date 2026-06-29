@@ -43,6 +43,11 @@ sealed interface ZigBinaryExpression : ZigElement {
         get() = lastChild as? ZigElement
 }
 
+sealed interface ZigModifier : ZigElement {
+    val expression: ZigElement?
+        get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigElement }
+}
+
 sealed interface ZigPayload : ZigElement {
     val items: Sequence<ZigPayloadItem>
         get() = firstChild.siblings().filterIsInstance<ZigPayloadItem>()
@@ -64,11 +69,9 @@ class ZigAddWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpressio
 
 class ZigAddressOf(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpression
 
-class ZigAddrspaceModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-}
+class ZigAddrspaceModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigModifier
 
-class ZigAlignModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-}
+class ZigAlignModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigModifier
 
 class ZigAnyframeLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
@@ -208,8 +211,7 @@ class ZigCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigCallArg(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigCallconvModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-}
+class ZigCallconvModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigModifier
 
 class ZigCatch(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
     val payload: ZigCatchPayload?
@@ -439,8 +441,7 @@ class ZigLessOrEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpre
 
 class ZigLessThan(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
 
-class ZigLinksectionModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-}
+class ZigLinksectionModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigModifier
 
 class ZigListInit(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
