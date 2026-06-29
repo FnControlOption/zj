@@ -28,11 +28,7 @@ sealed interface ZigPayload : PsiElement {
 
 class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage) {
     val members: Sequence<ZigElement>
-        get() =
-            firstChild
-                ?.siblings()
-                ?.mapNotNull { it as? ZigElement }
-                ?: emptySequence()
+        get() = firstChild?.siblings()?.filterIsInstance<ZigElement>() ?: emptySequence()
 
     override fun getFileType() = ZigFileType
     override fun toString() = "ZigFile:$name"
@@ -113,7 +109,7 @@ class ZigAssignDestructure(node: ASTNode) : ZigElement(node) {
             firstChild
                 .siblings()
                 .takeWhile { it.elementType !== ZigTokenType.EQUAL }
-                .mapNotNull { it as? ZigElement }
+                .filterIsInstance<ZigElement>()
 
     val equalTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.EQUAL)
@@ -178,7 +174,7 @@ class ZigBlock(node: ASTNode) : ZigElement(node) {
         get() =
             firstChild
                 .siblings()
-                .mapNotNull { it as? ZigElement }
+                .filterIsInstance<ZigElement>()
                 .filter { it !is ZigLabelDecl }
 }
 
@@ -248,7 +244,7 @@ class ZigContainerDecl(node: ASTNode) : ZigElement(node) {
         get() =
             firstChild
                 .siblings()
-                .mapNotNull { it as? ZigElement }
+                .filterIsInstance<ZigElement>()
                 .filter { it !is ZigContainerTag }
 
     override fun getPresentation(): ItemPresentation {
@@ -335,10 +331,7 @@ class ZigFnDecl(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
         get() = findChildByType(ZigTokenType.KEYWORD_PUB)
 
     val parameters: Sequence<ZigParamDecl>
-        get() =
-            firstChild
-                .siblings()
-                .mapNotNull { it as? ZigParamDecl }
+        get() = firstChild.siblings().filterIsInstance<ZigParamDecl>()
 
     val ellipsisTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.ELLIPSIS3)
