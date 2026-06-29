@@ -1,138 +1,138 @@
 const foo =
-    bar;
+bar;
 
 const foo =
-    bar +
-    baz;
+bar +
+baz;
 
 const foo = bar +
-    baz;
+baz;
 
 const foo = bar
-    // Foo
-    +
-    baz;
+// Foo
++
+baz;
 
 test {
-    foo +=
-        bar;
+foo +=
+bar;
 
-    foo, bar =
-        baz;
+foo, bar =
+baz;
 }
 
 const foo =
-    bar ==
-    baz;
+bar ==
+baz;
 
 const Foo = struct {
-    bar: Bar =
-        baz,
+bar: Bar =
+baz,
 };
 
 const foo = .{
-    .bar = baz,
+.bar = baz,
 };
 
 test {
-    break :foo bar;
-    foo catch |bar|
-        baz;
+break :foo bar;
+foo catch |bar|
+baz;
 }
 
 const foo =
-    // Foo
-    if (bar) baz
+// Foo
+if (bar) baz
 // Bar
 ;
 
 const foo =
-    // Foo
-    if (bar)
-    // Bar
-    |baz|
-    // Baz
-        qux
-    // Qux
-    else
-    // Quux
-    |fizz|
-    // Fizz
-        buzz
+// Foo
+if (bar)
+// Bar
+|baz|
+// Baz
+qux
+// Qux
+else
+// Quux
+|fizz|
+// Fizz
+buzz
 // Buzz
 ;
 
 const foo = if (bar) {
-    baz;
+baz;
 } else {
-    qux;
+qux;
 };
 
 const foo = bar catch
-    baz;
+baz;
 
 const foo =
-    bar catch
-        baz;
+bar catch
+baz;
 
 const foo =
-    bar catch
-        // Foo
-        |baz|
-        qux;
+bar catch
+// Foo
+|baz|
+qux;
 
 const foo = bar orelse
-    baz;
+baz;
 
 const foo =
-    bar orelse
-    baz;
+bar orelse
+baz;
 
 const foo =
-    if (bar)
-        baz
-    else
-        qux;
+if (bar)
+baz
+else
+qux;
 
 test {
-    foo += bar;
+foo += bar;
 }
 
 const foo =
-    bar and
-    baz;
+bar and
+baz;
 
 const foo = bar and
-    baz;
+baz;
 
 const foo =
-    if (bar and
-        baz)
-        qux;
+if (bar and
+baz)
+qux;
 
 test {
-    if (foo and
-        bar)
-        baz;
+if (foo and
+bar)
+baz;
 
-    if (
-    // Foo
-    foo
-    // Bar
-    and
-    // Baz
-    bar
-    // Qux
-    )
-        baz;
+if (
+// Foo
+foo
+// Bar
+and
+// Baz
+bar
+// Qux
+)
+baz;
 }
 
 const foo = [
-    bar
+bar
 ]baz;
 
 const foo = bar[
-    baz
+baz
 ];
 
 const foo = bar[start..end];
@@ -140,68 +140,68 @@ const foo = bar[start..end];
 const foo = bar[start..end :sentinel];
 
 const foo = bar(
-    \\Foo
-    \\Bar
-    , baz);
+\\Foo
+\\Bar
+, baz);
 
 const foo = bar(
-    \\Foo
-    \\Bar
-    ,
-    baz,
+\\Foo
+\\Bar
+,
+baz,
 );
 
 const foo = bar(
-    baz,
-    qux,
+baz,
+qux,
 );
 
 const foo =
-    bar(
-        baz,
-        qux,
-    );
+bar(
+baz,
+qux,
+);
 
 comptime
 // Foo
 {
-    comptime
-    // Bar
-    {
-        \\Foo
-        ++
-        \\Bar
-        ;
-    }
+comptime
+// Bar
+{
+\\Foo
+++
+\\Bar
+;
+}
 }
 
 var foo align(
 \\Foo
 ) =
-    \\Foo
-    \\Bar
-    ++
-    \\Baz
+\\Foo
+\\Bar
+++
+\\Baz
 ;
 
 test {
-    var foo =
-        \\Foo
-        \\Bar
-        ++
-        \\Baz
-    ;
+var foo =
+\\Foo
+\\Bar
+++
+\\Baz
+;
 }
 
 const foo =
-    bar(
-        \\Foo
-        \\Bar
-    );
+bar(
+\\Foo
+\\Bar
+);
 
 const Foo = struct {
-    bar: Bar =
-        \\Foo
-        \\Bar
-    ,
+bar: Bar =
+\\Foo
+\\Bar
+,
 };
