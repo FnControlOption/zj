@@ -43,7 +43,7 @@ test {
 const foo =
     // Foo
     if (bar) baz
-    // Bar
+// Bar
 ;
 
 const foo =
@@ -59,7 +59,7 @@ const foo =
     |fizz|
     // Fizz
         buzz
-    // Buzz
+// Buzz
 ;
 
 const foo = if (bar) {
