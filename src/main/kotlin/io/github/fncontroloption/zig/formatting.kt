@@ -46,12 +46,18 @@ class ZigFormattingBlock(
                 val hasBlock = childNodeOfType(myNode, ZigElementType.BLOCK) != null
                 var child = myNode.firstChildNode
                 while (child != null) {
-                    if (child.elementType !== TokenType.WHITE_SPACE) {
-                        val indent = when (hasBlock) {
-                            true -> Indent.getNoneIndent()
-                            false -> Indent.getNormalIndent()
+                    when (child.elementType) {
+                        TokenType.ERROR_ELEMENT if child.textLength == 0 -> {}
+
+                        TokenType.WHITE_SPACE -> {}
+
+                        else -> {
+                            val indent = when (hasBlock) {
+                                true -> Indent.getNoneIndent()
+                                false -> Indent.getNormalIndent()
+                            }
+                            addLast(ZigFormattingBlock(child, indent))
                         }
-                        addLast(ZigFormattingBlock(child, indent))
                     }
                     child = child.treeNext
                 }
@@ -62,6 +68,8 @@ class ZigFormattingBlock(
                 var child = myNode.firstChildNode
                 while (child != null) {
                     when (child.elementType) {
+                        TokenType.ERROR_ELEMENT if child.textLength == 0 -> {}
+
                         TokenType.WHITE_SPACE -> {}
 
                         ZigTokenType.KEYWORD_CATCH -> {
@@ -84,8 +92,12 @@ class ZigFormattingBlock(
                 }
                 var child = myNode.firstChildNode
                 while (child != null) {
-                    if (child.elementType !== TokenType.WHITE_SPACE) {
-                        addLast(ZigFormattingBlock(child, indent))
+                    when (child.elementType) {
+                        TokenType.ERROR_ELEMENT if child.textLength == 0 -> {}
+
+                        TokenType.WHITE_SPACE -> {}
+
+                        else -> addLast(ZigFormattingBlock(child, indent))
                     }
                     child = child.treeNext
                 }
@@ -96,6 +108,8 @@ class ZigFormattingBlock(
                 var child = myNode.firstChildNode
                 while (child != null) {
                     when (child.elementType) {
+                        TokenType.ERROR_ELEMENT if child.textLength == 0 -> {}
+
                         TokenType.WHITE_SPACE -> {}
 
                         in ASSIGN_TOKENS -> {
@@ -122,6 +136,8 @@ class ZigFormattingBlock(
                 var child = myNode.firstChildNode
                 while (child != null) {
                     when (child.elementType) {
+                        TokenType.ERROR_ELEMENT if child.textLength == 0 -> {}
+
                         TokenType.WHITE_SPACE -> {}
 
                         ZigTokenType.PIPE -> {
@@ -149,6 +165,8 @@ class ZigFormattingBlock(
                 var child = myNode.firstChildNode
                 while (child != null) {
                     when (child.elementType) {
+                        TokenType.ERROR_ELEMENT if child.textLength == 0 -> {}
+
                         TokenType.WHITE_SPACE -> {}
 
                         ZigTokenType.L_BRACE, ZigTokenType.L_BRACKET, ZigTokenType.L_PAREN -> {
@@ -173,6 +191,8 @@ class ZigFormattingBlock(
                 var child = myNode.firstChildNode
                 while (child != null) {
                     when (child.elementType) {
+                        TokenType.ERROR_ELEMENT if child.textLength == 0 -> {}
+
                         TokenType.WHITE_SPACE -> {}
 
                         ZigElementType.MULTILINE_STRING_LITERAL -> {
@@ -188,7 +208,13 @@ class ZigFormattingBlock(
                 }
             }
 
-            is ZigTokenType, TokenType.BAD_CHARACTER, TokenType.ERROR_ELEMENT -> {}
+            is ZigTokenType, TokenType.BAD_CHARACTER -> {}
+
+            TokenType.ERROR_ELEMENT -> {
+                if (node.textLength == 0) {
+                    throw IllegalStateException("Unexpected empty error block")
+                }
+            }
 
             TokenType.WHITE_SPACE -> throw IllegalStateException("Unexpected whitespace block")
 
