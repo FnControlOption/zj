@@ -377,6 +377,12 @@ class ZigIdentifier(node: ASTNode) : ZigElement(node) {
 class ZigIf(node: ASTNode) : ZigElement(node) {
 }
 
+class ZigLabelDecl(node: ASTNode) : ZigElement(node) {
+}
+
+class ZigLabelRef(node: ASTNode) : ZigElement(node) {
+}
+
 class ZigLessOrEqual(node: ASTNode) : ZigElement(node) {
 }
 

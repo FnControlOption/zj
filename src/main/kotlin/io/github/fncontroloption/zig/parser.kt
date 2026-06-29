@@ -134,7 +134,7 @@ class ZigParser : PsiParser {
 
         val marker = builder.mark()
         if (allowLabel) {
-            eatTokens(builder, ZigTokenType.IDENTIFIER, ZigTokenType.COLON)
+            parseLabelDecl(builder)
         }
         if (!eatToken(builder, ZigTokenType.L_BRACE)) {
             marker.rollbackTo()
@@ -957,7 +957,7 @@ class ZigParser : PsiParser {
             ZigTokenType.KEYWORD_BREAK -> {
                 val expr = builder.mark()
                 builder.advanceLexer()
-                eatTokens(builder, ZigTokenType.COLON, ZigTokenType.IDENTIFIER)
+                parseLabelRef(builder)
                 parseExpr(builder)
                 expr.done(ZigElementType.BREAK)
                 return expr
@@ -965,7 +965,7 @@ class ZigParser : PsiParser {
             ZigTokenType.KEYWORD_CONTINUE -> {
                 val expr = builder.mark()
                 builder.advanceLexer()
-                eatTokens(builder, ZigTokenType.COLON, ZigTokenType.IDENTIFIER)
+                parseLabelRef(builder)
                 parseExpr(builder)
                 expr.done(ZigElementType.CONTINUE)
                 return expr
@@ -1400,7 +1400,7 @@ class ZigParser : PsiParser {
 
     private fun parseSwitchExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         val marker = builder.mark()
-        eatTokens(builder, ZigTokenType.IDENTIFIER, ZigTokenType.COLON)
+        parseLabelDecl(builder)
         if (!eatToken(builder, ZigTokenType.KEYWORD_SWITCH)) {
             marker.rollbackTo()
             return null
@@ -1412,7 +1412,7 @@ class ZigParser : PsiParser {
 
     private fun assertSwitchExpr(builder: PsiBuilder): PsiBuilder.Marker {
         val marker = builder.mark()
-        eatTokens(builder, ZigTokenType.IDENTIFIER, ZigTokenType.COLON)
+        parseLabelDecl(builder)
         assert(builder.tokenType === ZigTokenType.KEYWORD_SWITCH)
         builder.advanceLexer()
         trySwitchSuffix(builder)
@@ -1577,7 +1577,7 @@ class ZigParser : PsiParser {
 
     private fun forPrefix(builder: PsiBuilder): PsiBuilder.Marker? {
         val forMarker = builder.mark()
-        eatTokens(builder, ZigTokenType.IDENTIFIER, ZigTokenType.COLON)
+        parseLabelDecl(builder)
         eatToken(builder, ZigTokenType.KEYWORD_INLINE)
         if (!eatToken(builder, ZigTokenType.KEYWORD_FOR)) {
             forMarker.rollbackTo()
@@ -1691,7 +1691,7 @@ class ZigParser : PsiParser {
 
     private fun whilePrefix(builder: PsiBuilder): PsiBuilder.Marker? {
         val whileMarker = builder.mark()
-        eatTokens(builder, ZigTokenType.IDENTIFIER, ZigTokenType.COLON)
+        parseLabelDecl(builder)
         eatToken(builder, ZigTokenType.KEYWORD_INLINE)
         if (!eatToken(builder, ZigTokenType.KEYWORD_WHILE)) {
             whileMarker.rollbackTo()
@@ -1889,6 +1889,28 @@ class ZigParser : PsiParser {
         tryExpr(builder)
         marker.done(ZigElementType.ASM_CLOBBERS)
         return marker
+    }
+
+    private fun parseLabelDecl(builder: PsiBuilder): PsiBuilder.Marker? {
+        val marker = builder.mark()
+        if (eatTokens(builder, ZigTokenType.IDENTIFIER, ZigTokenType.COLON)) {
+            marker.done(ZigElementType.LABEL_DECL)
+            return marker
+        } else {
+            marker.rollbackTo()
+            return null
+        }
+    }
+
+    private fun parseLabelRef(builder: PsiBuilder): PsiBuilder.Marker? {
+        val marker = builder.mark()
+        if (eatTokens(builder, ZigTokenType.COLON, ZigTokenType.IDENTIFIER)) {
+            marker.done(ZigElementType.LABEL_REF)
+            return marker
+        } else {
+            marker.rollbackTo()
+            return null
+        }
     }
 
     private fun parseParenEnclosedExpr(
