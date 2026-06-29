@@ -9,10 +9,9 @@ import com.intellij.psi.ResolveResult
 import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
 import io.github.fncontroloption.zig.psi2.ZigBlock
 import io.github.fncontroloption.zig.psi2.ZigCatch
-import io.github.fncontroloption.zig.psi2.ZigContainerDecl
+import io.github.fncontroloption.zig.psi2.ZigContainer
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigElseElement
-import io.github.fncontroloption.zig.psi2.ZigFile
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigLabelRef
@@ -43,11 +42,7 @@ private fun resolveIdentifierReference(element: PsiElement): PsiElement? {
     var parent = element.parent
     while (parent != null) {
         val target = when (parent) {
-            is ZigFile -> parent.members.firstOrNull {
-                it is PsiNameIdentifierOwner && it !is ZigContainerField && it.name == name
-            }
-
-            is ZigContainerDecl -> parent.members.firstOrNull {
+            is ZigContainer -> parent.members.firstOrNull {
                 it is PsiNameIdentifierOwner && it !is ZigContainerField && it.name == name
             }
 

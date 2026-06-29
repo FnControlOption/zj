@@ -61,8 +61,18 @@ sealed interface ZigPayload : ZigElement {
         get() = firstChild.siblings().filterIsInstance<ZigPayloadItem>()
 }
 
-class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage), ZigElement {
+enum class ZigContainerKind { STRUCT, OPAQUE, ENUM, UNION }
+
+sealed interface ZigContainer : ZigElement {
+    val containerKind: ZigContainerKind
+
     val members: Sequence<ZigElement>
+}
+
+class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage), ZigContainer {
+    override val containerKind = ZigContainerKind.STRUCT
+
+    override val members: Sequence<ZigElement>
         get() = firstChild?.siblings()?.filterIsInstance<ZigElement>() ?: emptySequence()
 
     override fun getFileType() = ZigFileType
@@ -241,13 +251,11 @@ class ZigComptime(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigConditionElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-enum class ZigContainerKind { STRUCT, OPAQUE, ENUM, UNION }
-
-class ZigContainerDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+class ZigContainerDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainer {
     val containerKindElement: PsiElement
         get() = findNotNullChildByType(ZigTokenSets.CONTAINERS)
 
-    val containerKind: ZigContainerKind
+    override val containerKind: ZigContainerKind
         get() = when (containerKindElement.elementType) {
             ZigTokenType.KEYWORD_STRUCT -> ZigContainerKind.STRUCT
             ZigTokenType.KEYWORD_OPAQUE -> ZigContainerKind.OPAQUE
@@ -256,7 +264,7 @@ class ZigContainerDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
             else -> throw IllegalStateException()
         }
 
-    val members: Sequence<ZigElement>
+    override val members: Sequence<ZigElement>
         get() =
             firstChild
                 .siblings()
