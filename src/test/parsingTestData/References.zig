@@ -4,3 +4,10 @@ const Foo2 = struct {
     const foo3 = foo1;
     const foo4 = foo3;
 };
+fn foo5(foo6: u42) void {
+    _ = foo6;
+    const foo7 = 42;
+    _ = foo7;
+    const foo8, var foo9 = .{ 42, 42 };
+    _ = .{ foo8, foo9 };
+}

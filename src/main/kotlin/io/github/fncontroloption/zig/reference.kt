@@ -3,10 +3,15 @@ package io.github.fncontroloption.zig
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReferenceBase
+import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
+import io.github.fncontroloption.zig.psi2.ZigBlock
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigFile
+import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
+import io.github.fncontroloption.zig.psi2.ZigVarDecl
+import io.github.fncontroloption.zig.psi2.ZigVarProto
 import io.github.fncontroloption.zig.psi2.replaceZigIdentifierElement
 
 class ZigIdentifierReference(element: ZigIdentifier) :
@@ -324,9 +329,17 @@ fun resolveIdentifierReference(element: PsiElement): PsiElement? {
         val target = when (parent) {
             is ZigFile -> parent.members.find { it.name == name }
             is ZigContainerDecl -> parent.members.find { it.name == name }
+            is ZigFnDecl -> parent.parameters.find { it.name == name }
+            is ZigBlock -> parent.statements.firstNotNullOfOrNull { statement ->
+                when (statement) {
+                    is ZigVarDecl -> if (statement.name == name) statement else null
+                    is ZigAssignDestructure -> statement.variables.firstOrNull { variable ->
+                        variable is ZigVarProto && variable.name == name
+                    }
+                    else -> null
+                }
+            }
             /* TODO
-            is ZigFnDecl -> parent.fnProto.fnParams?.fnParamDecls[name]
-            is ZigBlockBody -> parent.varDeclProtos[name]
             is ZigThen -> {
                 parent = parent.parent
                 val payload = when (parent) {

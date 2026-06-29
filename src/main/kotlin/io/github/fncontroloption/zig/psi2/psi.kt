@@ -113,6 +113,21 @@ class ZigAssignBitXor(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigAssignDestructure(node: ASTNode) : ZigElement(node) {
+    val variables: Sequence<ZigElement>
+        get() =
+            firstChild
+                .siblings()
+                .takeWhile { it.elementType !== ZigTokenType.EQUAL }
+                .mapNotNull { it as? ZigElement }
+
+    val equalTokenElement: PsiElement?
+        get() = findChildByType(ZigTokenType.EQUAL)
+
+    val initializer: ZigElement?
+        get() =
+            equalTokenElement
+                ?.siblings(forward = true, withSelf = false)
+                ?.firstNotNullOfOrNull { it as? ZigElement }
 }
 
 class ZigAssignDiv(node: ASTNode) : ZigElement(node) {
@@ -164,6 +179,12 @@ class ZigBitXor(node: ASTNode) : ZigElement(node) {
 }
 
 class ZigBlock(node: ASTNode) : ZigElement(node) {
+    val statements: Sequence<ZigElement>
+        get() =
+            firstChild
+                .siblings()
+                .mapNotNull { it as? ZigElement }
+                .filter { it !is ZigLabelDecl }
 }
 
 class ZigBoolAnd(node: ASTNode) : ZigElement(node) {
