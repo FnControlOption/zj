@@ -21,6 +21,20 @@ import io.github.fncontroloption.zig.ZigLanguage
 
 sealed interface ZigElement : PsiElement
 
+sealed interface ZigUnaryExpression : ZigElement {
+    val operand: ZigElement?
+}
+
+sealed interface ZigPrefixExpression : ZigUnaryExpression {
+    override val operand: ZigElement?
+        get() = lastChild as? ZigElement
+}
+
+sealed interface ZigPostfixExpression : ZigUnaryExpression {
+    override val operand: ZigElement?
+        get() = firstChild as? ZigElement
+}
+
 sealed interface ZigBinaryExpression : ZigElement {
     val leftOperand: ZigElement?
         get() = firstChild as? ZigElement
@@ -48,8 +62,7 @@ class ZigAddSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
 
 class ZigAddWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
 
-class ZigAddressOf(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-}
+class ZigAddressOf(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpression
 
 class ZigAddrspaceModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
@@ -162,8 +175,7 @@ class ZigBangEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpress
 
 class ZigBitAnd(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
 
-class ZigBitNot(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-}
+class ZigBitNot(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpression
 
 class ZigBitOr(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
 
@@ -180,8 +192,7 @@ class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 
 class ZigBoolAnd(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
 
-class ZigBoolNot(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-}
+class ZigBoolNot(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpression
 
 class ZigBoolOr(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
 
@@ -277,8 +288,7 @@ class ZigContinue(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigDefer(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigDeref(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-}
+class ZigDeref(node: ASTNode) : ASTWrapperPsiElement(node), ZigPostfixExpression
 
 class ZigDiv(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
 
@@ -451,11 +461,9 @@ class ZigMulWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpressio
 class ZigMultilineStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigNegation(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-}
+class ZigNegation(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpression
 
-class ZigNegationWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-}
+class ZigNegationWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpression
 
 class ZigNosuspend(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
@@ -559,8 +567,7 @@ class ZigThenElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigThenPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
 }
 
-class ZigTry(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-}
+class ZigTry(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpression
 
 class ZigTypeElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val innerElement: ZigElement?
@@ -576,8 +583,7 @@ class ZigTypeSentinel(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigUnreachableLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigUnwrapOptional(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-}
+class ZigUnwrapOptional(node: ASTNode) : ASTWrapperPsiElement(node), ZigPostfixExpression
 
 enum class ZigMutability { CONST, VAR }
 
