@@ -370,6 +370,9 @@ class ZigElseElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
             is ZigWhile -> parent.elsePayload
             else -> null
         }
+
+    val innerElement: ZigElement?
+        get() = findChildByClass(ZigElement::class.java)
 }
 
 class ZigElsePayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
@@ -651,6 +654,9 @@ class ZigThenElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
             is ZigFor -> parent.payload
             else -> null
         }
+
+    val innerElement: ZigElement?
+        get() = findChildByClass(ZigElement::class.java)
 }
 
 class ZigThenPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {

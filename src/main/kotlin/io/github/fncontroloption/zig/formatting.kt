@@ -16,9 +16,11 @@ import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
 import io.github.fncontroloption.zig.psi2.ZigAssignElement
 import io.github.fncontroloption.zig.psi2.ZigBlock
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
+import io.github.fncontroloption.zig.psi2.ZigElseElement
 import io.github.fncontroloption.zig.psi2.ZigErrorSetDecl
 import io.github.fncontroloption.zig.psi2.ZigListInit
 import io.github.fncontroloption.zig.psi2.ZigSwitch
+import io.github.fncontroloption.zig.psi2.ZigThenElement
 import io.github.fncontroloption.zig.psi2.ZigTokenType
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 import com.intellij.psi.formatter.common.AbstractBlock as AbstractFormattingBlock
@@ -94,6 +96,20 @@ class ZigFormattingBlock(
 
                         else -> addChild(blocks, child, indent)
                     }
+                }
+            }
+
+            is ZigThenElement, is ZigElseElement -> {
+                val innerElement = when (element) {
+                    is ZigThenElement -> element.innerElement
+                    is ZigElseElement -> element.innerElement
+                }
+                val indent = when (innerElement) {
+                    is ZigBlock -> Indent.getNoneIndent()
+                    else -> Indent.getNormalIndent()
+                }
+                for (child in myNode.children()) {
+                    addChild(blocks, child, indent)
                 }
             }
 
