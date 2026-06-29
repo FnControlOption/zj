@@ -12,6 +12,11 @@ import com.intellij.formatting.Wrap
 import com.intellij.lang.ASTNode
 import com.intellij.lang.tree.util.children
 import com.intellij.psi.TokenType
+import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
+import io.github.fncontroloption.zig.psi2.ZigAssignElement
+import io.github.fncontroloption.zig.psi2.ZigBlock
+import io.github.fncontroloption.zig.psi2.ZigTokenType
+import io.github.fncontroloption.zig.psi2.ZigVarDecl
 import com.intellij.psi.formatter.common.AbstractBlock as AbstractFormattingBlock
 
 class ZigFormattingModelBuilder : FormattingModelBuilder {
@@ -22,6 +27,16 @@ class ZigFormattingModelBuilder : FormattingModelBuilder {
         val rootBlock = ZigFormattingBlock(node, Indent.getNoneIndent())
         return FormattingModelProvider.createFormattingModelForPsiFile(file, rootBlock, settings)
     }
+}
+
+private fun addChild(
+    blocks: MutableList<FormattingBlock>,
+    child: ASTNode,
+    indent: Indent,
+) = when (child.elementType) {
+    TokenType.ERROR_ELEMENT if child.textLength == 0 -> {}
+    TokenType.WHITE_SPACE -> {}
+    else -> blocks.addLast(ZigFormattingBlock(child, indent))
 }
 
 class ZigFormattingBlock(
@@ -35,13 +50,48 @@ class ZigFormattingBlock(
     override fun buildChildren(): List<FormattingBlock> {
         val blocks = mutableListOf<FormattingBlock>()
         when (val element = myNode.psi) {
-            else -> {
+            is ZigVarDecl, is ZigAssignDestructure -> {
+                var indent = Indent.getNoneIndent()
+                for (child in myNode.children()) {
+                    addChild(blocks, child, indent)
+                    if (child.elementType === ZigTokenType.EQUAL) {
+                        indent = Indent.getNormalIndent()
+                    }
+                }
+            }
+
+            is ZigAssignElement -> {
+                var indent = Indent.getNoneIndent()
+                for (child in myNode.children()) {
+                    addChild(blocks, child, indent)
+                    if (child.elementType === element.mainTokenType) {
+                        indent = Indent.getNormalIndent()
+                    }
+                }
+            }
+
+            is ZigBlock -> {
+                var indent = Indent.getNoneIndent()
                 for (child in myNode.children()) {
                     when (child.elementType) {
-                        TokenType.ERROR_ELEMENT if child.textLength == 0 -> {}
-                        TokenType.WHITE_SPACE -> {}
-                        else -> blocks.addLast(ZigFormattingBlock(child, Indent.getNoneIndent()))
+                        ZigTokenType.L_BRACE -> {
+                            addChild(blocks, child, indent)
+                            indent = Indent.getNormalIndent()
+                        }
+
+                        ZigTokenType.R_BRACE -> {
+                            indent = Indent.getNoneIndent()
+                            addChild(blocks, child, indent)
+                        }
+
+                        else -> addChild(blocks, child, indent)
                     }
+                }
+            }
+
+            else -> {
+                for (child in myNode.children()) {
+                    addChild(blocks, child, Indent.getNoneIndent())
                 }
             }
         }
