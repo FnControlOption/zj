@@ -1,26 +1,24 @@
 package io.github.fncontroloption.zig
 
-/* TODO
-object ZigIdentifierReferenceProvider : PsiReferenceProvider() {
-    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
-        val identifier = element as ZigIdentifier
-        return arrayOf(ZigIdentifierReference(identifier))
-    }
-}
+import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiReferenceBase
+import io.github.fncontroloption.zig.psi2.ZigContainerDecl
+import io.github.fncontroloption.zig.psi2.ZigContainerField
+import io.github.fncontroloption.zig.psi2.ZigFile
+import io.github.fncontroloption.zig.psi2.ZigIdentifier
+import io.github.fncontroloption.zig.psi2.replaceZigIdentifierElement
 
 class ZigIdentifierReference(element: ZigIdentifier) :
     PsiReferenceBase<ZigIdentifier>(element, TextRange(0, element.textLength), true) {
 
     override fun resolve() = resolveIdentifierReference(myElement)
 
-    override fun handleElementRename(newElementName: String): PsiElement? {
-        val oldToken = myElement.identifierToken ?: throw IncorrectOperationException()
-        val newToken = createZigIdentifierToken(myElement.project, newElementName)
-        oldToken.replace(newToken)
-        return myElement
-    }
+    override fun handleElementRename(newElementName: String) =
+        replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
 }
 
+/* TODO
 object ZigTestDeclReferenceProvider : PsiReferenceProvider() {
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
         val decl = element as ZigTestDecl
@@ -316,6 +314,7 @@ private fun resolveMember(
         }
     }
 }
+ */
 
 fun resolveIdentifierReference(element: PsiElement): PsiElement? {
     val name = element.text
@@ -323,7 +322,9 @@ fun resolveIdentifierReference(element: PsiElement): PsiElement? {
     var parent = element.parent
     while (parent != null) {
         val target = when (parent) {
-            is ZigContainerBody -> parent.containerMembers[name]
+            is ZigFile -> parent.members.find { it.name == name }
+            is ZigContainerDecl -> parent.members.find { it.name == name }
+            /* TODO
             is ZigFnDecl -> parent.fnProto.fnParams?.fnParamDecls[name]
             is ZigBlockBody -> parent.varDeclProtos[name]
             is ZigThen -> {
@@ -352,6 +353,7 @@ fun resolveIdentifierReference(element: PsiElement): PsiElement? {
                     null
                 }
             }
+             */
             else -> null
         }
         if (target != null && target !is ZigContainerField) {
@@ -363,6 +365,7 @@ fun resolveIdentifierReference(element: PsiElement): PsiElement? {
     return null
 }
 
+/* TODO
 fun resolveInferredTypeExprs(element: PsiElement): Sequence<PsiElement> {
     var element = element
     var parent = element.parent

@@ -16,6 +16,7 @@ import com.intellij.psi.util.siblings
 import com.intellij.ui.RowIcon
 import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.ZigFileType
+import io.github.fncontroloption.zig.ZigIdentifierReference
 import io.github.fncontroloption.zig.ZigLanguage
 
 inline fun <reified T : PsiElement> childrenOfType(element: PsiElement): Sequence<T> {
@@ -219,6 +220,9 @@ class ZigContainerDecl(node: ASTNode) : ZigElement(node) {
             else -> throw IllegalStateException()
         }
 
+    val members: Sequence<ZigElement>
+        get() = childrenOfType<ZigElement>(this).filter { it !is ZigContainerTag }
+
     override fun getPresentation(): ItemPresentation {
         val kind = containerKindElement.text
         return PresentationData(kind, null, AllIcons.Nodes.Type, null)
@@ -380,6 +384,8 @@ class ZigGroupedExpression(node: ASTNode) : ZigElement(node) {
 class ZigIdentifier(node: ASTNode) : ZigElement(node) {
     val identifierElement: PsiElement?
         get() = findChildByType(ZigTokenType.IDENTIFIER)
+
+    override fun getReferences() = arrayOf(ZigIdentifierReference(this))
 }
 
 class ZigIf(node: ASTNode) : ZigElement(node) {
