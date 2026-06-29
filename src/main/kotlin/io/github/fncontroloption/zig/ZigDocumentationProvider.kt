@@ -9,6 +9,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
+import io.github.fncontroloption.zig.psi2.ZigLabelDecl
 import io.github.fncontroloption.zig.psi2.ZigParamDecl
 import io.github.fncontroloption.zig.psi2.ZigPayloadItem
 import io.github.fncontroloption.zig.psi2.ZigTokenType
@@ -42,6 +43,7 @@ private fun getDefinition(element: PsiElement): String? {
             val body = element.body ?: return text
             text.substring(0, body.textRangeInParent.startOffset)
         }
+        is ZigLabelDecl -> element.text
         is ZigParamDecl -> element.text
         is ZigPayloadItem -> element.text
         is ZigVarDecl -> {

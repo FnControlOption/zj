@@ -20,3 +20,23 @@ const foo20 = switch (undefined) {
 };
 const foo23 = undefined catch |foo24| foo24;
 test foo5 {}
+test {
+    foo25: {
+        break :foo25;
+        continue :foo25;
+    }
+    foo26: while (undefined) {
+        break :foo26;
+        continue :foo26;
+    }
+    foo27: for (undefined) |_| {
+        break :foo27;
+        continue :foo27;
+    }
+    foo28: switch (undefined) {
+        undefined => {
+            break :foo28;
+            continue :foo28;
+        }
+    }
+}

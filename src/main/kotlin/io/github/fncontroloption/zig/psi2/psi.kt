@@ -18,6 +18,7 @@ import com.intellij.ui.RowIcon
 import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigIdentifierReference
+import io.github.fncontroloption.zig.ZigLabelReference
 import io.github.fncontroloption.zig.ZigLanguage
 import io.github.fncontroloption.zig.ZigTestReference
 
@@ -43,6 +44,11 @@ sealed interface ZigBinaryExpression : ZigElement {
 
     val rightOperand: ZigElement?
         get() = lastChild as? ZigElement
+}
+
+sealed interface ZigLabelable : ZigElement {
+    val labelDecl: ZigLabelDecl?
+        get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigLabelDecl }
 }
 
 sealed interface ZigModifier : ZigElement {
@@ -186,7 +192,7 @@ class ZigBitOr(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
 
 class ZigBitXor(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
 
-class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
     val statements: Sequence<ZigElement>
         get() =
             firstChild
@@ -400,7 +406,7 @@ class ZigFnDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiName
 class ZigFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
     val payload: ZigForPayload?
         get() = findChildByClass(ZigForPayload::class.java)
 }
@@ -433,10 +439,21 @@ class ZigIf(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
         get() = findChildByClass(ZigElsePayload::class.java)
 }
 
-class ZigLabelDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+class ZigLabelDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiNameIdentifierOwner {
+    val identifierElement: PsiElement
+        get() = findNotNullChildByType(ZigTokenType.IDENTIFIER)
+
+    override fun getNameIdentifier() = identifierElement
+    override fun getName() = identifierElement.text!!
+    override fun setName(name: String) = replaceZigIdentifierElement(this, identifierElement, name)
+    override fun getTextOffset() = identifierElement.textOffset
 }
 
 class ZigLabelRef(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val identifierElement: PsiElement
+        get() = findNotNullChildByType(ZigTokenType.IDENTIFIER)
+
+    override fun getReferences() = arrayOf(ZigLabelReference(this))
 }
 
 class ZigLessOrEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
@@ -532,7 +549,7 @@ class ZigSubWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpressio
 class ZigSuspend(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigSwitch(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+class ZigSwitch(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
 }
 
 class ZigSwitchItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
@@ -649,7 +666,7 @@ class ZigVarProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
-class ZigWhile(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+class ZigWhile(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
     val thenPayload: ZigThenPayload?
         get() = findChildByClass(ZigThenPayload::class.java)
 

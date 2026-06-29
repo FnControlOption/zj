@@ -15,6 +15,8 @@ import io.github.fncontroloption.zig.psi2.ZigElseElement
 import io.github.fncontroloption.zig.psi2.ZigFile
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
+import io.github.fncontroloption.zig.psi2.ZigLabelRef
+import io.github.fncontroloption.zig.psi2.ZigLabelable
 import io.github.fncontroloption.zig.psi2.ZigSwitchItem
 import io.github.fncontroloption.zig.psi2.ZigSwitchProng
 import io.github.fncontroloption.zig.psi2.ZigTestDecl
@@ -39,6 +41,28 @@ class ZigTestReference(element: ZigTestDecl, val name: PsiElement) :
 
     override fun handleElementRename(newElementName: String) =
         replaceZigIdentifierElement(myElement, myElement.nameElement, newElementName)
+}
+
+class ZigLabelReference(element: ZigLabelRef) :
+    PsiReferenceBase<ZigLabelRef>(element, element.identifierElement.textRangeInParent, true) {
+
+    override fun resolve(): PsiElement? {
+        val name = myElement.identifierElement.text
+        var parent = myElement.parent
+        while (parent != null) {
+            if (parent is ZigLabelable) {
+                val labelDecl = parent.labelDecl
+                if (labelDecl != null && labelDecl.identifierElement.textMatches(name)) {
+                    return labelDecl
+                }
+            }
+            parent = parent.parent
+        }
+        return null
+    }
+
+    override fun handleElementRename(newElementName: String) =
+        replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
 }
 
 /* TODO
@@ -234,63 +258,6 @@ class ZigInitListEntryReference(element: ZigInitListEntry, val name: PsiElement)
         oldToken.replace(newToken)
         return myElement
     }
-}
-
-object ZigBreakReferenceProvider : PsiReferenceProvider() {
-    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
-        val entry = element as ZigBreak
-        val name = entry.breakLabel ?: return emptyArray()
-        return arrayOf(ZigBreakReference(entry, name))
-    }
-}
-
-class ZigBreakReference(element: ZigBreak, val label: PsiElement) :
-    PsiReferenceBase<ZigBreak>(element, label.textRangeInParent, true) {
-
-    override fun resolve() = findLabeledParent(myElement, label.text)
-
-    override fun handleElementRename(newElementName: String): PsiElement? {
-        val oldToken = myElement.breakLabel ?: throw IncorrectOperationException()
-        val newToken = createZigIdentifierToken(myElement.project, newElementName)
-        oldToken.replace(newToken)
-        return myElement
-    }
-}
-
-object ZigContinueReferenceProvider : PsiReferenceProvider() {
-    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
-        val entry = element as ZigContinue
-        val name = entry.continueLabel ?: return emptyArray()
-        return arrayOf(ZigContinueReference(entry, name))
-    }
-}
-
-class ZigContinueReference(element: ZigContinue, val label: PsiElement) :
-    PsiReferenceBase<ZigContinue>(element, label.textRangeInParent, true) {
-
-    override fun resolve() = findLabeledParent(myElement, label.text)
-
-    override fun handleElementRename(newElementName: String): PsiElement? {
-        val oldToken = myElement.continueLabel ?: throw IncorrectOperationException()
-        val newToken = createZigIdentifierToken(myElement.project, newElementName)
-        oldToken.replace(newToken)
-        return myElement
-    }
-}
-
-fun findLabeledParent(element: PsiElement, labelName: String): PsiElement? {
-    var parent = element.parent
-    while (parent != null) {
-        val parentLabel = when (parent) {
-            is ZigBlock, is ZigFor, is ZigWhile, is ZigSwitch -> parent.nameIdentifier
-            else -> null
-        }
-        if (parentLabel != null && parentLabel.textMatches(labelName)) {
-            return parent
-        }
-        parent = parent.parent
-    }
-    return null
 }
 
 private fun resolveMember(
