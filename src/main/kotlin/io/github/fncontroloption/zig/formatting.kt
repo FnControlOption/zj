@@ -15,6 +15,10 @@ import com.intellij.psi.TokenType
 import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
 import io.github.fncontroloption.zig.psi2.ZigAssignElement
 import io.github.fncontroloption.zig.psi2.ZigBlock
+import io.github.fncontroloption.zig.psi2.ZigContainerDecl
+import io.github.fncontroloption.zig.psi2.ZigErrorSetDecl
+import io.github.fncontroloption.zig.psi2.ZigListInit
+import io.github.fncontroloption.zig.psi2.ZigSwitch
 import io.github.fncontroloption.zig.psi2.ZigTokenType
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 import com.intellij.psi.formatter.common.AbstractBlock as AbstractFormattingBlock
@@ -70,7 +74,11 @@ class ZigFormattingBlock(
                 }
             }
 
-            is ZigBlock -> {
+            is ZigBlock,
+            is ZigContainerDecl,
+            is ZigErrorSetDecl,
+            is ZigListInit,
+            is ZigSwitch -> {
                 var indent = Indent.getNoneIndent()
                 for (child in myNode.children()) {
                     when (child.elementType) {

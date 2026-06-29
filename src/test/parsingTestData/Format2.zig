@@ -47,3 +47,85 @@ test
         //
     }
 }
+
+const foo = union(enum(u8)) {
+    //
+}
+//
+;
+
+const foo =
+    //
+    union
+    //
+    (
+    //
+    enum
+    //
+    (
+    //
+    u8
+    //
+    )
+    //
+    )
+    //
+    {
+        //
+    }
+//
+;
+
+const foo = error{};
+
+const foo = error{Foo};
+
+const foo = error{
+    Foo,
+};
+
+const foo =
+    //
+    error
+    //
+    {
+        //
+        Foo
+        //
+        ,
+        //
+    }
+//
+;
+
+const foo = .{
+    //
+};
+
+const foo =
+    //
+    .
+    //
+    {
+        //
+    }
+//
+;
+
+const foo = switch (bar) {
+    //
+};
+
+const foo =
+    //
+    switch (
+    //
+    bar
+    //
+    )
+    //
+    {
+        //
+    }
+//
+;
