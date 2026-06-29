@@ -590,6 +590,7 @@ enum class ZigMutability { CONST, VAR }
 
 sealed interface ZigVarDeclOrProto : ZigElement, PsiNameIdentifierOwner {
     val mutabilityElement: PsiElement
+        get() = firstChild.siblings().first { it.elementType in ZigTokenSets.MUT_TOKENS }
 
     val mutability: ZigMutability
         get() = when (mutabilityElement.elementType) {
@@ -599,17 +600,12 @@ sealed interface ZigVarDeclOrProto : ZigElement, PsiNameIdentifierOwner {
         }
 
     val typeElement: ZigTypeElement?
+        get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigTypeElement }
 }
 
 class ZigVarDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto {
     val pubTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.KEYWORD_PUB)
-
-    override val mutabilityElement: PsiElement
-        get() = findNotNullChildByType(ZigTokenSets.MUT_TOKENS)
-
-    override val typeElement: ZigTypeElement?
-        get() = findChildByClass(ZigTypeElement::class.java)
 
     val equalTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.EQUAL)
@@ -637,12 +633,6 @@ class ZigVarDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto 
 }
 
 class ZigVarProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto {
-    override val mutabilityElement: PsiElement
-        get() = findNotNullChildByType(ZigTokenSets.MUT_TOKENS)
-
-    override val typeElement: ZigTypeElement?
-        get() = findChildByClass(ZigTypeElement::class.java)
-
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = nameIdentifier?.text
     override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
