@@ -19,25 +19,15 @@ import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigIdentifierReference
 import io.github.fncontroloption.zig.ZigLanguage
 
-inline fun <reified T : PsiElement> childrenOfType(element: PsiElement): Sequence<T> {
-    var nextChild = element.firstChild
-    return generateSequence {
-        while (nextChild != null) {
-            val element = nextChild
-            nextChild = nextChild.nextSibling
-            if (element is T) {
-                return@generateSequence element
-            }
-        }
-        null
-    }
-}
-
 sealed class ZigElement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage) {
     val members: Sequence<ZigElement>
-        get() = childrenOfType<ZigElement>(this)
+        get() =
+            firstChild
+                ?.siblings()
+                ?.mapNotNull { it as? ZigElement }
+                ?: emptySequence()
 
     override fun getFileType() = ZigFileType
     override fun toString() = "ZigFile:$name"
@@ -242,7 +232,11 @@ class ZigContainerDecl(node: ASTNode) : ZigElement(node) {
         }
 
     val members: Sequence<ZigElement>
-        get() = childrenOfType<ZigElement>(this).filter { it !is ZigContainerTag }
+        get() =
+            firstChild
+                .siblings()
+                .mapNotNull { it as? ZigElement }
+                .filter { it !is ZigContainerTag }
 
     override fun getPresentation(): ItemPresentation {
         val kind = containerKindElement.text
@@ -322,7 +316,10 @@ class ZigFnDecl(node: ASTNode) : ZigElement(node), PsiNameIdentifierOwner {
         get() = findChildByType(ZigTokenType.KEYWORD_PUB)
 
     val parameters: Sequence<ZigParamDecl>
-        get() = childrenOfType(this)
+        get() =
+            firstChild
+                .siblings()
+                .mapNotNull { it as? ZigParamDecl }
 
     val ellipsisTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.ELLIPSIS3)
