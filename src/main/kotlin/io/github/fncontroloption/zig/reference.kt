@@ -17,6 +17,7 @@ import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigSwitchItem
 import io.github.fncontroloption.zig.psi2.ZigSwitchProng
+import io.github.fncontroloption.zig.psi2.ZigTestDecl
 import io.github.fncontroloption.zig.psi2.ZigThenElement
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 import io.github.fncontroloption.zig.psi2.ZigVarProto
@@ -31,31 +32,16 @@ class ZigIdentifierReference(element: ZigIdentifier) :
         replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
 }
 
-/* TODO
-object ZigTestDeclReferenceProvider : PsiReferenceProvider() {
-    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
-        val decl = element as ZigTestDecl
-        val name = decl.testName
-        if (name?.elementType === ZigTokenTypes.IDENTIFIER) {
-            return arrayOf(ZigTestReference(decl, name))
-        }
-        return emptyArray()
-    }
-}
-
 class ZigTestReference(element: ZigTestDecl, val name: PsiElement) :
     PsiReferenceBase<ZigTestDecl>(element, name.textRangeInParent, true) {
 
     override fun resolve() = resolveIdentifierReference(name)
 
-    override fun handleElementRename(newElementName: String): PsiElement? {
-        val oldToken = myElement.testName ?: throw IncorrectOperationException()
-        val newToken = createZigIdentifierToken(myElement.project, newElementName)
-        oldToken.replace(newToken)
-        return myElement
-    }
+    override fun handleElementRename(newElementName: String) =
+        replaceZigIdentifierElement(myElement, myElement.nameElement, newElementName)
 }
 
+/* TODO
 object ZigFieldAccessReferenceProvider : PsiReferenceProvider() {
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
         val access = element as ZigFieldAccess

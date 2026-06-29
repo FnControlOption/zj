@@ -17,6 +17,7 @@ import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigMutability
 import io.github.fncontroloption.zig.psi2.ZigParamDecl
+import io.github.fncontroloption.zig.psi2.ZigTestDecl
 import io.github.fncontroloption.zig.psi2.ZigVarDeclOrProto
 import io.github.fncontroloption.zig.resolveReferences
 import java.util.regex.Pattern
@@ -152,6 +153,11 @@ class ZigHighlightVisitor : HighlightVisitor {
                 createHighlightInfoFromReference(element, element)
             }
 
+            is ZigTestDecl -> {
+                val name = element.nameElement ?: return null
+                createHighlightInfoFromReference(element, name)
+            }
+
             /* TODO
             is ZigFieldAccess -> {
                 val name = element.fieldName ?: return null
@@ -160,11 +166,6 @@ class ZigHighlightVisitor : HighlightVisitor {
 
             is ZigInitListEntry -> {
                 val name = element.fieldName ?: return null
-                createHighlightInfoFromReference(element, name)
-            }
-
-            is ZigTestDecl -> {
-                val name = element.testName ?: return null
                 createHighlightInfoFromReference(element, name)
             }
              */

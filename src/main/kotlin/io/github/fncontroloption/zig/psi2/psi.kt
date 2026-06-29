@@ -11,6 +11,7 @@ import com.intellij.psi.FileViewProvider
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiNameIdentifierOwner
+import com.intellij.psi.PsiReference
 import com.intellij.psi.util.elementType
 import com.intellij.psi.util.siblings
 import com.intellij.ui.RowIcon
@@ -18,6 +19,7 @@ import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigIdentifierReference
 import io.github.fncontroloption.zig.ZigLanguage
+import io.github.fncontroloption.zig.ZigTestReference
 
 sealed interface ZigElement : PsiElement
 
@@ -552,6 +554,14 @@ class ZigTestDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
         val name = nameElement?.text
         val text = if (name != null) "test $name" else "test"
         return PresentationData(text, null, AllIcons.Nodes.Test, null)
+    }
+
+    override fun getReferences(): Array<out PsiReference> {
+        val name = nameElement
+        if (name?.elementType === ZigTokenType.IDENTIFIER) {
+            return arrayOf(ZigTestReference(this, name))
+        }
+        return emptyArray()
     }
 }
 

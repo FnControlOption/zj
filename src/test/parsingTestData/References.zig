@@ -19,3 +19,4 @@ const foo20 = switch (undefined) {
     undefined => |*foo21, foo22| .{ foo21, foo22 },
 };
 const foo23 = undefined catch |foo24| foo24;
+test foo5 {}
