@@ -27,40 +27,53 @@ sealed interface ZigElement : PsiElement
 
 sealed interface ZigUnaryExpression : ZigElement {
     val operand: ZigElement?
+        get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigElement }
 }
 
-sealed interface ZigPrefixExpression : ZigUnaryExpression {
-    override val operand: ZigElement?
-        get() = lastChild as? ZigElement
-}
+sealed interface ZigPrefixExpression : ZigUnaryExpression
 
-sealed interface ZigPostfixExpression : ZigUnaryExpression {
-    override val operand: ZigElement?
-        get() = firstChild as? ZigElement
-}
+sealed interface ZigPostfixExpression : ZigUnaryExpression
 
 sealed interface ZigBinaryExpression : ZigElement {
-    val leftOperand: ZigElement?
-        get() = firstChild as? ZigElement
-
-    val rightOperand: ZigElement?
-        get() = lastChild as? ZigElement
-}
-
-sealed interface ZigAssignElement : ZigElement {
-    val leftElement: ZigElement?
-        get() = firstChild as? ZigElement
+    val leftOperand: ZigElement
+        get() =
+            firstChild
+                .siblings()
+                .takeWhile { it.elementType !== mainTokenType }
+                .firstNotNullOf { it as? ZigElement }
 
     val mainTokenType: IElementType
 
-    val mainTokenElement: PsiElement?
-        get() = firstChild.siblings().firstOrNull { it.elementType === mainTokenType }
+    val mainTokenElement: PsiElement
+        get() = firstChild.siblings().first { it.elementType === mainTokenType }
+
+    val rightOperand: ZigElement?
+        get() =
+            lastChild
+                .siblings(forward = false)
+                .takeWhile { it.elementType !== mainTokenType }
+                .firstNotNullOfOrNull { it as? ZigElement }
+}
+
+sealed interface ZigAssignElement : ZigElement {
+    val leftElement: ZigElement
+        get() =
+            firstChild
+                .siblings()
+                .takeWhile { it.elementType !== mainTokenType }
+                .firstNotNullOf { it as? ZigElement }
+
+    val mainTokenType: IElementType
+
+    val mainTokenElement: PsiElement
+        get() = firstChild.siblings().first { it.elementType === mainTokenType }
 
     val rightElement: ZigElement?
         get() =
-            mainTokenElement
-                ?.siblings(forward = true, withSelf = false)
-                ?.firstNotNullOfOrNull { it as? ZigElement }
+            lastChild
+                .siblings(forward = false)
+                .takeWhile { it.elementType !== mainTokenType }
+                .firstNotNullOfOrNull { it as? ZigElement }
 }
 
 sealed interface ZigLabelable : ZigElement {
@@ -96,11 +109,20 @@ class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLan
     override fun toString() = "ZigFile:$name"
 }
 
-class ZigAdd(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigAdd(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.PLUS
+}
 
-class ZigAddSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigAddSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.PLUS_PIPE
+}
 
-class ZigAddWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigAddWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.PLUS_PERCENT
+}
 
 class ZigAddressOf(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpression
 
@@ -117,7 +139,10 @@ class ZigAnyframeType(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigArrayAccess(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigArrayCat(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigArrayCat(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.PLUS_PLUS
+}
 
 class ZigArrayIndex(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
@@ -245,15 +270,27 @@ class ZigAssignSubWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigAssignEle
         get() = ZigTokenType.MINUS_PERCENT_EQUAL
 }
 
-class ZigBangEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigBangEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.BANG_EQUAL
+}
 
-class ZigBitAnd(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigBitAnd(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.AMPERSAND
+}
 
 class ZigBitNot(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpression
 
-class ZigBitOr(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigBitOr(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.PIPE
+}
 
-class ZigBitXor(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigBitXor(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.CARET
+}
 
 class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
     val statements: Sequence<ZigElement>
@@ -264,11 +301,17 @@ class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
                 .filter { it !is ZigLabelDecl }
 }
 
-class ZigBoolAnd(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigBoolAnd(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.KEYWORD_AND
+}
 
 class ZigBoolNot(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpression
 
-class ZigBoolOr(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigBoolOr(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.KEYWORD_OR
+}
 
 class ZigBreak(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
@@ -285,11 +328,17 @@ class ZigCallArg(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigCallconvModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigModifier
 
 class ZigCatch(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.KEYWORD_CATCH
+
     val payload: ZigCatchPayload?
         get() = findChildByClass(ZigCatchPayload::class.java)
 
     override val rightOperand: ZigElement?
-        get() = if (lastChild !is ZigCatchPayload) lastChild as? ZigElement else null
+        get() =
+            mainTokenElement
+                .siblings(forward = true, withSelf = false)
+                .firstNotNullOfOrNull { if (lastChild !is ZigCatchPayload) lastChild as? ZigElement else null }
 }
 
 class ZigCatchPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
@@ -361,7 +410,10 @@ class ZigDefer(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 
 class ZigDeref(node: ASTNode) : ASTWrapperPsiElement(node), ZigPostfixExpression
 
-class ZigDiv(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigDiv(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.SLASH
+}
 
 class ZigElseElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val payload: ZigElsePayload?
@@ -383,7 +435,10 @@ class ZigEnumLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
         get() = findChildByType(ZigTokenType.IDENTIFIER)
 }
 
-class ZigEqualEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigEqualEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.EQUAL_EQUAL
+}
 
 class ZigErrdefer(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
@@ -481,9 +536,15 @@ class ZigForInput(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigForPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
 }
 
-class ZigGreaterOrEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigGreaterOrEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.ANGLE_BRACKET_RIGHT_EQUAL
+}
 
-class ZigGreaterThan(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigGreaterThan(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.ANGLE_BRACKET_RIGHT
+}
 
 class ZigGroupedExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
@@ -520,9 +581,15 @@ class ZigLabelRef(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     override fun getReferences() = arrayOf(ZigLabelReference(this))
 }
 
-class ZigLessOrEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigLessOrEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.ANGLE_BRACKET_LEFT_EQUAL
+}
 
-class ZigLessThan(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigLessThan(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.ANGLE_BRACKET_LEFT
+}
 
 class ZigLinksectionModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigModifier
 
@@ -532,15 +599,30 @@ class ZigListInit(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigListInitItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigMergeErrorSets(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigMergeErrorSets(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.PIPE_PIPE
+}
 
-class ZigMod(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigMod(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.PERCENT
+}
 
-class ZigMul(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigMul(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.ASTERISK
+}
 
-class ZigMulSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigMulSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.ASTERISK_PIPE
+}
 
-class ZigMulWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigMulWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.ASTERISK_PERCENT
+}
 
 class ZigMultilineStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
@@ -558,7 +640,10 @@ class ZigNumberLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigOptionalType(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigOrelse(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigOrelse(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.KEYWORD_ORELSE
+}
 
 class ZigParamDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiNameIdentifierOwner {
     val typeElement: ZigTypeElement?
@@ -586,11 +671,20 @@ class ZigResume(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigReturn(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigShl(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigShl(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.ANGLE_BRACKET_ANGLE_BRACKET_LEFT
+}
 
-class ZigShlSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigShlSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.ANGLE_BRACKET_ANGLE_BRACKET_LEFT_PIPE
+}
 
-class ZigShr(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigShr(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.ANGLE_BRACKET_ANGLE_BRACKET_RIGHT
+}
 
 class ZigSlice(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
@@ -604,11 +698,20 @@ class ZigSliceSentinel(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigSub(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigSub(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.MINUS
+}
 
-class ZigSubSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigSubSat(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.MINUS_PIPE
+}
 
-class ZigSubWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
+class ZigSubWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
+    override val mainTokenType: IElementType
+        get() = ZigTokenType.MINUS_PERCENT
+}
 
 class ZigSuspend(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
