@@ -22,6 +22,7 @@ import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
 import io.github.fncontroloption.zig.psi2.ZigCall
 import io.github.fncontroloption.zig.psi2.ZigCatch
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
+import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigElseElement
 import io.github.fncontroloption.zig.psi2.ZigErrorSetDecl
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
@@ -66,7 +67,7 @@ class ZigFormattingBlock(
     override fun buildChildren(): List<FormattingBlock> {
         val blocks = mutableListOf<FormattingBlock>()
         when (val element = myNode.psi) {
-            is ZigVarDecl, is ZigAssignDestructure -> {
+            is ZigVarDecl, is ZigAssignDestructure, is ZigContainerField -> {
                 var indent = Indent.getNoneIndent()
                 for (child in myNode.children()) {
                     addChild(blocks, child, indent)

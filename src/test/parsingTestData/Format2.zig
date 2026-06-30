@@ -8,6 +8,18 @@ foo
 //
 ;
 
+const Foo = struct {
+    bar
+    //
+    :
+    //
+    Bar
+    //
+    =
+        //
+        baz,
+};
+
 test
 //
 {
