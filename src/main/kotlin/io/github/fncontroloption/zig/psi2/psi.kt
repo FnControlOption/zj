@@ -7,23 +7,30 @@ import com.intellij.ide.projectView.PresentationData
 import com.intellij.lang.ASTNode
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Iconable
 import com.intellij.psi.FileViewProvider
+import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiReference
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.elementType
+import com.intellij.psi.util.findParentInFile
 import com.intellij.psi.util.siblings
-import com.intellij.ui.RowIcon
+import com.intellij.ui.IconManager
+import com.intellij.util.BitUtil
 import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigIdentifierReference
 import io.github.fncontroloption.zig.ZigLabelReference
 import io.github.fncontroloption.zig.ZigLanguage
 import io.github.fncontroloption.zig.ZigTestReference
+import javax.swing.Icon
 
 sealed interface ZigElement : PsiElement
+
+sealed interface ZigNamedElement : ZigElement, PsiNameIdentifierOwner, NavigatablePsiElement
 
 sealed interface ZigUnaryExpression : ZigElement {
     val operand: ZigElement?
@@ -317,6 +324,9 @@ class ZigBreak(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigBuiltinCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val builtinElement: PsiElement
+        get() = findNotNullChildByType(ZigTokenType.BUILTIN)
+
     val hasTrailingComma: Boolean
         get() =
             lastChild
@@ -388,13 +398,17 @@ class ZigContainerDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainer
                 .filterIsInstance<ZigElement>()
                 .filter { it !is ZigContainerTag }
 
+    override fun isVisibilitySupported() = false
+    override fun getElementIcon(flags: Int) = baseIcon
+    override fun getBaseIcon() = AllIcons.Nodes.Type
+
     override fun getPresentation(): ItemPresentation {
         val kind = containerKindElement.text
-        return PresentationData(kind, null, AllIcons.Nodes.Type, null)
+        return PresentationData(kind, null, baseIcon, null)
     }
 }
 
-class ZigContainerField(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiNameIdentifierOwner {
+class ZigContainerField(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement {
     val typeElement: ZigTypeElement?
         get() = findChildByClass(ZigTypeElement::class.java)
 
@@ -403,11 +417,15 @@ class ZigContainerField(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement,
     override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
+    override fun isVisibilitySupported() = false
+    override fun getElementIcon(flags: Int) = baseIcon
+    override fun getBaseIcon() = AllIcons.Nodes.Field
+
     override fun getPresentation(): ItemPresentation {
         val name = nameIdentifier?.text
         val type = typeElement?.text
         val text = if (name != null && type != null) "$name: $type" else name ?: type
-        return PresentationData(text, null, AllIcons.Nodes.Field, null)
+        return PresentationData(text, null, baseIcon, null)
     }
 }
 
@@ -477,11 +495,17 @@ class ZigFieldAccess(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
                 .siblings()
                 .takeWhile { it.elementType !== ZigTokenType.PERIOD }
                 .firstNotNullOf { it as? ZigElement }
+
+    val identifierElement: PsiElement?
+        get() = findChildByType(ZigTokenType.IDENTIFIER)
 }
 
-class ZigFnDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiNameIdentifierOwner {
+class ZigFnDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement {
     val pubTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.KEYWORD_PUB)
+
+    val isPub: Boolean
+        get() = pubTokenElement != null
 
     val parameters: Sequence<ZigParamDecl>
         get() = firstChild.siblings().filterIsInstance<ZigParamDecl>()
@@ -502,6 +526,10 @@ class ZigFnDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiName
     override fun getName() = nameIdentifier?.text
     override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
+
+    override fun isVisibilitySupported() = true
+    override fun getElementIcon(flags: Int) = addVisibilityIcon(isPub, flags, baseIcon)
+    override fun getBaseIcon() = AllIcons.Nodes.Function
 
     override fun getPresentation(): ItemPresentation {
         val text = buildString {
@@ -537,9 +565,8 @@ class ZigFnDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiName
                 append(returnType)
             }
         }
-        val visibility = if (pubTokenElement != null) AllIcons.Nodes.Public else AllIcons.Nodes.Private
-        val rowIcon = RowIcon(AllIcons.Nodes.Function, visibility)
-        return PresentationData(text, null, rowIcon, null)
+        val icon = getElementIcon(ICON_FLAG_VISIBILITY)
+        return PresentationData(text, null, icon, null)
     }
 }
 
@@ -597,7 +624,7 @@ class ZigIf(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
         get() = findChildByClass(ZigElseElement::class.java)
 }
 
-class ZigLabelDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiNameIdentifierOwner {
+class ZigLabelDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement {
     val identifierElement: PsiElement
         get() = findNotNullChildByType(ZigTokenType.IDENTIFIER)
 
@@ -678,7 +705,7 @@ class ZigOrelse(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
         get() = ZigTokenType.KEYWORD_ORELSE
 }
 
-class ZigParamDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiNameIdentifierOwner {
+class ZigParamDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement {
     val typeElement: ZigTypeElement?
         get() = findChildByClass(ZigTypeElement::class.java)
 
@@ -688,7 +715,7 @@ class ZigParamDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiN
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
-class ZigPayloadItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiNameIdentifierOwner {
+class ZigPayloadItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement {
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = nameIdentifier?.text
     override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
@@ -767,10 +794,14 @@ class ZigTestDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val nameElement: PsiElement?
         get() = findChildByType(ZigTokenSets.TEST_NAME)
 
+    override fun isVisibilitySupported() = false
+    override fun getElementIcon(flags: Int) = baseIcon
+    override fun getBaseIcon() = AllIcons.Nodes.Test
+
     override fun getPresentation(): ItemPresentation {
         val name = nameElement?.text
         val text = if (name != null) "test $name" else "test"
-        return PresentationData(text, null, AllIcons.Nodes.Test, null)
+        return PresentationData(text, null, baseIcon, null)
     }
 
     override fun getReferences(): Array<out PsiReference> {
@@ -818,7 +849,7 @@ class ZigUnwrapOptional(node: ASTNode) : ASTWrapperPsiElement(node), ZigPostfixE
 
 enum class ZigMutability { CONST, VAR }
 
-sealed interface ZigVarDeclOrProto : ZigElement, PsiNameIdentifierOwner {
+sealed interface ZigVarDeclOrProto : ZigNamedElement {
     val mutabilityElement: PsiElement
         get() = firstChild.siblings().first { it.elementType in ZigTokenSets.MUT_TOKENS }
 
@@ -834,8 +865,14 @@ sealed interface ZigVarDeclOrProto : ZigElement, PsiNameIdentifierOwner {
 }
 
 class ZigVarDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto {
+    val isLocal: Boolean
+        get() = findParentInFile { it is ZigBlock || it is ZigContainer } is ZigBlock
+
     val pubTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.KEYWORD_PUB)
+
+    val isPub: Boolean
+        get() = pubTokenElement != null
 
     val equalTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.EQUAL)
@@ -851,14 +888,19 @@ class ZigVarDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto 
     override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
+    override fun isVisibilitySupported() = true
+    override fun getElementIcon(flags: Int) = addVisibilityIcon(isPub, flags, baseIcon)
+    override fun getBaseIcon() = when (mutability) {
+        ZigMutability.CONST -> AllIcons.Nodes.Constant
+        ZigMutability.VAR -> AllIcons.Nodes.Variable
+    }
+
     override fun getPresentation(): ItemPresentation {
         val name = nameIdentifier?.text
         val type = typeElement?.text
         val text = if (name != null && type != null) "$name: $type" else name ?: type
-        val mutability = if (mutability == ZigMutability.CONST) AllIcons.Nodes.Constant else AllIcons.Nodes.Variable
-        val visibility = if (pubTokenElement != null) AllIcons.Nodes.Public else AllIcons.Nodes.Private
-        val rowIcon = RowIcon(mutability, visibility)
-        return PresentationData(text, null, rowIcon, null)
+        val icon = getElementIcon(ICON_FLAG_VISIBILITY)
+        return PresentationData(text, null, icon, null)
     }
 }
 
@@ -906,4 +948,12 @@ fun replaceZigIdentifierElement(parent: PsiElement, oldElement: PsiElement?, new
     val newElement = createZigIdentifierElement(parent.project, newName)
     oldElement.replace(newElement)
     return parent
+}
+
+private fun addVisibilityIcon(isPub: Boolean, flags: Int, baseIcon: Icon): Icon {
+    if (BitUtil.isSet(flags, Iconable.ICON_FLAG_VISIBILITY)) {
+        val visibility = if (isPub) AllIcons.Nodes.Public else AllIcons.Nodes.Private
+        return IconManager.getInstance().createRowIcon(baseIcon, visibility)
+    }
+    return baseIcon
 }

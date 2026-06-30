@@ -13,8 +13,6 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SyntaxTraverser
-import com.intellij.psi.util.findParentInFile
-import io.github.fncontroloption.zig.psi2.ZigBlock
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
@@ -27,10 +25,7 @@ private fun shouldIncludeInStructureView(element: NavigatablePsiElement): Boolea
         is ZigContainerField,
         is ZigFnDecl,
         is ZigTestDecl -> true
-        is ZigVarDecl -> {
-            val scope = element.findParentInFile { it is ZigBlock || it is ZigContainerDecl }
-            scope !is ZigBlock // i.e. scope == null || scope is ZigContainerDecl
-        }
+        is ZigVarDecl -> !element.isLocal
         else -> false
     }
 }
