@@ -9,6 +9,7 @@ import com.intellij.formatting.FormattingModelBuilder
 import com.intellij.formatting.FormattingModelProvider
 import com.intellij.formatting.Indent
 import com.intellij.formatting.Wrap
+import com.intellij.formatting.WrapType
 import com.intellij.lang.ASTNode
 import com.intellij.lang.tree.util.children
 import com.intellij.psi.TokenType
@@ -21,9 +22,11 @@ import io.github.fncontroloption.zig.psi2.ZigBinaryExpression
 import io.github.fncontroloption.zig.psi2.ZigBlock
 import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
 import io.github.fncontroloption.zig.psi2.ZigCall
+import io.github.fncontroloption.zig.psi2.ZigCallArg
 import io.github.fncontroloption.zig.psi2.ZigCatch
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
 import io.github.fncontroloption.zig.psi2.ZigContainerField
+import io.github.fncontroloption.zig.psi2.ZigElementType
 import io.github.fncontroloption.zig.psi2.ZigElseElement
 import io.github.fncontroloption.zig.psi2.ZigErrorSetDecl
 import io.github.fncontroloption.zig.psi2.ZigFieldAccess
@@ -33,6 +36,7 @@ import io.github.fncontroloption.zig.psi2.ZigFor
 import io.github.fncontroloption.zig.psi2.ZigForPayload
 import io.github.fncontroloption.zig.psi2.ZigGroupedExpression
 import io.github.fncontroloption.zig.psi2.ZigListInit
+import io.github.fncontroloption.zig.psi2.ZigListInitItem
 import io.github.fncontroloption.zig.psi2.ZigSwitch
 import io.github.fncontroloption.zig.psi2.ZigThenElement
 import io.github.fncontroloption.zig.psi2.ZigTokenType
@@ -49,16 +53,6 @@ class ZigFormattingModelBuilder : FormattingModelBuilder {
     }
 }
 
-private fun addChild(
-    blocks: MutableList<FormattingBlock>,
-    child: ASTNode,
-    indent: Indent,
-) = when (child.elementType) {
-    TokenType.ERROR_ELEMENT if child.textLength == 0 -> {}
-    TokenType.WHITE_SPACE -> {}
-    else -> blocks.addLast(ZigFormattingBlock(child, indent))
-}
-
 class ZigFormattingBlock(
     node: ASTNode,
     indent: Indent,
@@ -66,6 +60,42 @@ class ZigFormattingBlock(
     wrap: Wrap? = null,
 ) : AbstractFormattingBlock(node, wrap, alignment) {
     private val myIndent = indent
+
+    private fun addChild(
+        blocks: MutableList<FormattingBlock>,
+        child: ASTNode,
+        indent: Indent,
+    ) = when (child.elementType) {
+        TokenType.ERROR_ELEMENT if child.textLength == 0 -> {}
+
+        TokenType.WHITE_SPACE -> {}
+
+        ZigElementType.MULTILINE_STRING_LITERAL -> {
+            var indent = Indent.getNormalIndent()
+            when (myNode.psi) {
+                is ZigListInitItem -> {
+                    // The LIST_INIT_ITEM will already be indented, so we don't
+                    // need to add an indent here.
+                    indent = Indent.getNoneIndent()
+                }
+
+                is ZigCallArg -> {
+                    val hasTrailingComma = when (val parent = myNode.treeParent.psi) {
+                        is ZigBuiltinCall -> parent.hasTrailingComma
+                        is ZigCall -> parent.hasTrailingComma
+                        else -> false
+                    }
+                    if (hasTrailingComma) {
+                        indent = Indent.getNoneIndent()
+                    }
+                }
+            }
+            val wrap = Wrap.createWrap(WrapType.ALWAYS, true)
+            blocks.addLast(ZigFormattingBlock(child, indent, wrap = wrap))
+        }
+
+        else -> blocks.addLast(ZigFormattingBlock(child, indent))
+    }
 
     override fun buildChildren(): List<FormattingBlock> {
         val blocks = mutableListOf<FormattingBlock>()
@@ -157,8 +187,6 @@ class ZigFormattingBlock(
                 }
             }
 
-            is ZigBuiltinCall,
-            is ZigCall,
             is ZigFnDecl,
             is ZigFnProto,
             is ZigFor,
@@ -169,6 +197,32 @@ class ZigFormattingBlock(
                         ZigTokenType.L_PAREN -> {
                             addChild(blocks, child, indent)
                             indent = Indent.getNormalIndent()
+                        }
+
+                        ZigTokenType.R_PAREN -> {
+                            indent = Indent.getNoneIndent()
+                            addChild(blocks, child, indent)
+                        }
+
+                        else -> addChild(blocks, child, indent)
+                    }
+                }
+            }
+
+            is ZigBuiltinCall,
+            is ZigCall -> {
+                val hasTrailingComma = when (element) {
+                    is ZigBuiltinCall -> element.hasTrailingComma
+                    is ZigCall -> element.hasTrailingComma
+                }
+                var indent = Indent.getNoneIndent()
+                for (child in myNode.children()) {
+                    when (child.elementType) {
+                        ZigTokenType.L_PAREN -> {
+                            addChild(blocks, child, indent)
+                            if (hasTrailingComma) {
+                                indent = Indent.getNormalIndent()
+                            }
                         }
 
                         ZigTokenType.R_PAREN -> {

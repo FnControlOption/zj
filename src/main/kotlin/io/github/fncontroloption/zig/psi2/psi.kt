@@ -317,9 +317,21 @@ class ZigBreak(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigBuiltinCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val hasTrailingComma: Boolean
+        get() =
+            lastChild
+                .siblings(forward = false)
+                .firstOrNull { it is ZigCallArg || it.elementType === ZigTokenType.COMMA }
+                ?.elementType === ZigTokenType.COMMA
 }
 
 class ZigCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val hasTrailingComma: Boolean
+        get() =
+            lastChild
+                .siblings(forward = false)
+                .firstOrNull { it is ZigCallArg || it.elementType === ZigTokenType.COMMA }
+                ?.elementType === ZigTokenType.COMMA
 }
 
 class ZigCallArg(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
