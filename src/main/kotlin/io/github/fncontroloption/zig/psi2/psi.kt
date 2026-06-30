@@ -456,6 +456,12 @@ class ZigErrorValue(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigFieldAccess(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val leftOperand: ZigElement
+        get() =
+            firstChild
+                .siblings()
+                .takeWhile { it.elementType !== ZigTokenType.PERIOD }
+                .firstNotNullOf { it as? ZigElement }
 }
 
 class ZigFnDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiNameIdentifierOwner {

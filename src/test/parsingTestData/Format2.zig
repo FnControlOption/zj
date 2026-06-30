@@ -391,3 +391,13 @@ const foo = a
     c
 //
 ;
+
+const foo =
+    //
+    bar
+        //
+        .
+        //
+        baz
+//
+;

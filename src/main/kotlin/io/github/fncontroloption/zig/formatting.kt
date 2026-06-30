@@ -25,6 +25,7 @@ import io.github.fncontroloption.zig.psi2.ZigContainerDecl
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigElseElement
 import io.github.fncontroloption.zig.psi2.ZigErrorSetDecl
+import io.github.fncontroloption.zig.psi2.ZigFieldAccess
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigFnProto
 import io.github.fncontroloption.zig.psi2.ZigFor
@@ -98,8 +99,12 @@ class ZigFormattingBlock(
                 }
             }
 
-            is ZigBinaryExpression -> {
-                val leftNode = element.leftOperand.node
+            is ZigBinaryExpression, is ZigFieldAccess -> {
+                val leftOperand = when (element) {
+                    is ZigBinaryExpression -> element.leftOperand
+                    is ZigFieldAccess -> element.leftOperand
+                }
+                val leftNode = leftOperand.node
                 var indent = Indent.getNoneIndent()
                 for (child in myNode.children()) {
                     addChild(blocks, child, indent)
