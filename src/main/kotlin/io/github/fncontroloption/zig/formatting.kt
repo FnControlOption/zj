@@ -14,6 +14,7 @@ import com.intellij.lang.tree.util.children
 import com.intellij.psi.TokenType
 import io.github.fncontroloption.zig.psi2.ZigArrayAccess
 import io.github.fncontroloption.zig.psi2.ZigArrayType
+import io.github.fncontroloption.zig.psi2.ZigAsm
 import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
 import io.github.fncontroloption.zig.psi2.ZigAssignElement
 import io.github.fncontroloption.zig.psi2.ZigBinaryExpression
@@ -215,6 +216,8 @@ class ZigFormattingBlock(
                     addChild(blocks, child, indent)
                 }
             }
+
+            is ZigAsm -> {} // TODO
 
             else -> {
                 for (child in myNode.children()) {
