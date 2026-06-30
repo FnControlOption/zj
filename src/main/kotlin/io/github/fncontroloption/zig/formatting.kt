@@ -15,9 +15,15 @@ import com.intellij.psi.TokenType
 import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
 import io.github.fncontroloption.zig.psi2.ZigAssignElement
 import io.github.fncontroloption.zig.psi2.ZigBlock
+import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
+import io.github.fncontroloption.zig.psi2.ZigCall
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
 import io.github.fncontroloption.zig.psi2.ZigElseElement
 import io.github.fncontroloption.zig.psi2.ZigErrorSetDecl
+import io.github.fncontroloption.zig.psi2.ZigFnDecl
+import io.github.fncontroloption.zig.psi2.ZigFnProto
+import io.github.fncontroloption.zig.psi2.ZigFor
+import io.github.fncontroloption.zig.psi2.ZigForPayload
 import io.github.fncontroloption.zig.psi2.ZigListInit
 import io.github.fncontroloption.zig.psi2.ZigSwitch
 import io.github.fncontroloption.zig.psi2.ZigThenElement
@@ -92,6 +98,51 @@ class ZigFormattingBlock(
                         ZigTokenType.R_BRACE -> {
                             indent = Indent.getNoneIndent()
                             addChild(blocks, child, indent)
+                        }
+
+                        else -> addChild(blocks, child, indent)
+                    }
+                }
+            }
+
+            is ZigBuiltinCall,
+            is ZigCall,
+            is ZigFnDecl,
+            is ZigFnProto,
+            is ZigFor -> {
+                var indent = Indent.getNoneIndent()
+                for (child in myNode.children()) {
+                    when (child.elementType) {
+                        ZigTokenType.L_PAREN -> {
+                            addChild(blocks, child, indent)
+                            indent = Indent.getNormalIndent()
+                        }
+
+                        ZigTokenType.R_PAREN -> {
+                            indent = Indent.getNoneIndent()
+                            addChild(blocks, child, indent)
+                        }
+
+                        else -> addChild(blocks, child, indent)
+                    }
+                }
+            }
+
+            is ZigForPayload -> {
+                var indent = Indent.getNoneIndent()
+                var outside = true
+                for (child in myNode.children()) {
+                    when (child.elementType) {
+                        ZigTokenType.PIPE -> {
+                            if (outside) {
+                                addChild(blocks, child, indent)
+                                indent = Indent.getNormalIndent()
+                                outside = false
+                            } else {
+                                indent = Indent.getNoneIndent()
+                                addChild(blocks, child, indent)
+                                outside = true
+                            }
                         }
 
                         else -> addChild(blocks, child, indent)
