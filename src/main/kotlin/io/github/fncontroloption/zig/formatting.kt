@@ -12,7 +12,9 @@ import com.intellij.formatting.Wrap
 import com.intellij.formatting.WrapType
 import com.intellij.lang.ASTNode
 import com.intellij.lang.tree.util.children
+import com.intellij.lang.tree.util.siblings
 import com.intellij.psi.TokenType
+import com.intellij.psi.util.siblings
 import io.github.fncontroloption.zig.psi2.ZigArrayAccess
 import io.github.fncontroloption.zig.psi2.ZigArrayType
 import io.github.fncontroloption.zig.psi2.ZigAsm
@@ -24,6 +26,7 @@ import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
 import io.github.fncontroloption.zig.psi2.ZigCall
 import io.github.fncontroloption.zig.psi2.ZigCallArg
 import io.github.fncontroloption.zig.psi2.ZigCatch
+import io.github.fncontroloption.zig.psi2.ZigConditionElement
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigElementType
@@ -43,6 +46,7 @@ import io.github.fncontroloption.zig.psi2.ZigThenElement
 import io.github.fncontroloption.zig.psi2.ZigTokenSets
 import io.github.fncontroloption.zig.psi2.ZigTokenType
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
+import io.github.fncontroloption.zig.psi2.ZigWhile
 import com.intellij.psi.formatter.common.AbstractBlock as AbstractFormattingBlock
 
 class ZigFormattingModelBuilder : FormattingModelBuilder {
@@ -310,7 +314,76 @@ class ZigFormattingBlock(
     }
 
     override fun getChildAttributes(newChildIndex: Int): ChildAttributes {
-        return ChildAttributes(Indent.getNoneIndent(), null)
+        val prevBlock = subBlocks.getOrNull(newChildIndex - 1) as? ZigFormattingBlock
+        val prevNode = prevBlock?.node
+        val prevElement = prevNode?.psi
+        var indent = Indent.getNoneIndent()
+        when (myNode.psi) {
+            is ZigVarDecl, is ZigAssignDestructure, is ZigContainerField -> {
+                if (prevNode != null) {
+                    val isAfterEqual =
+                        prevNode
+                            .siblings(forward = false, withSelf = true)
+                            .any { it.elementType === ZigTokenType.EQUAL }
+                    if (isAfterEqual) {
+                        indent = Indent.getNormalIndent()
+                    }
+                }
+            }
+
+            is ZigAssignElement,
+            is ZigCatch,
+            is ZigBinaryExpression, is ZigFieldAccess,
+            is ZigArrayAccess, is ZigArrayType -> indent = Indent.getNormalIndent()
+
+            is ZigBlock,
+            is ZigContainerDecl,
+            is ZigErrorSetDecl,
+            is ZigListInit,
+            is ZigSwitch -> {
+                if (prevNode != null) {
+                    val isAfterLBrace =
+                        prevNode
+                            .siblings(forward = false, withSelf = true)
+                            .any { it.elementType === ZigTokenType.L_BRACE }
+                    if (isAfterLBrace) {
+                        indent = Indent.getNormalIndent()
+                    }
+                }
+            }
+
+            is ZigFnDecl,
+            is ZigFnProto,
+            is ZigFor,
+            is ZigGroupedExpression,
+            is ZigBuiltinCall,
+            is ZigCall -> {
+                if (prevNode != null) {
+                    val isAfterLParen =
+                        prevNode
+                            .siblings(forward = false, withSelf = true)
+                            .any { it.elementType === ZigTokenType.L_PAREN }
+                    if (isAfterLParen) {
+                        indent = Indent.getNormalIndent()
+                    }
+                }
+            }
+
+            is ZigForPayload -> indent = Indent.getNormalIndent()
+
+            is ZigIf, is ZigWhile -> {
+                if (prevElement != null) {
+                    val isAfterCondition =
+                        prevElement
+                            .siblings(forward = false, withSelf = true)
+                            .any { it is ZigConditionElement }
+                    if (isAfterCondition) {
+                        indent = Indent.getNormalIndent()
+                    }
+                }
+            }
+        }
+        return ChildAttributes(indent, null)
     }
 
     override fun getIndent() = myIndent
