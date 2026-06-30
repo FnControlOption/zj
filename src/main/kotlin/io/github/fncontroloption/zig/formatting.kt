@@ -16,6 +16,7 @@ import io.github.fncontroloption.zig.psi2.ZigArrayAccess
 import io.github.fncontroloption.zig.psi2.ZigArrayType
 import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
 import io.github.fncontroloption.zig.psi2.ZigAssignElement
+import io.github.fncontroloption.zig.psi2.ZigBinaryExpression
 import io.github.fncontroloption.zig.psi2.ZigBlock
 import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
 import io.github.fncontroloption.zig.psi2.ZigCall
@@ -90,6 +91,17 @@ class ZigFormattingBlock(
                 for (child in myNode.children()) {
                     addChild(blocks, child, indent)
                     if (child.elementType === ZigTokenType.KEYWORD_CATCH) {
+                        indent = Indent.getNormalIndent()
+                    }
+                }
+            }
+
+            is ZigBinaryExpression -> {
+                val leftNode = element.leftOperand.node
+                var indent = Indent.getNoneIndent()
+                for (child in myNode.children()) {
+                    addChild(blocks, child, indent)
+                    if (child === leftNode) {
                         indent = Indent.getNormalIndent()
                     }
                 }

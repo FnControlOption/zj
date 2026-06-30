@@ -359,3 +359,15 @@ const foo =
         qux
 //
 ;
+
+const foo = a
+    //
+    and
+    //
+    b
+    //
+    and
+    //
+    c
+//
+;
