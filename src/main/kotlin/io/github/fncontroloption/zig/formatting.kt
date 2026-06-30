@@ -35,10 +35,12 @@ import io.github.fncontroloption.zig.psi2.ZigFnProto
 import io.github.fncontroloption.zig.psi2.ZigFor
 import io.github.fncontroloption.zig.psi2.ZigForPayload
 import io.github.fncontroloption.zig.psi2.ZigGroupedExpression
+import io.github.fncontroloption.zig.psi2.ZigIf
 import io.github.fncontroloption.zig.psi2.ZigListInit
 import io.github.fncontroloption.zig.psi2.ZigListInitItem
 import io.github.fncontroloption.zig.psi2.ZigSwitch
 import io.github.fncontroloption.zig.psi2.ZigThenElement
+import io.github.fncontroloption.zig.psi2.ZigTokenSets
 import io.github.fncontroloption.zig.psi2.ZigTokenType
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 import com.intellij.psi.formatter.common.AbstractBlock as AbstractFormattingBlock
@@ -267,6 +269,31 @@ class ZigFormattingBlock(
                     else -> Indent.getNormalIndent()
                 }
                 for (child in myNode.children()) {
+                    addChild(blocks, child, indent)
+                }
+            }
+
+            is ZigIf -> {
+                val shouldIndentThenComments = element.thenElement.innerElement !is ZigBlock
+                val shouldIndentElseComments = element.elseElement?.innerElement !is ZigBlock
+                val thenBodyStart = (element.thenPayload ?: element.conditionElement).node.treeNext
+                val elseBodyStart = (element.elsePayload ?: element.elseTokenElement)?.node?.treeNext
+                var commentIndent = Indent.getNoneIndent()
+                for (child in myNode.children()) {
+                    var indent = Indent.getNoneIndent()
+                    if (child === thenBodyStart) {
+                        if (shouldIndentThenComments) {
+                            commentIndent = Indent.getNormalIndent()
+                        }
+                    } else if (child.elementType === ZigTokenType.KEYWORD_ELSE) {
+                        commentIndent = Indent.getNoneIndent()
+                    } else if (child === elseBodyStart) {
+                        if (shouldIndentElseComments) {
+                            commentIndent = Indent.getNormalIndent()
+                        }
+                    } else if (child.elementType in ZigTokenSets.COMMENTS) {
+                        indent = commentIndent
+                    }
                     addChild(blocks, child, indent)
                 }
             }

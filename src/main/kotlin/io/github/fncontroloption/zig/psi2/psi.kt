@@ -575,11 +575,23 @@ class ZigIdentifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigIf(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val conditionElement: ZigConditionElement
+        get() = findNotNullChildByClass(ZigConditionElement::class.java)
+
     val thenPayload: ZigThenPayload?
         get() = findChildByClass(ZigThenPayload::class.java)
 
+    val thenElement: ZigThenElement
+        get() = findNotNullChildByClass(ZigThenElement::class.java)
+
+    val elseTokenElement: PsiElement?
+        get() = findChildByType(ZigTokenType.KEYWORD_ELSE)
+
     val elsePayload: ZigElsePayload?
         get() = findChildByClass(ZigElsePayload::class.java)
+
+    val elseElement: ZigElseElement?
+        get() = findChildByClass(ZigElseElement::class.java)
 }
 
 class ZigLabelDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement, PsiNameIdentifierOwner {
