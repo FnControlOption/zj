@@ -378,6 +378,9 @@ class ZigContainerDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainer
             else -> throw IllegalStateException()
         }
 
+    val containerTagElement: ZigContainerTag?
+        get() = findChildByClass(ZigContainerTag::class.java)
+
     override val members: Sequence<ZigElement>
         get() =
             firstChild
