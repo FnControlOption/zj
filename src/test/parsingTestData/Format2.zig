@@ -340,3 +340,22 @@ const foo =
     ]
 //
 ;
+
+const foo = bar catch |baz|
+    qux;
+
+const foo =
+    //
+    bar
+    //
+    catch
+        //
+        |
+        //
+        baz
+        //
+        |
+        //
+        qux
+//
+;
