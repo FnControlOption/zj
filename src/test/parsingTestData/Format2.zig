@@ -262,3 +262,81 @@ foo
 Foo
 //
 {}
+
+const Foo =
+    //
+    [
+    //
+    :
+    //
+    sentinel
+    //
+    ]
+    //
+    Bar
+//
+;
+
+const Foo =
+    //
+    [
+    //
+    *
+    //
+    :
+    //
+    sentinel
+    //
+    ]
+    //
+    Bar
+//
+;
+
+const Foo =
+    //
+    [
+        //
+        length
+        //
+        :
+        //
+        sentinel
+        //
+    ]
+    //
+    Bar
+//
+;
+
+const foo =
+    //
+    bar
+    //
+    [
+        //
+        index
+        //
+    ]
+//
+;
+
+const foo =
+    //
+    bar
+    //
+    [
+    //
+    start
+    //
+    ..
+    //
+    end
+    //
+    :
+    //
+    sentinel
+    //
+    ]
+//
+;

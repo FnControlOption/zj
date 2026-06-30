@@ -12,6 +12,8 @@ import com.intellij.formatting.Wrap
 import com.intellij.lang.ASTNode
 import com.intellij.lang.tree.util.children
 import com.intellij.psi.TokenType
+import io.github.fncontroloption.zig.psi2.ZigArrayAccess
+import io.github.fncontroloption.zig.psi2.ZigArrayType
 import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
 import io.github.fncontroloption.zig.psi2.ZigAssignElement
 import io.github.fncontroloption.zig.psi2.ZigBlock
@@ -78,6 +80,25 @@ class ZigFormattingBlock(
                     addChild(blocks, child, indent)
                     if (child.elementType === element.mainTokenType) {
                         indent = Indent.getNormalIndent()
+                    }
+                }
+            }
+
+            is ZigArrayAccess, is ZigArrayType -> {
+                var indent = Indent.getNoneIndent()
+                for (child in myNode.children()) {
+                    when (child.elementType) {
+                        ZigTokenType.L_BRACKET -> {
+                            addChild(blocks, child, indent)
+                            indent = Indent.getNormalIndent()
+                        }
+
+                        ZigTokenType.R_BRACKET -> {
+                            indent = Indent.getNoneIndent()
+                            addChild(blocks, child, indent)
+                        }
+
+                        else -> addChild(blocks, child, indent)
                     }
                 }
             }
