@@ -1285,11 +1285,11 @@ class ZigParser : PsiParser {
         return marker
     }
 
-    private fun tryCondition(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun tryCondition(builder: PsiBuilder): PsiBuilder.Marker {
         val marker = builder.mark()
         if (!expectToken(builder, ZigTokenType.L_PAREN)) {
-            marker.drop()
-            return null
+            marker.done(ZigElementType.CONDITION)
+            return marker
         }
         var expr: PsiBuilder.Marker? = null
         parseEnclosed(builder, ZigTokenType.R_PAREN) {
