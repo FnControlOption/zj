@@ -29,6 +29,7 @@ import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigFnProto
 import io.github.fncontroloption.zig.psi2.ZigFor
 import io.github.fncontroloption.zig.psi2.ZigForPayload
+import io.github.fncontroloption.zig.psi2.ZigGroupedExpression
 import io.github.fncontroloption.zig.psi2.ZigListInit
 import io.github.fncontroloption.zig.psi2.ZigSwitch
 import io.github.fncontroloption.zig.psi2.ZigThenElement
@@ -154,7 +155,8 @@ class ZigFormattingBlock(
             is ZigCall,
             is ZigFnDecl,
             is ZigFnProto,
-            is ZigFor -> {
+            is ZigFor,
+            is ZigGroupedExpression -> {
                 var indent = Indent.getNoneIndent()
                 for (child in myNode.children()) {
                     when (child.elementType) {
