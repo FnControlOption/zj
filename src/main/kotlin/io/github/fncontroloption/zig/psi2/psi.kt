@@ -390,7 +390,8 @@ class ZigContainerDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainer
 
     override fun getPresentation(): ItemPresentation {
         val kind = containerKindElement.text
-        return PresentationData(kind, null, baseIcon, null)
+        val location = containingFile.name
+        return PresentationData(kind, location, baseIcon, null)
     }
 }
 
@@ -414,7 +415,8 @@ class ZigContainerField : ZigStubPsiElement<ZigContainerFieldStub>, ZigNamedElem
         val name = nameIdentifier?.text
         val type = typeElement?.text
         val text = if (name != null && type != null) "$name: $type" else name ?: type
-        return PresentationData(text, null, baseIcon, null)
+        val location = containingFile.name
+        return PresentationData(text, location, baseIcon, null)
     }
 }
 
@@ -555,8 +557,9 @@ class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigNamedElement {
                 append(returnType)
             }
         }
+        val location = containingFile.name
         val icon = getElementIcon(ICON_FLAG_VISIBILITY)
-        return PresentationData(text, null, icon, null)
+        return PresentationData(text, location, icon, null)
     }
 }
 
@@ -775,7 +778,8 @@ class ZigTestDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     override fun getPresentation(): ItemPresentation {
         val name = nameElement?.text
         val text = if (name != null) "test $name" else "test"
-        return PresentationData(text, null, baseIcon, null)
+        val location = containingFile.name
+        return PresentationData(text, location, baseIcon, null)
     }
 
     override fun getReferences(): Array<out PsiReference> {
@@ -876,8 +880,9 @@ class ZigVarDecl : ZigStubPsiElement<ZigVarDeclStub>, ZigVarDeclOrProto {
         val name = nameIdentifier?.text
         val type = typeElement?.text
         val text = if (name != null && type != null) "$name: $type" else name ?: type
+        val location = containingFile.name
         val icon = getElementIcon(ICON_FLAG_VISIBILITY)
-        return PresentationData(text, null, icon, null)
+        return PresentationData(text, location, icon, null)
     }
 }
 
