@@ -524,39 +524,8 @@ class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigNamedElement {
     override fun getBaseIcon() = AllIcons.Nodes.Function
 
     override fun getPresentation(): ItemPresentation {
-        val text = buildString {
-            val name = nameIdentifier?.text
-            if (name != null) {
-                append(name)
-            }
-            append('(')
-            var needComma = false
-            for (paramDecl in parameters) {
-                if (needComma) {
-                    append(", ")
-                }
-                val paramType = paramDecl.typeElement?.text
-                if (paramType != null) {
-                    append(paramType)
-                }
-                needComma = true
-            }
-            if (ellipsisTokenElement != null) {
-                if (needComma) {
-                    append(", ")
-                }
-                append("...")
-            }
-            append(')')
-            append(' ')
-            if (bangTokenElement != null) {
-                append('!')
-            }
-            val returnType = returnTypeElement?.text
-            if (returnType != null) {
-                append(returnType)
-            }
-        }
+        val name = nameIdentifier?.text
+        val text = if (name != null) "$name()" else null
         val location = containingFile.name
         val icon = getElementIcon(ICON_FLAG_VISIBILITY)
         return PresentationData(text, location, icon, null)
