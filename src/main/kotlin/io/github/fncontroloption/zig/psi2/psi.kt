@@ -2,6 +2,7 @@ package io.github.fncontroloption.zig.psi2
 
 import com.intellij.extapi.psi.ASTWrapperPsiElement
 import com.intellij.extapi.psi.PsiFileBase
+import com.intellij.extapi.psi.StubBasedPsiElementBase
 import com.intellij.icons.AllIcons
 import com.intellij.ide.projectView.PresentationData
 import com.intellij.lang.ASTNode
@@ -14,6 +15,8 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiReference
+import com.intellij.psi.StubBasedPsiElement
+import com.intellij.psi.stubs.StubElement
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.elementType
 import com.intellij.psi.util.findParentInFile
@@ -21,14 +24,26 @@ import com.intellij.psi.util.siblings
 import com.intellij.ui.IconManager
 import com.intellij.util.BitUtil
 import com.intellij.util.IncorrectOperationException
+import io.github.fncontroloption.zig.ZigContainerFieldStub
 import io.github.fncontroloption.zig.ZigFileType
+import io.github.fncontroloption.zig.ZigFnDeclStub
 import io.github.fncontroloption.zig.ZigIdentifierReference
 import io.github.fncontroloption.zig.ZigLabelReference
 import io.github.fncontroloption.zig.ZigLanguage
 import io.github.fncontroloption.zig.ZigTestReference
+import io.github.fncontroloption.zig.ZigVarDeclStub
 import javax.swing.Icon
 
 sealed interface ZigElement : PsiElement
+
+@Suppress("UnstableApiUsage")
+sealed class ZigStubPsiElement<T : StubElement<*>> : StubBasedPsiElementBase<T>, StubBasedPsiElement<T>, ZigElement {
+    constructor(stub: T, nodeType: IElementType) : super(stub, nodeType)
+    constructor(node: ASTNode) : super(node)
+    override fun getLanguage() = ZigLanguage
+    override fun getIElementType() = elementTypeImpl
+    override fun toString() = "${javaClass.simpleName}(${elementTypeImpl})"
+}
 
 sealed interface ZigNamedElement : ZigElement, PsiNameIdentifierOwner, NavigatablePsiElement
 
@@ -379,7 +394,10 @@ class ZigContainerDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainer
     }
 }
 
-class ZigContainerField(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement {
+class ZigContainerField : ZigStubPsiElement<ZigContainerFieldStub>, ZigNamedElement {
+    constructor(stub: ZigContainerFieldStub) : super(stub, ZigElementType.CONTAINER_FIELD)
+    constructor(node: ASTNode) : super(node)
+
     val typeElement: ZigTypeElement?
         get() = findChildByClass(ZigTypeElement::class.java)
 
@@ -469,7 +487,10 @@ class ZigFieldAccess(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
         get() = findChildByType(ZigTokenType.IDENTIFIER)
 }
 
-class ZigFnDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement {
+class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigNamedElement {
+    constructor(stub: ZigFnDeclStub) : super(stub, ZigElementType.FN_DECL)
+    constructor(node: ASTNode) : super(node)
+
     val pubTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.KEYWORD_PUB)
 
@@ -817,7 +838,10 @@ sealed interface ZigVarDeclOrProto : ZigNamedElement {
         get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigTypeElement }
 }
 
-class ZigVarDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto {
+class ZigVarDecl : ZigStubPsiElement<ZigVarDeclStub>, ZigVarDeclOrProto {
+    constructor(stub: ZigVarDeclStub) : super(stub, ZigElementType.VAR_DECL)
+    constructor(node: ASTNode) : super(node)
+
     val isLocal: Boolean
         get() = findParentInFile { it is ZigBlock || it is ZigContainer } is ZigBlock
 

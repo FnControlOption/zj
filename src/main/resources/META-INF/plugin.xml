@@ -60,6 +60,11 @@
                          displayName="Zig"/>
     <notificationGroup id="Zig" displayType="STICKY_BALLOON" hideFromSettings="true"/>
     <breadcrumbsInfoProvider implementation="io.github.fncontroloption.zig.ZigBreadcrumbsProvider"/>
+    <languageStubDefinition language="Zig" implementationClass="io.github.fncontroloption.zig.ZigStubDefinition"/>
+    <stubElementRegistryExtension implementation="io.github.fncontroloption.zig.ZigStubRegistryExtension"/>
+    <stubIndex implementation="io.github.fncontroloption.zig.ZigContainerFieldStubIndex"/>
+    <stubIndex implementation="io.github.fncontroloption.zig.ZigFnDeclStubIndex"/>
+    <stubIndex implementation="io.github.fncontroloption.zig.ZigVarDeclStubIndex"/>
     <!--
     <fileType name="Simple File" implementationClass="org.intellij.sdk.language.SimpleFileType" fieldName="INSTANCE"
               language="Simple" extensions="simple"/>
