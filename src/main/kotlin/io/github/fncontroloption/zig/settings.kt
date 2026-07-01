@@ -1,5 +1,6 @@
 package io.github.fncontroloption.zig
 
+/*
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.SerializablePersistentStateComponent
@@ -90,3 +91,4 @@ class ZigSettingsConfigurable(private val project: Project) : Configurable {
         _settingsComponent = null
     }
 }
+ */

@@ -1,5 +1,6 @@
 package io.github.fncontroloption.zig
 
+/*
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
@@ -84,3 +85,4 @@ pub const zig_version = std.SemanticVersion.parse(zig_version_string) catch unre
 pub const zig_version_string = "0.17.0-dev.877+a3ae499dc";"""
     */
 }
+ */
