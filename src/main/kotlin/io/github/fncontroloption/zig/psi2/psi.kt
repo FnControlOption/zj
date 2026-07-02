@@ -419,10 +419,8 @@ class ZigContainerField : ZigStubPsiElement<ZigContainerFieldStub>, ZigNamedElem
 
     override fun getPresentation(): ItemPresentation {
         val name = nameIdentifier?.text
-        val type = typeElement?.text
-        val text = if (name != null && type != null) "$name: $type" else name ?: type
         val location = containingFile.name
-        return PresentationData(text, location, baseIcon, null)
+        return PresentationData(name, location, baseIcon, null)
     }
 }
 
@@ -865,11 +863,9 @@ class ZigVarDecl : ZigStubPsiElement<ZigVarDeclStub>, ZigVarDeclOrProto {
 
     override fun getPresentation(): ItemPresentation {
         val name = nameIdentifier?.text
-        val type = typeElement?.text
-        val text = if (name != null && type != null) "$name: $type" else name ?: type
         val location = containingFile.name
         val icon = getElementIcon(ICON_FLAG_VISIBILITY)
-        return PresentationData(text, location, icon, null)
+        return PresentationData(name, location, icon, null)
     }
 }
 
