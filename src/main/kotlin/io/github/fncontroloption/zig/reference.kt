@@ -1,11 +1,17 @@
 package io.github.fncontroloption.zig
 
+import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.vfs.findFile
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiPolyVariantReference
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.ResolveResult
+import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
 import io.github.fncontroloption.zig.psi2.ZigBlock
 import io.github.fncontroloption.zig.psi2.ZigCatch
@@ -16,12 +22,14 @@ import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigLabelRef
 import io.github.fncontroloption.zig.psi2.ZigLabelable
+import io.github.fncontroloption.zig.psi2.ZigStringLiteral
 import io.github.fncontroloption.zig.psi2.ZigSwitchItem
 import io.github.fncontroloption.zig.psi2.ZigSwitchProng
 import io.github.fncontroloption.zig.psi2.ZigTestDecl
 import io.github.fncontroloption.zig.psi2.ZigThenElement
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 import io.github.fncontroloption.zig.psi2.ZigVarProto
+import io.github.fncontroloption.zig.psi2.createZigStringLiteral
 import io.github.fncontroloption.zig.psi2.replaceZigIdentifierElement
 
 fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
@@ -155,9 +163,6 @@ object ZigBuiltinCallReferenceProvider : PsiReferenceProvider() {
         if (builtin.textMatches("@This")) {
             return arrayOf(ZigThisReference(builtinCall))
         }
-        if (builtin.textMatches("@import")) {
-            return arrayOf(ZigImportReference(builtinCall))
-        }
         return emptyArray()
     }
 }
@@ -170,28 +175,39 @@ class ZigThisReference(element: ZigBuiltinCall) :
         return containerDecl ?: myElement.containingFile
     }
 }
+*/
 
-class ZigImportReference(element: ZigBuiltinCall) :
-    PsiReferenceBase<ZigBuiltinCall>(element, TextRange(0, element.textLength), true) {
+class ZigImportReference(element: ZigStringLiteral) :
+    PsiReferenceBase<ZigStringLiteral>(element, TextRange(1, element.textLength - 1), true) {
 
     override fun resolve(): PsiElement? {
-        val text = importArg?.literalValue ?: return null
+        val text = myElement?.value ?: return null
         if (!text.endsWith(".zig") && !text.endsWith(".zon")) {
             when (text) {
                 "std" -> {
-                    val importService = myElement.project.service<ZigImportService>()
-                    return importService.stdFile
-                }
-                /*
-                "builtin" -> {
-                    val projectService = myElement.project.getService(ZigProjectService::class.java)
-                    return projectService.builtinFile
-                }
-                */
-                else -> {
-                    // TODO: resolve imported modules
+                    val enumerator = run {
+                        val file = myElement.containingFile?.virtualFile
+                        if (file != null) {
+                            val module = ModuleUtilCore.findModuleForFile(file, myElement.project)
+                            if (module != null) {
+                                return@run OrderEnumerator.orderEntries(module)
+                            }
+                        }
+                        OrderEnumerator.orderEntries(myElement.project)
+                    }
+                    for (root in enumerator.sdkOnly().sourceRoots) {
+                        val virtualFile = root.findFile("std.zig")
+                        if (virtualFile != null) {
+                            val psiFile = PsiManager.getInstance(myElement.project).findFile(virtualFile)
+                            if (psiFile != null) {
+                                return psiFile
+                            }
+                        }
+                    }
                     return null
                 }
+                "builtin" -> return null // TODO: get builtin text from `zig build-exe --show-builtin`
+                else -> return null // TODO: resolve imported modules
             }
         }
         val parts = text.split("/")
@@ -207,54 +223,40 @@ class ZigImportReference(element: ZigBuiltinCall) :
         return directory.findFile(fileName)
     }
 
-    override fun handleElementRename(newElementName: String): PsiElement? {
-        val oldArg = importArg ?: throw IncorrectOperationException()
-        val oldValue = oldArg.literalValue
+    override fun handleElementRename(newElementName: String): PsiElement {
+        val oldValue = myElement.value
         val oldParts = oldValue.split("/")
         if (oldParts.isEmpty()) {
             throw IncorrectOperationException()
         }
         val newValue = buildString {
-            for (i in 0 until oldParts.lastIndex) {
+            for (i in 0..<oldParts.lastIndex) {
                 append(oldParts[i])
                 append('/')
             }
             append(newElementName)
         }
-        val newArg = createZigStringLiteral(myElement.project, newValue)
-        oldArg.replace(newArg)
-        return myElement
+        return myElement.replace(createZigStringLiteral(myElement.project, newValue))
     }
 
-    private val importArg: ZigStringLiteral?
-        get() {
-            val callArgs = myElement.builtinCallArgs ?: return null
-            val child = callArgs.firstChild ?: return null
-            if (child.elementType !== ZigTokenTypes.L_PAREN) {
-                return null
-            }
-            return child.nextSibling as? ZigStringLiteral
-        }
-
-    override fun bindToElement(element: PsiElement): PsiElement? {
-        val oldArg = importArg ?: throw IncorrectOperationException()
+    override fun bindToElement(element: PsiElement): PsiElement {
         val psiFile = element as? PsiFile ?: throw IncorrectOperationException()
         val importedFile = psiFile.virtualFile ?: throw IncorrectOperationException()
         val containingDir = myElement.containingFile?.virtualFile?.parent ?: throw IncorrectOperationException()
         val relativePath = containingDir.toNioPath().relativize(importedFile.toNioPath())
         val newValue = buildString {
             append(relativePath.getName(0))
-            for (i in 1 until relativePath.nameCount) {
+            for (i in 1..<relativePath.nameCount) {
                 append('/')
                 append(relativePath.getName(i))
             }
         }
-        val newArg = createZigStringLiteral(myElement.project, newValue)
-        oldArg.replace(newArg)
-        return myElement
+        myElement.replace(createZigStringLiteral(myElement.project, newValue))
+        return element
     }
 }
 
+/* TODO
 object ZigEnumLiteralReferenceProvider : PsiReferenceProvider() {
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
         val literal = element as ZigEnumLiteral

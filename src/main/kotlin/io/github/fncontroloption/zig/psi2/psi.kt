@@ -28,6 +28,7 @@ import io.github.fncontroloption.zig.ZigContainerFieldStub
 import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigFnDeclStub
 import io.github.fncontroloption.zig.ZigIdentifierReference
+import io.github.fncontroloption.zig.ZigImportReference
 import io.github.fncontroloption.zig.ZigLabelReference
 import io.github.fncontroloption.zig.ZigLanguage
 import io.github.fncontroloption.zig.ZigTestReference
@@ -332,6 +333,11 @@ class ZigCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigCallArg(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val containingCall: ZigCall?
+        get() = parent as? ZigCall
+
+    val containingBuiltinCall: ZigBuiltinCall?
+        get() = parent as? ZigBuiltinCall
 }
 
 class ZigCallconvModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigModifier
@@ -705,6 +711,18 @@ class ZigSliceSentinel(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val value: String
+        get() = text.substring(1, textLength - 1) // TODO: unescape string literal
+
+    override fun getReferences(): Array<out PsiReference> {
+        val callArg = parent as? ZigCallArg ?: return emptyArray()
+        val builtinCall = callArg.containingBuiltinCall ?: return emptyArray()
+        return when (builtinCall.builtinElement.text) {
+            "@embedFile" -> emptyArray() // TODO
+            "@import" -> arrayOf(ZigImportReference(this))
+            else -> emptyArray()
+        }
+    }
 }
 
 class ZigSub(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
@@ -899,6 +917,12 @@ fun replaceZigIdentifierElement(parent: PsiElement, oldElement: PsiElement?, new
     val newElement = createZigIdentifierElement(parent.project, newName)
     oldElement.replace(newElement)
     return parent
+}
+
+fun createZigStringLiteral(project: Project, value: String): ZigStringLiteral {
+    val file = createZigFile(project, "const dummy = \"$value\";") // TODO: escape string literal
+    val varDecl = file.members.first() as ZigVarDecl
+    return varDecl.initializer as ZigStringLiteral
 }
 
 private fun addVisibilityIcon(isPub: Boolean, flags: Int, baseIcon: Icon): Icon {
