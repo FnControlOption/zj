@@ -20,42 +20,6 @@ import io.github.fncontroloption.zig.psi2.ZigParamDecl
 import io.github.fncontroloption.zig.psi2.ZigTestDecl
 import io.github.fncontroloption.zig.psi2.ZigVarDeclOrProto
 import io.github.fncontroloption.zig.resolveReferences
-import java.util.regex.Pattern
-
-private val PRIMITIVES = setOf(
-    "anyerror",
-    "anyframe",
-    "anyopaque",
-    "bool",
-    "c_int",
-    "c_long",
-    "c_longdouble",
-    "c_longlong",
-    "c_char",
-    "c_short",
-    "c_uint",
-    "c_ulong",
-    "c_ulonglong",
-    "c_ushort",
-    "comptime_float",
-    "comptime_int",
-    "f128",
-    "f16",
-    "f32",
-    "f64",
-    "f80",
-    "false",
-    "isize",
-    "noreturn",
-    "null",
-    "true",
-    "type",
-    "undefined",
-    "usize",
-    "void"
-)
-
-private val INT_PATTERN: Pattern = Pattern.compile("\\A[iu]\\d+\\Z")
 
 /** @see com.intellij.codeInsight.daemon.impl.analysis.JavaNamesHighlightVisitor */
 class ZigHighlightVisitor : HighlightVisitor {
@@ -144,9 +108,7 @@ class ZigHighlightVisitor : HighlightVisitor {
             }
 
             is ZigIdentifier -> {
-                val text = element.text
-
-                if (PRIMITIVES.contains(text) || INT_PATTERN.matcher(text).matches()) {
+                if (element.isPrimitive) {
                     return createHighlightInfo(element, ZigHighlightInfoTypes.KEYWORD)
                 }
 

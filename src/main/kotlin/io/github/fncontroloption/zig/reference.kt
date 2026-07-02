@@ -17,6 +17,7 @@ import io.github.fncontroloption.zig.psi2.ZigBlock
 import io.github.fncontroloption.zig.psi2.ZigCatch
 import io.github.fncontroloption.zig.psi2.ZigContainer
 import io.github.fncontroloption.zig.psi2.ZigContainerField
+import io.github.fncontroloption.zig.psi2.ZigElement
 import io.github.fncontroloption.zig.psi2.ZigElseElement
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
@@ -44,14 +45,17 @@ fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
     }
 }
 
-private fun resolveIdentifierReference(element: PsiElement): PsiElement? {
+private fun resolveIdentifierReference(element: PsiElement): ZigElement? {
     val name = element.text
     var element = element
     var parent = element.parent
     while (parent != null) {
         val target = when (parent) {
-            is ZigContainer -> parent.members.firstOrNull {
-                it is PsiNameIdentifierOwner && it !is ZigContainerField && it.name == name
+            is ZigContainer -> {
+                val member = parent.members.firstOrNull {
+                    it is PsiNameIdentifierOwner && it.name == name
+                }
+                if (member is ZigContainerField) null else member
             }
 
             is ZigFnDecl -> parent.parameters.firstOrNull { it.name == name }

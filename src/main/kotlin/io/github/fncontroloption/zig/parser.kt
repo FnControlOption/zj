@@ -512,7 +512,11 @@ class ZigParser : PsiParser {
                                     lengthState = TypeLengthState.SENTINEL
                                 }
                             }
-                            length.done(ZigElementType.TYPE_LENGTH)
+                            if (isArray) {
+                                length.done(ZigElementType.TYPE_LENGTH)
+                            } else {
+                                length.drop()
+                            }
                             length
                         }
 
@@ -1630,12 +1634,14 @@ class ZigParser : PsiParser {
 
     private fun parseForInput(builder: PsiBuilder): PsiBuilder.Marker? {
         val input = builder.mark()
-        if (parseExpr(builder) == null) {
+        val start = parseExpr(builder)
+        if (start == null) {
             input.rollbackTo()
             return null
         }
         if (eatToken(builder, ZigTokenType.ELLIPSIS2)) {
             parseExpr(builder)
+            start.precede().done(ZigElementType.FOR_RANGE)
         }
         input.done(ZigElementType.FOR_INPUT)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_PAREN) {
