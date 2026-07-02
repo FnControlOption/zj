@@ -5,11 +5,10 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.IFileElementType
 import io.github.fncontroloption.zig.ZigLanguage
-import org.jetbrains.annotations.NonNls
 
 object ZigFileElementType : IFileElementType(ZigLanguage)
 
-class ZigElementType(@NonNls debugName: String) : IElementType(debugName, ZigLanguage) {
+class ZigElementType(debugName: String) : IElementType(debugName, ZigLanguage) {
     companion object {
         val ADD = ZigElementType("ADD")
         val ADD_SAT = ZigElementType("ADD_SAT")

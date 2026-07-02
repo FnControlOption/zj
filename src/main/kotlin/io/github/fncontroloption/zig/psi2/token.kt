@@ -3,9 +3,8 @@ package io.github.fncontroloption.zig.psi2
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
 import io.github.fncontroloption.zig.ZigLanguage
-import org.jetbrains.annotations.NonNls
 
-class ZigTokenType(@NonNls debugName: String) : IElementType(debugName, ZigLanguage) {
+class ZigTokenType(debugName: String) : IElementType(debugName, ZigLanguage) {
     companion object {
         @JvmField val AMPERSAND = ZigTokenType("&")
         @JvmField val AMPERSAND_EQUAL = ZigTokenType("&=")

@@ -15,10 +15,9 @@ import io.github.fncontroloption.zig.psi2.ZigPayloadItem
 import io.github.fncontroloption.zig.psi2.ZigTokenType
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 import io.github.fncontroloption.zig.psi2.ZigVarProto
-import org.jetbrains.annotations.Nls
 
 class ZigDocumentationProvider : AbstractDocumentationProvider() {
-    override fun generateDoc(element: PsiElement, originalElement: PsiElement?): @Nls String? {
+    override fun generateDoc(element: PsiElement, originalElement: PsiElement?): String? {
         val definition = getDefinition(element) ?: return null
         val sb = StringBuilder()
         HtmlChunk.text(definition)
