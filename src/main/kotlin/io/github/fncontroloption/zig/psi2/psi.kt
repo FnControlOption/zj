@@ -396,7 +396,7 @@ class ZigContainerDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainer
 
     override fun getPresentation(): ItemPresentation {
         val kind = containerKindElement.text
-        val location = containingFile.name
+        val location = "in ${containingFile.name}"
         return PresentationData(kind, location, baseIcon, null)
     }
 }
@@ -419,7 +419,7 @@ class ZigContainerField : ZigStubPsiElement<ZigContainerFieldStub>, ZigNamedElem
 
     override fun getPresentation(): ItemPresentation {
         val name = nameIdentifier?.text
-        val location = containingFile.name
+        val location = "in ${containingFile.name}"
         return PresentationData(name, location, baseIcon, null)
     }
 }
@@ -530,7 +530,7 @@ class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigNamedElement {
     override fun getPresentation(): ItemPresentation {
         val name = nameIdentifier?.text
         val text = if (name != null) "$name()" else null
-        val location = containingFile.name
+        val location = "in ${containingFile.name}"
         val icon = getElementIcon(ICON_FLAG_VISIBILITY)
         return PresentationData(text, location, icon, null)
     }
@@ -763,7 +763,7 @@ class ZigTestDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     override fun getPresentation(): ItemPresentation {
         val name = nameElement?.text
         val text = if (name != null) "test $name" else "test"
-        val location = containingFile.name
+        val location = "in ${containingFile.name}"
         return PresentationData(text, location, baseIcon, null)
     }
 
@@ -863,7 +863,7 @@ class ZigVarDecl : ZigStubPsiElement<ZigVarDeclStub>, ZigVarDeclOrProto {
 
     override fun getPresentation(): ItemPresentation {
         val name = nameIdentifier?.text
-        val location = containingFile.name
+        val location = "in ${containingFile.name}"
         val icon = getElementIcon(ICON_FLAG_VISIBILITY)
         return PresentationData(name, location, icon, null)
     }
