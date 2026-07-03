@@ -18,6 +18,7 @@ import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigMutability
 import io.github.fncontroloption.zig.psi2.ZigOptionalTypeElement
 import io.github.fncontroloption.zig.psi2.ZigPointerSize
+import io.github.fncontroloption.zig.psi2.ZigPointerTypeElement
 import io.github.fncontroloption.zig.psi2.ZigStringLiteral
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 
@@ -57,6 +58,12 @@ private fun computeValuesUncached(element: ZigElement): Collection<ZigValue> {
         is ZigOptionalTypeElement -> {
             val childElement = element.optionalChildElement ?: return emptyList()
             resolveValues(childElement).filterIsInstance<ZigType>().map { ZigOptionalType(it) }
+        }
+
+        is ZigPointerTypeElement -> {
+            val childElement = element.pointerChildElement ?: return emptyList()
+            val size = element.pointerSize
+            resolveValues(childElement).filterIsInstance<ZigType>().map { ZigPointerType(size, it) }
         }
 
         is ZigFieldAccess -> {
