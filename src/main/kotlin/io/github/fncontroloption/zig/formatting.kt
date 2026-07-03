@@ -16,7 +16,7 @@ import com.intellij.lang.tree.util.siblings
 import com.intellij.psi.TokenType
 import com.intellij.psi.util.siblings
 import io.github.fncontroloption.zig.psi2.ZigArrayAccess
-import io.github.fncontroloption.zig.psi2.ZigArrayType
+import io.github.fncontroloption.zig.psi2.ZigArrayTypeElement
 import io.github.fncontroloption.zig.psi2.ZigAsm
 import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
 import io.github.fncontroloption.zig.psi2.ZigAssignElement
@@ -151,7 +151,7 @@ class ZigFormattingBlock(
                 }
             }
 
-            is ZigArrayAccess, is ZigArrayType -> {
+            is ZigArrayAccess, is ZigArrayTypeElement -> {
                 var indent = Indent.getNoneIndent()
                 for (child in myNode.children()) {
                     when (child.elementType) {
@@ -334,7 +334,7 @@ class ZigFormattingBlock(
             is ZigAssignElement,
             is ZigCatch,
             is ZigBinaryExpression, is ZigFieldAccess,
-            is ZigArrayAccess, is ZigArrayType -> indent = Indent.getNormalIndent()
+            is ZigArrayAccess, is ZigArrayTypeElement -> indent = Indent.getNormalIndent()
 
             is ZigBlock,
             is ZigContainerDecl,

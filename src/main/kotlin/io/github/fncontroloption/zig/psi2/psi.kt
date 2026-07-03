@@ -166,7 +166,7 @@ class ZigArrayCat(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpressi
 class ZigArrayIndex(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigArrayType(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+class ZigArrayTypeElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigAsm(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
@@ -654,7 +654,7 @@ class ZigNosuspend(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigNumberLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigOptionalType(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+class ZigOptionalTypeElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigOrelse(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
@@ -678,7 +678,7 @@ class ZigPayloadItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElemen
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
-class ZigPointerType(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+class ZigPointerTypeElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigResume(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
