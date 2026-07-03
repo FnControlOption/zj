@@ -78,7 +78,10 @@ private fun computeValuesUncached(element: ZigElement): Collection<ZigValue> {
                 when (left) {
                     is ZigContainerType -> computeContainerDeclValues(left, name)
                     is ZigType -> emptyList()
-                    else -> emptyList() // TODO
+                    is ZigOpaqueValue -> when (val typeOfLeft = left.type) {
+                        is ZigContainerType -> computeContainerInstanceFieldValues(typeOfLeft, name)
+                        else -> emptyList()
+                    }
                 }
             }
         }
@@ -124,6 +127,24 @@ private fun computeValuesUncached(element: ZigElement): Collection<ZigValue> {
 
         else -> emptyList()
     }
+}
+
+private fun computeContainerInstanceFieldValues(type: ZigContainerType, name: String): Collection<ZigValue> {
+    if (type.element.containerKind == ZigContainerKind.ENUM) {
+        return emptyList()
+    }
+    val member = type.element.members.firstOrNull {
+        it is PsiNameIdentifierOwner && it.name == name
+    }
+    if (member == null || member !is ZigContainerField) {
+        return emptyList()
+    }
+    val typeElement = member.typeElement?.innerElement
+    if (typeElement == null) {
+        // This is likely a tagged union field with an implicit `void` type.
+        return emptyList() // TODO: return void value
+    }
+    return resolveValues(typeElement).filterIsInstance<ZigType>().map { ZigOpaqueValue(it) }
 }
 
 private fun computeContainerDeclValues(type: ZigContainerType, name: String): Collection<ZigValue> {
