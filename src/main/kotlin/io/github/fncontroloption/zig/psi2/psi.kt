@@ -25,6 +25,7 @@ import com.intellij.ui.IconManager
 import com.intellij.util.BitUtil
 import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.ZigContainerFieldStub
+import io.github.fncontroloption.zig.ZigFieldAccessReference
 import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigFnDeclStub
 import io.github.fncontroloption.zig.ZigIdentifierReference
@@ -568,6 +569,11 @@ class ZigFieldAccess(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 
     val identifierElement: PsiElement?
         get() = findChildByType(ZigTokenType.IDENTIFIER)
+
+    override fun getReferences(): Array<out PsiReference> {
+        val identifier = identifierElement ?: return emptyArray()
+        return arrayOf(ZigFieldAccessReference(this, identifier))
+    }
 }
 
 sealed interface ZigFnDeclOrProto : ZigElement {

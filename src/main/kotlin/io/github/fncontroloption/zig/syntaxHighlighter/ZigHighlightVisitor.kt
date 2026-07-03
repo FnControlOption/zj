@@ -12,6 +12,7 @@ import io.github.fncontroloption.zig.psi2.ZigContainerDecl
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigContainerKind
 import io.github.fncontroloption.zig.psi2.ZigEnumLiteral
+import io.github.fncontroloption.zig.psi2.ZigFieldAccess
 import io.github.fncontroloption.zig.psi2.ZigFile
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
@@ -120,12 +121,12 @@ class ZigHighlightVisitor : HighlightVisitor {
                 createHighlightInfoFromReference(element, name)
             }
 
-            /* TODO
             is ZigFieldAccess -> {
-                val name = element.fieldName ?: return null
+                val name = element.identifierElement ?: return null
                 createHighlightInfoFromReference(element, name)
             }
 
+            /* TODO
             is ZigInitListEntry -> {
                 val name = element.fieldName ?: return null
                 createHighlightInfoFromReference(element, name)

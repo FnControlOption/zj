@@ -355,3 +355,5 @@ test {
         fn foo() void {}
     }.foo();
 }
+const foo = @as(*Foo8, bar).foo;
+const foo = (&@as(Foo8, bar)).foo;

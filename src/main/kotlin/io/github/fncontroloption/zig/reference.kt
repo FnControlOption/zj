@@ -5,10 +5,12 @@ import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.findFile
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiElementResolveResult
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiPolyVariantReference
+import com.intellij.psi.PsiPolyVariantReferenceBase
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.ResolveResult
 import com.intellij.util.IncorrectOperationException
@@ -19,10 +21,12 @@ import io.github.fncontroloption.zig.psi2.ZigContainer
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigElement
 import io.github.fncontroloption.zig.psi2.ZigElseElement
+import io.github.fncontroloption.zig.psi2.ZigFieldAccess
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigLabelRef
 import io.github.fncontroloption.zig.psi2.ZigLabelable
+import io.github.fncontroloption.zig.psi2.ZigPointerSize
 import io.github.fncontroloption.zig.psi2.ZigStringLiteral
 import io.github.fncontroloption.zig.psi2.ZigSwitchItem
 import io.github.fncontroloption.zig.psi2.ZigSwitchProng
@@ -134,32 +138,6 @@ class ZigLabelReference(element: ZigLabelRef) :
 }
 
 /* TODO
-object ZigFieldAccessReferenceProvider : PsiReferenceProvider() {
-    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
-        val access = element as ZigFieldAccess
-        val name = access.fieldName ?: return emptyArray()
-        return arrayOf(ZigFieldAccessReference(access, name))
-    }
-}
-
-class ZigFieldAccessReference(element: ZigFieldAccess, val name: PsiElement) :
-    PsiPolyVariantReferenceBase<ZigFieldAccess>(element, name.textRangeInParent, true) {
-
-    override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
-        val lhs = myElement.lhs ?: return emptyArray()
-        val results = mutableSetOf<ResolveResult>()
-        resolveMember(lhs, name.text, mutableSetOf(), results)
-        return results.toTypedArray()
-    }
-
-    override fun handleElementRename(newElementName: String): PsiElement? {
-        val oldToken = myElement.fieldName ?: throw IncorrectOperationException()
-        val newToken = createZigIdentifierToken(myElement.project, newElementName)
-        oldToken.replace(newToken)
-        return myElement
-    }
-}
-
 object ZigBuiltinCallReferenceProvider : PsiReferenceProvider() {
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
         val builtinCall = element as ZigBuiltinCall
@@ -258,6 +236,42 @@ class ZigImportReference(element: ZigStringLiteral) :
         myElement.replace(createZigStringLiteral(myElement.project, newValue))
         return element
     }
+}
+
+class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElement) :
+    PsiPolyVariantReferenceBase<ZigFieldAccess>(element, identifier.textRangeInParent, true) {
+
+    override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
+        val name = identifier.text
+        val results = mutableSetOf<ResolveResult>()
+        for (left in ZigAnalyzer.resolveValues(myElement.leftOperand)) {
+            val containerType = when (left) {
+                is ZigContainerType -> left
+                is ZigOpaqueValue -> when (val typeOfLeft = left.type) {
+                    is ZigContainerType -> typeOfLeft
+                    is ZigPointerType -> when (typeOfLeft.size) {
+                        ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
+                            is ZigContainerType -> pointerChild
+                            else -> continue
+                        }
+                        else -> continue
+                    }
+                    else -> continue
+                }
+                else -> continue
+            }
+            val member = containerType.element.members.firstOrNull {
+                it is PsiNameIdentifierOwner && it.name == name
+            }
+            if (member != null) {
+                results.add(PsiElementResolveResult(member))
+            }
+        }
+        return results.toTypedArray()
+    }
+
+    override fun handleElementRename(newElementName: String) =
+        replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
 }
 
 /* TODO
