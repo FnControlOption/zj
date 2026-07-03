@@ -4,6 +4,7 @@ import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
+import io.github.fncontroloption.zig.psi2.ZigAddressOf
 import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
 import io.github.fncontroloption.zig.psi2.ZigContainer
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
@@ -16,6 +17,7 @@ import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigMutability
 import io.github.fncontroloption.zig.psi2.ZigOptionalTypeElement
+import io.github.fncontroloption.zig.psi2.ZigPointerSize
 import io.github.fncontroloption.zig.psi2.ZigStringLiteral
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 
@@ -37,7 +39,7 @@ data class ZigContainerType(val element: ZigContainer) : ZigType
 
 data class ZigOptionalType(val child: ZigType) : ZigType
 
-// TODO: ZigPointerType
+data class ZigPointerType(val size: ZigPointerSize, val child: ZigType) : ZigType
 
 // TODO: ZigArrayType
 
@@ -98,6 +100,13 @@ private fun computeValuesUncached(element: ZigElement): Collection<ZigValue> {
                 }
             }
             else -> emptyList() // TODO
+        }
+
+        is ZigAddressOf -> {
+            val operandElement = element.operand ?: return emptyList()
+            resolveValues(operandElement)
+                .filterIsInstance<ZigOpaqueValue>()
+                .map { ZigOpaqueValue(ZigPointerType(ZigPointerSize.ONE, it.type)) }
         }
 
         else -> emptyList()
