@@ -14,6 +14,7 @@ import io.github.fncontroloption.zig.psi2.ZigElement
 import io.github.fncontroloption.zig.psi2.ZigFieldAccess
 import io.github.fncontroloption.zig.psi2.ZigFile
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
+import io.github.fncontroloption.zig.psi2.ZigGroupedExpression
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigMutability
 import io.github.fncontroloption.zig.psi2.ZigOptionalTypeElement
@@ -64,6 +65,11 @@ private fun computeValuesUncached(element: ZigElement): Collection<ZigValue> {
             val childElement = element.pointerChildElement ?: return emptyList()
             val size = element.pointerSize
             resolveValues(childElement).filterIsInstance<ZigType>().map { ZigPointerType(size, it) }
+        }
+
+        is ZigGroupedExpression -> {
+            val innerElement = element.innerElement ?: return emptyList()
+            resolveValues(innerElement)
         }
 
         is ZigFieldAccess -> {
