@@ -11,10 +11,12 @@ import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigContainerKind
 import io.github.fncontroloption.zig.psi2.ZigElement
 import io.github.fncontroloption.zig.psi2.ZigFieldAccess
+import io.github.fncontroloption.zig.psi2.ZigFile
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigMutability
 import io.github.fncontroloption.zig.psi2.ZigOptionalTypeElement
+import io.github.fncontroloption.zig.psi2.ZigStringLiteral
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 
 object ZigAnalyzer {
@@ -78,7 +80,26 @@ private fun computeValuesUncached(element: ZigElement): Collection<ZigValue> {
             }
         }
 
-        is ZigBuiltinCall -> emptyList() // TODO
+        is ZigBuiltinCall -> when (element.builtinElement.text) {
+            "@as" -> {
+                val argElement = element.argumentElements.firstOrNull()?.innerElement ?: return emptyList()
+                resolveValues(argElement).filterIsInstance<ZigType>().map { ZigOpaqueValue(it) }
+            }
+            "@import" -> {
+                val argElement = element.argumentElements.firstOrNull()?.innerElement ?: return emptyList()
+                if (argElement !is ZigStringLiteral) {
+                    return emptyList()
+                }
+                argElement.references.mapNotNull { reference ->
+                    when (val target = reference.resolve()) {
+                        is ZigFile -> ZigContainerType(target)
+                        else -> null
+                    }
+                }
+            }
+            else -> emptyList() // TODO
+        }
+
         else -> emptyList()
     }
 }
