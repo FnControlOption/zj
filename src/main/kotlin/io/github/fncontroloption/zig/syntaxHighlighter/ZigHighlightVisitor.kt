@@ -19,6 +19,7 @@ import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigMutability
 import io.github.fncontroloption.zig.psi2.ZigParamDecl
 import io.github.fncontroloption.zig.psi2.ZigTestDecl
+import io.github.fncontroloption.zig.psi2.ZigVarDecl
 import io.github.fncontroloption.zig.psi2.ZigVarDeclOrProto
 import io.github.fncontroloption.zig.resolveReferences
 
@@ -75,17 +76,18 @@ class ZigHighlightVisitor : HighlightVisitor {
                         }
                     }
                 }
+                */
 
-                val type = when (element.declType) {
-                    ZigVarDeclProto.Type.LOCAL_CONST -> ZigHighlightInfoTypes.LOCAL_VARIABLE
-                    ZigVarDeclProto.Type.LOCAL_VAR -> ZigHighlightInfoTypes.REASSIGNED_LOCAL_VARIABLE
-                    ZigVarDeclProto.Type.GLOBAL_CONST -> ZigHighlightInfoTypes.CONSTANT
-                    ZigVarDeclProto.Type.GLOBAL_VAR -> ZigHighlightInfoTypes.STATIC_FIELD
-                }
-                 */
-                val type = when (element.mutability) {
-                    ZigMutability.CONST -> ZigHighlightInfoTypes.LOCAL_VARIABLE
-                    ZigMutability.VAR -> ZigHighlightInfoTypes.REASSIGNED_LOCAL_VARIABLE
+                val type = if (element is ZigVarDecl && element.isLocal) {
+                    when (element.mutability) {
+                        ZigMutability.CONST -> ZigHighlightInfoTypes.LOCAL_VARIABLE
+                        ZigMutability.VAR -> ZigHighlightInfoTypes.REASSIGNED_LOCAL_VARIABLE
+                    }
+                } else {
+                    when (element.mutability) {
+                        ZigMutability.CONST -> ZigHighlightInfoTypes.CONSTANT
+                        ZigMutability.VAR -> ZigHighlightInfoTypes.STATIC_FIELD
+                    }
                 }
                 createHighlightInfo(identifier, type)
             }
