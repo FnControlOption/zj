@@ -11,25 +11,32 @@ import io.github.fncontroloption.zig.psi2.ZigBlock
 import io.github.fncontroloption.zig.psi2.ZigBreak
 import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
 import io.github.fncontroloption.zig.psi2.ZigCall
+import io.github.fncontroloption.zig.psi2.ZigCatchPayload
 import io.github.fncontroloption.zig.psi2.ZigContainer
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigContainerKind
 import io.github.fncontroloption.zig.psi2.ZigElement
+import io.github.fncontroloption.zig.psi2.ZigElsePayload
 import io.github.fncontroloption.zig.psi2.ZigErrorUnion
 import io.github.fncontroloption.zig.psi2.ZigFieldAccess
 import io.github.fncontroloption.zig.psi2.ZigFile
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigFnDeclOrProto
 import io.github.fncontroloption.zig.psi2.ZigFnProto
+import io.github.fncontroloption.zig.psi2.ZigForPayload
+import io.github.fncontroloption.zig.psi2.ZigForRange
 import io.github.fncontroloption.zig.psi2.ZigGroupedExpression
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigMutability
 import io.github.fncontroloption.zig.psi2.ZigOptionalTypeElement
 import io.github.fncontroloption.zig.psi2.ZigParamDecl
+import io.github.fncontroloption.zig.psi2.ZigPayloadItem
 import io.github.fncontroloption.zig.psi2.ZigPointerSize
 import io.github.fncontroloption.zig.psi2.ZigPointerTypeElement
 import io.github.fncontroloption.zig.psi2.ZigStringLiteral
+import io.github.fncontroloption.zig.psi2.ZigSwitchPayload
+import io.github.fncontroloption.zig.psi2.ZigThenPayload
 import io.github.fncontroloption.zig.psi2.ZigTry
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 
@@ -315,6 +322,55 @@ private fun computeValuesFromReferenceTo(target: ZigElement): Collection<ZigValu
                 return emptyList() // TODO: return void value
             }
             resolveValues(typeElement).filterIsInstance<ZigType>().map { ZigOpaqueValue(it) }
+        }
+
+        is ZigPayloadItem -> {
+            when (val payloadElement = target.containingPayload) {
+                is ZigThenPayload -> {
+                    val conditionElement =
+                        payloadElement.containingIf?.conditionElement?.innerElement
+                            ?: payloadElement.containingWhile?.conditionElement?.innerElement
+                            ?: return emptyList()
+                    resolveValues(conditionElement).mapNotNull { condition ->
+                        when (condition) {
+                            is ZigType -> null
+                            is ZigOpaqueValue -> when (val typeOfCondition = condition.type) {
+                                is ZigOptionalType -> ZigOpaqueValue(typeOfCondition.child)
+                                is ZigErrorUnionType -> ZigOpaqueValue(typeOfCondition.payload)
+                                else -> null
+                            }
+                        }
+                    }
+                }
+                is ZigElsePayload -> emptyList() // TODO
+                is ZigCatchPayload -> emptyList() // TODO
+                is ZigSwitchPayload -> emptyList() // TODO
+                is ZigForPayload -> {
+                    val payloadIndex = payloadElement.items.indexOf(target)
+                    val forInputs = payloadElement.containingFor.inputs
+                    val inputElement = forInputs.elementAtOrNull(payloadIndex)?.innerElement ?: return emptyList()
+                    if (inputElement is ZigForRange) {
+                        return emptyList() // TODO: return usize value
+                    }
+                    resolveValues(inputElement).mapNotNull { input ->
+                        when (input) {
+                            is ZigType -> null
+                            is ZigOpaqueValue -> when (val typeOfInput = input.type) {
+                                is ZigPointerType -> when (typeOfInput.size) {
+                                    ZigPointerSize.SLICE -> ZigOpaqueValue(typeOfInput.child)
+                                    ZigPointerSize.ONE -> when (typeOfInput.child) {
+                                        // is ZigArrayType -> TODO
+                                        else -> null
+                                    }
+                                    else -> null
+                                }
+                                // is ZigArrayType -> TODO
+                                else -> null
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         else -> emptyList() // TODO
