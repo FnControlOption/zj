@@ -79,49 +79,58 @@ private fun resolveValues(element: ZigElement): Set<ZigValue> {
     }
 }
 
-private fun computeValuesUncached(element: ZigElement): Collection<ZigValue> {
+private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
     return when (element) {
-        is ZigContainerDecl -> listOf(ZigContainerType(element))
+        is ZigContainerDecl -> sequenceOf(ZigContainerType(element))
 
-        is ZigFnProto -> listOf(ZigFunctionType(element))
+        is ZigFnProto -> sequenceOf(ZigFunctionType(element))
 
         is ZigOptionalTypeElement -> {
-            val childElement = element.optionalChildElement ?: return emptyList()
-            resolveValues(childElement).filterIsInstance<ZigType>().map { ZigOptionalType(it) }
+            val childElement = element.optionalChildElement ?: return emptySequence()
+            resolveValues(childElement)
+                .asSequence()
+                .filterIsInstance<ZigType>()
+                .map { ZigOptionalType(it) }
         }
 
         is ZigErrorUnion -> {
-            val payloadElement = element.payload ?: return emptyList()
-            resolveValues(payloadElement).filterIsInstance<ZigType>().map { ZigErrorUnionType(it) }
+            val payloadElement = element.payload ?: return emptySequence()
+            resolveValues(payloadElement)
+                .asSequence()
+                .filterIsInstance<ZigType>()
+                .map { ZigErrorUnionType(it) }
         }
 
         is ZigPointerTypeElement -> {
-            val childElement = element.pointerChildElement ?: return emptyList()
+            val childElement = element.pointerChildElement ?: return emptySequence()
             val size = element.pointerSize
-            resolveValues(childElement).filterIsInstance<ZigType>().map { ZigPointerType(size, it) }
+            resolveValues(childElement)
+                .asSequence()
+                .filterIsInstance<ZigType>()
+                .map { ZigPointerType(size, it) }
         }
 
         is ZigGroupedExpression -> {
-            val innerElement = element.innerElement ?: return emptyList()
-            resolveValues(innerElement)
+            val innerElement = element.innerElement ?: return emptySequence()
+            resolveValues(innerElement).asSequence()
         }
 
         is ZigFieldAccess -> {
-            val name = element.identifierElement?.text ?: return emptyList()
-            resolveValues(element.leftOperand).flatMap { left ->
+            val name = element.identifierElement?.text ?: return emptySequence()
+            resolveValues(element.leftOperand).asSequence().flatMap { left ->
                 when (left) {
                     is ZigContainerType -> computeContainerDeclValues(left, name)
-                    is ZigType -> emptyList()
+                    is ZigType -> emptySequence()
                     is ZigOpaqueValue -> when (val typeOfLeft = left.type) {
                         is ZigContainerType -> computeContainerInstanceFieldValues(typeOfLeft, name)
                         is ZigPointerType -> when (typeOfLeft.size) {
                             ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
                                 is ZigContainerType -> computeContainerInstanceFieldValues(pointerChild, name)
-                                else -> emptyList()
+                                else -> emptySequence()
                             }
-                            else -> emptyList()
+                            else -> emptySequence()
                         }
-                        else -> emptyList()
+                        else -> emptySequence()
                     }
                 }
             }
@@ -129,31 +138,34 @@ private fun computeValuesUncached(element: ZigElement): Collection<ZigValue> {
 
         is ZigIdentifier -> {
             if (element.text == "bool") {
-                return listOf(ZigBoolType)
+                return sequenceOf(ZigBoolType)
             }
             // TODO: handle all primitives
             if (element.isPrimitive) {
-                return emptyList()
+                return emptySequence()
             }
-            element.references.flatMap { reference ->
+            element.references.asSequence().flatMap { reference ->
                 when (val target = reference.resolve()) {
-                    null -> emptyList()
-                    else -> computeValuesFromReferenceTo(target)
+                    null -> emptySequence()
+                    else -> resolveValuesFromReferenceTo(target).asSequence()
                 }
             }
         }
 
         is ZigBuiltinCall -> when (element.builtinElement.text) {
             "@as" -> {
-                val argElement = element.argumentElements.firstOrNull()?.innerElement ?: return emptyList()
-                resolveValues(argElement).filterIsInstance<ZigType>().map { ZigOpaqueValue(it) }
+                val argElement = element.argumentElements.firstOrNull()?.innerElement ?: return emptySequence()
+                resolveValues(argElement)
+                    .asSequence()
+                    .filterIsInstance<ZigType>()
+                    .map { ZigOpaqueValue(it) }
             }
             "@import" -> {
-                val argElement = element.argumentElements.firstOrNull()?.innerElement ?: return emptyList()
+                val argElement = element.argumentElements.firstOrNull()?.innerElement ?: return emptySequence()
                 if (argElement !is ZigStringLiteral) {
-                    return emptyList()
+                    return emptySequence()
                 }
-                argElement.references.mapNotNull { reference ->
+                argElement.references.asSequence().mapNotNull { reference ->
                     when (val target = reference.resolve()) {
                         is ZigFile -> ZigContainerType(target)
                         else -> null
@@ -161,22 +173,23 @@ private fun computeValuesUncached(element: ZigElement): Collection<ZigValue> {
                 }
             }
             "@This" -> {
-                val containerElement = element.findParentOfType<ZigContainer>() ?: return emptyList()
-                listOf(ZigContainerType(containerElement))
+                val containerElement = element.findParentOfType<ZigContainer>() ?: return emptySequence()
+                sequenceOf(ZigContainerType(containerElement))
             }
-            else -> emptyList() // TODO
+            else -> emptySequence() // TODO
         }
 
         is ZigAddressOf -> {
-            val operandElement = element.operand ?: return emptyList()
+            val operandElement = element.operand ?: return emptySequence()
             resolveValues(operandElement)
+                .asSequence()
                 .filterIsInstance<ZigOpaqueValue>()
                 .map { ZigOpaqueValue(ZigPointerType(ZigPointerSize.ONE, it.type)) }
         }
 
         is ZigTry -> {
-            val operandElement = element.operand ?: return emptyList()
-            resolveValues(operandElement).mapNotNull { operand ->
+            val operandElement = element.operand ?: return emptySequence()
+            resolveValues(operandElement).asSequence().mapNotNull { operand ->
                 when (operand) {
                     is ZigOpaqueValue -> when (val typeOfOperand = operand.type) {
                         is ZigErrorUnionType -> ZigOpaqueValue(typeOfOperand.payload)
@@ -190,118 +203,121 @@ private fun computeValuesUncached(element: ZigElement): Collection<ZigValue> {
         is ZigCall -> {
             val functionValues = when (val functionElement = element.functionElement) {
                 is ZigFieldAccess -> {
-                    val name = functionElement.identifierElement?.text ?: return emptyList()
-                    resolveValues(functionElement.leftOperand).flatMap { left ->
+                    val name = functionElement.identifierElement?.text ?: return emptySequence()
+                    resolveValues(functionElement.leftOperand).asSequence().flatMap { left ->
                         when (left) {
                             is ZigContainerType -> computeContainerDeclValues(left, name)
-                            is ZigType -> emptyList()
+                            is ZigType -> emptySequence()
                             is ZigOpaqueValue -> when (val typeOfLeft = left.type) {
                                 is ZigContainerType -> computeContainerDeclValues(typeOfLeft, name)
                                 is ZigPointerType -> when (typeOfLeft.size) {
                                     ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
                                         is ZigContainerType -> computeContainerDeclValues(pointerChild, name)
-                                        else -> emptyList()
+                                        else -> emptySequence()
                                     }
-                                    else -> emptyList()
+                                    else -> emptySequence()
                                 }
-                                else -> emptyList()
+                                else -> emptySequence()
                             }
                         }
                     }
                 }
-                else -> resolveValues(functionElement)
+                else -> resolveValues(functionElement).asSequence()
             }
             functionValues.flatMap { function ->
                 when (function) {
-                    is ZigType -> emptyList()
+                    is ZigType -> emptySequence()
                     is ZigOpaqueValue -> when (val typeOfFunction = function.type) {
                         is ZigFunctionType -> {
                             val returnTypeElement = typeOfFunction.element.returnTypeElement?.innerElement
                             if (returnTypeElement != null) {
-                                resolveValues(returnTypeElement).filterIsInstance<ZigType>().map { ZigOpaqueValue(it) }
+                                resolveValues(returnTypeElement)
+                                    .asSequence()
+                                    .filterIsInstance<ZigType>()
+                                    .map { ZigOpaqueValue(it) }
                             } else {
-                                emptyList()
+                                emptySequence()
                             }
                         }
-                        else -> emptyList()
+                        else -> emptySequence()
                     }
                 }
             }
         }
 
         is ZigBlock -> {
-            val labelDecl = element.labelDecl ?: return emptyList() // TODO: return void value
+            val labelDecl = element.labelDecl ?: return emptySequence() // TODO: return void value
             val labelName = labelDecl.identifierElement.text
             val traverser = SyntaxTraverser.psiTraverser(element).expand { it !is ZigContainerDecl }
-            val values = mutableSetOf<ZigValue>()
-            for (descendant in traverser) {
-                if (descendant is ZigBreak) {
-                    val labelRef = descendant.labelRef ?: continue
-                    if (labelName == labelRef.identifierElement.text) {
-                        when (val breakValue = descendant.breakValue) {
-                            null -> {} // TODO: add void value
-                            else -> values.addAll(resolveValues(breakValue))
-                        }
+            traverser.asSequence().flatMap { descendant ->
+                if (descendant is ZigBreak && labelName == descendant.labelRef?.identifierElement?.text) {
+                    when (val breakValue = descendant.breakValue) {
+                        null -> emptySequence() // TODO: return void value
+                        else -> resolveValues(breakValue).asSequence()
                     }
+                } else {
+                    emptySequence()
                 }
             }
-            values
         }
 
-        else -> emptyList()
+        else -> emptySequence()
     }
 }
 
-private fun computeContainerInstanceFieldValues(type: ZigContainerType, name: String): Collection<ZigValue> {
+private fun computeContainerInstanceFieldValues(type: ZigContainerType, name: String): Sequence<ZigValue> {
     if (type.element.containerKind == ZigContainerKind.ENUM) {
-        return emptyList()
+        return emptySequence()
     }
     val member = type.element.members.firstOrNull {
         it is PsiNameIdentifierOwner && it.name == name
     }
     if (member == null || member !is ZigContainerField) {
-        return emptyList()
+        return emptySequence()
     }
-    return resolveValuesFromReferenceTo(member)
+    return resolveValuesFromReferenceTo(member).asSequence()
 }
 
-private fun computeContainerDeclValues(type: ZigContainerType, name: String): Collection<ZigValue> {
+private fun computeContainerDeclValues(type: ZigContainerType, name: String): Sequence<ZigValue> {
     val member = type.element.members.firstOrNull {
         it is PsiNameIdentifierOwner && it.name == name
     }
     if (member == null) {
-        return emptyList()
+        return emptySequence()
     }
     if (member is ZigContainerField) {
         return when (type.element.containerKind) {
-            ZigContainerKind.ENUM -> listOf(ZigOpaqueValue(type))
-            ZigContainerKind.UNION -> emptyList() // TODO: return instance of union tag if applicable
-            else -> emptyList()
+            ZigContainerKind.ENUM -> sequenceOf(ZigOpaqueValue(type))
+            ZigContainerKind.UNION -> emptySequence() // TODO: return instance of union tag if applicable
+            else -> emptySequence()
         }
     }
-    return resolveValuesFromReferenceTo(member)
+    return resolveValuesFromReferenceTo(member).asSequence()
 }
 
 private fun resolveValuesFromReferenceTo(target: ZigElement): Set<ZigValue> {
     return CachedValuesManager.getCachedValue(target) {
-        val values = computeValuesFromReferenceTo(target).toSet()
+        val values = computeValuesFromReferenceUncached(target).toSet()
         CachedValueProvider.Result.create(values, PsiModificationTracker.MODIFICATION_COUNT)
     }
 }
 
-private fun computeValuesFromReferenceTo(target: ZigElement): Collection<ZigValue> {
+private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<ZigValue> {
     return when (target) {
-        is ZigFnDecl -> listOf(ZigOpaqueValue(ZigFunctionType(target)))
+        is ZigFnDecl -> sequenceOf(ZigOpaqueValue(ZigFunctionType(target)))
 
         is ZigVarDecl -> {
             val typeElement = target.typeElement?.innerElement
             if (typeElement != null) {
-                return resolveValues(typeElement).filterIsInstance<ZigType>().map { ZigOpaqueValue(it) }
+                return resolveValues(typeElement)
+                    .asSequence()
+                    .filterIsInstance<ZigType>()
+                    .map { ZigOpaqueValue(it) }
             }
-            val initElement = target.initializer ?: return emptyList()
+            val initElement = target.initializer ?: return emptySequence()
             when (target.mutability) {
-                ZigMutability.CONST -> resolveValues(initElement)
-                ZigMutability.VAR -> resolveValues(initElement).map { init ->
+                ZigMutability.CONST -> resolveValues(initElement).asSequence()
+                ZigMutability.VAR -> resolveValues(initElement).asSequence().map { init ->
                     when (init) {
                         is ZigType -> ZigUnknownType()
                         is ZigOpaqueValue -> ZigOpaqueValue(init.type)
@@ -311,17 +327,23 @@ private fun computeValuesFromReferenceTo(target: ZigElement): Collection<ZigValu
         }
 
         is ZigParamDecl -> {
-            val typeElement = target.typeElement?.innerElement ?: return emptyList()
-            resolveValues(typeElement).filterIsInstance<ZigType>().map { ZigOpaqueValue(it) }
+            val typeElement = target.typeElement?.innerElement ?: return emptySequence()
+            resolveValues(typeElement)
+                .asSequence()
+                .filterIsInstance<ZigType>()
+                .map { ZigOpaqueValue(it) }
         }
 
         is ZigContainerField -> {
             val typeElement = target.typeElement?.innerElement
             if (typeElement == null) {
                 // This is likely a tagged union field with an implicit `void` type.
-                return emptyList() // TODO: return void value
+                return emptySequence() // TODO: return void value
             }
-            resolveValues(typeElement).filterIsInstance<ZigType>().map { ZigOpaqueValue(it) }
+            resolveValues(typeElement)
+                .asSequence()
+                .filterIsInstance<ZigType>()
+                .map { ZigOpaqueValue(it) }
         }
 
         is ZigPayloadItem -> {
@@ -330,8 +352,8 @@ private fun computeValuesFromReferenceTo(target: ZigElement): Collection<ZigValu
                     val conditionElement =
                         payloadElement.containingIf?.conditionElement?.innerElement
                             ?: payloadElement.containingWhile?.conditionElement?.innerElement
-                            ?: return emptyList()
-                    resolveValues(conditionElement).mapNotNull { condition ->
+                            ?: return emptySequence()
+                    resolveValues(conditionElement).asSequence().mapNotNull { condition ->
                         when (condition) {
                             is ZigType -> null
                             is ZigOpaqueValue -> when (val typeOfCondition = condition.type) {
@@ -342,17 +364,17 @@ private fun computeValuesFromReferenceTo(target: ZigElement): Collection<ZigValu
                         }
                     }
                 }
-                is ZigElsePayload -> emptyList() // TODO
-                is ZigCatchPayload -> emptyList() // TODO
-                is ZigSwitchPayload -> emptyList() // TODO
+                is ZigElsePayload -> emptySequence() // TODO
+                is ZigCatchPayload -> emptySequence() // TODO
+                is ZigSwitchPayload -> emptySequence() // TODO
                 is ZigForPayload -> {
                     val payloadIndex = payloadElement.items.indexOf(target)
                     val forInputs = payloadElement.containingFor.inputs
-                    val inputElement = forInputs.elementAtOrNull(payloadIndex)?.innerElement ?: return emptyList()
+                    val inputElement = forInputs.elementAtOrNull(payloadIndex)?.innerElement ?: return emptySequence()
                     if (inputElement is ZigForRange) {
-                        return emptyList() // TODO: return usize value
+                        return emptySequence() // TODO: return usize value
                     }
-                    resolveValues(inputElement).mapNotNull { input ->
+                    resolveValues(inputElement).asSequence().mapNotNull { input ->
                         when (input) {
                             is ZigType -> null
                             is ZigOpaqueValue -> when (val typeOfInput = input.type) {
@@ -373,6 +395,6 @@ private fun computeValuesFromReferenceTo(target: ZigElement): Collection<ZigValu
             }
         }
 
-        else -> emptyList() // TODO
+        else -> emptySequence() // TODO
     }
 }
