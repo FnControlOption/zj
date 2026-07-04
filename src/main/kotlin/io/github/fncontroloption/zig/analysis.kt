@@ -1,5 +1,6 @@
 package io.github.fncontroloption.zig
 
+import com.intellij.openapi.util.RecursionManager
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.util.CachedValueProvider
@@ -34,6 +35,7 @@ import io.github.fncontroloption.zig.psi2.ZigParamDecl
 import io.github.fncontroloption.zig.psi2.ZigPayloadItem
 import io.github.fncontroloption.zig.psi2.ZigPointerSize
 import io.github.fncontroloption.zig.psi2.ZigPointerTypeElement
+import io.github.fncontroloption.zig.psi2.ZigReturn
 import io.github.fncontroloption.zig.psi2.ZigStringLiteral
 import io.github.fncontroloption.zig.psi2.ZigSwitchPayload
 import io.github.fncontroloption.zig.psi2.ZigThenPayload
@@ -74,9 +76,11 @@ data class ZigPointerType(val size: ZigPointerSize, val child: ZigType) : ZigTyp
 
 private fun resolveValues(element: ZigElement): Set<ZigValue> {
     return CachedValuesManager.getCachedValue(element) {
-        val values = computeValuesUncached(element).toSet()
-        CachedValueProvider.Result.create(values, PsiModificationTracker.MODIFICATION_COUNT)
-    }
+        RecursionManager.doPreventingRecursion(element, true) {
+            val values = computeValuesUncached(element).toSet()
+            CachedValueProvider.Result.create(values, PsiModificationTracker.MODIFICATION_COUNT)
+        }
+    } ?: emptySet()
 }
 
 private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
@@ -228,17 +232,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 when (function) {
                     is ZigType -> emptySequence()
                     is ZigOpaqueValue -> when (val typeOfFunction = function.type) {
-                        is ZigFunctionType -> {
-                            val returnTypeElement = typeOfFunction.element.returnTypeElement?.innerElement
-                            if (returnTypeElement != null) {
-                                resolveValues(returnTypeElement)
-                                    .asSequence()
-                                    .filterIsInstance<ZigType>()
-                                    .map { ZigOpaqueValue(it) }
-                            } else {
-                                emptySequence()
-                            }
-                        }
+                        is ZigFunctionType -> computeFunctionReturnValues(typeOfFunction)
                         else -> emptySequence()
                     }
                 }
@@ -297,9 +291,11 @@ private fun computeContainerDeclValues(type: ZigContainerType, name: String): Se
 
 private fun resolveValuesFromReferenceTo(target: ZigElement): Set<ZigValue> {
     return CachedValuesManager.getCachedValue(target) {
-        val values = computeValuesFromReferenceUncached(target).toSet()
-        CachedValueProvider.Result.create(values, PsiModificationTracker.MODIFICATION_COUNT)
-    }
+        RecursionManager.doPreventingRecursion(target, true) {
+            val values = computeValuesFromReferenceUncached(target).toSet()
+            CachedValueProvider.Result.create(values, PsiModificationTracker.MODIFICATION_COUNT)
+        }
+    } ?: emptySet()
 }
 
 private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<ZigValue> {
@@ -397,4 +393,28 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
 
         else -> emptySequence() // TODO
     }
+}
+
+private fun computeFunctionReturnValues(type: ZigFunctionType): Sequence<ZigValue> {
+    val returnTypeElement = type.element.returnTypeElement?.innerElement ?: return emptySequence()
+    if (returnTypeElement.textMatches("type")) {
+        val functionBodyElement = (type.element as? ZigFnDecl)?.body
+        if (functionBodyElement != null) {
+            val traverser = SyntaxTraverser.psiTraverser(functionBodyElement).expand { it !is ZigContainerDecl }
+            return traverser.asSequence().flatMap { descendant ->
+                if (descendant is ZigReturn) {
+                    when (val returnValue = descendant.returnValue) {
+                        null -> emptySequence()
+                        else -> resolveValues(returnValue).asSequence()
+                    }
+                } else {
+                    emptySequence()
+                }
+            }
+        }
+    }
+    return resolveValues(returnTypeElement)
+        .asSequence()
+        .filterIsInstance<ZigType>()
+        .map { ZigOpaqueValue(it) }
 }
