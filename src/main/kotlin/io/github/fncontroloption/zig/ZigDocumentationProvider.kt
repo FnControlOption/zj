@@ -69,7 +69,7 @@ private fun findDoc(element: PsiElement): String? {
                 assert(text.startsWith("///"))
                 list.add(text.substring(3))
             }
-            is PsiWhiteSpace if !prev.textContains('\n') -> {
+            is PsiWhiteSpace -> {
                 // no-op
             }
             else -> break
