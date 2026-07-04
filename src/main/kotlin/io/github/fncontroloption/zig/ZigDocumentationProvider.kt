@@ -8,6 +8,7 @@ import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
 import io.github.fncontroloption.zig.psi2.ZigContainerField
+import io.github.fncontroloption.zig.psi2.ZigElement
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigLabelDecl
 import io.github.fncontroloption.zig.psi2.ZigParamDecl
@@ -18,12 +19,25 @@ import io.github.fncontroloption.zig.psi2.ZigVarProto
 
 class ZigDocumentationProvider : AbstractDocumentationProvider() {
     override fun generateDoc(element: PsiElement, originalElement: PsiElement?): String? {
+        if (element !is ZigElement) {
+            return null
+        }
         val definition = getDefinition(element) ?: return null
         val sb = StringBuilder()
         HtmlChunk.text(definition)
             .wrapWith(DocumentationMarkup.PRE_ELEMENT)
             .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
             .appendTo(sb)
+        for (value in ZigAnalyzer.resolveValuesFromReferenceTo(element)) {
+            val typeOfValue = when (value) {
+                is ZigType -> "type = $value"
+                is ZigOpaqueValue -> value.type
+            }
+            HtmlChunk.text(typeOfValue.toString())
+                .wrapWith(DocumentationMarkup.PRE_ELEMENT)
+                .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
+                .appendTo(sb)
+        }
         val doc = findDoc(element)
         if (doc != null) {
             HtmlChunk.raw(convertMarkdownToHtml(doc))
