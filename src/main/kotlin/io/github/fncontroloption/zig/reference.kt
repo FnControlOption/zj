@@ -247,7 +247,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
         for (left in ZigAnalyzer.resolveValues(myElement.leftOperand)) {
             val containerType = when (left) {
                 is ZigContainerType -> left
-                is ZigOpaqueValue -> when (val typeOfLeft = left.type) {
+                else -> when (val typeOfLeft = left.typeOf) {
                     is ZigContainerType -> typeOfLeft
                     is ZigPointerType -> when (typeOfLeft.size) {
                         ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
@@ -258,7 +258,6 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                     }
                     else -> continue
                 }
-                else -> continue
             }
             val member = containerType.element.members.firstOrNull {
                 it is PsiNameIdentifierOwner && it.name == name
