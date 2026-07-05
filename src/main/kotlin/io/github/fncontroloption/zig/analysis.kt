@@ -1,6 +1,7 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.openapi.util.RecursionManager
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.util.CachedValueProvider
@@ -63,9 +64,17 @@ class ZigUnknownType : ZigType
 
 data object ZigBoolType : ZigType
 
-data class ZigContainerType(val element: ZigContainer) : ZigType
+data class ZigContainerType(
+    val element: ZigContainer,
+    val typeParams: Map<ZigParamDecl, Set<ZigValue>>,
+) : ZigType
 
-data class ZigFunctionType(val element: ZigFnDeclOrProto) : ZigType
+data class ZigFunctionType(
+    val element: ZigFnDeclOrProto,
+    val typeParams: Map<ZigParamDecl, Set<ZigValue>>,
+) : ZigType
+
+data class ZigTypeParamType(val element: ZigParamDecl) : ZigType
 
 data class ZigOptionalType(val child: ZigType) : ZigType
 
@@ -86,9 +95,15 @@ private fun resolveValues(element: ZigElement): Set<ZigValue> {
 
 private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
     return when (element) {
-        is ZigContainerDecl -> sequenceOf(ZigContainerType(element))
+        is ZigContainerDecl -> {
+            val typeParams = findUnboundTypeParams(element)
+            sequenceOf(ZigContainerType(element, typeParams))
+        }
 
-        is ZigFnProto -> sequenceOf(ZigFunctionType(element))
+        is ZigFnProto -> {
+            val typeParams = findUnboundTypeParams(element)
+            sequenceOf(ZigFunctionType(element, typeParams))
+        }
 
         is ZigOptionalTypeElement -> {
             val childElement = element.optionalChildElement ?: return emptySequence()
@@ -172,14 +187,15 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 }
                 argElement.references.asSequence().mapNotNull { reference ->
                     when (val target = reference.resolve()) {
-                        is ZigFile -> ZigContainerType(target)
+                        is ZigFile -> ZigContainerType(target, emptyMap())
                         else -> null
                     }
                 }
             }
             "@This" -> {
                 val containerElement = element.findParentOfType<ZigContainer>() ?: return emptySequence()
-                sequenceOf(ZigContainerType(containerElement))
+                val typeParams = findUnboundTypeParams(containerElement)
+                sequenceOf(ZigContainerType(containerElement, typeParams))
             }
             else -> emptySequence() // TODO
         }
@@ -206,18 +222,24 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigCall -> {
-            val functionValues = when (val functionElement = element.functionElement) {
+            val callInfoPairs = when (val functionElement = element.functionElement) {
                 is ZigFieldAccess -> {
                     val name = functionElement.identifierElement?.text ?: return emptySequence()
                     resolveValues(functionElement.leftOperand).asSequence().flatMap { left ->
                         when (left) {
-                            is ZigContainerType -> computeContainerDeclValues(left, name)
+                            is ZigContainerType -> {
+                                computeContainerDeclValues(left, name).map { Pair(null, it) }
+                            }
                             is ZigType -> emptySequence()
                             is ZigOpaqueValue -> when (val typeOfLeft = left.type) {
-                                is ZigContainerType -> computeContainerDeclValues(typeOfLeft, name)
+                                is ZigContainerType -> {
+                                    computeContainerDeclValues(typeOfLeft, name).map { Pair(left, it) }
+                                }
                                 is ZigPointerType -> when (typeOfLeft.size) {
                                     ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
-                                        is ZigContainerType -> computeContainerDeclValues(pointerChild, name)
+                                        is ZigContainerType -> {
+                                            computeContainerDeclValues(pointerChild, name).map { Pair(left, it) }
+                                        }
                                         else -> emptySequence()
                                     }
                                     else -> emptySequence()
@@ -227,13 +249,18 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                         }
                     }
                 }
-                else -> resolveValues(functionElement).asSequence()
+                else -> resolveValues(functionElement).asSequence().map { Pair(null, it) }
             }
-            functionValues.flatMap { function ->
+            val initialArgs = element.arguments.map { resolveValues(it) }.toList()
+            callInfoPairs.flatMap { (selfArg, function) ->
+                val actualArgs = when (selfArg) {
+                    null -> initialArgs.asSequence()
+                    else -> sequenceOf(setOf(selfArg)) + initialArgs.asSequence()
+                }
                 when (function) {
                     is ZigType -> emptySequence()
                     is ZigOpaqueValue -> when (val typeOfFunction = function.type) {
-                        is ZigFunctionType -> computeFunctionReturnValues(typeOfFunction)
+                        is ZigFunctionType -> computeFunctionReturnValues(typeOfFunction, actualArgs)
                         else -> emptySequence()
                     }
                 }
@@ -268,6 +295,67 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
     }
 }
 
+private fun findUnboundTypeParams(element: ZigElement): Map<ZigParamDecl, Set<ZigValue>> {
+    return buildMap {
+        var element: PsiElement? = element
+        while (element != null) {
+            if (element is ZigFnDecl) {
+                for (paramDecl in element.parameters) {
+                    val paramTypeElement = paramDecl.typeElement?.innerElement ?: continue
+                    if (paramTypeElement.textMatches("type")) {
+                        this[paramDecl] = emptySet()
+                    }
+                }
+            }
+            element = element.parent
+        }
+    }
+}
+
+private fun substituteTypeParams(
+    value: ZigValue,
+    typeParams: Map<ZigParamDecl, Set<ZigValue>>,
+): Sequence<ZigValue> {
+    return RecursionManager.doPreventingRecursion(value, true) {
+        when (value) {
+            is ZigOpaqueValue -> {
+                substituteTypeParams(value.type, typeParams)
+                    .filterIsInstance<ZigType>()
+                    .map { ZigOpaqueValue(it) }
+            }
+            ZigBoolType -> sequenceOf(ZigBoolType)
+            is ZigUnknownType -> sequenceOf(value)
+            is ZigContainerType -> {
+                val newTypeParams = value.typeParams + typeParams
+                sequenceOf(ZigContainerType(value.element, newTypeParams))
+            }
+            is ZigFunctionType -> {
+                val newTypeParams = value.typeParams + typeParams
+                sequenceOf(ZigFunctionType(value.element, newTypeParams))
+            }
+            is ZigTypeParamType -> when (val values = typeParams[value.element]) {
+                null -> emptySequence()
+                else -> values.asSequence().flatMap { substituteTypeParams(it, typeParams) }
+            }
+            is ZigOptionalType -> {
+                substituteTypeParams(value.child, typeParams)
+                    .filterIsInstance<ZigType>()
+                    .map { ZigOptionalType(it) }
+            }
+            is ZigErrorUnionType -> {
+                substituteTypeParams(value.payload, typeParams)
+                    .filterIsInstance<ZigType>()
+                    .map { ZigErrorUnionType(it) }
+            }
+            is ZigPointerType -> {
+                substituteTypeParams(value.child, typeParams)
+                    .filterIsInstance<ZigType>()
+                    .map { ZigPointerType(value.size, it) }
+            }
+        }
+    } ?: emptySequence()
+}
+
 private fun computeContainerInstanceFieldValues(type: ZigContainerType, name: String): Sequence<ZigValue> {
     if (type.element.containerKind == ZigContainerKind.ENUM) {
         return emptySequence()
@@ -278,7 +366,9 @@ private fun computeContainerInstanceFieldValues(type: ZigContainerType, name: St
     if (member == null || member !is ZigContainerField) {
         return emptySequence()
     }
-    return resolveValuesFromReferenceTo(member).asSequence()
+    return resolveValuesFromReferenceTo(member)
+        .asSequence()
+        .flatMap { substituteTypeParams(it, type.typeParams) }
 }
 
 private fun computeContainerDeclValues(type: ZigContainerType, name: String): Sequence<ZigValue> {
@@ -295,7 +385,9 @@ private fun computeContainerDeclValues(type: ZigContainerType, name: String): Se
             else -> emptySequence()
         }
     }
-    return resolveValuesFromReferenceTo(member).asSequence()
+    return resolveValuesFromReferenceTo(member)
+        .asSequence()
+        .flatMap { substituteTypeParams(it, type.typeParams) }
 }
 
 private fun resolveValuesFromReferenceTo(target: ZigElement): Set<ZigValue> {
@@ -309,7 +401,10 @@ private fun resolveValuesFromReferenceTo(target: ZigElement): Set<ZigValue> {
 
 private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<ZigValue> {
     return when (target) {
-        is ZigFnDecl -> sequenceOf(ZigOpaqueValue(ZigFunctionType(target)))
+        is ZigFnDecl -> {
+            val typeParams = findUnboundTypeParams(target)
+            sequenceOf(ZigOpaqueValue(ZigFunctionType(target, typeParams)))
+        }
 
         is ZigVarDecl -> {
             val typeElement = target.typeElement?.innerElement
@@ -333,6 +428,9 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
 
         is ZigParamDecl -> {
             val typeElement = target.typeElement?.innerElement ?: return emptySequence()
+            if (typeElement.textMatches("type")) {
+                return sequenceOf(ZigTypeParamType(target))
+            }
             resolveValues(typeElement)
                 .asSequence()
                 .filterIsInstance<ZigType>()
@@ -404,7 +502,17 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
     }
 }
 
-private fun computeFunctionReturnValues(type: ZigFunctionType): Sequence<ZigValue> {
+private fun computeFunctionReturnValues(
+    type: ZigFunctionType,
+    arguments: Sequence<Set<ZigValue>>,
+): Sequence<ZigValue> {
+    val typeParams = type.typeParams.toMutableMap()
+    for ((paramDecl, argValues) in type.element.parameters.zip(arguments)) {
+        val paramTypeElement = paramDecl.typeElement?.innerElement ?: continue
+        if (paramTypeElement.textMatches("type")) {
+            typeParams[paramDecl] = argValues
+        }
+    }
     val returnTypeElement = type.element.returnTypeElement?.innerElement ?: return emptySequence()
     if (returnTypeElement.textMatches("type")) {
         val functionBodyElement = (type.element as? ZigFnDecl)?.body
@@ -414,7 +522,11 @@ private fun computeFunctionReturnValues(type: ZigFunctionType): Sequence<ZigValu
                 if (descendant is ZigReturn) {
                     when (val returnValue = descendant.returnValue) {
                         null -> emptySequence()
-                        else -> resolveValues(returnValue).asSequence()
+                        else -> {
+                            resolveValues(returnValue)
+                                .asSequence()
+                                .flatMap { substituteTypeParams(it, typeParams) }
+                        }
                     }
                 } else {
                     emptySequence()
@@ -424,6 +536,7 @@ private fun computeFunctionReturnValues(type: ZigFunctionType): Sequence<ZigValu
     }
     return resolveValues(returnTypeElement)
         .asSequence()
+        .flatMap { substituteTypeParams(it, typeParams) }
         .filterIsInstance<ZigType>()
         .map { ZigOpaqueValue(it) }
 }
