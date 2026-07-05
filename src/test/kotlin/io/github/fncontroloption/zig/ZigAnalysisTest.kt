@@ -2,7 +2,6 @@ package io.github.fncontroloption.zig
 
 import com.intellij.psi.PsiFileFactory
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import com.intellij.testFramework.assertInstanceOf
 import com.intellij.testFramework.requireIs
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigContainerKind
@@ -60,7 +59,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
     }
 
     fun testEnumFieldAccess() {
-        val value = resolveValue("enum { foo, bar }.foo").requireIs<ZigOpaque>()
+        val value = resolveValue("enum { foo, bar }.foo").requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigContainerType>()
         assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
     }
@@ -71,7 +70,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 const foo: enum { bar, baz } = .bar;
             }.foo
         """.trimIndent()
-        val value = resolveValue(text).requireIs<ZigOpaque>()
+        val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigContainerType>()
         assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
     }
@@ -82,7 +81,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 var foo: enum { bar, baz } = .bar;
             }.foo
         """.trimIndent()
-        val value = resolveValue(text).requireIs<ZigOpaque>()
+        val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigContainerType>()
         assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
     }
@@ -103,7 +102,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 var Foo = enum { bar, baz };
             }.Foo
         """.trimIndent()
-        val value = resolveValue(text).requireIs<ZigOpaque>()
+        val value = resolveValue(text).requireIs<ZigUnknown>()
         assertEquals(ZigTypeType, value.typeOf)
     }
 
@@ -114,7 +113,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 const qux = foo;
             }.qux
         """.trimIndent()
-        val value = resolveValue(text).requireIs<ZigOpaque>()
+        val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigContainerType>()
         assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
     }
@@ -126,7 +125,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 var qux = foo;
             }.qux
         """.trimIndent()
-        val value = resolveValue(text).requireIs<ZigOpaque>()
+        val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigContainerType>()
         assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
     }
@@ -137,7 +136,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 fn foo(bar: u42) bool {}
             }.foo
         """.trimIndent()
-        val value = resolveValue(text).requireIs<ZigOpaque>()
+        val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigFunctionType>()
         assertEquals("bool", type.element.returnTypeElement?.text)
     }
@@ -148,7 +147,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 fn foo(bar: u42) bool {}
             }.foo(42)
         """.trimIndent()
-        val value = resolveValue(text).requireIs<ZigOpaque>()
+        val value = resolveValue(text).requireIs<ZigUnknown>()
         assertEquals(ZigBoolType, value.typeOf)
     }
 
@@ -162,13 +161,13 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 const qux: Foo = .{};
             }.qux.baz()
         """.trimIndent()
-        val value = resolveValue(text).requireIs<ZigOpaque>()
+        val value = resolveValue(text).requireIs<ZigUnknown>()
         assertEquals(ZigBoolType, value.typeOf)
     }
 
     fun testTry() {
         val text = "try @as(error{Foo}!bool, true)"
-        val value = resolveValue(text).requireIs<ZigOpaque>()
+        val value = resolveValue(text).requireIs<ZigUnknown>()
         assertEquals(ZigBoolType, value.typeOf)
     }
 }

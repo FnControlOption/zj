@@ -30,7 +30,7 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
             .appendTo(sb)
         for (value in ZigAnalyzer.resolveValuesFromReferenceTo(element)) {
             val typeOfValue = when (value) {
-                is ZigOpaque -> value.typeOf
+                is ZigUnknown -> value.typeOf
                 else -> "${value.typeOf} = $value"
             }
             HtmlChunk.text(typeOfValue.toString())
