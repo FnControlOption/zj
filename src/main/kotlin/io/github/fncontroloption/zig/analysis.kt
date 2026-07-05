@@ -9,6 +9,7 @@ import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.findParentOfType
 import io.github.fncontroloption.zig.psi2.ZigAddressOf
+import io.github.fncontroloption.zig.psi2.ZigArrayTypeElement
 import io.github.fncontroloption.zig.psi2.ZigBlock
 import io.github.fncontroloption.zig.psi2.ZigBreak
 import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
@@ -145,7 +146,9 @@ data class ZigPointerType(val size: ZigPointerSize, val child: ZigValue) : ZigVa
     override val typeOf = ZigTypeType
 }
 
-// TODO: ZigArrayType
+data class ZigArrayType(val child: ZigValue) : ZigValue { // TODO: include len + sentinel
+    override val typeOf = ZigTypeType
+}
 
 private fun resolveValues(element: ZigElement): Set<ZigValue> {
     return CachedValuesManager.getCachedValue(element) {
@@ -176,6 +179,11 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigErrorUnion -> {
             val payloadElement = element.payload ?: return emptySequence()
             resolveValues(payloadElement).asSequence().map { ZigErrorUnionType(it) }
+        }
+
+        is ZigArrayTypeElement -> {
+            val childElement = element.arrayChildElement ?: return emptySequence()
+            resolveValues(childElement).asSequence().map { ZigArrayType(it) }
         }
 
         is ZigPointerTypeElement -> {
@@ -402,6 +410,9 @@ private fun substituteTypeParams(
             is ZigErrorUnionType -> {
                 substituteTypeParams(value.payload, typeParams).map { ZigErrorUnionType(it) }
             }
+            is ZigArrayType -> {
+                substituteTypeParams(value.child, typeParams).map { ZigArrayType(it) }
+            }
             is ZigPointerType -> {
                 substituteTypeParams(value.child, typeParams).map { ZigPointerType(value.size, it) }
             }
@@ -495,6 +506,7 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
         }
 
         is ZigPayloadItem -> {
+            // TODO: val isPointer = target.isPointer
             when (val payloadElement = target.containingPayload) {
                 is ZigThenPayload -> {
                     val conditionElement =
@@ -521,15 +533,15 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
                     }
                     resolveValues(inputElement).asSequence().mapNotNull { input ->
                         when (val typeOfInput = input.typeOf) {
+                            is ZigArrayType -> ZigOpaque.of(typeOfInput.child)
                             is ZigPointerType -> when (typeOfInput.size) {
                                 ZigPointerSize.SLICE -> ZigOpaque.of(typeOfInput.child)
                                 ZigPointerSize.ONE -> when (typeOfInput.child) {
-                                    // is ZigArrayType -> TODO
+                                    is ZigArrayType -> ZigOpaque.of(typeOfInput.child)
                                     else -> null
                                 }
                                 else -> null
                             }
-                            // is ZigArrayType -> TODO
                             else -> null
                         }
                     }
