@@ -29,6 +29,7 @@ import io.github.fncontroloption.zig.psi2.ZigForPayload
 import io.github.fncontroloption.zig.psi2.ZigForRange
 import io.github.fncontroloption.zig.psi2.ZigGroupedExpression
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
+import io.github.fncontroloption.zig.psi2.ZigIf
 import io.github.fncontroloption.zig.psi2.ZigMutability
 import io.github.fncontroloption.zig.psi2.ZigOptionalTypeElement
 import io.github.fncontroloption.zig.psi2.ZigParamDecl
@@ -253,6 +254,14 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                     emptySequence()
                 }
             }
+        }
+
+        is ZigIf -> {
+            val thenElement = element.thenElement.innerElement
+            val elseElement = element.elseElement?.innerElement
+            val thenValues = if (thenElement != null) resolveValues(thenElement) else emptySet()
+            val elseValues = if (elseElement != null) resolveValues(elseElement) else emptySet()
+            thenValues.asSequence() + elseValues.asSequence()
         }
 
         else -> emptySequence()
