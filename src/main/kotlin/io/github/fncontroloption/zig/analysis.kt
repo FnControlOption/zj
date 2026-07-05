@@ -297,7 +297,8 @@ private fun findUnboundTypeParams(element: ZigElement): Map<ZigParamDecl, Set<Zi
             if (element is ZigFnDecl) {
                 for (paramDecl in element.parameters) {
                     val paramTypeElement = paramDecl.typeElement?.innerElement ?: continue
-                    if (paramTypeElement.textMatches("type")) {
+                    val paramTypes = resolveValues(paramTypeElement)
+                    if (paramTypes.contains(ZigTypeType)) {
                         this[paramDecl] = emptySet()
                     }
                 }
@@ -418,10 +419,11 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
 
         is ZigParamDecl -> {
             val typeElement = target.typeElement?.innerElement ?: return emptySequence()
-            if (typeElement.textMatches("type")) {
+            val types = resolveValues(typeElement)
+            if (types.contains(ZigTypeType)) {
                 return sequenceOf(ZigTypeParamType(target))
             }
-            resolveValues(typeElement).asSequence().map { ZigOpaque(it) }
+            types.asSequence().map { ZigOpaque(it) }
         }
 
         is ZigContainerField -> {
@@ -490,14 +492,16 @@ private fun computeFunctionReturnValues(
         type.typeParams.toMutableMap().apply {
             for ((paramDecl, argValues) in type.element.parameters.zip(arguments)) {
                 val paramTypeElement = paramDecl.typeElement?.innerElement ?: continue
-                if (paramTypeElement.textMatches("type")) {
+                val paramTypes = resolveValues(paramTypeElement)
+                if (paramTypes.contains(ZigTypeType)) {
                     this[paramDecl] = argValues
                 }
             }
         }
     }
     val returnTypeElement = type.element.returnTypeElement?.innerElement ?: return emptySequence()
-    if (returnTypeElement.textMatches("type")) {
+    val returnTypes = resolveValues(returnTypeElement)
+    if (returnTypes.contains(ZigTypeType)) {
         val functionBodyElement = (type.element as? ZigFnDecl)?.body
         if (functionBodyElement != null) {
             val traverser = SyntaxTraverser.psiTraverser(functionBodyElement).expand { it !is ZigContainerDecl }
@@ -519,7 +523,7 @@ private fun computeFunctionReturnValues(
             }
         }
     }
-    var values = resolveValues(returnTypeElement).asSequence()
+    var values = returnTypes.asSequence()
     if (typeParams.isNotEmpty()) {
         values = values.flatMap { substituteTypeParams(it, typeParams) }
     }

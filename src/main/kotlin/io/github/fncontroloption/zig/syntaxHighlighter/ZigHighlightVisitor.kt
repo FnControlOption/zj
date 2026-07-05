@@ -9,6 +9,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.util.parentOfType
 import io.github.fncontroloption.zig.ZigAnalyzer
 import io.github.fncontroloption.zig.ZigFunctionType
+import io.github.fncontroloption.zig.ZigTypeType
 import io.github.fncontroloption.zig.psi2.ZigCall
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
 import io.github.fncontroloption.zig.psi2.ZigContainerField
@@ -51,7 +52,7 @@ class ZigHighlightVisitor : HighlightVisitor {
                 val identifier = element.nameIdentifier ?: return null
                 val paramTypeElement = element.typeElement ?: return null
                 val paramType = paramTypeElement.innerElement
-                if (paramType is ZigIdentifier && paramType.textMatches("type")) {
+                if (paramType != null && ZigAnalyzer.resolveValues(paramType).contains(ZigTypeType)) {
                     return createHighlightInfo(identifier, ZigHighlightInfoTypes.TYPE_PARAMETER)
                 }
 
