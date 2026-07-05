@@ -326,12 +326,20 @@ private fun substituteTypeParams(
             ZigBoolType -> sequenceOf(ZigBoolType)
             is ZigUnknownType -> sequenceOf(value)
             is ZigContainerType -> {
-                val newTypeParams = value.typeParams + typeParams
-                sequenceOf(ZigContainerType(value.element, newTypeParams))
+                if (value.typeParams.isEmpty()) {
+                    sequenceOf(value)
+                } else {
+                    val newTypeParams = value.typeParams + typeParams
+                    sequenceOf(ZigContainerType(value.element, newTypeParams))
+                }
             }
             is ZigFunctionType -> {
-                val newTypeParams = value.typeParams + typeParams
-                sequenceOf(ZigFunctionType(value.element, newTypeParams))
+                if (value.typeParams.isEmpty()) {
+                    sequenceOf(value)
+                } else {
+                    val newTypeParams = value.typeParams + typeParams
+                    sequenceOf(ZigFunctionType(value.element, newTypeParams))
+                }
             }
             is ZigTypeParamType -> when (val values = typeParams[value.element]) {
                 null -> emptySequence()
@@ -366,9 +374,11 @@ private fun computeContainerInstanceFieldValues(type: ZigContainerType, name: St
     if (member == null || member !is ZigContainerField) {
         return emptySequence()
     }
-    return resolveValuesFromReferenceTo(member)
-        .asSequence()
-        .flatMap { substituteTypeParams(it, type.typeParams) }
+    var values = resolveValuesFromReferenceTo(member).asSequence()
+    if (type.typeParams.isNotEmpty()) {
+        values = values.flatMap { substituteTypeParams(it, type.typeParams) }
+    }
+    return values
 }
 
 private fun computeContainerDeclValues(type: ZigContainerType, name: String): Sequence<ZigValue> {
@@ -385,9 +395,11 @@ private fun computeContainerDeclValues(type: ZigContainerType, name: String): Se
             else -> emptySequence()
         }
     }
-    return resolveValuesFromReferenceTo(member)
-        .asSequence()
-        .flatMap { substituteTypeParams(it, type.typeParams) }
+    var values = resolveValuesFromReferenceTo(member).asSequence()
+    if (type.typeParams.isNotEmpty()) {
+        values = values.flatMap { substituteTypeParams(it, type.typeParams) }
+    }
+    return values
 }
 
 private fun resolveValuesFromReferenceTo(target: ZigElement): Set<ZigValue> {
@@ -506,11 +518,16 @@ private fun computeFunctionReturnValues(
     type: ZigFunctionType,
     arguments: Sequence<Set<ZigValue>>,
 ): Sequence<ZigValue> {
-    val typeParams = type.typeParams.toMutableMap()
-    for ((paramDecl, argValues) in type.element.parameters.zip(arguments)) {
-        val paramTypeElement = paramDecl.typeElement?.innerElement ?: continue
-        if (paramTypeElement.textMatches("type")) {
-            typeParams[paramDecl] = argValues
+    val typeParams = if (type.typeParams.isEmpty()) {
+        emptyMap()
+    } else {
+        type.typeParams.toMutableMap().apply {
+            for ((paramDecl, argValues) in type.element.parameters.zip(arguments)) {
+                val paramTypeElement = paramDecl.typeElement?.innerElement ?: continue
+                if (paramTypeElement.textMatches("type")) {
+                    this[paramDecl] = argValues
+                }
+            }
         }
     }
     val returnTypeElement = type.element.returnTypeElement?.innerElement ?: return emptySequence()
@@ -523,9 +540,11 @@ private fun computeFunctionReturnValues(
                     when (val returnValue = descendant.returnValue) {
                         null -> emptySequence()
                         else -> {
-                            resolveValues(returnValue)
-                                .asSequence()
-                                .flatMap { substituteTypeParams(it, typeParams) }
+                            var values = resolveValues(returnValue).asSequence()
+                            if (typeParams.isNotEmpty()) {
+                                values = values.flatMap { substituteTypeParams(it, typeParams) }
+                            }
+                            values
                         }
                     }
                 } else {
@@ -534,9 +553,9 @@ private fun computeFunctionReturnValues(
             }
         }
     }
-    return resolveValues(returnTypeElement)
-        .asSequence()
-        .flatMap { substituteTypeParams(it, typeParams) }
-        .filterIsInstance<ZigType>()
-        .map { ZigOpaqueValue(it) }
+    var values = resolveValues(returnTypeElement).asSequence()
+    if (typeParams.isNotEmpty()) {
+        values = values.flatMap { substituteTypeParams(it, typeParams) }
+    }
+    return values.filterIsInstance<ZigType>().map { ZigOpaqueValue(it) }
 }
