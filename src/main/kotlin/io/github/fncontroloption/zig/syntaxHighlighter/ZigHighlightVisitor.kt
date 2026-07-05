@@ -7,6 +7,9 @@ import com.intellij.codeInsight.daemon.impl.analysis.HighlightInfoHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.parentOfType
+import io.github.fncontroloption.zig.ZigAnalyzer
+import io.github.fncontroloption.zig.ZigFunctionType
+import io.github.fncontroloption.zig.ZigOpaqueValue
 import io.github.fncontroloption.zig.psi2.ZigCall
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
 import io.github.fncontroloption.zig.psi2.ZigContainerField
@@ -59,24 +62,11 @@ class ZigHighlightVisitor : HighlightVisitor {
             is ZigVarDeclOrProto -> {
                 val identifier = element.nameIdentifier ?: return null
 
-                /* TODO
-                if (element.isConst()) {
-                    val parent = element.parent
-                    if (parent is ZigVarDecl) {
-                        val initExpr = parent.varDeclInitExpr
-                        if (initExpr != null) {
-                            val expr = initExpr.expr
-                            if (expr != null) {
-                                for (target in followReferencesRecursive(expr, mutableSetOf())) {
-                                    if (target is ZigFnProto) {
-                                        return createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD)
-                                    }
-                                }
-                            }
-                        }
+                for (value in ZigAnalyzer.resolveValuesFromReferenceTo(element)) {
+                    if (value is ZigOpaqueValue && value.type is ZigFunctionType) {
+                        return createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD)
                     }
                 }
-                */
 
                 val type = if (element is ZigVarDecl && element.isLocal) {
                     when (element.mutability) {
