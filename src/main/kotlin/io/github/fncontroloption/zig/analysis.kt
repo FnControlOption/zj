@@ -60,6 +60,8 @@ sealed interface ZigValue {
 }
 
 class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigValue {
+    override fun toString() = "ZigUnknown(typeOf=$typeOf)"
+
     companion object {
         fun of(type: ZigValue): ZigValue {
             return when (type) {
