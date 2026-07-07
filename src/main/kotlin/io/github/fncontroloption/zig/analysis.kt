@@ -275,6 +275,18 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             leftValues + rightValues
         }
 
+        is ZigMergeErrorSets -> {
+            val rightElement = element.rightOperand
+                ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+            val rightType = resolveValues(rightElement).singleOrNull() as? ZigErrorSetType
+                ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+            val leftElement = element.leftOperand
+            val leftType = resolveValues(leftElement).singleOrNull() as? ZigErrorSetType
+                ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+            val names = leftType.names + rightType.names
+            sequenceOf(ZigErrorSetType(names))
+        }
+
         is ZigListInit -> {
             val typeElement = element.typeExpression
             if (typeElement != null) {
@@ -459,7 +471,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigGreaterThan -> emptySequence() // TODO
         is ZigLessOrEqual -> emptySequence() // TODO
         is ZigLessThan -> emptySequence() // TODO
-        is ZigMergeErrorSets -> emptySequence() // TODO
         is ZigMod -> emptySequence() // TODO
         is ZigMul -> emptySequence() // TODO
         is ZigMulSat -> emptySequence() // TODO

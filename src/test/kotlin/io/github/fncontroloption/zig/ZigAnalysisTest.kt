@@ -252,4 +252,10 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertTrue(values.any { it is ZigUnknown && it.typeOf == ZigUsizeType })
         assertTrue(values.contains(ZigUndefinedValue))
     }
+
+    fun testMergeErrorSets() {
+        val text = "error{Foo,Bar} || error{Baz,Qux}"
+        val type = resolveValue(text).requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo", "Bar", "Baz", "Qux"), type.names)
+    }
 }
