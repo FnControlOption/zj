@@ -322,6 +322,55 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigReturn,
         is ZigUnreachableLiteral -> sequenceOf(ZigUnknown.of(ZigNoreturnType))
 
+        is ZigAdd -> emptySequence() // TODO
+        is ZigAddSat -> emptySequence() // TODO
+        is ZigAddWrap -> emptySequence() // TODO
+        is ZigArrayAccess -> emptySequence() // TODO
+        is ZigArrayCat -> emptySequence() // TODO
+        is ZigBangEqual -> emptySequence() // TODO
+        is ZigBitAnd -> emptySequence() // TODO
+        is ZigBitNot -> emptySequence() // TODO
+        is ZigBitOr -> emptySequence() // TODO
+        is ZigBitXor -> emptySequence() // TODO
+        is ZigBoolAnd -> emptySequence() // TODO
+        is ZigBoolNot -> emptySequence() // TODO
+        is ZigBoolOr -> emptySequence() // TODO
+        is ZigCatch -> emptySequence() // TODO
+        is ZigCharLiteral -> emptySequence() // TODO
+        is ZigComptime -> emptySequence() // TODO
+        is ZigDeref -> emptySequence() // TODO
+        is ZigDiv -> emptySequence() // TODO
+        is ZigEnumLiteral -> emptySequence() // TODO
+        is ZigEqualEqual -> emptySequence() // TODO
+        is ZigErrorSetDecl -> emptySequence() // TODO
+        is ZigErrorValue -> emptySequence() // TODO
+        is ZigFor -> emptySequence() // TODO
+        is ZigGreaterOrEqual -> emptySequence() // TODO
+        is ZigGreaterThan -> emptySequence() // TODO
+        is ZigLessOrEqual -> emptySequence() // TODO
+        is ZigLessThan -> emptySequence() // TODO
+        is ZigListInit -> emptySequence() // TODO
+        is ZigMergeErrorSets -> emptySequence() // TODO
+        is ZigMod -> emptySequence() // TODO
+        is ZigMul -> emptySequence() // TODO
+        is ZigMulSat -> emptySequence() // TODO
+        is ZigMultilineStringLiteral -> emptySequence() // TODO
+        is ZigMulWrap -> emptySequence() // TODO
+        is ZigNegation -> emptySequence() // TODO
+        is ZigNegationWrap -> emptySequence() // TODO
+        is ZigNumberLiteral -> emptySequence() // TODO
+        is ZigOrelse -> emptySequence() // TODO
+        is ZigShl -> emptySequence() // TODO
+        is ZigShlSat -> emptySequence() // TODO
+        is ZigShr -> emptySequence() // TODO
+        is ZigSlice -> emptySequence() // TODO
+        is ZigStringLiteral -> emptySequence() // TODO
+        is ZigSub -> emptySequence() // TODO
+        is ZigSubSat -> emptySequence() // TODO
+        is ZigSubWrap -> emptySequence() // TODO
+        is ZigSwitch -> emptySequence() // TODO
+        is ZigUnwrapOptional -> emptySequence() // TODO
+        is ZigWhile -> emptySequence() // TODO
         else -> emptySequence()
     }
 }
@@ -466,6 +515,8 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
                 ZigMutability.VAR -> resolveValues(initElement).asSequence().map { ZigUnknown.of(it.typeOf) }
             }
         }
+
+        is ZigVarProto -> emptySequence() // TODO
 
         is ZigParamDecl -> {
             val typeElement = target.typeElement?.innerElement ?: return emptySequence()
