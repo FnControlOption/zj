@@ -151,6 +151,8 @@ sealed interface ZigIntType : ZigValue {
     override val typeOf: ZigTypeType
 }
 
+data class ZigIntValue(override val typeOf: ZigIntType, val value: Int) : ZigValue
+
 data object ZigComptimeIntType : ZigIntType {
     override val typeOf = ZigTypeType
 }
@@ -515,6 +517,13 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             }
         }
 
+        is ZigNumberLiteral -> {
+            val value = element.text.toIntOrNull() ?: return emptySequence()
+            sequenceOf(ZigIntValue(ZigComptimeIntType, value))
+        }
+
+        is ZigCharLiteral -> sequenceOf(ZigUnknown.of(ZigComptimeIntType))
+
         is ZigBreak,
         is ZigContinue,
         is ZigReturn,
@@ -532,7 +541,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigBoolAnd -> emptySequence() // TODO
         is ZigBoolNot -> emptySequence() // TODO
         is ZigBoolOr -> emptySequence() // TODO
-        is ZigCharLiteral -> emptySequence() // TODO
         is ZigDiv -> emptySequence() // TODO
         is ZigEnumLiteral -> emptySequence() // TODO
         is ZigEqualEqual -> emptySequence() // TODO
@@ -548,7 +556,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigMulWrap -> emptySequence() // TODO
         is ZigNegation -> emptySequence() // TODO
         is ZigNegationWrap -> emptySequence() // TODO
-        is ZigNumberLiteral -> emptySequence() // TODO
         is ZigShl -> emptySequence() // TODO
         is ZigShlSat -> emptySequence() // TODO
         is ZigShr -> emptySequence() // TODO
@@ -620,7 +627,8 @@ private fun substituteTypeParams(
             is ZigErrorSetType,
             is ZigErrorSetValue,
             is ZigFloatType,
-            is ZigIntType -> sequenceOf(value)
+            is ZigIntType,
+            is ZigIntValue -> sequenceOf(value)
             is ZigContainerType -> {
                 if (value.typeParams.isEmpty()) {
                     sequenceOf(value)

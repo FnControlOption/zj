@@ -269,4 +269,17 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue(text).requireIs<ZigErrorSetType>()
         assertEquals(setOf("Foo", "Bar", "Baz", "Qux"), type.names)
     }
+
+    fun testIntLiteral() {
+        val text = "42"
+        val value = resolveValue(text).requireIs<ZigIntValue>()
+        assertEquals(ZigComptimeIntType, value.typeOf)
+        assertEquals(42, value.value)
+    }
+
+    fun testCharLiteral() {
+        val text = "'e'"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        assertEquals(ZigComptimeIntType, value.typeOf)
+    }
 }
