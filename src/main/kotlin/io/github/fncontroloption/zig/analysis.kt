@@ -168,6 +168,66 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             resolveValues(innerElement).asSequence()
         }
 
+        is ZigAddressOf -> {
+            val operandElement = element.operand ?: return emptySequence()
+            resolveValues(operandElement).asSequence().map {
+                ZigUnknown.of(ZigPointerType(ZigPointerSize.ONE, it.typeOf))
+            }
+        }
+
+        is ZigTry -> {
+            val operandElement = element.operand ?: return emptySequence()
+            resolveValues(operandElement).asSequence().mapNotNull { operand ->
+                when (val typeOfOperand = operand.typeOf) {
+                    is ZigErrorUnionType -> ZigUnknown.of(typeOfOperand.payload)
+                    else -> null
+                }
+            }
+        }
+
+        is ZigIf -> {
+            val thenValues = when (val thenElement = element.thenElement.innerElement) {
+                null -> emptySequence()
+                else -> resolveValues(thenElement).asSequence()
+            }
+            val elseValues = when (val thenElement = element.elseElement?.innerElement) {
+                null -> emptySequence()
+                else -> resolveValues(thenElement).asSequence()
+            }
+            thenValues + elseValues
+        }
+
+        is ZigCatch -> {
+            val leftValues = resolveValues(element.leftOperand).asSequence().mapNotNull { left ->
+                when (val typeOfLeft = left.typeOf) {
+                    is ZigErrorUnionType -> ZigUnknown.of(typeOfLeft.payload)
+                    else -> null
+                }
+            }
+            val rightValues = when (val rightElement = element.rightOperand) {
+                null -> emptySequence()
+                else -> resolveValues(rightElement).asSequence()
+            }
+            leftValues + rightValues
+        }
+
+        is ZigIdentifier -> {
+            val primitiveValue = PRIMITIVE_VALUES[element.text]
+            if (primitiveValue != null) {
+                return sequenceOf(primitiveValue)
+            }
+            // TODO: handle all primitives
+            if (element.isPrimitive) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            element.references.asSequence().flatMap { reference ->
+                when (val target = reference.resolve()) {
+                    null -> emptySequence()
+                    else -> resolveValuesFromReferenceTo(target).asSequence()
+                }
+            }
+        }
+
         is ZigFieldAccess -> {
             val name = element.identifierElement?.text ?: return emptySequence()
             resolveValues(element.leftOperand).asSequence().flatMap { left ->
@@ -206,23 +266,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             }
         }
 
-        is ZigIdentifier -> {
-            val primitiveValue = PRIMITIVE_VALUES[element.text]
-            if (primitiveValue != null) {
-                return sequenceOf(primitiveValue)
-            }
-            // TODO: handle all primitives
-            if (element.isPrimitive) {
-                return sequenceOf(ZigUnknown.of(ZigTypeType))
-            }
-            element.references.asSequence().flatMap { reference ->
-                when (val target = reference.resolve()) {
-                    null -> emptySequence()
-                    else -> resolveValuesFromReferenceTo(target).asSequence()
-                }
-            }
-        }
-
         is ZigBuiltinCall -> when (element.builtinElement.text) {
             "@as" -> {
                 val argElement = element.argumentElements.firstOrNull()?.innerElement ?: return emptySequence()
@@ -250,23 +293,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
 
             // TODO
             else -> emptySequence()
-        }
-
-        is ZigAddressOf -> {
-            val operandElement = element.operand ?: return emptySequence()
-            resolveValues(operandElement).asSequence().map {
-                ZigUnknown.of(ZigPointerType(ZigPointerSize.ONE, it.typeOf))
-            }
-        }
-
-        is ZigTry -> {
-            val operandElement = element.operand ?: return emptySequence()
-            resolveValues(operandElement).asSequence().mapNotNull { operand ->
-                when (val typeOfOperand = operand.typeOf) {
-                    is ZigErrorUnionType -> ZigUnknown.of(typeOfOperand.payload)
-                    else -> null
-                }
-            }
         }
 
         is ZigCall -> {
@@ -325,28 +351,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                     emptySequence()
                 }
             }
-        }
-
-        is ZigIf -> {
-            val thenElement = element.thenElement.innerElement
-            val elseElement = element.elseElement?.innerElement
-            val thenValues = if (thenElement != null) resolveValues(thenElement) else emptySet()
-            val elseValues = if (elseElement != null) resolveValues(elseElement) else emptySet()
-            thenValues.asSequence() + elseValues.asSequence()
-        }
-
-        is ZigCatch -> {
-            val leftValues = resolveValues(element.leftOperand).asSequence().mapNotNull { left ->
-                when (val typeOfLeft = left.typeOf) {
-                    is ZigErrorUnionType -> ZigUnknown.of(typeOfLeft.payload)
-                    else -> null
-                }
-            }
-            val rightValues =
-                element.rightOperand
-                    ?.let { resolveValues(it).asSequence() }
-                    ?: emptySequence()
-            leftValues + rightValues
         }
 
         is ZigBreak,
