@@ -169,6 +169,12 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigBoolType, value.typeOf)
     }
 
+    fun testUnwrapOptional() {
+        val text = "@as(?bool, true).?"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        assertEquals(ZigBoolType, value.typeOf)
+    }
+
     fun testTry() {
         val text = "try @as(error{Foo}!bool, true)"
         val value = resolveValue(text).requireIs<ZigUnknown>()

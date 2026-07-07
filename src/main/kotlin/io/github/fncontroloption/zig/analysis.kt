@@ -180,6 +180,16 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             }
         }
 
+        is ZigUnwrapOptional -> {
+            val operandElement = element.operand ?: return emptySequence()
+            resolveValues(operandElement).asSequence().mapNotNull { operand ->
+                when (val typeOfOperand = operand.typeOf) {
+                    is ZigOptionalType -> ZigUnknown.of(typeOfOperand.child)
+                    else -> null
+                }
+            }
+        }
+
         is ZigTry -> {
             val operandElement = element.operand ?: return emptySequence()
             resolveValues(operandElement).asSequence().mapNotNull { operand ->
@@ -414,7 +424,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigSubSat -> emptySequence() // TODO
         is ZigSubWrap -> emptySequence() // TODO
         is ZigSwitch -> emptySequence() // TODO
-        is ZigUnwrapOptional -> emptySequence() // TODO
         is ZigWhile -> emptySequence() // TODO
         else -> emptySequence()
     }
