@@ -160,23 +160,23 @@ import io.github.fncontroloption.zig.psi2.ZigTokenType;
 }
 
 <CHAR> {
-  [\n\x01-\x09\x0b-\x1f\x7f] { yybegin(YYINITIAL); return TokenType.BAD_CHARACTER; }
-  <<EOF>> { yybegin(YYINITIAL); return TokenType.BAD_CHARACTER; }
+  [\n\x01-\x09\x0b-\x1f\x7f] { yypushback(1); yybegin(YYINITIAL); return ZigTokenType.CHAR_LITERAL; }
+  <<EOF>> { yybegin(YYINITIAL); return ZigTokenType.CHAR_LITERAL; }
   ' { yybegin(YYINITIAL); return ZigTokenType.CHAR_LITERAL; }
   [^] {}
   \\[^] {}
 }
 
 <STRING> {
-  [\n\x01-\x09\x0b-\x1f\x7f] { yybegin(YYINITIAL); return TokenType.BAD_CHARACTER; }
-  <<EOF>> { yybegin(YYINITIAL); return TokenType.BAD_CHARACTER; }
+  [\n\x01-\x09\x0b-\x1f\x7f] { yypushback(1); yybegin(YYINITIAL); return type; }
+  <<EOF>> { yybegin(YYINITIAL); return type; }
   \" { yybegin(YYINITIAL); return type; }
   [^] {}
   \\[^] {}
 }
 
 <MULTILINE_STRING> {
-  [\r\x01-\x09\x0b-\x0c\x0e-\x1f\x7f] { yybegin(YYINITIAL); return TokenType.BAD_CHARACTER; }
+  [\r\x01-\x09\x0b-\x0c\x0e-\x1f\x7f] { yypushback(1); yybegin(YYINITIAL); return ZigTokenType.MULTILINE_STRING_LITERAL_LINE; }
   <<EOF>> { yybegin(YYINITIAL); return ZigTokenType.MULTILINE_STRING_LITERAL_LINE; }
   \n { yypushback(1); yybegin(YYINITIAL); return ZigTokenType.MULTILINE_STRING_LITERAL_LINE; }
   \r\n { yypushback(2); yybegin(YYINITIAL); return ZigTokenType.MULTILINE_STRING_LITERAL_LINE; }
@@ -184,7 +184,7 @@ import io.github.fncontroloption.zig.psi2.ZigTokenType;
 }
 
 <COMMENT> {
-  [\r\x01-\x09\x0b-\x0c\x0e-\x1f\x7f] { yybegin(YYINITIAL); return TokenType.BAD_CHARACTER; }
+  [\r\x01-\x09\x0b-\x0c\x0e-\x1f\x7f] { yypushback(1); yybegin(YYINITIAL); return type; }
   <<EOF>> { yybegin(YYINITIAL); return type; }
   \n { yypushback(1); yybegin(YYINITIAL); return type; }
   \r\n { yypushback(2); yybegin(YYINITIAL); return type; }

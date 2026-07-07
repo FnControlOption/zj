@@ -54,6 +54,7 @@
     <lang.documentationProvider language="Zig" implementationClass="io.github.fncontroloption.zig.ZigDocumentationProvider"/>
     <spellchecker.support language="Zig" implementationClass="io.github.fncontroloption.zig.ZigSpellcheckingStrategy"/>
     <lang.braceMatcher language="Zig" implementationClass="io.github.fncontroloption.zig.ZigBraceMatcher"/>
+    <lang.quoteHandler language="Zig" implementationClass="io.github.fncontroloption.zig.ZigQuoteHandler"/>
     <!--
     <projectConfigurable parentId="language"
                          instance="io.github.fncontroloption.zig.ZigSettingsConfigurable"
