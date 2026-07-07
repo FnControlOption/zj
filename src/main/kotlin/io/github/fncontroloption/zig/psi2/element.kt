@@ -214,7 +214,7 @@ class ZigElementType(debugName: String) : IElementType(debugName, ZigLanguage) {
                 ERROR_SET_DECL -> ZigErrorSetDecl(node)
                 ERROR_SET_ITEM -> ZigErrorSetItem(node)
                 ERROR_UNION -> ZigErrorUnion(node)
-                ERROR_VALUE -> ZigErrorValue(node)
+                ERROR_VALUE -> ZigErrorValueElement(node)
                 FIELD_ACCESS -> ZigFieldAccess(node)
                 FN_DECL -> ZigFnDecl(node)
                 FN_PROTO -> ZigFnProto(node)

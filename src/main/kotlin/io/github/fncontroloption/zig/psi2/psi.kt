@@ -533,9 +533,13 @@ class ZigErrdefer(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigErrorSetDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val setItems: Sequence<ZigErrorSetItem>
+        get() = firstChild.siblings().filterIsInstance<ZigErrorSetItem>()
 }
 
 class ZigErrorSetItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val identifierElement: PsiElement
+        get() = findNotNullChildByType(ZigTokenType.IDENTIFIER)
 }
 
 class ZigErrorUnion(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
@@ -556,7 +560,9 @@ class ZigErrorUnion(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
                 .firstOrNull()
 }
 
-class ZigErrorValue(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+class ZigErrorValueElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val identifierElement: PsiElement
+        get() = findNotNullChildByType(ZigTokenType.IDENTIFIER)
 }
 
 class ZigFieldAccess(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {

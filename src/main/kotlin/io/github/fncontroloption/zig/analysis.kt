@@ -109,6 +109,12 @@ data class ZigOptionalType(val child: ZigValue) : ZigValue {
     override val typeOf = ZigTypeType
 }
 
+data class ZigErrorSetType(val names: Set<String>) : ZigValue {
+    override val typeOf = ZigTypeType
+}
+
+data class ZigErrorSetValue(override val typeOf: ZigErrorSetType, val name: String) : ZigValue
+
 data class ZigErrorUnionType(val payload: ZigValue) : ZigValue { // TODO: include error set
     override val typeOf = ZigTypeType
 }
@@ -145,6 +151,17 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigOptionalTypeElement -> {
             val childElement = element.optionalChildElement ?: return emptySequence()
             resolveValues(childElement).asSequence().map { ZigOptionalType(it) }
+        }
+
+        is ZigErrorSetDecl -> {
+            val names = element.setItems.map { it.identifierElement.text }.toSet()
+            sequenceOf(ZigErrorSetType(names))
+        }
+
+        is ZigErrorValueElement -> {
+            val name = element.identifierElement.text
+            val type = ZigErrorSetType(setOf(name))
+            sequenceOf(ZigErrorSetValue(type, name))
         }
 
         is ZigErrorUnion -> {
@@ -287,6 +304,13 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             val name = element.identifierElement?.text ?: return emptySequence()
             resolveValues(element.leftOperand).asSequence().flatMap { left ->
                 when (left) {
+                    is ZigErrorSetType -> {
+                        if (name in left.names) {
+                            sequenceOf(ZigErrorSetValue(left, name))
+                        } else {
+                            sequenceOf(ZigUnknown.of(left))
+                        }
+                    }
                     is ZigContainerType -> computeContainerDeclValues(left, name)
                     else -> when (val typeOfLeft = left.typeOf) {
                         is ZigContainerType -> computeContainerInstanceFieldValues(typeOfLeft, name)
@@ -430,8 +454,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigDiv -> emptySequence() // TODO
         is ZigEnumLiteral -> emptySequence() // TODO
         is ZigEqualEqual -> emptySequence() // TODO
-        is ZigErrorSetDecl -> emptySequence() // TODO
-        is ZigErrorValue -> emptySequence() // TODO
         is ZigFor -> emptySequence() // TODO
         is ZigGreaterOrEqual -> emptySequence() // TODO
         is ZigGreaterThan -> emptySequence() // TODO
@@ -498,7 +520,9 @@ private fun substituteTypeParams(
             ZigUndefinedValue,
             ZigUsizeType,
             ZigVoidType,
-            ZigVoidValue -> sequenceOf(value)
+            ZigVoidValue,
+            is ZigErrorSetType,
+            is ZigErrorSetValue -> sequenceOf(value)
             is ZigContainerType -> {
                 if (value.typeParams.isEmpty()) {
                     sequenceOf(value)
