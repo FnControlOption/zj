@@ -58,6 +58,10 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigBoolType, type.payload)
     }
 
+    fun testComptime() {
+        assertEquals(ZigUndefinedValue, resolveValue("comptime undefined"))
+    }
+
     fun testEnumFieldAccess() {
         val value = resolveValue("enum { foo, bar }.foo").requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigContainerType>()

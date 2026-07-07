@@ -168,6 +168,11 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             resolveValues(innerElement).asSequence()
         }
 
+        is ZigComptime -> {
+            val innerElement = element.innerElement ?: return emptySequence()
+            resolveValues(innerElement).asSequence()
+        }
+
         is ZigAddressOf -> {
             val operandElement = element.operand ?: return emptySequence()
             resolveValues(operandElement).asSequence().map {
@@ -379,7 +384,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigBoolNot -> emptySequence() // TODO
         is ZigBoolOr -> emptySequence() // TODO
         is ZigCharLiteral -> emptySequence() // TODO
-        is ZigComptime -> emptySequence() // TODO
         is ZigDeref -> emptySequence() // TODO
         is ZigDiv -> emptySequence() // TODO
         is ZigEnumLiteral -> emptySequence() // TODO
