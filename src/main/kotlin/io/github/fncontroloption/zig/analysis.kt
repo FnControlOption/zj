@@ -224,6 +224,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 null -> emptySequence()
                 else -> resolveValues(thenElement).asSequence()
             }
+            // TODO: peer type resolution
             thenValues + elseValues
         }
 
@@ -238,6 +239,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 null -> emptySequence()
                 else -> resolveValues(rightElement).asSequence()
             }
+            // TODO: peer type resolution?
             leftValues + rightValues
         }
 
@@ -252,6 +254,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 null -> emptySequence()
                 else -> resolveValues(rightElement).asSequence()
             }
+            // TODO: peer type resolution?
             leftValues + rightValues
         }
 
@@ -393,6 +396,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             val labelDecl = element.labelDecl ?: return sequenceOf(ZigUnknown.of(ZigVoidType))
             val labelName = labelDecl.identifierElement.text
             val traverser = SyntaxTraverser.psiTraverser(element).expand { it !is ZigContainerDecl }
+            // TODO: peer type resolution
             traverser.asSequence().flatMap { descendant ->
                 if (descendant is ZigBreak && labelName == descendant.labelRef?.identifierElement?.text) {
                     when (val breakValue = descendant.breakValue) {
