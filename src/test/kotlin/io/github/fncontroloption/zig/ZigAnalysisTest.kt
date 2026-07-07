@@ -79,6 +79,16 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigBoolType, type.payload)
     }
 
+    fun testFixedFloatType() {
+        assertEquals(ZigFixedFloatType(32), resolveValue("f32"))
+        assertEquals(ZigFixedFloatType(80), resolveValue("f80"))
+    }
+
+    fun testFixedIntType() {
+        assertEquals(ZigFixedIntType(ZigSignedness.SIGNED, 42), resolveValue("i42"))
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 67), resolveValue("u67"))
+    }
+
     fun testComptime() {
         assertEquals(ZigUndefinedValue, resolveValue("comptime undefined"))
     }

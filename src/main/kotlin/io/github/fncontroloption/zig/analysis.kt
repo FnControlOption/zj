@@ -43,6 +43,14 @@ data object ZigTypeType : ZigValue {
     override val typeOf = this
 }
 
+data object ZigAnyerrorType : ZigValue {
+    override val typeOf = ZigTypeType
+}
+
+data object ZigAnyopaqueType : ZigValue {
+    override val typeOf = ZigTypeType
+}
+
 data object ZigBoolType : ZigValue {
     override val typeOf = ZigTypeType
 }
@@ -73,10 +81,6 @@ data object ZigUndefinedType : ZigValue {
 
 data object ZigUndefinedValue : ZigValue {
     override val typeOf = ZigUndefinedType
-}
-
-data object ZigUsizeType : ZigValue {
-    override val typeOf = ZigTypeType
 }
 
 data object ZigVoidType : ZigValue {
@@ -124,6 +128,64 @@ data class ZigPointerType(val size: ZigPointerSize, val child: ZigValue) : ZigVa
 }
 
 data class ZigArrayType(val child: ZigValue) : ZigValue { // TODO: include len + sentinel
+    override val typeOf = ZigTypeType
+}
+
+sealed interface ZigFloatType : ZigValue {
+    override val typeOf: ZigTypeType
+}
+
+data object ZigComptimeFloatType : ZigFloatType {
+    override val typeOf = ZigTypeType
+}
+
+data class ZigFixedFloatType(val bits: Int) : ZigFloatType {
+    override val typeOf = ZigTypeType
+}
+
+data object ZigCLongDoubleType : ZigFloatType {
+    override val typeOf = ZigTypeType
+}
+
+sealed interface ZigIntType : ZigValue {
+    override val typeOf: ZigTypeType
+}
+
+data object ZigComptimeIntType : ZigIntType {
+    override val typeOf = ZigTypeType
+}
+
+enum class ZigSignedness { SIGNED, UNSIGNED }
+
+data class ZigFixedIntType(val signedness: ZigSignedness, val bits: Int) : ZigIntType {
+    override val typeOf = ZigTypeType
+}
+
+data object ZigIsizeType : ZigIntType {
+    override val typeOf = ZigTypeType
+}
+
+data object ZigUsizeType : ZigIntType {
+    override val typeOf = ZigTypeType
+}
+
+data object ZigCCharType : ZigIntType {
+    override val typeOf = ZigTypeType
+}
+
+data class ZigCShortType(val signedness: ZigSignedness) : ZigIntType {
+    override val typeOf = ZigTypeType
+}
+
+data class ZigCIntType(val signedness: ZigSignedness) : ZigIntType {
+    override val typeOf = ZigTypeType
+}
+
+data class ZigCLongType(val signedness: ZigSignedness) : ZigIntType {
+    override val typeOf = ZigTypeType
+}
+
+data class ZigCLongLongType(val signedness: ZigSignedness) : ZigIntType {
     override val typeOf = ZigTypeType
 }
 
@@ -302,13 +364,14 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigIdentifier -> {
-            val primitiveValue = PRIMITIVE_VALUES[element.text]
+            val text = element.text
+            val primitiveValue = PRIMITIVE_VALUES[text]
             if (primitiveValue != null) {
                 return sequenceOf(primitiveValue)
             }
-            // TODO: handle all primitives
-            if (element.isPrimitive) {
-                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            val intType = toFixedIntType(text)
+            if (intType != null) {
+                return sequenceOf(intType)
             }
             element.references.asSequence().flatMap { reference ->
                 when (val target = reference.resolve()) {
@@ -500,6 +563,19 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
     }
 }
 
+private fun toFixedIntType(text: String): ZigFixedIntType? {
+    if (text.length < 2) {
+        return null
+    }
+    val signedness = when (text[0]) {
+        'i' -> ZigSignedness.SIGNED
+        'u' -> ZigSignedness.UNSIGNED
+        else -> return null
+    }
+    val bits = text.substring(1).toIntOrNull() ?: return null
+    return ZigFixedIntType(signedness, bits)
+}
+
 private fun findUnboundTypeParams(element: ZigElement): Map<ZigParamDecl, Set<ZigValue>> {
     return buildMap {
         var element: PsiElement? = element
@@ -528,6 +604,8 @@ private fun substituteTypeParams(
                 substituteTypeParams(value.typeOf, typeParams).map { ZigUnknown.of(it) }
             }
             ZigTypeType,
+            ZigAnyerrorType,
+            ZigAnyopaqueType,
             ZigBoolType,
             ZigFalseValue,
             ZigTrueValue,
@@ -540,7 +618,9 @@ private fun substituteTypeParams(
             ZigVoidType,
             ZigVoidValue,
             is ZigErrorSetType,
-            is ZigErrorSetValue -> sequenceOf(value)
+            is ZigErrorSetValue,
+            is ZigFloatType,
+            is ZigIntType -> sequenceOf(value)
             is ZigContainerType -> {
                 if (value.typeParams.isEmpty()) {
                     sequenceOf(value)
@@ -761,29 +841,29 @@ private fun computeFunctionReturnValues(
 }
 
 private val PRIMITIVE_VALUES = mapOf(
-    //"anyerror",
+    "anyerror" to ZigAnyerrorType,
     //"anyframe",
-    //"anyopaque",
+    "anyopaque" to ZigAnyopaqueType,
     "bool" to ZigBoolType,
-    //"c_int",
-    //"c_long",
-    //"c_longdouble",
-    //"c_longlong",
-    //"c_char",
-    //"c_short",
-    //"c_uint",
-    //"c_ulong",
-    //"c_ulonglong",
-    //"c_ushort",
-    //"comptime_float",
-    //"comptime_int",
-    //"f128",
-    //"f16",
-    //"f32",
-    //"f64",
-    //"f80",
+    "c_int" to ZigCIntType(ZigSignedness.SIGNED),
+    "c_long" to ZigCLongType(ZigSignedness.SIGNED),
+    "c_longdouble" to ZigCLongDoubleType,
+    "c_longlong" to ZigCLongLongType(ZigSignedness.SIGNED),
+    "c_char" to ZigCCharType,
+    "c_short" to ZigCShortType(ZigSignedness.SIGNED),
+    "c_uint" to ZigCIntType(ZigSignedness.UNSIGNED),
+    "c_ulong" to ZigCLongType(ZigSignedness.UNSIGNED),
+    "c_ulonglong" to ZigCLongLongType(ZigSignedness.UNSIGNED),
+    "c_ushort" to ZigCShortType(ZigSignedness.UNSIGNED),
+    "comptime_float" to ZigComptimeFloatType,
+    "comptime_int" to ZigComptimeIntType,
+    "f128" to ZigFixedFloatType(128),
+    "f16" to ZigFixedFloatType(16),
+    "f32" to ZigFixedFloatType(32),
+    "f64" to ZigFixedFloatType(64),
+    "f80" to ZigFixedFloatType(80),
     "false" to ZigFalseValue,
-    //"isize",
+    "isize" to ZigIsizeType,
     "noreturn" to ZigNoreturnType,
     "null" to ZigNullValue,
     "true" to ZigTrueValue,
