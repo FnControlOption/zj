@@ -63,6 +63,10 @@ data object ZigNullValue : ZigValue {
     override val typeOf = ZigNullType
 }
 
+data object ZigNoreturnType : ZigValue {
+    override val typeOf = ZigTypeType
+}
+
 data object ZigUndefinedType : ZigValue {
     override val typeOf = ZigTypeType
 }
@@ -313,6 +317,11 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             thenValues.asSequence() + elseValues.asSequence()
         }
 
+        is ZigBreak,
+        is ZigContinue,
+        is ZigReturn,
+        is ZigUnreachableLiteral -> sequenceOf(ZigUnknown.of(ZigNoreturnType))
+
         else -> emptySequence()
     }
 }
@@ -348,6 +357,7 @@ private fun substituteTypeParams(
             ZigBoolType,
             ZigFalseValue,
             ZigTrueValue,
+            ZigNoreturnType,
             ZigNullType,
             ZigNullValue,
             ZigUndefinedType,
@@ -596,7 +606,7 @@ private val PRIMITIVE_VALUES = mapOf(
     //"f80",
     "false" to ZigFalseValue,
     //"isize",
-    //"noreturn",
+    "noreturn" to ZigNoreturnType,
     "null" to ZigNullValue,
     "true" to ZigTrueValue,
     "type" to ZigTypeType,
