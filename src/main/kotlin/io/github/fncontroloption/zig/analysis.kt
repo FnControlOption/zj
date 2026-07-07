@@ -335,6 +335,20 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             thenValues.asSequence() + elseValues.asSequence()
         }
 
+        is ZigCatch -> {
+            val leftValues = resolveValues(element.leftOperand).asSequence().mapNotNull { left ->
+                when (val typeOfLeft = left.typeOf) {
+                    is ZigErrorUnionType -> ZigUnknown.of(typeOfLeft.payload)
+                    else -> null
+                }
+            }
+            val rightValues =
+                element.rightOperand
+                    ?.let { resolveValues(it).asSequence() }
+                    ?: emptySequence()
+            leftValues + rightValues
+        }
+
         is ZigBreak,
         is ZigContinue,
         is ZigReturn,
@@ -352,7 +366,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigBoolAnd -> emptySequence() // TODO
         is ZigBoolNot -> emptySequence() // TODO
         is ZigBoolOr -> emptySequence() // TODO
-        is ZigCatch -> emptySequence() // TODO
         is ZigCharLiteral -> emptySequence() // TODO
         is ZigComptime -> emptySequence() // TODO
         is ZigDeref -> emptySequence() // TODO
