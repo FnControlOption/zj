@@ -561,8 +561,8 @@ class ZigErrorUnion(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigErrorValueElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-    val identifierElement: PsiElement
-        get() = findNotNullChildByType(ZigTokenType.IDENTIFIER)
+    val identifierElement: PsiElement?
+        get() = findChildByType(ZigTokenType.IDENTIFIER)
 }
 
 class ZigFieldAccess(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {

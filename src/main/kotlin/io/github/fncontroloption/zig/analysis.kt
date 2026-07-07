@@ -224,7 +224,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigErrorValueElement -> {
-            val name = element.identifierElement.text
+            val name = element.identifierElement?.text ?: return sequenceOf(ZigUnknown.of(ZigUnknown.of(ZigTypeType)))
             val type = ZigErrorSetType(setOf(name))
             sequenceOf(ZigErrorSetValue(type, name))
         }
