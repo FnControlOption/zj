@@ -152,3 +152,21 @@ const foo = switch (bar) {
 fn () Foo {}
 fn foo() {}
 const foo = fn ();
+const foo = switch (bar) {
+    .
+};
+const foo = switch (bar) {
+    . => baz,
+};
+const foo = switch (bar) {
+    . , baz => qux,
+};
+const foo = switch (bar) {
+    baz, . => qux,
+};
+const foo = switch (bar) {
+    a b => c,
+};
+const foo = switch (bar) {
+    baz => .
+};

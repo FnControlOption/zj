@@ -1376,6 +1376,7 @@ class ZigParser : PsiParser {
 
     private fun finishAssignDestructureExpr(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker {
         val assign = lhs.precede()
+        // TODO: use parseUntil
         while (eatToken(builder, ZigTokenType.COMMA)) {
             tryExpr(builder)
         }
@@ -1434,23 +1435,28 @@ class ZigParser : PsiParser {
         expectToken(builder, ZigTokenType.R_BRACE)
     }
 
-    private fun parseSwitchProng(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parseSwitchProng(builder: PsiBuilder): PsiBuilder.Marker {
         val marker = builder.mark()
         eatToken(builder, ZigTokenType.KEYWORD_INLINE)
         if (!eatToken(builder, ZigTokenType.KEYWORD_ELSE)) {
-            if (parseSwitchItem(builder) == null) {
-                marker.rollbackTo()
-                return null
-            }
-            while (eatToken(builder, ZigTokenType.COMMA)) {
-                if (parseSwitchItem(builder) == null) {
-                    break
-                }
+            parseUntil(builder, ZigTokenType.EQUAL_ANGLE_BRACKET_RIGHT) {
+                parseSwitchItem(builder)
             }
         }
         expectToken(builder, ZigTokenType.EQUAL_ANGLE_BRACKET_RIGHT)
         parsePtrIndexPayload(builder, ZigElementType.SWITCH_PAYLOAD)
-        trySingleAssignExpr(builder)
+        var expr: PsiBuilder.Marker? = null
+        parseUntil(builder, ZigTokenType.COMMA) {
+            if (expr == null) {
+                expr = parseSingleAssignExpr(builder)
+                expr
+            } else {
+                null
+            }
+        }
+        if (expr == null) {
+            builder.mark().error("Expected expression or assignment")
+        }
         marker.done(ZigElementType.SWITCH_PRONG)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_BRACE) {
             builder.mark().error("Expected ',' after switch prong")
@@ -1468,6 +1474,9 @@ class ZigParser : PsiParser {
             tryExpr(builder)
         }
         marker.done(ZigElementType.SWITCH_ITEM)
+        if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.EQUAL_ANGLE_BRACKET_RIGHT) {
+            builder.mark().error("Expected ',' after switch item")
+        }
         return marker
     }
 
@@ -1951,8 +1960,17 @@ class ZigParser : PsiParser {
         parseMember: () -> PsiBuilder.Marker?,
     ) {
         enclosureStack.addLast(right)
+        parseUntil(builder, right, parseMember)
+        enclosureStack.removeLast()
+    }
+
+    private fun parseUntil(
+        builder: PsiBuilder,
+        tokenType: IElementType?,
+        parseMember: () -> PsiBuilder.Marker?,
+    ) {
         while (!builder.eof()) {
-            if (builder.tokenType === right) {
+            if (builder.tokenType === tokenType) {
                 break
             }
             if (enclosureStack.any { builder.tokenType === it }) {
@@ -1995,7 +2013,6 @@ class ZigParser : PsiParser {
                 }
             }
         }
-        enclosureStack.removeLast()
     }
 
     private fun checkExpectedExpr(builder: PsiBuilder, marker: PsiBuilder.Marker?) {
