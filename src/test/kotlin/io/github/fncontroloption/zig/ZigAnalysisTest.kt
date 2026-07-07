@@ -75,6 +75,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
 
     fun testErrorUnion() {
         val type = resolveValue("error{Foo}!bool").requireIs<ZigErrorUnionType>()
+        assertEquals(ZigErrorSetType(setOf("Foo")), type.errorSet)
         assertEquals(ZigBoolType, type.payload)
     }
 

@@ -115,7 +115,7 @@ data class ZigErrorSetType(val names: Set<String>) : ZigValue {
 
 data class ZigErrorSetValue(override val typeOf: ZigErrorSetType, val name: String) : ZigValue
 
-data class ZigErrorUnionType(val payload: ZigValue) : ZigValue { // TODO: include error set
+data class ZigErrorUnionType(val errorSet: ZigValue, val payload: ZigValue) : ZigValue {
     override val typeOf = ZigTypeType
 }
 
@@ -166,9 +166,11 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigErrorUnion -> {
+            val errorSet = resolveValues(element.errorSet).singleOrNull()
+                ?: ZigUnknown.of(ZigTypeType)
             val payloadElement = element.payload
-                ?: return sequenceOf(ZigErrorUnionType(ZigUnknown.of(ZigTypeType)))
-            resolveValues(payloadElement).asSequence().map { ZigErrorUnionType(it) }
+                ?: return sequenceOf(ZigErrorUnionType(errorSet, ZigUnknown.of(ZigTypeType)))
+            resolveValues(payloadElement).asSequence().map { ZigErrorUnionType(errorSet, it) }
         }
 
         is ZigArrayTypeElement -> {
@@ -563,7 +565,7 @@ private fun substituteTypeParams(
                 substituteTypeParams(value.child, typeParams).map { ZigOptionalType(it) }
             }
             is ZigErrorUnionType -> {
-                substituteTypeParams(value.payload, typeParams).map { ZigErrorUnionType(it) }
+                substituteTypeParams(value.payload, typeParams).map { ZigErrorUnionType(value.errorSet, it) }
             }
             is ZigArrayType -> {
                 substituteTypeParams(value.child, typeParams).map { ZigArrayType(it) }
