@@ -8,42 +8,7 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.findParentOfType
-import io.github.fncontroloption.zig.psi2.ZigAddressOf
-import io.github.fncontroloption.zig.psi2.ZigArrayTypeElement
-import io.github.fncontroloption.zig.psi2.ZigBlock
-import io.github.fncontroloption.zig.psi2.ZigBreak
-import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
-import io.github.fncontroloption.zig.psi2.ZigCall
-import io.github.fncontroloption.zig.psi2.ZigCatchPayload
-import io.github.fncontroloption.zig.psi2.ZigContainer
-import io.github.fncontroloption.zig.psi2.ZigContainerDecl
-import io.github.fncontroloption.zig.psi2.ZigContainerField
-import io.github.fncontroloption.zig.psi2.ZigContainerKind
-import io.github.fncontroloption.zig.psi2.ZigElement
-import io.github.fncontroloption.zig.psi2.ZigElsePayload
-import io.github.fncontroloption.zig.psi2.ZigErrorUnion
-import io.github.fncontroloption.zig.psi2.ZigFieldAccess
-import io.github.fncontroloption.zig.psi2.ZigFile
-import io.github.fncontroloption.zig.psi2.ZigFnDecl
-import io.github.fncontroloption.zig.psi2.ZigFnDeclOrProto
-import io.github.fncontroloption.zig.psi2.ZigFnProto
-import io.github.fncontroloption.zig.psi2.ZigForPayload
-import io.github.fncontroloption.zig.psi2.ZigForRange
-import io.github.fncontroloption.zig.psi2.ZigGroupedExpression
-import io.github.fncontroloption.zig.psi2.ZigIdentifier
-import io.github.fncontroloption.zig.psi2.ZigIf
-import io.github.fncontroloption.zig.psi2.ZigMutability
-import io.github.fncontroloption.zig.psi2.ZigOptionalTypeElement
-import io.github.fncontroloption.zig.psi2.ZigParamDecl
-import io.github.fncontroloption.zig.psi2.ZigPayloadItem
-import io.github.fncontroloption.zig.psi2.ZigPointerSize
-import io.github.fncontroloption.zig.psi2.ZigPointerTypeElement
-import io.github.fncontroloption.zig.psi2.ZigReturn
-import io.github.fncontroloption.zig.psi2.ZigStringLiteral
-import io.github.fncontroloption.zig.psi2.ZigSwitchPayload
-import io.github.fncontroloption.zig.psi2.ZigThenPayload
-import io.github.fncontroloption.zig.psi2.ZigTry
-import io.github.fncontroloption.zig.psi2.ZigVarDecl
+import io.github.fncontroloption.zig.psi2.*
 
 object ZigAnalyzer {
     fun resolveValues(element: ZigElement): Set<ZigValue> {
@@ -241,6 +206,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 val argElement = element.argumentElements.firstOrNull()?.innerElement ?: return emptySequence()
                 resolveValues(argElement).asSequence().map { ZigUnknown.of(it) }
             }
+
             "@import" -> {
                 val argElement = element.argumentElements.firstOrNull()?.innerElement ?: return emptySequence()
                 if (argElement !is ZigStringLiteral) {
@@ -253,12 +219,15 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                     }
                 }
             }
+
             "@This" -> {
                 val containerElement = element.findParentOfType<ZigContainer>() ?: return emptySequence()
                 val typeParams = findUnboundTypeParams(containerElement)
                 sequenceOf(ZigContainerType(containerElement, typeParams))
             }
-            else -> emptySequence() // TODO
+
+            // TODO
+            else -> emptySequence()
         }
 
         is ZigAddressOf -> {
@@ -551,7 +520,7 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
             }
         }
 
-        else -> emptySequence() // TODO
+        else -> emptySequence()
     }
 }
 
