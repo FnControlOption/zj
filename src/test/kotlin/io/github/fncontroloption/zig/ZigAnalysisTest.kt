@@ -195,6 +195,12 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigBoolType, value.typeOf)
     }
 
+    fun testArrayInit() {
+        val text = "[2]bool{ true, false }"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        assertEquals(ZigArrayType(ZigBoolType), value.typeOf)
+    }
+
     fun testCatch() {
         val text = "@as(error{Foo}!usize, undefined) catch undefined"
         val values = resolveValues(text)
