@@ -224,4 +224,12 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertTrue(values.any { it is ZigUnknown && it.typeOf == ZigUsizeType })
         assertTrue(values.contains(ZigUndefinedValue))
     }
+
+    fun testOrelse() {
+        val text = "@as(?usize, undefined) orelse undefined"
+        val values = resolveValues(text)
+        assertEquals(2, values.size)
+        assertTrue(values.any { it is ZigUnknown && it.typeOf == ZigUsizeType })
+        assertTrue(values.contains(ZigUndefinedValue))
+    }
 }

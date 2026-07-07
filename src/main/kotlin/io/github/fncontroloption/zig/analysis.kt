@@ -241,6 +241,20 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             leftValues + rightValues
         }
 
+        is ZigOrelse -> {
+            val leftValues = resolveValues(element.leftOperand).asSequence().mapNotNull { left ->
+                when (val typeOfLeft = left.typeOf) {
+                    is ZigOptionalType -> ZigUnknown.of(typeOfLeft.child)
+                    else -> null
+                }
+            }
+            val rightValues = when (val rightElement = element.rightOperand) {
+                null -> emptySequence()
+                else -> resolveValues(rightElement).asSequence()
+            }
+            leftValues + rightValues
+        }
+
         is ZigListInit -> {
             val typeElement = element.typeExpression
             if (typeElement != null) {
@@ -428,7 +442,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigNegation -> emptySequence() // TODO
         is ZigNegationWrap -> emptySequence() // TODO
         is ZigNumberLiteral -> emptySequence() // TODO
-        is ZigOrelse -> emptySequence() // TODO
         is ZigShl -> emptySequence() // TODO
         is ZigShlSat -> emptySequence() // TODO
         is ZigShr -> emptySequence() // TODO
