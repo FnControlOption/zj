@@ -181,6 +181,12 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigBoolType, value.typeOf)
     }
 
+    fun testDeref() {
+        val text = "@as(*const bool, &true).*"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        assertEquals(ZigBoolType, value.typeOf)
+    }
+
     fun testArrayAccessArray() {
         val text = "@as([2]bool, .{ true, false })[1]"
         val value = resolveValue(text).requireIs<ZigUnknown>()

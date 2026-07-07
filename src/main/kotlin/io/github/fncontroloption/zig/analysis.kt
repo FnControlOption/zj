@@ -200,6 +200,21 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             }
         }
 
+        is ZigDeref -> {
+            val operandElement = element.operand ?: return emptySequence()
+            resolveValues(operandElement).asSequence().mapNotNull { operand ->
+                when (val typeOfOperand = operand.typeOf) {
+                    is ZigPointerType -> when (typeOfOperand.size) {
+                        ZigPointerSize.ONE,
+                        ZigPointerSize.C -> ZigUnknown.of(typeOfOperand.child)
+                        ZigPointerSize.SLICE,
+                        ZigPointerSize.MANY -> null
+                    }
+                    else -> null
+                }
+            }
+        }
+
         is ZigIf -> {
             val thenValues = when (val thenElement = element.thenElement.innerElement) {
                 null -> emptySequence()
@@ -394,7 +409,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigBoolNot -> emptySequence() // TODO
         is ZigBoolOr -> emptySequence() // TODO
         is ZigCharLiteral -> emptySequence() // TODO
-        is ZigDeref -> emptySequence() // TODO
         is ZigDiv -> emptySequence() // TODO
         is ZigEnumLiteral -> emptySequence() // TODO
         is ZigEqualEqual -> emptySequence() // TODO
