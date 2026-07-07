@@ -188,6 +188,24 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             }
         }
 
+        is ZigArrayAccess -> {
+            resolveValues(element.leftOperand).asSequence().mapNotNull { left ->
+                when (val typeOfLeft = left.typeOf) {
+                    is ZigArrayType -> ZigUnknown.of(typeOfLeft.child)
+                    is ZigPointerType -> when (typeOfLeft.size) {
+                        ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
+                            is ZigArrayType -> ZigUnknown.of(pointerChild.child)
+                            // TODO: ZigTupleType
+                            else -> null
+                        }
+                        else -> ZigUnknown.of(typeOfLeft.child)
+                    }
+                    // TODO: ZigTupleType
+                    else -> null
+                }
+            }
+        }
+
         is ZigIdentifier -> {
             val primitiveValue = PRIMITIVE_VALUES[element.text]
             if (primitiveValue != null) {
@@ -325,7 +343,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigAdd -> emptySequence() // TODO
         is ZigAddSat -> emptySequence() // TODO
         is ZigAddWrap -> emptySequence() // TODO
-        is ZigArrayAccess -> emptySequence() // TODO
         is ZigArrayCat -> emptySequence() // TODO
         is ZigBangEqual -> emptySequence() // TODO
         is ZigBitAnd -> emptySequence() // TODO

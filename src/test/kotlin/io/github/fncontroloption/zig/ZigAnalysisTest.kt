@@ -170,4 +170,28 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val value = resolveValue(text).requireIs<ZigUnknown>()
         assertEquals(ZigBoolType, value.typeOf)
     }
+
+    fun testArrayAccessArray() {
+        val text = "@as([2]bool, .{ true, false })[1]"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        assertEquals(ZigBoolType, value.typeOf)
+    }
+
+    fun testArrayAccessArrayPointer() {
+        val text = "@as(*const [2]bool, &.{ true, false })[1]"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        assertEquals(ZigBoolType, value.typeOf)
+    }
+
+    fun testArrayAccessSlice() {
+        val text = "@as([]const bool, &.{ true, false })[1]"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        assertEquals(ZigBoolType, value.typeOf)
+    }
+
+    fun testArrayAccessManyItemPointer() {
+        val text = "@as([*]const bool, &.{ true, false })[1]"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        assertEquals(ZigBoolType, value.typeOf)
+    }
 }
