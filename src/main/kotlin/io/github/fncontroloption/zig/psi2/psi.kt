@@ -191,6 +191,12 @@ class ZigArrayTypeElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElemen
                 .filterIsInstance<ZigElement>()
                 .takeWhile { it !is ZigTypeLength && it !is ZigTypeSentinel }
                 .firstOrNull()
+
+    val lengthElement: ZigTypeLength
+        get() = findNotNullChildByClass(ZigTypeLength::class.java)
+
+    val sentinelElement: ZigTypeSentinel?
+        get() = findChildByClass(ZigTypeSentinel::class.java)
 }
 
 class ZigAsm(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
@@ -1009,9 +1015,13 @@ class ZigTypeElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigTypeLength(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val innerElement: ZigElement
+        get() = findNotNullChildByClass(ZigElement::class.java)
 }
 
 class ZigTypeSentinel(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val innerElement: ZigElement?
+        get() = findChildByClass(ZigElement::class.java)
 }
 
 class ZigUnreachableLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {

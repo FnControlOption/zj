@@ -127,7 +127,7 @@ data class ZigPointerType(val size: ZigPointerSize, val child: ZigValue) : ZigVa
     override val typeOf = ZigTypeType
 }
 
-data class ZigArrayType(val child: ZigValue) : ZigValue { // TODO: include len + sentinel
+data class ZigArrayType(val length: ZigValue, val sentinel: ZigValue?, val child: ZigValue) : ZigValue {
     override val typeOf = ZigTypeType
 }
 
@@ -238,9 +238,15 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigArrayTypeElement -> {
+            val length = resolveValues(element.lengthElement.innerElement).singleOrNull()
+                ?: ZigUnknown.of(ZigUnknown.of(ZigTypeType))
+            val sentinel = element.sentinelElement?.let { outerElement ->
+                outerElement.innerElement?.let { resolveValues(it) }?.singleOrNull()
+                    ?: ZigUnknown.of(ZigUnknown.of(ZigTypeType))
+            }
             val childElement = element.arrayChildElement
-                ?: return sequenceOf(ZigArrayType(ZigUnknown.of(ZigTypeType)))
-            resolveValues(childElement).asSequence().map { ZigArrayType(it) }
+                ?: return sequenceOf(ZigArrayType(length, sentinel, ZigUnknown.of(ZigTypeType)))
+            resolveValues(childElement).asSequence().map { ZigArrayType(length, sentinel, it) }
         }
 
         is ZigPointerTypeElement -> {
@@ -656,7 +662,7 @@ private fun substituteTypeParams(
                 substituteTypeParams(value.payload, typeParams).map { ZigErrorUnionType(value.errorSet, it) }
             }
             is ZigArrayType -> {
-                substituteTypeParams(value.child, typeParams).map { ZigArrayType(it) }
+                substituteTypeParams(value.child, typeParams).map { ZigArrayType(value.length, value.sentinel, it) }
             }
             is ZigPointerType -> {
                 substituteTypeParams(value.child, typeParams).map { ZigPointerType(value.size, it) }

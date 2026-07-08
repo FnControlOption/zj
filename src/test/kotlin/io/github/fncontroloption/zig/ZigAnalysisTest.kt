@@ -79,6 +79,13 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigBoolType, type.payload)
     }
 
+    fun testArrayType() {
+        val type = resolveValue("[6:7]u42").requireIs<ZigArrayType>()
+        assertEquals(ZigIntValue(ZigComptimeIntType, 6), type.length)
+        assertEquals(ZigIntValue(ZigComptimeIntType, 7), type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), type.child)
+    }
+
     fun testFixedFloatType() {
         assertEquals(ZigFixedFloatType(32), resolveValue("f32"))
         assertEquals(ZigFixedFloatType(80), resolveValue("f80"))
@@ -245,7 +252,10 @@ class ZigAnalysisTest : BasePlatformTestCase() {
     fun testArrayInit() {
         val text = "[2]bool{ true, false }"
         val value = resolveValue(text).requireIs<ZigUnknown>()
-        assertEquals(ZigArrayType(ZigBoolType), value.typeOf)
+        val type = value.typeOf.requireIs<ZigArrayType>()
+        assertEquals(ZigIntValue(ZigComptimeIntType, 2), type.length)
+        assertEquals(null, type.sentinel)
+        assertEquals(ZigBoolType, type.child)
     }
 
     fun testCatch() {
