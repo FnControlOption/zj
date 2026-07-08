@@ -507,14 +507,14 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigBlock -> {
-            val labelDecl = element.labelDecl ?: return sequenceOf(ZigUnknown.of(ZigVoidType))
+            val labelDecl = element.labelDecl ?: return sequenceOf(ZigVoidValue)
             val labelName = labelDecl.identifierElement.text
             val traverser = SyntaxTraverser.psiTraverser(element).expand { it !is ZigContainerDecl }
             // TODO: peer type resolution
             traverser.asSequence().flatMap { descendant ->
                 if (descendant is ZigBreak && labelName == descendant.labelRef?.identifierElement?.text) {
                     when (val breakValue = descendant.breakValue) {
-                        null -> sequenceOf(ZigUnknown.of(ZigVoidType))
+                        null -> sequenceOf(ZigVoidValue)
                         else -> resolveValues(breakValue).asSequence()
                     }
                 } else {
@@ -752,7 +752,7 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
             when (val typeElement = target.typeElement?.innerElement) {
                 null -> {
                     // This is likely a tagged union field with an implicit `void` type.
-                    sequenceOf(ZigUnknown.of(ZigVoidType))
+                    sequenceOf(ZigVoidValue)
                 }
                 else -> resolveValues(typeElement).asSequence().map { ZigUnknown.of(it) }
             }
