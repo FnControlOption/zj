@@ -781,11 +781,17 @@ class ZigListInit(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
                 .siblings()
                 .takeWhile { it.elementType !== ZigTokenType.L_BRACE }
                 .firstNotNullOfOrNull { it as? ZigElement }
+
+    val initItems: Sequence<ZigListInitItem>
+        get() = firstChild.siblings().filterIsInstance<ZigListInitItem>()
 }
 
 class ZigListInitItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val identifierElement: PsiElement?
         get() = findChildByType(ZigTokenType.IDENTIFIER)
+
+    val expression: ZigElement?
+        get() = findChildByClass(ZigElement::class.java)
 }
 
 class ZigMergeErrorSets(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {

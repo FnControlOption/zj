@@ -133,6 +133,10 @@ data class ZigArrayType(val length: ZigValue, val sentinel: ZigValue?, val child
     override val typeOf = ZigTypeType
 }
 
+data class ZigTupleType(val fields: List<ZigValue>) : ZigValue {
+    override val typeOf = ZigTypeType
+}
+
 sealed interface ZigFloatType : ZigValue {
     override val typeOf: ZigTypeType
 }
@@ -205,6 +209,27 @@ private fun resolveValues(element: ZigElement): Set<ZigValue> {
 private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
     return when (element) {
         is ZigContainerDecl -> {
+            val tupleType = run {
+                val fields = mutableListOf<ZigValue>()
+                for (member in element.members) {
+                    if (member !is ZigContainerField) {
+                        return@run null
+                    }
+                    if (member.nameIdentifier != null) {
+                        return@run null
+                    }
+                    val types = when (val typeElement = member.typeElement?.innerElement) {
+                        null -> emptySequence()
+                        else -> resolveValues(typeElement).asSequence()
+                    }
+                    // For efficiency, limit each field to a single possible type.
+                    fields.add(types.singleOrNull() ?: ZigUnknown.of(ZigTypeType))
+                }
+                ZigTupleType(fields)
+            }
+            if (tupleType != null) {
+                return sequenceOf(tupleType)
+            }
             val typeParams = findUnboundTypeParams(element)
             sequenceOf(ZigContainerType(element, typeParams))
         }
@@ -371,7 +396,20 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             if (typeElement != null) {
                 return resolveValues(typeElement).asSequence().map { ZigUnknown.of(it) }
             }
-            sequenceOf(ZigUnknown.ofUnknownType()) // TODO: ZigUnknown.of(ZigTupleType)
+            val fieldTypes = mutableListOf<ZigValue>()
+            for (item in element.initItems) {
+                if (item.identifierElement != null) {
+                    return sequenceOf(ZigUnknown.ofUnknownType())
+                }
+                val values = when (val expressionElement = item.expression) {
+                    null -> emptySequence()
+                    else -> resolveValues(expressionElement).asSequence()
+                }
+                // For efficiency, limit each field to a single possible type.
+                val value = values.singleOrNull() ?: ZigUnknown.ofUnknownType()
+                fieldTypes.add(value.typeOf)
+            }
+            sequenceOf(ZigUnknown.of(ZigTupleType(fieldTypes)))
         }
 
         is ZigIdentifier -> {
@@ -406,6 +444,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                     is ZigContainerType -> computeContainerDeclValues(left, name)
                     else -> when (val typeOfLeft = left.typeOf) {
                         is ZigContainerType -> computeContainerInstanceFieldValues(typeOfLeft, name)
+                        is ZigTupleType -> sequenceOf(computeFieldAccessOnTuple(typeOfLeft, name))
                         is ZigPointerType -> when (typeOfLeft.size) {
                             ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
                                 is ZigContainerType -> computeContainerInstanceFieldValues(pointerChild, name)
@@ -420,18 +459,19 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigArrayAccess -> {
+            val indexElement = element.indexElement?.innerElement
             resolveValues(element.leftOperand).asSequence().map { left ->
                 when (val typeOfLeft = left.typeOf) {
                     is ZigArrayType -> ZigUnknown.of(typeOfLeft.child)
                     is ZigPointerType -> when (typeOfLeft.size) {
                         ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
                             is ZigArrayType -> ZigUnknown.of(pointerChild.child)
-                            // TODO: ZigTupleType
+                            is ZigTupleType -> computeArrayAccessOnTuple(pointerChild, indexElement)
                             else -> ZigUnknown.ofUnknownType()
                         }
                         else -> ZigUnknown.of(typeOfLeft.child)
                     }
-                    // TODO: ZigTupleType
+                    is ZigTupleType -> computeArrayAccessOnTuple(typeOfLeft, indexElement)
                     else -> ZigUnknown.ofUnknownType()
                 }
             }
@@ -595,6 +635,29 @@ private fun toFixedIntType(text: String): ZigFixedIntType? {
     return ZigFixedIntType(signedness, bits)
 }
 
+private fun computeFieldAccessOnTuple(type: ZigTupleType, name: String): ZigValue {
+    val isEscaped = name.startsWith("@\"") && name.endsWith("\"")
+    if (!isEscaped) {
+        return ZigUnknown.ofUnknownType()
+    }
+    val index = name.substring(2, name.length - 1).toIntOrNull() ?: return ZigUnknown.ofUnknownType()
+    val fieldType = type.fields.getOrNull(index) ?: return ZigUnknown.ofUnknownType()
+    return ZigUnknown.of(fieldType)
+}
+
+private fun computeArrayAccessOnTuple(type: ZigTupleType, indexElement: ZigElement?): ZigValue {
+    if (indexElement == null) {
+        return ZigUnknown.ofUnknownType()
+    }
+    // TODO: allow multiple possible index values and return a Sequence?
+    val index = resolveValues(indexElement).singleOrNull() ?: return ZigUnknown.ofUnknownType()
+    if (index !is ZigIntValue) {
+        return ZigUnknown.ofUnknownType()
+    }
+    val fieldType = type.fields.getOrNull(index.value) ?: return ZigUnknown.ofUnknownType()
+    return ZigUnknown.of(fieldType)
+}
+
 private fun findUnboundTypeParams(element: ZigElement): Map<ZigParamDecl, Set<ZigValue>> {
     return buildMap {
         var element: PsiElement? = element
@@ -672,6 +735,14 @@ private fun substituteTypeParams(
             }
             is ZigPointerType -> {
                 substituteTypeParams(value.child, typeParams).map { ZigPointerType(value.size, it) }
+            }
+            is ZigTupleType -> {
+                val fields = value.fields.map { field ->
+                    val substitutions = substituteTypeParams(field, typeParams)
+                    // For efficiency, limit each field to a single possible type.
+                    substitutions.singleOrNull() ?: ZigUnknown.of(ZigTypeType)
+                }
+                sequenceOf(ZigTupleType(fields))
             }
         }
     } ?: sequenceOf(value)

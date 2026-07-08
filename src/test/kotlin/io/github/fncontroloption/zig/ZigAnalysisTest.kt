@@ -86,6 +86,11 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), type.child)
     }
 
+    fun testTupleType() {
+        val type = resolveValue("struct { bool, usize }").requireIs<ZigTupleType>()
+        assertEquals(listOf(ZigBoolType, ZigUsizeType), type.fields)
+    }
+
     fun testFixedFloatType() {
         assertEquals(ZigFixedFloatType(32), resolveValue("f32"))
         assertEquals(ZigFixedFloatType(80), resolveValue("f80"))
@@ -172,6 +177,12 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
     }
 
+    fun testFieldAccessTuple() {
+        val text = "@as(struct { bool, usize }, .{ true, 42 }).@\"1\""
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        assertEquals(ZigUsizeType, value.typeOf)
+    }
+
     fun testFunctionValue() {
         val text = """
             struct {
@@ -249,6 +260,12 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigBoolType, value.typeOf)
     }
 
+    fun testArrayAccessTuple() {
+        val text = "@as(struct { bool, usize }, .{ true, 42 })[1]"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        assertEquals(ZigUsizeType, value.typeOf)
+    }
+
     fun testArrayInit() {
         val text = "[2]bool{ true, false }"
         val value = resolveValue(text).requireIs<ZigUnknown>()
@@ -256,6 +273,13 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigIntValue(ZigComptimeIntType, 2), type.length)
         assertEquals(null, type.sentinel)
         assertEquals(ZigBoolType, type.child)
+    }
+
+    fun testTupleInit() {
+        val text = ".{ true, false }"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        val type = value.typeOf.requireIs<ZigTupleType>()
+        assertEquals(listOf(ZigBoolType, ZigBoolType), type.fields)
     }
 
     fun testCatch() {
@@ -291,5 +315,17 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "'e'"
         val value = resolveValue(text).requireIs<ZigUnknown>()
         assertEquals(ZigComptimeIntType, value.typeOf)
+    }
+
+    fun testGenericTupleType() {
+        val text = """
+            struct {
+                fn Foo(T: type) type {
+                    return struct { T, usize };
+                }
+            }.Foo(bool)
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigTupleType>()
+        assertEquals(listOf(ZigBoolType, ZigUsizeType), type.fields)
     }
 }
