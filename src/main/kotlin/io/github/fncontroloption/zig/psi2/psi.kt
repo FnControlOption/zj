@@ -779,7 +779,7 @@ class ZigListInit(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
         get() =
             firstChild
                 .siblings()
-                .takeWhile { it.elementType !== ZigTokenType.L_BRACKET }
+                .takeWhile { it.elementType !== ZigTokenType.L_BRACE }
                 .firstNotNullOfOrNull { it as? ZigElement }
 }
 
