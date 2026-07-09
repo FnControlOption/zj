@@ -125,7 +125,12 @@ data class ZigErrorUnionType(val errorSet: ZigValue, val payload: ZigValue) : Zi
     override val typeOf = ZigTypeType
 }
 
-data class ZigPointerType(val size: ZigPointerSize, val child: ZigValue) : ZigValue {
+data class ZigPointerType(
+    val size: ZigPointerSize,
+    val sentinel: ZigValue?,
+    // TODO: include modifiers (const, volatile, allowzero, addrspace, align)
+    val child: ZigValue,
+) : ZigValue {
     override val typeOf = ZigTypeType
 }
 
@@ -276,9 +281,12 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
 
         is ZigPointerTypeElement -> {
             val size = element.pointerSize
+            val sentinel = element.sentinelElement?.let { outerElement ->
+                outerElement.innerElement?.let { resolveValues(it) }?.singleOrNull() ?: ZigUnknown.ofUnknownType()
+            }
             val childElement = element.pointerChildElement
-                ?: return sequenceOf(ZigPointerType(size, ZigUnknown.of(ZigTypeType)))
-            resolveValues(childElement).asSequence().map { ZigPointerType(size, it) }
+                ?: return sequenceOf(ZigPointerType(size, sentinel, ZigUnknown.of(ZigTypeType)))
+            resolveValues(childElement).asSequence().map { ZigPointerType(size, sentinel, it) }
         }
 
         is ZigGroupedExpression -> {
@@ -294,7 +302,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigAddressOf -> {
             val operandElement = element.operand ?: return sequenceOf(ZigUnknown.ofUnknownType())
             resolveValues(operandElement).asSequence().map {
-                ZigUnknown.of(ZigPointerType(ZigPointerSize.ONE, it.typeOf))
+                ZigUnknown.of(ZigPointerType(ZigPointerSize.ONE, null, it.typeOf))
             }
         }
 
@@ -734,7 +742,7 @@ private fun substituteTypeParams(
                 substituteTypeParams(value.child, typeParams).map { ZigArrayType(value.length, value.sentinel, it) }
             }
             is ZigPointerType -> {
-                substituteTypeParams(value.child, typeParams).map { ZigPointerType(value.size, it) }
+                substituteTypeParams(value.child, typeParams).map { ZigPointerType(value.size, value.sentinel, it) }
             }
             is ZigTupleType -> {
                 val fields = value.fields.map { field ->

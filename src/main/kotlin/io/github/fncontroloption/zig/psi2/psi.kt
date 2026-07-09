@@ -886,6 +886,9 @@ class ZigPointerTypeElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElem
             }
         }
 
+    val sentinelElement: ZigTypeSentinel?
+        get() = findChildByClass(ZigTypeSentinel::class.java)
+
     val pointerChildElement: ZigElement?
         get() =
             lastChild

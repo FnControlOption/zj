@@ -7,6 +7,7 @@ import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigContainerKind
 import io.github.fncontroloption.zig.psi2.ZigElement
 import io.github.fncontroloption.zig.psi2.ZigFile
+import io.github.fncontroloption.zig.psi2.ZigPointerSize
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 
 class ZigAnalysisTest : BasePlatformTestCase() {
@@ -77,6 +78,34 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue("error{Foo}!bool").requireIs<ZigErrorUnionType>()
         assertEquals(ZigErrorSetType(setOf("Foo")), type.errorSet)
         assertEquals(ZigBoolType, type.payload)
+    }
+
+    fun testPointerType() {
+        val type = resolveValue("*u42").requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.ONE, type.size)
+        assertEquals(null, type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), type.child)
+    }
+
+    fun testSliceType() {
+        val type = resolveValue("[:7]u42").requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.SLICE, type.size)
+        assertEquals(ZigIntValue(ZigComptimeIntType, 7), type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), type.child)
+    }
+
+    fun testManyItemPointerType() {
+        val type = resolveValue("[*:7]u42").requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.MANY, type.size)
+        assertEquals(ZigIntValue(ZigComptimeIntType, 7), type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), type.child)
+    }
+
+    fun testCPointerType() {
+        val type = resolveValue("[*c]u42").requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.C, type.size)
+        assertEquals(null, type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), type.child)
     }
 
     fun testArrayType() {
