@@ -416,6 +416,8 @@ class ZigCatch(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression 
 }
 
 class ZigCatchPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
+    val containingCatch: ZigCatch
+        get() = parent as ZigCatch
 }
 
 class ZigCharLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {

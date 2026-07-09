@@ -255,8 +255,8 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigErrorSetDecl -> {
-            val names = element.setItems.map { it.identifierElement.text }.toSet()
-            sequenceOf(ZigErrorSetType(names))
+            val names = element.setItems.map { it.identifierElement.text }
+            sequenceOf(ZigErrorSetType(names.toSortedSet()))
         }
 
         is ZigErrorValueElement -> {
@@ -400,7 +400,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             val leftType = resolveValues(leftElement).singleOrNull() as? ZigErrorSetType
                 ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
             val names = leftType.names + rightType.names
-            sequenceOf(ZigErrorSetType(names))
+            sequenceOf(ZigErrorSetType(names.toSortedSet()))
         }
 
         is ZigListInit -> {
@@ -893,9 +893,32 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
                         }
                     }
                 }
-                is ZigElsePayload -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-                is ZigCatchPayload -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
+
+                is ZigElsePayload -> {
+                    val conditionElement =
+                        payloadElement.containingIf?.conditionElement?.innerElement
+                            ?: payloadElement.containingWhile?.conditionElement?.innerElement
+                            ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                    resolveValues(conditionElement).asSequence().map { condition ->
+                        when (val typeOfCondition = condition.typeOf) {
+                            is ZigErrorUnionType -> ZigUnknown.of(typeOfCondition.errorSet)
+                            else -> ZigUnknown.ofUnknownType()
+                        }
+                    }
+                }
+
+                is ZigCatchPayload -> {
+                    val leftElement = payloadElement.containingCatch.leftOperand
+                    resolveValues(leftElement).asSequence().map { condition ->
+                        when (val typeOfCondition = condition.typeOf) {
+                            is ZigErrorUnionType -> ZigUnknown.of(typeOfCondition.errorSet)
+                            else -> ZigUnknown.ofUnknownType()
+                        }
+                    }
+                }
+
                 is ZigSwitchPayload -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
+
                 is ZigForPayload -> {
                     val payloadIndex = payloadElement.items.indexOf(target)
                     val forInputs = payloadElement.containingFor.inputs
