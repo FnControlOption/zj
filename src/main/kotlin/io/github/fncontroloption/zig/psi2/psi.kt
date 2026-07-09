@@ -960,6 +960,8 @@ class ZigSuspend(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigSwitch(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
+    val prongs: Sequence<ZigSwitchProng>
+        get() = firstChild.siblings().filterIsInstance<ZigSwitchProng>()
 }
 
 class ZigSwitchItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
@@ -969,8 +971,19 @@ class ZigSwitchPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
 }
 
 class ZigSwitchProng(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val items: Sequence<ZigSwitchItem>
+        get() = firstChild.siblings().filterIsInstance<ZigSwitchItem>()
+
     val payload: ZigSwitchPayload?
         get() = findChildByClass(ZigSwitchPayload::class.java)
+
+    val expression: ZigElement?
+        get() =
+            lastChild
+                .siblings(forward = false)
+                .filterIsInstance<ZigElement>()
+                .takeWhile { it !is ZigSwitchItem }
+                .firstOrNull()
 }
 
 class ZigTestDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {

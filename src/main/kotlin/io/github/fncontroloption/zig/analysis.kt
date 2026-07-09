@@ -601,25 +601,21 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigBlock -> {
-            val labelDecl = element.labelDecl ?: return sequenceOf(ZigVoidValue)
-            val labelName = labelDecl.identifierElement.text
-            val traverser = SyntaxTraverser.psiTraverser(element).expand { it !is ZigContainerDecl }
-            // TODO: peer type resolution
-            traverser.asSequence().flatMap { descendant ->
-                if (descendant is ZigBreak && labelName == descendant.labelRef?.identifierElement?.text) {
-                    when (val breakValue = descendant.breakValue) {
-                        null -> sequenceOf(ZigVoidValue)
-                        else -> resolveValues(breakValue).asSequence()
-                    }
-                } else {
-                    emptySequence()
-                }
-            }.ifEmpty { sequenceOf(ZigVoidValue) }
+            val values = computeValuesFromLabeledBreaks(element)
+            values.ifEmpty { sequenceOf(ZigVoidValue) }
+        }
+
+        is ZigSwitch -> {
+            var values = computeValuesFromLabeledBreaks(element)
+            values += element.prongs.flatMap { prongElement ->
+                prongElement.expression?.let { resolveValues(it).asSequence() }
+                    ?: sequenceOf(ZigUnknown.ofUnknownType())
+            }
+            values.ifEmpty { sequenceOf(ZigUnknown.ofUnknownType()) }
         }
 
         is ZigFor -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
         is ZigWhile -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigSwitch -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
 
         is ZigStringLiteral, is ZigMultilineStringLiteral -> {
             val length = ZigUnknown.ofUnknownType() // TODO
@@ -996,6 +992,23 @@ private fun computeFunctionReturnValues(
         values = values.flatMap { substituteTypeParams(it, typeParams) }
     }
     return values.map { ZigUnknown.of(it) }
+}
+
+private fun computeValuesFromLabeledBreaks(element: ZigLabelable): Sequence<ZigValue> {
+    val labelDecl = element.labelDecl ?: return emptySequence()
+    val labelName = labelDecl.identifierElement.text
+    val traverser = SyntaxTraverser.psiTraverser(element).expand { it !is ZigContainerDecl }
+    // TODO: peer type resolution
+    return traverser.asSequence().flatMap { descendant ->
+        if (descendant is ZigBreak && labelName == descendant.labelRef?.identifierElement?.text) {
+            when (val breakValue = descendant.breakValue) {
+                null -> sequenceOf(ZigVoidValue)
+                else -> resolveValues(breakValue).asSequence()
+            }
+        } else {
+            emptySequence()
+        }
+    }
 }
 
 private val PRIMITIVE_VALUES = mapOf(
