@@ -93,6 +93,10 @@ data object ZigVoidValue : ZigValue {
     override val typeOf = ZigVoidType
 }
 
+data object ZigEnumLiteralType : ZigValue {
+    override val typeOf = ZigTypeType
+}
+
 data class ZigContainerType(
     val element: ZigContainer,
     val typeParams: Map<ZigParamDecl, Set<ZigValue>>,
@@ -513,6 +517,8 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 sequenceOf(ZigContainerType(containerElement, typeParams))
             }
 
+            "@EnumLiteral" -> sequenceOf(ZigEnumLiteralType)
+
             // TODO
             else -> sequenceOf(ZigUnknown.ofUnknownType())
         }
@@ -584,6 +590,8 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
 
         is ZigCharLiteral -> sequenceOf(ZigUnknown.of(ZigComptimeIntType))
 
+        is ZigEnumLiteral -> sequenceOf(ZigUnknown.of(ZigEnumLiteralType))
+
         is ZigBreak,
         is ZigContinue,
         is ZigReturn,
@@ -602,7 +610,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigBoolNot -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
         is ZigBoolOr -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
         is ZigDiv -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigEnumLiteral -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
         is ZigEqualEqual -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
         is ZigFor -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
         is ZigGreaterOrEqual -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
@@ -707,6 +714,7 @@ private fun substituteTypeParams(
             ZigUsizeType,
             ZigVoidType,
             ZigVoidValue,
+            ZigEnumLiteralType,
             is ZigErrorSetType,
             is ZigErrorSetValue,
             is ZigFloatType,

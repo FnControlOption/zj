@@ -357,4 +357,14 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue(text).requireIs<ZigTupleType>()
         assertEquals(listOf(ZigBoolType, ZigUsizeType), type.fields)
     }
+
+    fun testEnumLiteral() {
+        val text = ".foo"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        assertEquals(ZigEnumLiteralType, value.typeOf)
+    }
+
+    fun testEnumLiteralType() {
+        assertEquals(ZigEnumLiteralType, resolveValue("@EnumLiteral()"))
+    }
 }
