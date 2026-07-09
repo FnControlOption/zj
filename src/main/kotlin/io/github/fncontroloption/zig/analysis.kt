@@ -621,8 +621,13 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigWhile -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
         is ZigSwitch -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
 
-        is ZigStringLiteral -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigMultilineStringLiteral -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
+        is ZigStringLiteral, is ZigMultilineStringLiteral -> {
+            val length = ZigUnknown.ofUnknownType() // TODO
+            val u8 = ZigFixedIntType(ZigSignedness.UNSIGNED, 8)
+            val array = ZigArrayType(length, ZigIntValue(u8, 0), u8)
+            val pointer = ZigPointerType(ZigPointerSize.ONE, null, array)
+            sequenceOf(ZigUnknown.of(pointer))
+        }
 
         is ZigNumberLiteral -> {
             val value = element.text.toIntOrNull() ?: return sequenceOf(ZigUnknown.ofUnknownType())

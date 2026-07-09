@@ -367,4 +367,35 @@ class ZigAnalysisTest : BasePlatformTestCase() {
     fun testEnumLiteralType() {
         assertEquals(ZigEnumLiteralType, resolveValue("@EnumLiteral()"))
     }
+
+    fun testStringLiteral() {
+        val text = """
+            "foo"
+        """.trimIndent()
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        val pointer = value.typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.ONE, pointer.size)
+        val array = pointer.child.requireIs<ZigArrayType>()
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), array.child)
+        array.length.requireIs<ZigUnknown>()
+        val sentinel = array.sentinel.requireIs<ZigIntValue>()
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), sentinel.typeOf)
+        assertEquals(0, sentinel.value)
+    }
+
+    fun testMultilineStringLiteral() {
+        val text = """
+            \\foo
+            \\bar
+        """
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        val pointer = value.typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.ONE, pointer.size)
+        val array = pointer.child.requireIs<ZigArrayType>()
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), array.child)
+        array.length.requireIs<ZigUnknown>()
+        val sentinel = array.sentinel.requireIs<ZigIntValue>()
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), sentinel.typeOf)
+        assertEquals(0, sentinel.value)
+    }
 }
