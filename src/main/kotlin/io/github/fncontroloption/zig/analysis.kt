@@ -18,6 +18,10 @@ object ZigAnalyzer {
     fun resolveValuesFromReferenceTo(element: ZigElement): Set<ZigValue> {
         return io.github.fncontroloption.zig.resolveValuesFromReferenceTo(element)
     }
+
+    fun inferResultTypes(element: ZigElement): Sequence<ZigValue> {
+        return io.github.fncontroloption.zig.inferResultTypes(element)
+    }
 }
 
 sealed interface ZigValue {
@@ -865,9 +869,17 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
 
         is ZigContainerField -> {
             when (val typeElement = target.typeElement?.innerElement) {
-                null -> {
-                    // This is likely a tagged union field with an implicit `void` type.
-                    sequenceOf(ZigVoidValue)
+                null -> when (target.container.containerKind) {
+                    ZigContainerKind.STRUCT,
+                    ZigContainerKind.OPAQUE -> sequenceOf(ZigUnknown.ofUnknownType())
+                    ZigContainerKind.ENUM -> {
+                        val typeParams = findUnboundTypeParams(target.container)
+                        sequenceOf(ZigUnknown.of(ZigContainerType(target.container, typeParams)))
+                    }
+                    ZigContainerKind.UNION -> when ((target.container as ZigContainerDecl).containerTagElement) {
+                        null -> sequenceOf(ZigUnknown.ofUnknownType())
+                        else -> sequenceOf(ZigVoidValue)
+                    }
                 }
                 else -> resolveValues(typeElement).asSequence().map { ZigUnknown.of(it) }
             }
@@ -1008,6 +1020,36 @@ private fun computeValuesFromLabeledBreaks(element: ZigLabelable): Sequence<ZigV
         } else {
             emptySequence()
         }
+    }
+}
+
+private fun inferResultTypes(element: ZigElement): Sequence<ZigValue> {
+    return when (val parentElement = element.parent) {
+        is ZigVarDecl -> {
+            if (parentElement.initializer !== element) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            val typeElement = parentElement.typeElement?.innerElement
+                ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+            resolveValues(typeElement).asSequence()
+        }
+
+        is ZigSwitchItem -> {
+            val switchElement = parentElement.containingSwitchProng.containingSwitch
+            val conditionElement = switchElement.conditionElement.innerElement
+                ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+            resolveValues(conditionElement).asSequence().map { it.typeOf }
+        }
+
+        is ZigSwitchProng -> {
+            if (parentElement.expression !== element) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            inferResultTypes(parentElement.containingSwitch)
+        }
+
+        // TODO
+        else -> sequenceOf(ZigUnknown.of(ZigTypeType))
     }
 }
 

@@ -25,6 +25,7 @@ import com.intellij.ui.IconManager
 import com.intellij.util.BitUtil
 import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.ZigContainerFieldStub
+import io.github.fncontroloption.zig.ZigEnumLiteralReference
 import io.github.fncontroloption.zig.ZigFieldAccessReference
 import io.github.fncontroloption.zig.ZigFileType
 import io.github.fncontroloption.zig.ZigFnDeclStub
@@ -471,6 +472,9 @@ class ZigContainerField : ZigStubPsiElement<ZigContainerFieldStub>, ZigNamedElem
     constructor(stub: ZigContainerFieldStub) : super(stub, ZigElementType.CONTAINER_FIELD)
     constructor(node: ASTNode) : super(node)
 
+    val container: ZigContainer
+        get() = parent as ZigContainer
+
     val typeElement: ZigTypeElement?
         get() = findChildByClass(ZigTypeElement::class.java)
 
@@ -531,6 +535,11 @@ class ZigElsePayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
 class ZigEnumLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val identifierElement: PsiElement?
         get() = findChildByType(ZigTokenType.IDENTIFIER)
+
+    override fun getReferences(): Array<out PsiReference> {
+        val identifier = identifierElement ?: return emptyArray()
+        return arrayOf(ZigEnumLiteralReference(this, identifier))
+    }
 }
 
 class ZigEqualEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
@@ -960,17 +969,25 @@ class ZigSuspend(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigSwitch(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
+    val conditionElement: ZigConditionElement
+        get() = findNotNullChildByClass(ZigConditionElement::class.java)
+
     val prongs: Sequence<ZigSwitchProng>
         get() = firstChild.siblings().filterIsInstance<ZigSwitchProng>()
 }
 
 class ZigSwitchItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val containingSwitchProng: ZigSwitchProng
+        get() = parent as ZigSwitchProng
 }
 
 class ZigSwitchPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
 }
 
 class ZigSwitchProng(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val containingSwitch: ZigSwitch
+        get() = parent as ZigSwitch
+
     val items: Sequence<ZigSwitchItem>
         get() = firstChild.siblings().filterIsInstance<ZigSwitchItem>()
 
