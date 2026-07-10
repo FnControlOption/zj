@@ -94,9 +94,6 @@ class ZigHighlightVisitor : HighlightVisitor {
             }
 
             is ZigEnumLiteral -> {
-                if (element.parent is ZigCall) {
-                    return null // TODO
-                }
                 val identifier = element.identifierElement ?: return null
                 createHighlightInfoFromReference(element, identifier)
             }

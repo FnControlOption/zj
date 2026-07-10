@@ -1078,6 +1078,13 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             resolveValues(typeElement).asSequence()
         }
 
+        is ZigCall -> {
+            if (parentElement.functionElement !== childElement) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            inferResultTypes(parentElement)
+        }
+
         is ZigCallArg -> sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
 
         // TODO
