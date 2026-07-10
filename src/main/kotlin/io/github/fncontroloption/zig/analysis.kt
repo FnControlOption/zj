@@ -1034,6 +1034,15 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             resolveValues(typeElement).asSequence()
         }
 
+        is ZigContainerField -> {
+            if (parentElement.initializer !== childElement) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            val typeElement = parentElement.typeElement?.innerElement
+                ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+            resolveValues(typeElement).asSequence()
+        }
+
         is ZigAssign -> {
             if (parentElement.rightElement !== childElement) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))

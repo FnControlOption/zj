@@ -479,6 +479,15 @@ class ZigContainerField : ZigStubPsiElement<ZigContainerFieldStub>, ZigNamedElem
     val typeElement: ZigTypeElement?
         get() = findChildByClass(ZigTypeElement::class.java)
 
+    val equalTokenElement: PsiElement?
+        get() = findChildByType(ZigTokenType.EQUAL)
+
+    val initializer: ZigElement?
+        get() =
+            equalTokenElement
+                ?.siblings(forward = true, withSelf = false)
+                ?.firstNotNullOfOrNull { it as? ZigElement }
+
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = nameIdentifier?.text
     override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
