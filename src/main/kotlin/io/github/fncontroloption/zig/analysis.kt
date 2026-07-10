@@ -1056,6 +1056,18 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             }
         }
 
+        is ZigEqualEqual, is ZigBangEqual -> {
+            val otherElement = when (childElement) {
+                parentElement.leftOperand -> parentElement.rightOperand
+                parentElement.rightOperand -> parentElement.leftOperand
+                else -> null
+            }
+            if (otherElement == null) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            resolveValues(otherElement).asSequence().map { it.typeOf }
+        }
+
         is ZigSwitchItem -> {
             val switchElement = parentElement.containingSwitchProng.containingSwitch
             val conditionElement = switchElement.conditionElement.innerElement
