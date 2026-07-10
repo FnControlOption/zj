@@ -13,6 +13,9 @@ import com.intellij.psi.PsiPolyVariantReference
 import com.intellij.psi.PsiPolyVariantReferenceBase
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.ResolveResult
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
 import io.github.fncontroloption.zig.psi2.ZigBlock
@@ -27,6 +30,7 @@ import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigLabelRef
 import io.github.fncontroloption.zig.psi2.ZigLabelable
+import io.github.fncontroloption.zig.psi2.ZigListInitItem
 import io.github.fncontroloption.zig.psi2.ZigPointerSize
 import io.github.fncontroloption.zig.psi2.ZigStringLiteral
 import io.github.fncontroloption.zig.psi2.ZigSwitchItem
@@ -38,16 +42,21 @@ import io.github.fncontroloption.zig.psi2.ZigVarProto
 import io.github.fncontroloption.zig.psi2.createZigStringLiteral
 import io.github.fncontroloption.zig.psi2.replaceZigIdentifierElement
 
+/** @see com.intellij.psi.impl.source.resolve.reference.ReferenceProvidersRegistry.getReferencesFromProviders */
 fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
-    return element.references.asSequence().flatMap { reference ->
-        if (reference is PsiPolyVariantReference) {
-            val results = reference.multiResolve(false)
-            results.asSequence().mapNotNull(ResolveResult::getElement)
-        } else {
-            val target = reference.resolve()
-            if (target != null) sequenceOf(target) else emptySequence()
+    val cached = CachedValuesManager.getCachedValue(element) {
+        val targets = element.references.asSequence().flatMap { reference ->
+            if (reference is PsiPolyVariantReference) {
+                val results = reference.multiResolve(false)
+                results.asSequence().mapNotNull { it.element }
+            } else {
+                val target = reference.resolve()
+                if (target != null) sequenceOf(target) else emptySequence()
+            }
         }
+        CachedValueProvider.Result.create(targets.toSet(), PsiModificationTracker.MODIFICATION_COUNT)
     }
+    return cached.asSequence()
 }
 
 private fun resolveIdentifierReference(element: PsiElement): ZigElement? {
@@ -278,29 +287,25 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
     PsiPolyVariantReferenceBase<ZigEnumLiteral>(element, identifier.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
+        val types = ZigAnalyzer.inferResultTypes(myElement)
         val name = identifier.text
-        val results = mutableSetOf<ResolveResult>()
-        for (type in ZigAnalyzer.inferResultTypes(myElement)) {
-            var type = type
-            while (true) {
-                type = when (type) {
-                    is ZigErrorUnionType -> type.payload
-                    is ZigOptionalType -> type.child
-                    is ZigPointerType if type.size == ZigPointerSize.ONE -> type.child
-                    else -> break
-                }
-            }
-            if (type !is ZigContainerType) {
-                continue
-            }
-            val member = type.element.members.firstOrNull {
-                it is PsiNameIdentifierOwner && it.name == name
-            }
-            if (member != null) {
-                results.add(PsiElementResolveResult(member))
-            }
+        return resolveInferredResultTypeReference(types, name)
+    }
+
+    override fun handleElementRename(newElementName: String) =
+        replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
+}
+
+class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElement) :
+    PsiPolyVariantReferenceBase<ZigListInitItem>(element, identifier.textRangeInParent, true) {
+
+    override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
+        val types = when (val typeExpression = myElement.containingListInit.typeExpression) {
+            null -> ZigAnalyzer.inferResultTypes(myElement.containingListInit)
+            else -> ZigAnalyzer.resolveValues(typeExpression).asSequence()
         }
-        return results.toTypedArray()
+        val name = identifier.text
+        return resolveInferredResultTypeReference(types, name)
     }
 
     override fun handleElementRename(newElementName: String) =
@@ -308,40 +313,6 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
 }
 
 /* TODO
-object ZigInitListEntryReferenceProvider : PsiReferenceProvider() {
-    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<out PsiReference> {
-        val entry = element as ZigInitListEntry
-        val name = entry.fieldName ?: return emptyArray()
-        return arrayOf(ZigInitListEntryReference(entry, name))
-    }
-}
-
-class ZigInitListEntryReference(element: ZigInitListEntry, val name: PsiElement) :
-    PsiPolyVariantReferenceBase<ZigInitListEntry>(element, name.textRangeInParent, true) {
-
-    override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
-        val arrayInit = myElement.findParentOfType<ZigArrayInit>() ?: return emptyArray()
-        val inferredTypeExprs = if (arrayInit.isTypeInferred()) {
-            resolveInferredTypeExprs(arrayInit)
-        } else {
-            val typeExpr = arrayInit.initTypeExpr?.expr ?: return emptyArray()
-            sequenceOf(typeExpr)
-        }
-        val results = mutableSetOf<ResolveResult>()
-        for (typeExpr in inferredTypeExprs) {
-            resolveMember(typeExpr, name.text, mutableSetOf(), results)
-        }
-        return results.toTypedArray()
-    }
-
-    override fun handleElementRename(newElementName: String): PsiElement? {
-        val oldToken = myElement.fieldName ?: throw IncorrectOperationException()
-        val newToken = createZigIdentifierToken(myElement.project, newElementName)
-        oldToken.replace(newToken)
-        return myElement
-    }
-}
-
 private fun resolveMember(
     lhs: PsiElement,
     name: String,
@@ -745,3 +716,28 @@ private fun resolveContainerExpr(lhs: PsiElement, visited: MutableSet<PsiElement
     }
 }
  */
+
+private fun resolveInferredResultTypeReference(types: Sequence<ZigValue>, name: String): Array<ResolveResult> {
+    val results = mutableSetOf<ResolveResult>()
+    for (type in types) {
+        var type = type
+        while (true) {
+            type = when (type) {
+                is ZigErrorUnionType -> type.payload
+                is ZigOptionalType -> type.child
+                is ZigPointerType if type.size == ZigPointerSize.ONE -> type.child
+                else -> break
+            }
+        }
+        if (type !is ZigContainerType) {
+            continue
+        }
+        val member = type.element.members.firstOrNull {
+            it is PsiNameIdentifierOwner && it.name == name
+        }
+        if (member != null) {
+            results.add(PsiElementResolveResult(member))
+        }
+    }
+    return results.toTypedArray()
+}

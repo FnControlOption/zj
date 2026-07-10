@@ -414,7 +414,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             }
             val fieldTypes = mutableListOf<ZigValue>()
             for (item in element.initItems) {
-                if (item.identifierElement != null) {
+                if (item.isStructField) {
                     return sequenceOf(ZigUnknown.ofUnknownType())
                 }
                 val values = when (val expressionElement = item.expression) {
@@ -438,10 +438,10 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             if (intType != null) {
                 return sequenceOf(intType)
             }
-            element.references.asSequence().flatMap { reference ->
-                when (val target = reference.resolve()) {
-                    null -> sequenceOf(ZigUnknown.ofUnknownType())
-                    else -> resolveValuesFromReferenceTo(target).asSequence()
+            resolveReferences(element).flatMap { target ->
+                when (target) {
+                    is ZigElement -> resolveValuesFromReferenceTo(target).asSequence()
+                    else -> sequenceOf(ZigUnknown.ofUnknownType())
                 }
             }
         }
@@ -540,8 +540,8 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 if (argElement !is ZigStringLiteral) {
                     return sequenceOf(ZigUnknown.ofUnknownType())
                 }
-                argElement.references.asSequence().map { reference ->
-                    when (val target = reference.resolve()) {
+                resolveReferences(argElement).map { target ->
+                    when (target) {
                         is ZigFile -> ZigContainerType(target, emptyMap())
                         else -> ZigUnknown.ofUnknownType()
                     }
@@ -1034,6 +1034,28 @@ private fun inferResultTypes(element: ZigElement): Sequence<ZigValue> {
             resolveValues(typeElement).asSequence()
         }
 
+        is ZigAssign -> {
+            if (parentElement.rightElement !== element) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            resolveValues(parentElement.leftElement).asSequence().map { it.typeOf }
+        }
+
+        is ZigListInitItem -> {
+            if (parentElement.expression !== element) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            if (parentElement.isStructField) {
+                resolveReferences(parentElement)
+                    .filterIsInstance<ZigElement>()
+                    .flatMap { resolveValuesFromReferenceTo(it).asSequence() }
+                    .map { it.typeOf }
+                    .ifEmpty { sequenceOf(ZigUnknown.of(ZigTypeType)) }
+            } else {
+                sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
+            }
+        }
+
         is ZigSwitchItem -> {
             val switchElement = parentElement.containingSwitchProng.containingSwitch
             val conditionElement = switchElement.conditionElement.innerElement
@@ -1047,6 +1069,16 @@ private fun inferResultTypes(element: ZigElement): Sequence<ZigValue> {
             }
             inferResultTypes(parentElement.containingSwitch)
         }
+
+        is ZigReturn -> {
+            val typeElement =
+                element.findParentOfType<ZigFnDecl>()
+                    ?.let { it.returnTypeElement?.innerElement }
+                    ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+            resolveValues(typeElement).asSequence()
+        }
+
+        is ZigCallArg -> sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
 
         // TODO
         else -> sequenceOf(ZigUnknown.of(ZigTypeType))

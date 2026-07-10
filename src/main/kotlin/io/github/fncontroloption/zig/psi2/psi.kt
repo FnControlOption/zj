@@ -33,6 +33,7 @@ import io.github.fncontroloption.zig.ZigIdentifierReference
 import io.github.fncontroloption.zig.ZigImportReference
 import io.github.fncontroloption.zig.ZigLabelReference
 import io.github.fncontroloption.zig.ZigLanguage
+import io.github.fncontroloption.zig.ZigListInitItemReference
 import io.github.fncontroloption.zig.ZigTestReference
 import io.github.fncontroloption.zig.ZigVarDeclStub
 import java.util.regex.Pattern
@@ -798,11 +799,22 @@ class ZigListInit(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigListInitItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val containingListInit: ZigListInit
+        get() = parent as ZigListInit
+
     val identifierElement: PsiElement?
         get() = findChildByType(ZigTokenType.IDENTIFIER)
 
+    val isStructField: Boolean
+        get() = identifierElement != null
+
     val expression: ZigElement?
         get() = findChildByClass(ZigElement::class.java)
+
+    override fun getReferences(): Array<out PsiReference> {
+        val identifier = identifierElement ?: return emptyArray()
+        return arrayOf(ZigListInitItemReference(this, identifier))
+    }
 }
 
 class ZigMergeErrorSets(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
