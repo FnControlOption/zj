@@ -15,12 +15,12 @@ object ZigAnalyzer {
         return io.github.fncontroloption.zig.resolveValues(element)
     }
 
-    fun resolveValuesFromReferenceTo(element: ZigElement): Set<ZigValue> {
-        return io.github.fncontroloption.zig.resolveValuesFromReferenceTo(element)
+    fun resolveValuesFromReferenceTo(target: ZigElement): Set<ZigValue> {
+        return io.github.fncontroloption.zig.resolveValuesFromReferenceTo(target)
     }
 
-    fun inferResultTypes(element: ZigElement): Sequence<ZigValue> {
-        return io.github.fncontroloption.zig.inferResultTypes(element)
+    fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
+        return io.github.fncontroloption.zig.inferResultTypes(childElement)
     }
 }
 
@@ -1023,10 +1023,10 @@ private fun computeValuesFromLabeledBreaks(element: ZigLabelable): Sequence<ZigV
     }
 }
 
-private fun inferResultTypes(element: ZigElement): Sequence<ZigValue> {
-    return when (val parentElement = element.parent) {
+private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
+    return when (val parentElement = childElement.parent) {
         is ZigVarDecl -> {
-            if (parentElement.initializer !== element) {
+            if (parentElement.initializer !== childElement) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
             }
             val typeElement = parentElement.typeElement?.innerElement
@@ -1035,14 +1035,14 @@ private fun inferResultTypes(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigAssign -> {
-            if (parentElement.rightElement !== element) {
+            if (parentElement.rightElement !== childElement) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
             }
             resolveValues(parentElement.leftElement).asSequence().map { it.typeOf }
         }
 
         is ZigListInitItem -> {
-            if (parentElement.expression !== element) {
+            if (parentElement.expression !== childElement) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
             }
             if (parentElement.isStructField) {
@@ -1064,7 +1064,7 @@ private fun inferResultTypes(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigSwitchProng -> {
-            if (parentElement.expression !== element) {
+            if (parentElement.expression !== childElement) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
             }
             inferResultTypes(parentElement.containingSwitch)
@@ -1072,7 +1072,7 @@ private fun inferResultTypes(element: ZigElement): Sequence<ZigValue> {
 
         is ZigReturn -> {
             val typeElement =
-                element.findParentOfType<ZigFnDecl>()
+                childElement.findParentOfType<ZigFnDecl>()
                     ?.let { it.returnTypeElement?.innerElement }
                     ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
             resolveValues(typeElement).asSequence()
