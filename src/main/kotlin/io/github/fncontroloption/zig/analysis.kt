@@ -826,6 +826,10 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
         }
 
         is ZigVarProto -> {
+            val typeElement = target.typeElement?.innerElement
+            if (typeElement != null) {
+                return resolveValues(typeElement).asSequence().map { ZigUnknown.of(it) }
+            }
             val destructure = target.containingAssignDestructure
             val initElement = destructure.initializer ?: return sequenceOf(ZigUnknown.ofUnknownType())
             val destructureIndex = destructure.variables.indexOf(target)
