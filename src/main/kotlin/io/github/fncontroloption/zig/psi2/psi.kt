@@ -451,6 +451,9 @@ class ZigContainerDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainer
     val containerTagElement: ZigContainerTag?
         get() = findChildByClass(ZigContainerTag::class.java)
 
+    val isTaggedUnion: Boolean
+        get() = containerKind == ZigContainerKind.UNION && containerTagElement != null
+
     override val members: Sequence<ZigElement>
         get() =
             firstChild
@@ -1000,14 +1003,25 @@ class ZigSwitch(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
 class ZigSwitchItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val containingSwitchProng: ZigSwitchProng
         get() = parent as ZigSwitchProng
+
+    val innerElement: ZigElement
+        get() = findNotNullChildByClass(ZigElement::class.java)
 }
 
 class ZigSwitchPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
+    val containingSwitchProng: ZigSwitchProng
+        get() = parent as ZigSwitchProng
 }
 
 class ZigSwitchProng(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val containingSwitch: ZigSwitch
         get() = parent as ZigSwitch
+
+    val elseTokenElement: PsiElement?
+        get() = findChildByType(ZigTokenType.KEYWORD_ELSE)
+
+    val isElse: Boolean
+        get() = elseTokenElement != null
 
     val items: Sequence<ZigSwitchItem>
         get() = firstChild.siblings().filterIsInstance<ZigSwitchItem>()
@@ -1022,6 +1036,9 @@ class ZigSwitchProng(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
                 .filterIsInstance<ZigElement>()
                 .takeWhile { it !is ZigSwitchItem }
                 .firstOrNull()
+}
+
+class ZigSwitchRange(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigTestDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {

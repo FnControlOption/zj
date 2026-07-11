@@ -1466,12 +1466,14 @@ class ZigParser : PsiParser {
 
     private fun parseSwitchItem(builder: PsiBuilder): PsiBuilder.Marker? {
         val marker = builder.mark()
-        if (parseExpr(builder) == null) {
+        val start = parseExpr(builder)
+        if (start == null) {
             marker.rollbackTo()
             return null
         }
         if (eatToken(builder, ZigTokenType.ELLIPSIS3)) {
             tryExpr(builder)
+            start.precede().done(ZigElementType.SWITCH_RANGE)
         }
         marker.done(ZigElementType.SWITCH_ITEM)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.EQUAL_ANGLE_BRACKET_RIGHT) {
