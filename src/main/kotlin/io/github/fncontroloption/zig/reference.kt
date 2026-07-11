@@ -1,5 +1,7 @@
 package io.github.fncontroloption.zig
 
+import com.intellij.codeInsight.lookup.LookupElement
+import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.util.TextRange
@@ -22,6 +24,7 @@ import io.github.fncontroloption.zig.psi2.ZigBlock
 import io.github.fncontroloption.zig.psi2.ZigCatch
 import io.github.fncontroloption.zig.psi2.ZigContainer
 import io.github.fncontroloption.zig.psi2.ZigContainerField
+import io.github.fncontroloption.zig.psi2.ZigContainerKind
 import io.github.fncontroloption.zig.psi2.ZigElement
 import io.github.fncontroloption.zig.psi2.ZigElseElement
 import io.github.fncontroloption.zig.psi2.ZigEnumLiteral
@@ -254,21 +257,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
         val name = identifier.text
         val results = mutableSetOf<ResolveResult>()
-        for (left in ZigAnalyzer.resolveValues(myElement.leftOperand)) {
-            val containerType = when (left) {
-                is ZigContainerType -> left
-                else -> when (val typeOfLeft = left.typeOf) {
-                    is ZigContainerType -> typeOfLeft
-                    is ZigPointerType -> when (typeOfLeft.size) {
-                        ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
-                            is ZigContainerType -> pointerChild
-                            else -> continue
-                        }
-                        else -> continue
-                    }
-                    else -> continue
-                }
-            }
+        for ((containerType, _) in getContainers()) {
             val member = containerType.element.members.firstOrNull {
                 it is PsiNameIdentifierOwner && it.name == name
             }
@@ -281,6 +270,89 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
 
     override fun handleElementRename(newElementName: String) =
         replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
+
+    override fun getVariants(): Array<out LookupElement> {
+        val variants = mutableSetOf<LookupElement>()
+        for ((containerType, isInstance) in getContainers()) {
+            for (member in containerType.element.members) {
+                when (member) {
+                    is ZigVarDecl -> {
+                        val value =
+                            ZigAnalyzer.resolveValuesFromReferenceTo(member)
+                                .asSequence()
+                                .flatMap { ZigAnalyzer.substituteTypeParams(it, containerType.typeParams) }
+                                .singleOrNull()
+                        variants.add(
+                            LookupElementBuilder.create(member)
+                                .withIcon(member.getIcon(0))
+                                .withTypeText(value?.typeOf?.toString())
+                        )
+                    }
+
+                    is ZigFnDecl -> {
+                        // TODO: check if instance & method
+                        var returnType: ZigValue? = null
+                        val returnTypeElement = member.returnTypeElement?.innerElement
+                        if (returnTypeElement != null) {
+                            returnType =
+                                ZigAnalyzer.resolveValues(returnTypeElement)
+                                    .asSequence()
+                                    .flatMap { ZigAnalyzer.substituteTypeParams(it, containerType.typeParams) }
+                                    .singleOrNull()
+                        }
+                        variants.add(
+                            LookupElementBuilder.create(member)
+                                .withIcon(member.getIcon(0))
+                                .withTailText("()") // TODO
+                                .withTypeText(returnType?.toString())
+                        )
+                    }
+
+                    is ZigContainerField -> {
+                        val shouldIncludeField = when (containerType.element.containerKind) {
+                            ZigContainerKind.ENUM -> !isInstance
+                            else -> isInstance || containerType.element.isTaggedUnion
+                        }
+                        if (!shouldIncludeField) {
+                            continue
+                        }
+                        val value =
+                            ZigAnalyzer.resolveValuesFromReferenceTo(member)
+                                .asSequence()
+                                .flatMap { ZigAnalyzer.substituteTypeParams(it, containerType.typeParams) }
+                                .singleOrNull()
+                        variants.add(
+                            LookupElementBuilder.create(member)
+                                .withIcon(member.getIcon(0))
+                                .withTypeText(value?.typeOf?.toString())
+                        )
+                    }
+
+                    else -> {}
+                }
+            }
+        }
+        return variants.toTypedArray()
+    }
+
+    private fun getContainers(): Sequence<Pair<ZigContainerType, Boolean>> {
+        return ZigAnalyzer.resolveValues(myElement.leftOperand).asSequence().mapNotNull { left ->
+            when (left) {
+                is ZigContainerType -> Pair(left, false)
+                else -> when (val typeOfLeft = left.typeOf) {
+                    is ZigContainerType -> Pair(typeOfLeft, true)
+                    is ZigPointerType -> when (typeOfLeft.size) {
+                        ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
+                            is ZigContainerType -> Pair(pointerChild, true)
+                            else -> null
+                        }
+                        else -> null
+                    }
+                    else -> null
+                }
+            }
+        }
+    }
 }
 
 class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElement) :

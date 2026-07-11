@@ -123,11 +123,15 @@ enum class ZigContainerKind { STRUCT, OPAQUE, ENUM, UNION }
 sealed interface ZigContainer : ZigElement {
     val containerKind: ZigContainerKind
 
+    val isTaggedUnion: Boolean
+
     val members: Sequence<ZigElement>
 }
 
 class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage), ZigContainer {
     override val containerKind = ZigContainerKind.STRUCT
+
+    override val isTaggedUnion = false
 
     override val members: Sequence<ZigElement>
         get() = firstChild?.siblings()?.filterIsInstance<ZigElement>() ?: emptySequence()
@@ -451,7 +455,7 @@ class ZigContainerDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainer
     val containerTagElement: ZigContainerTag?
         get() = findChildByClass(ZigContainerTag::class.java)
 
-    val isTaggedUnion: Boolean
+    override val isTaggedUnion: Boolean
         get() = containerKind == ZigContainerKind.UNION && containerTagElement != null
 
     override val members: Sequence<ZigElement>

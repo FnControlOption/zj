@@ -19,6 +19,13 @@ object ZigAnalyzer {
         return io.github.fncontroloption.zig.resolveValuesFromReferenceTo(target)
     }
 
+    fun substituteTypeParams(
+        value: ZigValue,
+        typeParams: Map<ZigParamDecl, Set<ZigValue>>,
+    ): Sequence<ZigValue> {
+        return io.github.fncontroloption.zig.substituteTypeParams(value, typeParams)
+    }
+
     fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
         return io.github.fncontroloption.zig.inferResultTypes(childElement)
     }
@@ -977,11 +984,7 @@ private fun isTaggedUnionType(type: ZigValue): Boolean {
     if (type !is ZigContainerType) {
         return false
     }
-    val containerElement = type.element
-    if (containerElement !is ZigContainerDecl) {
-        return false
-    }
-    return containerElement.isTaggedUnion
+    return type.element.isTaggedUnion
 }
 
 private fun computeFunctionReturnValues(
