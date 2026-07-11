@@ -1063,6 +1063,8 @@ private fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<Zig
             }
         }
 
+        is ZigEnumLiteral -> sequenceOf(ZigUnknown.ofUnknownType() to null) // TODO
+
         else -> resolveValues(functionElement).asSequence().map { it to null }
     }
 }
@@ -1110,6 +1112,8 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             }
             resolveValues(parentElement.leftElement).asSequence().map { it.typeOf }
         }
+
+        is ZigAssignDestructure -> sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
 
         is ZigListInitItem -> {
             if (parentElement.expression !== childElement) {
@@ -1181,6 +1185,12 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             inferResultTypes(parentElement.parent as ZigElement)
         }
 
+        is ZigOrelse -> sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
+
+        is ZigCatch -> sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
+
+        is ZigAddressOf -> sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
+
         is ZigReturn -> {
             val typeElement =
                 childElement.findParentOfType<ZigFnDecl>()
@@ -1188,6 +1198,8 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
                     ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
             resolveValues(typeElement).asSequence()
         }
+
+        is ZigBreak -> sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
 
         is ZigCall -> {
             if (parentElement.functionElement !== childElement) {
