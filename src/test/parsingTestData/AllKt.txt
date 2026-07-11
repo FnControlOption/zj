@@ -703,6 +703,8 @@ ZigFile:AllKt.zig(0,7613)
     ZigErrorValueElement(ERROR_VALUE)(1061,1067)
       PsiElement(error)('error')(1061,1066)
       PsiElement(.)('.')(1066,1067)
+      PsiErrorElement:Expected 'an identifier', found ';'(1067,1067)
+        <empty list>
   PsiWhiteSpace(' ')(1067,1068)
   PsiElement(;)(';')(1068,1069)
   PsiWhiteSpace('\n')(1069,1070)

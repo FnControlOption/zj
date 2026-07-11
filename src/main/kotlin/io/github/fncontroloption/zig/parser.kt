@@ -840,12 +840,11 @@ class ZigParser : PsiParser {
                 }
                 val marker = builder.mark()
                 builder.advanceLexer()
-                eatToken(builder, ZigTokenType.KEYWORD_ERROR)
                 if (!eatToken(builder, ZigTokenType.PERIOD)) {
                     marker.rollbackTo()
                     return null
                 }
-                eatToken(builder, ZigTokenType.IDENTIFIER)
+                expectToken(builder, ZigTokenType.IDENTIFIER)
                 marker.done(ZigElementType.ERROR_VALUE)
                 return marker
             }
