@@ -1100,7 +1100,22 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
                     .map { it.typeOf }
                     .ifEmpty { sequenceOf(ZigUnknown.of(ZigTypeType)) }
             } else {
-                sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
+                val initElement = parentElement.containingListInit
+                val initTypes = when (val typeElement = initElement.typeExpression) {
+                    null -> inferResultTypes(initElement)
+                    else -> resolveValues(typeElement).asSequence()
+                }
+                initTypes.map { type ->
+                    when (type) {
+                        is ZigArrayType -> type.child
+                        is ZigTupleType -> {
+                            val initIndex = initElement.initItems.indexOf(parentElement)
+                            assert(initIndex >= 0)
+                            type.fields.getOrNull(initIndex) ?: ZigUnknown.of(ZigTypeType)
+                        }
+                        else -> ZigUnknown.of(ZigTypeType)
+                    }
+                }
             }
         }
 
