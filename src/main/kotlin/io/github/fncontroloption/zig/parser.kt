@@ -824,7 +824,13 @@ class ZigParser : PsiParser {
                         marker.done(ZigElementType.LIST_INIT)
                         return marker
                     }
-                    else -> return null
+                    else -> {
+                        val marker = builder.mark()
+                        builder.advanceLexer()
+                        builder.mark().error("Expected enum literal")
+                        marker.done(ZigElementType.ENUM_LITERAL)
+                        return marker
+                    }
                 }
             }
             ZigTokenType.KEYWORD_ERROR -> {
