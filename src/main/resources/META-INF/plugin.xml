@@ -43,6 +43,8 @@
                                    implementationClass="io.github.fncontroloption.zig.syntaxHighlighter.ZigSyntaxHighlighterFactory"/>
     <highlightVisitor implementation="io.github.fncontroloption.zig.syntaxHighlighter.ZigHighlightVisitor"/>
     <colorSettingsPage implementation="io.github.fncontroloption.zig.syntaxHighlighter.ZigColorSettingsPage"/>
+    <lang.findUsagesProvider language="Zig"
+                             implementationClass="io.github.fncontroloption.zig.ZigFindUsagesProvider"/>
     <lang.foldingBuilder language="Zig" implementationClass="io.github.fncontroloption.zig.ZigFoldingBuilder"/>
     <gotoSymbolContributor implementation="io.github.fncontroloption.zig.ZigChooseByNameContributor"/>
     <lang.psiStructureViewFactory language="Zig"
