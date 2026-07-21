@@ -54,91 +54,111 @@ class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigValue {
 }
 
 data object ZigTypeType : ZigValue {
-    override val typeOf = this
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data object ZigAnyerrorType : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data object ZigAnyopaqueType : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data object ZigBoolType : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data object ZigFalseValue : ZigValue {
-    override val typeOf = ZigBoolType
+    override val typeOf: ZigBoolType
+        get() = ZigBoolType
 }
 
 data object ZigTrueValue : ZigValue {
-    override val typeOf = ZigBoolType
+    override val typeOf: ZigBoolType
+        get() = ZigBoolType
 }
 
 data object ZigNullType : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data object ZigNullValue : ZigValue {
-    override val typeOf = ZigNullType
+    override val typeOf: ZigNullType
+        get() = ZigNullType
 }
 
 data object ZigNoreturnType : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data object ZigUndefinedType : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data object ZigUndefinedValue : ZigValue {
-    override val typeOf = ZigUndefinedType
+    override val typeOf: ZigUndefinedType
+        get() = ZigUndefinedType
 }
 
 data object ZigVoidType : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data object ZigVoidValue : ZigValue {
-    override val typeOf = ZigVoidType
+    override val typeOf: ZigVoidType
+        get() = ZigVoidType
 }
 
 data object ZigEnumLiteralType : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data class ZigContainerType(
     val element: ZigContainer,
     val typeParams: Map<ZigParamDecl, Set<ZigValue>>,
 ) : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data class ZigFunctionType(
     val element: ZigFnDeclOrProto,
     val typeParams: Map<ZigParamDecl, Set<ZigValue>>,
 ) : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data class ZigTypeParamType(val element: ZigParamDecl) : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data class ZigOptionalType(val child: ZigValue) : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data class ZigErrorSetType(val names: Set<String>) : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data class ZigErrorSetValue(override val typeOf: ZigErrorSetType, val name: String) : ZigValue
 
 data class ZigErrorUnionType(val errorSet: ZigValue, val payload: ZigValue) : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data class ZigPointerType(
@@ -147,15 +167,18 @@ data class ZigPointerType(
     // TODO: include modifiers (const, volatile, allowzero, addrspace, align)
     val child: ZigValue,
 ) : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data class ZigArrayType(val length: ZigValue, val sentinel: ZigValue?, val child: ZigValue) : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data class ZigTupleType(val fields: List<ZigValue>) : ZigValue {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 sealed interface ZigFloatType : ZigValue {
@@ -163,15 +186,18 @@ sealed interface ZigFloatType : ZigValue {
 }
 
 data object ZigComptimeFloatType : ZigFloatType {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data class ZigFixedFloatType(val bits: Int) : ZigFloatType {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data object ZigCLongDoubleType : ZigFloatType {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 sealed interface ZigIntType : ZigValue {
@@ -181,41 +207,50 @@ sealed interface ZigIntType : ZigValue {
 data class ZigIntValue(override val typeOf: ZigIntType, val value: Int) : ZigValue
 
 data object ZigComptimeIntType : ZigIntType {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 enum class ZigSignedness { SIGNED, UNSIGNED }
 
 data class ZigFixedIntType(val signedness: ZigSignedness, val bits: Int) : ZigIntType {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data object ZigIsizeType : ZigIntType {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data object ZigUsizeType : ZigIntType {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data object ZigCCharType : ZigIntType {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data class ZigCShortType(val signedness: ZigSignedness) : ZigIntType {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data class ZigCIntType(val signedness: ZigSignedness) : ZigIntType {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data class ZigCLongType(val signedness: ZigSignedness) : ZigIntType {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 data class ZigCLongLongType(val signedness: ZigSignedness) : ZigIntType {
-    override val typeOf = ZigTypeType
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
 }
 
 private fun resolveValues(element: ZigElement): Set<ZigValue> {
