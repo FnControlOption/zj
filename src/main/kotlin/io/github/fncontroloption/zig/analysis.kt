@@ -33,9 +33,17 @@ object ZigAnalyzer {
 
 sealed interface ZigValue {
     val typeOf: ZigValue
+    fun toText(): String
 }
 
 class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigValue {
+    override fun toText(): String {
+        if (typeOf is ZigUnknown && typeOf.typeOf == ZigTypeType) {
+            return "_"
+        }
+        return "@as(${typeOf.toText()}, _)"
+    }
+
     override fun toString() = "ZigUnknown(typeOf=$typeOf)"
 
     companion object {
@@ -56,71 +64,99 @@ class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigValue {
 data object ZigTypeType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "type"
 }
 
 data object ZigAnyerrorType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "anyerror"
 }
 
 data object ZigAnyopaqueType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "anyopaque"
 }
 
 data object ZigBoolType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "bool"
 }
 
 data object ZigFalseValue : ZigValue {
     override val typeOf: ZigBoolType
         get() = ZigBoolType
+
+    override fun toText() = "false"
 }
 
 data object ZigTrueValue : ZigValue {
     override val typeOf: ZigBoolType
         get() = ZigBoolType
+
+    override fun toText() = "true"
 }
 
 data object ZigNullType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "@TypeOf(null)"
 }
 
 data object ZigNullValue : ZigValue {
     override val typeOf: ZigNullType
         get() = ZigNullType
+
+    override fun toText() = "null"
 }
 
 data object ZigNoreturnType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "noreturn"
 }
 
 data object ZigUndefinedType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "@TypeOf(undefined)"
 }
 
 data object ZigUndefinedValue : ZigValue {
     override val typeOf: ZigUndefinedType
         get() = ZigUndefinedType
+
+    override fun toText() = "undefined"
 }
 
 data object ZigVoidType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "void"
 }
 
 data object ZigVoidValue : ZigValue {
     override val typeOf: ZigVoidType
         get() = ZigVoidType
+
+    override fun toText() = "{}"
 }
 
 data object ZigEnumLiteralType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "@EnumLiteral()"
 }
 
 data class ZigContainerType(
@@ -129,6 +165,8 @@ data class ZigContainerType(
 ) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = getFullNameStartingFrom(element, typeParams)
 }
 
 data class ZigFunctionType(
@@ -137,28 +175,64 @@ data class ZigFunctionType(
 ) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = buildString {
+            append("fn (")
+            for ((i, param) in element.parameters.withIndex()) {
+                if (i > 0) {
+                    append(", ")
+                }
+                val paramTypes = param.typeElement?.innerElement?.let { resolveValues(it) } ?: emptySet()
+                append(paramTypes.singleOrNull()?.toText() ?: "_")
+            }
+            append(") ")
+            val returnTypes = element.returnTypeElement?.innerElement?.let { resolveValues(it) } ?: emptySet()
+            append(returnTypes.singleOrNull()?.toText() ?: "_")
+        }
 }
 
 data class ZigTypeParamType(val element: ZigParamDecl) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = element.name ?: "_"
 }
 
 data class ZigOptionalType(val child: ZigValue) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "?${child.toText()}"
 }
 
 data class ZigErrorSetType(val names: Set<String>) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = buildString {
+            append("error{")
+            for ((i, name) in names.withIndex()) {
+                if (i > 0) {
+                    append(',')
+                }
+                append(name)
+            }
+            append('}')
+        }
 }
 
-data class ZigErrorSetValue(override val typeOf: ZigErrorSetType, val name: String) : ZigValue
+data class ZigErrorSetValue(override val typeOf: ZigErrorSetType, val name: String) : ZigValue {
+    override fun toText() = when (typeOf.names.singleOrNull()) {
+            name -> "error.${name}"
+            else -> "@as(${typeOf.toText()}, error.${name})"
+        }
+}
 
 data class ZigErrorUnionType(val errorSet: ZigValue, val payload: ZigValue) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "${errorSet.toText()}!${payload.toText()}"
 }
 
 data class ZigPointerType(
@@ -169,16 +243,58 @@ data class ZigPointerType(
 ) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = buildString {
+            when (size) {
+                ZigPointerSize.ONE -> append('*')
+                ZigPointerSize.C -> append("[*c]")
+                ZigPointerSize.MANY, ZigPointerSize.SLICE -> {
+                    append('[')
+                    when (size) {
+                        ZigPointerSize.MANY -> append('*')
+                        ZigPointerSize.SLICE -> {}
+                    }
+                    if (sentinel != null) {
+                        append(':')
+                        append(sentinel.toText())
+                    }
+                    append(']')
+                }
+            }
+            append(child.toText())
+        }
 }
 
 data class ZigArrayType(val length: ZigValue, val sentinel: ZigValue?, val child: ZigValue) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = buildString {
+            append('[')
+            append(this@ZigArrayType.length.toText())
+            if (sentinel != null) {
+                append(':')
+                append(sentinel.toText())
+            }
+            append(']')
+            append(child.toText())
+        }
 }
 
 data class ZigTupleType(val fields: List<ZigValue>) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = buildString {
+            append("struct { ")
+            for ((i, field) in fields.withIndex()) {
+                if (i > 0) {
+                    append(", ")
+                }
+                append(field.toText())
+            }
+            append(" }")
+        }
 }
 
 sealed interface ZigFloatType : ZigValue {
@@ -188,27 +304,40 @@ sealed interface ZigFloatType : ZigValue {
 data object ZigComptimeFloatType : ZigFloatType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "comptime_float"
 }
 
 data class ZigFixedFloatType(val bits: Int) : ZigFloatType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "f${bits}"
 }
 
 data object ZigCLongDoubleType : ZigFloatType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "c_longdouble"
 }
 
 sealed interface ZigIntType : ZigValue {
     override val typeOf: ZigTypeType
 }
 
-data class ZigIntValue(override val typeOf: ZigIntType, val value: Int) : ZigValue
+data class ZigIntValue(override val typeOf: ZigIntType, val value: Int) : ZigValue {
+    override fun toText() = when (typeOf) {
+            ZigComptimeIntType -> "$value"
+            else -> "@as(${typeOf.toText()}, ${value})"
+        }
+}
 
 data object ZigComptimeIntType : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "comptime_int"
 }
 
 enum class ZigSignedness { SIGNED, UNSIGNED }
@@ -216,41 +345,60 @@ enum class ZigSignedness { SIGNED, UNSIGNED }
 data class ZigFixedIntType(val signedness: ZigSignedness, val bits: Int) : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = when (signedness) {
+            ZigSignedness.SIGNED -> "i${bits}"
+            ZigSignedness.UNSIGNED -> "u${bits}"
+        }
 }
 
 data object ZigIsizeType : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "isize"
 }
 
 data object ZigUsizeType : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "usize"
 }
 
 data object ZigCCharType : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "c_char"
 }
 
 data class ZigCShortType(val signedness: ZigSignedness) : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "c_short"
 }
 
 data class ZigCIntType(val signedness: ZigSignedness) : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "c_int"
 }
 
 data class ZigCLongType(val signedness: ZigSignedness) : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "c_long"
 }
 
 data class ZigCLongLongType(val signedness: ZigSignedness) : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    override fun toText() = "c_longlong"
 }
 
 private fun resolveValues(element: ZigElement): Set<ZigValue> {
@@ -280,6 +428,9 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                     }
                     // For efficiency, limit each field to a single possible type.
                     fields.add(types.singleOrNull() ?: ZigUnknown.of(ZigTypeType))
+                }
+                if (fields.isEmpty()) {
+                    return@run null
                 }
                 ZigTupleType(fields)
             }
@@ -633,7 +784,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigStringLiteral, is ZigMultilineStringLiteral -> {
             val length = ZigUnknown.ofUnknownType() // TODO
             val u8 = ZigFixedIntType(ZigSignedness.UNSIGNED, 8)
-            val array = ZigArrayType(length, ZigIntValue(u8, 0), u8)
+            val array = ZigArrayType(length, ZigIntValue(ZigComptimeIntType, 0), u8)
             val pointer = ZigPointerType(ZigPointerSize.ONE, null, array)
             sequenceOf(ZigUnknown.of(pointer))
         }
@@ -1279,6 +1430,65 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
 
         // TODO
         else -> sequenceOf(ZigUnknown.of(ZigTypeType))
+    }
+}
+
+private fun getFullNameStartingFrom(element: PsiElement, typeParams: Map<ZigParamDecl, Set<ZigValue>>): String {
+    if (element is ZigContainer) {
+        return when (element) {
+            is ZigFile -> {
+                val name = element.name
+                assert(name.endsWith(".zig"))
+                name.substringBeforeLast('.')
+            }
+
+            is ZigContainerDecl -> when (val parent = element.parent!!) {
+                is ZigVarDecl if parent.initializer == element -> {
+                    getFullNameStartingFrom(parent, typeParams)
+                }
+
+                is ZigReturn if parent.returnValue == element -> {
+                    val fnDecl = parent.findParentOfType<ZigFnDecl>() ?: return "_"
+                    val fnName = getFullNameStartingFrom(fnDecl, typeParams)
+                    buildString {
+                        append(fnName)
+                        append('(')
+                        for ((i, paramDecl) in fnDecl.parameters.withIndex()) {
+                            if (i > 0) {
+                                append(", ")
+                            }
+                            val typeParam = ZigTypeParamType(paramDecl)
+                            val typeArg = ZigAnalyzer.substituteTypeParams(typeParam, typeParams).singleOrNull()
+                            if (typeArg != null && typeArg != typeParam) {
+                                append(typeArg.toText())
+                            } else {
+                                append('_')
+                            }
+                        }
+                        append(')')
+                    }
+                }
+
+                else -> {
+                    val parentName = getFullNameStartingFrom(parent, typeParams)
+                    when (element.containerKind) {
+                        ZigContainerKind.STRUCT -> "${parentName}__struct"
+                        ZigContainerKind.OPAQUE -> "${parentName}__opaque"
+                        ZigContainerKind.ENUM -> "${parentName}__enum"
+                        ZigContainerKind.UNION -> "${parentName}__union"
+                    }
+                }
+            }
+        }
+    }
+    val parent = element.parent!!
+    val parentName = getFullNameStartingFrom(parent, typeParams)
+    return when (element) {
+        is ZigTestDecl -> "${parentName}.test" // TODO: `test` -> `test_{0,1,etc.}`, `test "foo"` -> `test.foo`, `test foo` -> `decltest.foo`
+        is ZigComptime if parent is ZigContainer -> "${parentName}.comptime"
+        is ZigVarDecl if parent is ZigContainer -> "${parentName}.${element.name ?: "_"}"
+        is ZigFnDecl -> "${parentName}.${element.name ?: "_"}"
+        else -> parentName
     }
 }
 

@@ -29,7 +29,7 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
             .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
             .appendTo(sb)
         for (value in ZigAnalyzer.resolveValuesFromReferenceTo(element)) {
-            HtmlChunk.text(value.toString())
+            HtmlChunk.text(value.typeOf.toText())
                 .wrapWith(DocumentationMarkup.PRE_ELEMENT)
                 .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
                 .appendTo(sb)
