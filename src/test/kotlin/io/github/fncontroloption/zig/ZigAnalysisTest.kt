@@ -379,7 +379,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), array.child)
         array.length.requireIs<ZigUnknown>()
         val sentinel = array.sentinel.requireIs<ZigIntValue>()
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), sentinel.typeOf)
+        assertEquals(ZigComptimeIntType, sentinel.typeOf)
         assertEquals(0, sentinel.value)
     }
 
@@ -395,7 +395,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), array.child)
         array.length.requireIs<ZigUnknown>()
         val sentinel = array.sentinel.requireIs<ZigIntValue>()
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), sentinel.typeOf)
+        assertEquals(ZigComptimeIntType, sentinel.typeOf)
         assertEquals(0, sentinel.value)
     }
 }
