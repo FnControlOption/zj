@@ -170,3 +170,5 @@ const foo = switch (bar) {
 const foo = switch (bar) {
     baz => .
 };
+const foo = packed ;
+const foo = error ;

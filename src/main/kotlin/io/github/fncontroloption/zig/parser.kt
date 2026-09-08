@@ -25,7 +25,7 @@ class ZigParserDefinition : ParserDefinition {
     override fun createElement(node: ASTNode) = ZigElementType.createPsiElement(node)
 }
 
-// Based on https://codeberg.org/ziglang/zig/src/commit/72d954e/lib/std/zig/Parse.zig
+// Based on https://codeberg.org/ziglang/zig/src/commit/69a2697/lib/std/zig/Parse.zig
 /** @see com.intellij.java.syntax.parser.JavaParser */
 class ZigParser : PsiParser {
     private val enclosureStack = ArrayDeque<IElementType?>()
@@ -50,12 +50,12 @@ class ZigParser : PsiParser {
             ?: parseContainerField(builder)
     }
 
-    private fun parseContainerDecl(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun tryContainerDecl(builder: PsiBuilder): PsiBuilder.Marker? {
         val container = builder.mark()
         eatToken(builder, ZigTokenSets.EXTERN_PACKED)
         val containerToken = builder.tokenType
         if (!eatToken(builder, ZigTokenSets.CONTAINERS)) {
-            container.rollbackTo()
+            container.error("Expected a struct, enum or union")
             return null
         }
         containerStack.addLast(containerToken!!)
@@ -175,12 +175,10 @@ class ZigParser : PsiParser {
         return expr
     }
 
-    private fun parseBuiltinCall(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun assertBuiltinCall(builder: PsiBuilder): PsiBuilder.Marker {
+        assert(builder.tokenType === ZigTokenType.BUILTIN)
         val call = builder.mark()
-        if (!eatToken(builder, ZigTokenType.BUILTIN)) {
-            call.rollbackTo()
-            return null
-        }
+        builder.advanceLexer()
         if (expectToken(builder, ZigTokenType.L_PAREN)) {
             parseEnclosed(builder, ZigTokenType.R_PAREN) {
                 parseCallArg(builder)
@@ -565,19 +563,16 @@ class ZigParser : PsiParser {
         while (!builder.eof()) {
             when (builder.tokenType) {
                 ZigTokenType.KEYWORD_ALIGN -> {
+                    // TODO: parse bit range
                     parseAlign(builder)
-                }
-                ZigTokenType.KEYWORD_CONST -> {
-                    builder.advanceLexer()
-                }
-                ZigTokenType.KEYWORD_VOLATILE -> {
-                    builder.advanceLexer()
-                }
-                ZigTokenType.KEYWORD_ALLOWZERO -> {
-                    builder.advanceLexer()
                 }
                 ZigTokenType.KEYWORD_ADDRSPACE -> {
                     parseAddrspace(builder)
+                }
+                ZigTokenType.KEYWORD_ALLOWZERO,
+                ZigTokenType.KEYWORD_CONST,
+                ZigTokenType.KEYWORD_VOLATILE -> {
+                    builder.advanceLexer()
                 }
                 else -> break
             }
@@ -599,13 +594,7 @@ class ZigParser : PsiParser {
     private fun parseSuffixExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         var res = parsePrimaryTypeExpr(builder) ?: return null
         while (!builder.eof()) {
-            val suffixOp = parseSuffixOp(builder)
-            if (suffixOp != null) {
-                res = res.precede()
-                res.done(suffixOp)
-                continue
-            }
-            res = parseCall(builder, res) ?: return res
+            res = parseSuffixOp(builder, res) ?: break
         }
         return res
     }
@@ -633,7 +622,17 @@ class ZigParser : PsiParser {
         return arg
     }
 
-    private fun parseSuffixOp(builder: PsiBuilder): IElementType? {
+    private fun parseSuffixOp(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker? {
+        val type = suffixOp(builder)
+        if (type != null) {
+            val res = lhs.precede()
+            res.done(type)
+            return res
+        }
+        return parseCall(builder, lhs)
+    }
+
+    private fun suffixOp(builder: PsiBuilder): IElementType? {
         when (builder.tokenType) {
             ZigTokenType.L_BRACKET -> {
                 builder.advanceLexer()
@@ -742,11 +741,11 @@ class ZigParser : PsiParser {
                 marker.done(ZigElementType.STRING_LITERAL)
                 return marker
             }
-            ZigTokenType.BUILTIN -> return parseBuiltinCall(builder)
+            ZigTokenType.BUILTIN -> return assertBuiltinCall(builder)
             ZigTokenType.KEYWORD_FN -> return parseFnProto(builder, false)
-            ZigTokenType.KEYWORD_IF -> return parseIf(builder, this::tryTypeExpr)
+            ZigTokenType.KEYWORD_IF -> return assertIf(builder, this::tryTypeExpr)
             ZigTokenType.KEYWORD_SWITCH -> return assertSwitchExpr(builder)
-            in ZigTokenSets.EXTERN_PACKED, in ZigTokenSets.CONTAINERS -> return parseContainerDecl(builder)
+            in ZigTokenSets.EXTERN_PACKED, in ZigTokenSets.CONTAINERS -> return tryContainerDecl(builder)
             ZigTokenType.KEYWORD_COMPTIME -> {
                 val marker = builder.mark()
                 builder.advanceLexer()
@@ -840,10 +839,7 @@ class ZigParser : PsiParser {
                 }
                 val marker = builder.mark()
                 builder.advanceLexer()
-                if (!eatToken(builder, ZigTokenType.PERIOD)) {
-                    marker.rollbackTo()
-                    return null
-                }
+                expectToken(builder, ZigTokenType.PERIOD)
                 expectToken(builder, ZigTokenType.IDENTIFIER)
                 marker.done(ZigElementType.ERROR_VALUE)
                 return marker
@@ -962,7 +958,7 @@ class ZigParser : PsiParser {
     private fun parsePrimaryExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         when (builder.tokenType) {
             ZigTokenType.KEYWORD_ASM -> return assertAsmExpr(builder)
-            ZigTokenType.KEYWORD_IF -> return parseIf(builder, this::tryExpr)
+            ZigTokenType.KEYWORD_IF -> return assertIf(builder, this::tryExpr)
             ZigTokenType.KEYWORD_BREAK -> {
                 val expr = builder.mark()
                 builder.advanceLexer()
@@ -1100,7 +1096,7 @@ class ZigParser : PsiParser {
                     return marker
                 }
                 if (isBlockLevel) {
-                    tryVarDeclExpr(builder)
+                    tryVarAssignExpr(builder)
                 } else {
                     tryAssignExpr(builder)
                 }
@@ -1150,7 +1146,7 @@ class ZigParser : PsiParser {
             return labeledStatement
         }
         val expr = if (isBlockLevel) {
-            parseVarDeclExpr(builder)
+            parseVarAssignExpr(builder)
         } else {
             parseAssignExpr(builder)
         }
@@ -1225,15 +1221,15 @@ class ZigParser : PsiParser {
         return null
     }
 
-    private fun tryVarDeclExpr(builder: PsiBuilder): PsiBuilder.Marker? {
-        val statement = parseVarDeclExpr(builder)
+    private fun tryVarAssignExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+        val statement = parseVarAssignExpr(builder)
         if (statement == null) {
             builder.mark().error("Expected expression or var decl")
         }
         return null
     }
 
-    private fun parseVarDeclExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parseVarAssignExpr(builder: PsiBuilder): PsiBuilder.Marker? {
         val statement = builder.mark()
         val scratch = mutableListOf<PsiBuilder.Marker>()
 
@@ -1273,12 +1269,10 @@ class ZigParser : PsiParser {
         return statement
     }
 
-    private fun parseIf(builder: PsiBuilder, tryBody: (PsiBuilder) -> PsiBuilder.Marker?): PsiBuilder.Marker? {
+    private fun assertIf(builder: PsiBuilder, tryBody: (PsiBuilder) -> PsiBuilder.Marker?): PsiBuilder.Marker {
+        assert(builder.tokenType === ZigTokenType.KEYWORD_IF)
         val marker = builder.mark()
-        if (!eatToken(builder, ZigTokenType.KEYWORD_IF)) {
-            marker.rollbackTo()
-            return null
-        }
+        builder.advanceLexer()
         tryCondition(builder)
         parsePtrPayload(builder, ZigElementType.THEN_PAYLOAD)
         val thenMarker = builder.mark()
@@ -1611,9 +1605,9 @@ class ZigParser : PsiParser {
         builder.advanceLexer()
         while (!builder.eof()) {
             val item = builder.mark()
-            if (eatToken(builder, ZigTokenType.ASTERISK)) {
-                expectToken(builder, ZigTokenType.IDENTIFIER)
-            } else if (!expectToken(builder, ZigTokenType.IDENTIFIER)) {
+            val asterisk = eatToken(builder, ZigTokenType.ASTERISK)
+            val identifier = expectToken(builder, ZigTokenType.IDENTIFIER)
+            if (!asterisk && !identifier) {
                 item.drop()
                 break
             }
