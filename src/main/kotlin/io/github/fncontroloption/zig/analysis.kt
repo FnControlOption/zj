@@ -1482,7 +1482,18 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             }
             val builtinCallElement = parentElement.containingBuiltinCall
                 ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+            val argIndex = builtinCallElement.argumentElements.indexOf(parentElement)
+            assert(argIndex >= 0)
             when (builtinCallElement.builtinElement.text) {
+                "@as" -> {
+                    if (argIndex != 1) {
+                        return sequenceOf(ZigUnknown.of(ZigTypeType))
+                    }
+                    val firstArgElement = builtinCallElement.argumentElements.firstOrNull()?.innerElement
+                        ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                    resolveValues(firstArgElement).asSequence()
+                }
+
                 // TODO
                 else -> sequenceOf(ZigUnknown.of(ZigTypeType))
             }
