@@ -1444,7 +1444,9 @@ private fun getFullNameStartingFrom(element: PsiElement, typeParams: Map<ZigPara
 
             is ZigContainerDecl -> when (val parent = element.parent!!) {
                 is ZigVarDecl if parent.initializer == element -> {
-                    getFullNameStartingFrom(parent, typeParams)
+                    val grandparent = parent.parent!!
+                    val grandparentName = getFullNameStartingFrom(grandparent, typeParams)
+                    "${grandparentName}.${parent.name ?: "_"}"
                 }
 
                 is ZigReturn if parent.returnValue == element -> {
