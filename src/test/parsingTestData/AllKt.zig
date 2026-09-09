@@ -83,7 +83,7 @@ const foo = Foo2.foo2Fn;
 const foo = @import("builtin").zig_version;
 const foo = @import("std").ArrayList;
 const foo = @This();
-const Foo3 = struct {
+const Foo0 = struct {
     const Self = @This();
 };
 const foo = bar + ;
@@ -357,3 +357,13 @@ test {
 }
 const foo = @as(*Foo8, bar).foo;
 const foo = (&@as(Foo8, bar)).foo;
+const foo31: Foo30 = bar;
+const foo = foo31[1].foo;
+const foo = foo31.@"1".foo;
+test {
+    var foo32: Foo30 = bar;
+    foo32[0] = .a;
+    foo32[1] = .{ .foo = bar };
+    foo32.@"0" = .a;
+    foo32.@"1" = .{ .foo = bar };
+}
