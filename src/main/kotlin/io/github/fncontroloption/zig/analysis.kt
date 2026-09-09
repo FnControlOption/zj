@@ -1418,7 +1418,27 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
 
         is ZigCatch -> sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
 
-        is ZigAddressOf -> sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
+        is ZigAddressOf -> {
+            if (parentElement.operand !== childElement) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            inferResultTypes(parentElement)
+                .filterIsInstance<ZigPointerType>()
+                .map {
+                    when (it.size) {
+                        ZigPointerSize.ONE -> it.child
+
+                        ZigPointerSize.SLICE -> {
+                            val length = ZigUnknown.ofUnknownType()
+                            ZigArrayType(length, null, it.child)
+                        }
+
+                        ZigPointerSize.MANY,
+                        ZigPointerSize.C -> ZigUnknown.of(ZigTypeType)
+                    }
+                }
+                .ifEmpty { sequenceOf(ZigUnknown.of(ZigTypeType)) }
+        }
 
         is ZigReturn -> {
             val typeElement =
