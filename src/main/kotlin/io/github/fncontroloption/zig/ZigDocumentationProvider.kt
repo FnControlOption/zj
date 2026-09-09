@@ -4,11 +4,16 @@ import com.intellij.lang.documentation.AbstractDocumentationProvider
 import com.intellij.lang.documentation.DocumentationMarkup
 import com.intellij.markdown.utils.convertMarkdownToHtml
 import com.intellij.openapi.util.text.HtmlChunk
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.PsiWhiteSpace
+import com.intellij.psi.util.findParentInFile
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigElement
+import io.github.fncontroloption.zig.psi2.ZigFile
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigLabelDecl
 import io.github.fncontroloption.zig.psi2.ZigParamDecl
@@ -16,6 +21,8 @@ import io.github.fncontroloption.zig.psi2.ZigPayloadItem
 import io.github.fncontroloption.zig.psi2.ZigTokenType
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 import io.github.fncontroloption.zig.psi2.ZigVarProto
+
+const val ZIG_DOCUMENTATION_OFFSET_SEPARATOR = $$"$zigDocumentationOffset$"
 
 class ZigDocumentationProvider : AbstractDocumentationProvider() {
     override fun generateDoc(element: PsiElement, originalElement: PsiElement?): String? {
@@ -29,7 +36,11 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
             .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
             .appendTo(sb)
         for (value in ZigAnalyzer.resolveValuesFromReferenceTo(element)) {
-            HtmlChunk.text(value.typeOf.toText())
+            var chunk = value.typeOf.toHtmlChunk()
+            if (value !is ZigUnknown) {
+                chunk = HtmlChunk.fragment(chunk, HtmlChunk.text(" = "), value.toHtmlChunk())
+            }
+            chunk
                 .wrapWith(DocumentationMarkup.PRE_ELEMENT)
                 .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
                 .appendTo(sb)
@@ -42,10 +53,21 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
         }
         return sb.toString()
     }
+
+    override fun getDocumentationElementForLink(psiManager: PsiManager, link: String, context: PsiElement): PsiElement? {
+        val offsetIdx = link.lastIndexOf(ZIG_DOCUMENTATION_OFFSET_SEPARATOR)
+        val url = if (offsetIdx < 0) link else link.substring(0, offsetIdx)
+        val virtualFile = VirtualFileManager.getInstance().findFileByUrl(url) ?: return null
+        val file = psiManager.findFile(virtualFile) ?: return null
+        if (offsetIdx < 0) return file
+        val offset = link.substring(offsetIdx + ZIG_DOCUMENTATION_OFFSET_SEPARATOR.length).toInt()
+        return file.findElementAt(offset)?.findParentInFile { it is PsiNamedElement }
+    }
 }
 
 private fun getDefinition(element: PsiElement): String? {
     return when (element) {
+        is ZigFile -> element.name.substringBeforeLast('.')
         is ZigContainerField -> element.text
         is ZigFnDecl -> {
             val text = element.text

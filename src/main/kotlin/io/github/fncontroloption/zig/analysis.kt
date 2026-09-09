@@ -1,14 +1,19 @@
 package io.github.fncontroloption.zig
 
+import com.intellij.codeInsight.documentation.DocumentationManagerProtocol
 import com.intellij.openapi.util.RecursionManager
+import com.intellij.openapi.util.text.HtmlBuilder
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNameIdentifierOwner
+import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.findParentOfType
 import io.github.fncontroloption.zig.psi2.*
+import org.jsoup.Jsoup
 
 object ZigAnalyzer {
     fun resolveValues(element: ZigElement): Set<ZigValue> {
@@ -33,15 +38,20 @@ object ZigAnalyzer {
 
 sealed interface ZigValue {
     val typeOf: ZigValue
-    fun toText(): String
+    fun toHtmlChunk(): HtmlChunk
+    fun toPlainText() = Jsoup.parse(toHtmlChunk().toString()).text()
 }
 
 class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigValue {
-    override fun toText(): String {
+    override fun toHtmlChunk(): HtmlChunk {
         if (typeOf is ZigUnknown && typeOf.typeOf == ZigTypeType) {
-            return "_"
+            return HtmlChunk.text("_")
         }
-        return "@as(${typeOf.toText()}, _)"
+        return HtmlChunk.fragment(
+            HtmlChunk.text("@as("),
+            typeOf.toHtmlChunk(),
+            HtmlChunk.text(", _)")
+        )
     }
 
     override fun toString() = "ZigUnknown(typeOf=$typeOf)"
@@ -65,98 +75,98 @@ data object ZigTypeType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "type"
+    override fun toHtmlChunk() = HtmlChunk.text("type")
 }
 
 data object ZigAnyerrorType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "anyerror"
+    override fun toHtmlChunk() = HtmlChunk.text("anyerror")
 }
 
 data object ZigAnyopaqueType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "anyopaque"
+    override fun toHtmlChunk() = HtmlChunk.text("anyopaque")
 }
 
 data object ZigBoolType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "bool"
+    override fun toHtmlChunk() = HtmlChunk.text("bool")
 }
 
 data object ZigFalseValue : ZigValue {
     override val typeOf: ZigBoolType
         get() = ZigBoolType
 
-    override fun toText() = "false"
+    override fun toHtmlChunk() = HtmlChunk.text("false")
 }
 
 data object ZigTrueValue : ZigValue {
     override val typeOf: ZigBoolType
         get() = ZigBoolType
 
-    override fun toText() = "true"
+    override fun toHtmlChunk() = HtmlChunk.text("true")
 }
 
 data object ZigNullType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "@TypeOf(null)"
+    override fun toHtmlChunk() = HtmlChunk.text("@TypeOf(null)")
 }
 
 data object ZigNullValue : ZigValue {
     override val typeOf: ZigNullType
         get() = ZigNullType
 
-    override fun toText() = "null"
+    override fun toHtmlChunk() = HtmlChunk.text("null")
 }
 
 data object ZigNoreturnType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "noreturn"
+    override fun toHtmlChunk() = HtmlChunk.text("noreturn")
 }
 
 data object ZigUndefinedType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "@TypeOf(undefined)"
+    override fun toHtmlChunk() = HtmlChunk.text("@TypeOf(undefined)")
 }
 
 data object ZigUndefinedValue : ZigValue {
     override val typeOf: ZigUndefinedType
         get() = ZigUndefinedType
 
-    override fun toText() = "undefined"
+    override fun toHtmlChunk() = HtmlChunk.text("undefined")
 }
 
 data object ZigVoidType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "void"
+    override fun toHtmlChunk() = HtmlChunk.text("void")
 }
 
 data object ZigVoidValue : ZigValue {
     override val typeOf: ZigVoidType
         get() = ZigVoidType
 
-    override fun toText() = "{}"
+    override fun toHtmlChunk() = HtmlChunk.text("{}")
 }
 
 data object ZigEnumLiteralType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "@EnumLiteral()"
+    override fun toHtmlChunk() = HtmlChunk.text("@EnumLiteral()")
 }
 
 data class ZigContainerType(
@@ -166,7 +176,7 @@ data class ZigContainerType(
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = getFullNameStartingFrom(element, typeParams)
+    override fun toHtmlChunk() = createNamedHtmlChunkStartingFrom(element, typeParams)
 }
 
 data class ZigFunctionType(
@@ -176,63 +186,81 @@ data class ZigFunctionType(
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = buildString {
-            append("fn (")
-            for ((i, param) in element.parameters.withIndex()) {
-                if (i > 0) {
-                    append(", ")
-                }
-                val paramTypes = param.typeElement?.innerElement?.let { resolveValues(it) } ?: emptySet()
-                append(paramTypes.singleOrNull()?.toText() ?: "_")
+    override fun toHtmlChunk(): HtmlChunk {
+        val builder = HtmlBuilder()
+        builder.append("fn (")
+        for ((i, param) in element.parameters.withIndex()) {
+            if (i > 0) {
+                builder.append(", ")
             }
-            append(") ")
-            val returnTypes = element.returnTypeElement?.innerElement?.let { resolveValues(it) } ?: emptySet()
-            append(returnTypes.singleOrNull()?.toText() ?: "_")
+            val paramType = param.typeElement?.innerElement?.let { resolveValues(it) }?.singleOrNull()
+            if (paramType != null) {
+                builder.append(paramType.toHtmlChunk())
+            } else {
+                builder.append("_")
+            }
         }
+        builder.append(") ")
+        val returnType = element.returnTypeElement?.innerElement?.let { resolveValues(it) }?.singleOrNull()
+        if (returnType != null) {
+            builder.append(returnType.toHtmlChunk())
+        } else {
+            builder.append("_")
+        }
+        return builder.toFragment()
+    }
 }
 
 data class ZigTypeParamType(val element: ZigParamDecl) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = element.name ?: "_"
+    override fun toHtmlChunk() = HtmlChunk.text(element.name ?: "_")
 }
 
 data class ZigOptionalType(val child: ZigValue) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "?${child.toText()}"
+    override fun toHtmlChunk() = HtmlChunk.fragment(HtmlChunk.text("?"), child.toHtmlChunk())
 }
 
 data class ZigErrorSetType(val names: Set<String>) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = buildString {
-            append("error{")
-            for ((i, name) in names.withIndex()) {
-                if (i > 0) {
-                    append(',')
-                }
-                append(name)
+    override fun toHtmlChunk() = HtmlChunk.text(buildString {
+        append("error{")
+        for ((i, name) in names.withIndex()) {
+            if (i > 0) {
+                append(',')
             }
-            append('}')
+            append(name)
         }
+        append('}')
+    })
 }
 
 data class ZigErrorSetValue(override val typeOf: ZigErrorSetType, val name: String) : ZigValue {
-    override fun toText() = when (typeOf.names.singleOrNull()) {
-            name -> "error.${name}"
-            else -> "@as(${typeOf.toText()}, error.${name})"
-        }
+    override fun toHtmlChunk() = when (typeOf.names.singleOrNull()) {
+        name -> HtmlChunk.text("error.$name")
+        else -> HtmlChunk.fragment(
+            HtmlChunk.text("@as("),
+            typeOf.toHtmlChunk(),
+            HtmlChunk.text(", error.$name)")
+        )
+    }
 }
 
 data class ZigErrorUnionType(val errorSet: ZigValue, val payload: ZigValue) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "${errorSet.toText()}!${payload.toText()}"
+    override fun toHtmlChunk() = HtmlChunk.fragment(
+        errorSet.toHtmlChunk(),
+        HtmlChunk.text("!"),
+        payload.toHtmlChunk()
+    )
 }
 
 data class ZigPointerType(
@@ -244,57 +272,63 @@ data class ZigPointerType(
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = buildString {
-            when (size) {
-                ZigPointerSize.ONE -> append('*')
-                ZigPointerSize.C -> append("[*c]")
-                ZigPointerSize.MANY, ZigPointerSize.SLICE -> {
-                    append('[')
-                    when (size) {
-                        ZigPointerSize.MANY -> append('*')
-                        ZigPointerSize.SLICE -> {}
-                    }
-                    if (sentinel != null) {
-                        append(':')
-                        append(sentinel.toText())
-                    }
-                    append(']')
+    override fun toHtmlChunk(): HtmlChunk {
+        val builder = HtmlBuilder()
+        when (size) {
+            ZigPointerSize.ONE -> builder.append("*")
+            ZigPointerSize.C -> builder.append("[*c]")
+            ZigPointerSize.MANY, ZigPointerSize.SLICE -> {
+                builder.append("[")
+                when (size) {
+                    ZigPointerSize.MANY -> builder.append("*")
+                    ZigPointerSize.SLICE -> {}
                 }
+                if (sentinel != null) {
+                    builder.append(":")
+                    builder.append(sentinel.toHtmlChunk())
+                }
+                builder.append("]")
             }
-            append(child.toText())
         }
+        builder.append(child.toHtmlChunk())
+        return builder.toFragment()
+    }
 }
 
 data class ZigArrayType(val length: ZigValue, val sentinel: ZigValue?, val child: ZigValue) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = buildString {
-            append('[')
-            append(this@ZigArrayType.length.toText())
-            if (sentinel != null) {
-                append(':')
-                append(sentinel.toText())
-            }
-            append(']')
-            append(child.toText())
+    override fun toHtmlChunk(): HtmlChunk {
+        val builder = HtmlBuilder()
+        builder.append("[")
+        builder.append(length.toHtmlChunk())
+        if (sentinel != null) {
+            builder.append(":")
+            builder.append(sentinel.toHtmlChunk())
         }
+        builder.append("]")
+        builder.append(child.toHtmlChunk())
+        return builder.toFragment()
+    }
 }
 
 data class ZigTupleType(val fields: List<ZigValue>) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = buildString {
-            append("struct { ")
-            for ((i, field) in fields.withIndex()) {
-                if (i > 0) {
-                    append(", ")
-                }
-                append(field.toText())
+    override fun toHtmlChunk(): HtmlChunk {
+        val builder = HtmlBuilder()
+        builder.append("struct { ")
+        for ((i, field) in fields.withIndex()) {
+            if (i > 0) {
+                builder.append(", ")
             }
-            append(" }")
+            builder.append(field.toHtmlChunk())
         }
+        builder.append(" }")
+        return builder.toFragment()
+    }
 }
 
 sealed interface ZigFloatType : ZigValue {
@@ -305,21 +339,21 @@ data object ZigComptimeFloatType : ZigFloatType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "comptime_float"
+    override fun toHtmlChunk() = HtmlChunk.text("comptime_float")
 }
 
 data class ZigFixedFloatType(val bits: Int) : ZigFloatType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "f${bits}"
+    override fun toHtmlChunk() = HtmlChunk.text("f${bits}")
 }
 
 data object ZigCLongDoubleType : ZigFloatType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "c_longdouble"
+    override fun toHtmlChunk() = HtmlChunk.text("c_longdouble")
 }
 
 sealed interface ZigIntType : ZigValue {
@@ -327,17 +361,21 @@ sealed interface ZigIntType : ZigValue {
 }
 
 data class ZigIntValue(override val typeOf: ZigIntType, val value: Int) : ZigValue {
-    override fun toText() = when (typeOf) {
-            ZigComptimeIntType -> "$value"
-            else -> "@as(${typeOf.toText()}, ${value})"
-        }
+    override fun toHtmlChunk() = when (typeOf) {
+        ZigComptimeIntType -> HtmlChunk.text("$value")
+        else -> HtmlChunk.fragment(
+          HtmlChunk.text("@as("),
+            typeOf.toHtmlChunk(),
+            HtmlChunk.text(", $value)"),
+        )
+    }
 }
 
 data object ZigComptimeIntType : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "comptime_int"
+    override fun toHtmlChunk() = HtmlChunk.text("comptime_int")
 }
 
 enum class ZigSignedness { SIGNED, UNSIGNED }
@@ -346,59 +384,59 @@ data class ZigFixedIntType(val signedness: ZigSignedness, val bits: Int) : ZigIn
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = when (signedness) {
-            ZigSignedness.SIGNED -> "i${bits}"
-            ZigSignedness.UNSIGNED -> "u${bits}"
-        }
+    override fun toHtmlChunk() = when (signedness) {
+        ZigSignedness.SIGNED -> HtmlChunk.text("i${bits}")
+        ZigSignedness.UNSIGNED -> HtmlChunk.text("u${bits}")
+    }
 }
 
 data object ZigIsizeType : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "isize"
+    override fun toHtmlChunk() = HtmlChunk.text("isize")
 }
 
 data object ZigUsizeType : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "usize"
+    override fun toHtmlChunk() = HtmlChunk.text("usize")
 }
 
 data object ZigCCharType : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "c_char"
+    override fun toHtmlChunk() = HtmlChunk.text("c_char")
 }
 
 data class ZigCShortType(val signedness: ZigSignedness) : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "c_short"
+    override fun toHtmlChunk() = HtmlChunk.text("c_short")
 }
 
 data class ZigCIntType(val signedness: ZigSignedness) : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "c_int"
+    override fun toHtmlChunk() = HtmlChunk.text("c_int")
 }
 
 data class ZigCLongType(val signedness: ZigSignedness) : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "c_long"
+    override fun toHtmlChunk() = HtmlChunk.text("c_long")
 }
 
 data class ZigCLongLongType(val signedness: ZigSignedness) : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toText() = "c_longlong"
+    override fun toHtmlChunk() = HtmlChunk.text("c_longlong")
 }
 
 private fun resolveValues(element: ZigElement): Set<ZigValue> {
@@ -1001,6 +1039,8 @@ private fun resolveValuesFromReferenceTo(target: ZigElement): Set<ZigValue> {
 
 private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<ZigValue> {
     return when (target) {
+        is ZigFile -> sequenceOf(ZigContainerType(target, emptyMap()))
+
         is ZigFnDecl -> {
             val typeParams = findUnboundTypeParams(target)
             sequenceOf(ZigUnknown.of(ZigFunctionType(target, typeParams)))
@@ -1433,64 +1473,98 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
     }
 }
 
-private fun getFullNameStartingFrom(element: PsiElement, typeParams: Map<ZigParamDecl, Set<ZigValue>>): String {
+private fun createNamedChildHtmlChunk(element: PsiNamedElement): HtmlChunk {
+    val name = element.name
+    if (name != null) {
+        val target = buildString {
+            append(DocumentationManagerProtocol.PSI_ELEMENT_PROTOCOL)
+            append(element.containingFile.viewProvider.virtualFile.url)
+            append(ZIG_DOCUMENTATION_OFFSET_SEPARATOR)
+            append(element.textOffset)
+        }
+        return HtmlChunk.link(target, name)
+    } else {
+        return HtmlChunk.text("_")
+    }
+}
+
+private fun createNamedHtmlChunkStartingFrom(element: PsiElement, typeParams: Map<ZigParamDecl, Set<ZigValue>>): HtmlChunk {
     if (element is ZigContainer) {
         return when (element) {
             is ZigFile -> {
                 val name = element.name
                 assert(name.endsWith(".zig"))
-                name.substringBeforeLast('.')
+                val text = name.substringBeforeLast('.')
+                val target = buildString {
+                    append(DocumentationManagerProtocol.PSI_ELEMENT_PROTOCOL)
+                    append(element.viewProvider.virtualFile.url)
+                }
+                HtmlChunk.link(target, text)
             }
 
             is ZigContainerDecl -> when (val parent = element.parent!!) {
                 is ZigVarDecl if parent.initializer == element -> {
                     val grandparent = parent.parent!!
-                    val grandparentName = getFullNameStartingFrom(grandparent, typeParams)
-                    "${grandparentName}.${parent.name ?: "_"}"
+                    val grandparentChunk = createNamedHtmlChunkStartingFrom(grandparent, typeParams)
+                    val parentChunk = createNamedChildHtmlChunk(parent)
+                    HtmlChunk.fragment(grandparentChunk, HtmlChunk.text("."), parentChunk)
                 }
 
                 is ZigReturn if parent.returnValue == element -> {
-                    val fnDecl = parent.findParentOfType<ZigFnDecl>() ?: return "_"
-                    val fnName = getFullNameStartingFrom(fnDecl, typeParams)
-                    buildString {
-                        append(fnName)
-                        append('(')
-                        for ((i, paramDecl) in fnDecl.parameters.withIndex()) {
-                            if (i > 0) {
-                                append(", ")
-                            }
-                            val typeParam = ZigTypeParamType(paramDecl)
-                            val typeArg = ZigAnalyzer.substituteTypeParams(typeParam, typeParams).singleOrNull()
-                            if (typeArg != null && typeArg != typeParam) {
-                                append(typeArg.toText())
-                            } else {
-                                append('_')
-                            }
+                    val fnDecl = parent.findParentOfType<ZigFnDecl>() ?: return HtmlChunk.text("_")
+                    val fnChunk = createNamedHtmlChunkStartingFrom(fnDecl, typeParams)
+                    val builder = HtmlBuilder()
+                    builder.append(fnChunk)
+                    builder.append("(")
+                    for ((i, paramDecl) in fnDecl.parameters.withIndex()) {
+                        if (i > 0) {
+                            builder.append(", ")
                         }
-                        append(')')
+                        val typeParam = ZigTypeParamType(paramDecl)
+                        val typeArg = ZigAnalyzer.substituteTypeParams(typeParam, typeParams).singleOrNull()
+                        if (typeArg != null && typeArg != typeParam) {
+                            builder.append(typeArg.toHtmlChunk())
+                        } else {
+                            builder.append("_")
+                        }
                     }
+                    builder.append(")")
+                    builder.toFragment()
                 }
 
                 else -> {
-                    val parentName = getFullNameStartingFrom(parent, typeParams)
-                    when (element.containerKind) {
-                        ZigContainerKind.STRUCT -> "${parentName}__struct"
-                        ZigContainerKind.OPAQUE -> "${parentName}__opaque"
-                        ZigContainerKind.ENUM -> "${parentName}__enum"
-                        ZigContainerKind.UNION -> "${parentName}__union"
+                    val parentChunk = createNamedHtmlChunkStartingFrom(parent, typeParams)
+                    val suffix = when (element.containerKind) {
+                        ZigContainerKind.STRUCT -> "__struct"
+                        ZigContainerKind.OPAQUE -> "__opaque"
+                        ZigContainerKind.ENUM -> "__enum"
+                        ZigContainerKind.UNION -> "__union"
                     }
+                    HtmlChunk.fragment(parentChunk, HtmlChunk.text(suffix))
                 }
             }
         }
     }
+
     val parent = element.parent!!
-    val parentName = getFullNameStartingFrom(parent, typeParams)
+    val parentChunk = createNamedHtmlChunkStartingFrom(parent, typeParams)
     return when (element) {
-        is ZigTestDecl -> "${parentName}.test" // TODO: `test` -> `test_{0,1,etc.}`, `test "foo"` -> `test.foo`, `test foo` -> `decltest.foo`
-        is ZigComptime if parent is ZigContainer -> "${parentName}.comptime"
-        is ZigVarDecl if parent is ZigContainer -> "${parentName}.${element.name ?: "_"}"
-        is ZigFnDecl -> "${parentName}.${element.name ?: "_"}"
-        else -> parentName
+        is ZigTestDecl -> {
+            val testChunk = HtmlChunk.text("test") // TODO: `test` -> `test_{0,1,etc.}`, `test "foo"` -> `test.foo`, `test foo` -> `decltest.foo`
+            HtmlChunk.fragment(parentChunk, HtmlChunk.text("."), testChunk)
+        }
+        is ZigComptime if parent is ZigContainer -> {
+            HtmlChunk.fragment(parentChunk, HtmlChunk.text(".comptime"))
+        }
+        is ZigVarDecl if parent is ZigContainer -> {
+            val elementChunk = createNamedChildHtmlChunk(element)
+            HtmlChunk.fragment(parentChunk, HtmlChunk.text("."), elementChunk)
+        }
+        is ZigFnDecl -> {
+            val elementChunk = createNamedChildHtmlChunk(element)
+            HtmlChunk.fragment(parentChunk, HtmlChunk.text("."), elementChunk)
+        }
+        else -> parentChunk
     }
 }
 

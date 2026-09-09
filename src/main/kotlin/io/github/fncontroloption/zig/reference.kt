@@ -285,7 +285,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                         variants.add(
                             LookupElementBuilder.create(member)
                                 .withIcon(member.getIcon(0))
-                                .withTypeText(value?.typeOf?.toText())
+                                .withTypeText(value?.typeOf?.toPlainText())
                         )
                     }
 
@@ -304,7 +304,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                             LookupElementBuilder.create(member)
                                 .withIcon(member.getIcon(0))
                                 .withTailText("()") // TODO
-                                .withTypeText(returnType?.toText())
+                                .withTypeText(returnType?.toPlainText())
                         )
                     }
 
@@ -324,7 +324,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                         variants.add(
                             LookupElementBuilder.create(member)
                                 .withIcon(member.getIcon(0))
-                                .withTypeText(value?.typeOf?.toText())
+                                .withTypeText(value?.typeOf?.toPlainText())
                         )
                     }
 
