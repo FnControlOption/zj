@@ -386,3 +386,33 @@ test {
 test {
     const foobar0, const foobar1 = [2]u3{ 4, 5 };
 }
+test {
+    const foo = [_]u3{ 4, 5 };
+    var bar: usize, var baz: usize = .{ 0, 1 };
+    const foobar0 = foo[bar..baz];
+    const foobar1 = foo[0..1];
+}
+test {
+    const foo = &[_]u3{ 4, 5 };
+    var bar: usize, var baz: usize = .{ 0, 1 };
+    const foobar0 = foo[bar..baz];
+    const foobar1 = foo[0..1];
+}
+test {
+    const foo: []const u3 = &.{ 4, 5 };
+    var bar: usize, var baz: usize = .{ 0, 1 };
+    const foobar0 = foo[bar..baz];
+    const foobar1 = foo[0..1];
+}
+test {
+    const foo: [*]const u3 = &.{ 4, 5 };
+    var bar: usize, var baz: usize = .{ 0, 1 };
+    const foobar0 = foo[bar..baz];
+    const foobar1 = foo[0..1];
+}
+test {
+    const foo: [*c]const u3 = &[_]u3{ 4, 5 };
+    var bar: usize, var baz: usize = .{ 0, 1 };
+    const foobar0 = foo[bar..baz];
+    const foobar1 = foo[0..1];
+}

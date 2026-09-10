@@ -726,7 +726,36 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             }
         }
 
-        is ZigSlice -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
+        is ZigSlice -> {
+            // TODO: if the indexes are non-comptime, return a slice instead of an array of unknown length
+            val length = ZigUnknown.ofUnknownType()
+            var sentinel: ZigValue? = null
+            val sentinelElement = element.sentinelElement?.innerElement
+            if (sentinelElement != null) {
+                sentinel = resolveValues(sentinelElement).singleOrNull() ?: ZigUnknown.ofUnknownType()
+            }
+            resolveValues(element.sliced).asSequence().map { sliced ->
+                val childType = when (val typeOfSliced = sliced.typeOf) {
+                    is ZigArrayType -> typeOfSliced.child
+
+                    is ZigPointerType -> when (typeOfSliced.size) {
+                        ZigPointerSize.ONE -> when (val pointerChild = typeOfSliced.child) {
+                            is ZigArrayType -> pointerChild.child
+                            else -> ZigUnknown.ofUnknownType() // TODO
+                        }
+
+                        ZigPointerSize.MANY,
+                        ZigPointerSize.SLICE,
+                        ZigPointerSize.C -> typeOfSliced.child
+                    }
+
+                    else -> ZigUnknown.ofUnknownType()
+                }
+                val arrayType = ZigArrayType(length, sentinel, childType)
+                val pointerType = ZigPointerType(ZigPointerSize.ONE, null, arrayType)
+                ZigUnknown.of(pointerType)
+            }
+        }
 
         is ZigAdd -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
         is ZigAddSat -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO

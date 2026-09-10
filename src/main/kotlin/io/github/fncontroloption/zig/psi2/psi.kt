@@ -1012,12 +1012,39 @@ class ZigShr(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
 }
 
 class ZigSlice(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val sliced: ZigElement
+        get() =
+            firstChild
+                .siblings()
+                .takeWhile { it.elementType !== ZigTokenType.L_BRACKET }
+                .firstNotNullOf { it as? ZigElement }
+
+    val indexesElement: ZigSliceIndexes
+        get() = findNotNullChildByClass(ZigSliceIndexes::class.java)
+
+    val sentinelElement: ZigSliceSentinel?
+        get() = findChildByClass(ZigSliceSentinel::class.java)
 }
 
 class ZigSliceIndexes(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val start: ZigElement
+        get() =
+            firstChild
+                .siblings()
+                .takeWhile { it.elementType !== ZigTokenType.ELLIPSIS2 }
+                .firstNotNullOf { it as? ZigElement }
+
+    val end: ZigElement?
+        get() =
+            lastChild
+                .siblings(forward = false)
+                .takeWhile { it.elementType !== ZigTokenType.ELLIPSIS2 }
+                .firstNotNullOfOrNull { it as? ZigElement }
 }
 
 class ZigSliceSentinel(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val innerElement: ZigElement?
+        get() = findChildByClass(ZigElement::class.java)
 }
 
 class ZigStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
