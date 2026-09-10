@@ -11,6 +11,7 @@ import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
+import com.intellij.psi.util.findParentInFile
 import com.intellij.psi.util.findParentOfType
 import io.github.fncontroloption.zig.psi2.*
 import org.jsoup.Jsoup
@@ -1475,7 +1476,29 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             resolveValues(typeElement).asSequence()
         }
 
-        is ZigBreak -> sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
+        is ZigBreak -> {
+            if (parentElement.breakValue !== childElement) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            val label = parentElement.labelRef?.identifierElement?.text
+            val breakable = if (label != null) {
+                parentElement.findParentInFile { it is ZigLabelable && label == it.labelDecl?.identifierElement?.text }
+            } else {
+                var foundThenElemAsChild = false
+                parentElement.findParentInFile { current ->
+                    if (foundThenElemAsChild && (current is ZigFor || current is ZigWhile)) {
+                        true
+                    } else {
+                        foundThenElemAsChild = current is ZigThenElement
+                        false
+                    }
+                }
+            }
+            if (breakable !is ZigElement) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            inferResultTypes(breakable)
+        }
 
         is ZigCall -> {
             if (parentElement.functionElement !== childElement) {
