@@ -108,6 +108,14 @@ sealed interface ZigLabelable : ZigElement {
         get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigLabelDecl }
 }
 
+sealed interface ZigLoop : ZigLabelable {
+    val thenElement: ZigThenElement
+        get() = firstChild.siblings().firstNotNullOf { it as? ZigThenElement }
+
+    val elseElement: ZigElseElement?
+        get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigElseElement }
+}
+
 sealed interface ZigModifier : ZigElement {
     val expression: ZigElement?
         get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigElement }
@@ -696,7 +704,7 @@ class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigFnDeclOrProto, ZigNamedEl
 
 class ZigFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnDeclOrProto
 
-class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
+class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop {
     val inputs: Sequence<ZigForInput>
         get() = firstChild.siblings().filterIsInstance<ZigForInput>()
 
@@ -1230,7 +1238,7 @@ class ZigVarProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
-class ZigWhile(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
+class ZigWhile(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop {
     val conditionElement: ZigConditionElement
         get() = findNotNullChildByClass(ZigConditionElement::class.java)
 

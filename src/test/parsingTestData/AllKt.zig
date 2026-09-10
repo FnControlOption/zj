@@ -367,3 +367,19 @@ test {
     foo32.@"0" = .a;
     foo32.@"1" = .{ .foo = bar };
 }
+test {
+    const foobar = blk: for (undefined..undefined) |_| {
+        if (undefined) {
+            break :blk @as(u2, 3);
+        }
+        break @as(u4, 5);
+    } else @as(u6, 7);
+}
+test {
+    const foobar = blk: while (undefined) {
+        if (undefined) {
+            break :blk @as(u2, 3);
+        }
+        break @as(u4, 5);
+    } else @as(u6, 7);
+}
