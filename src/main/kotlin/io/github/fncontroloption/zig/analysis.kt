@@ -1414,9 +1414,13 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             inferResultTypes(parentElement.parent as ZigElement)
         }
 
-        is ZigOrelse -> sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
-
-        is ZigCatch -> sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
+        is ZigOrelse,
+        is ZigCatch -> {
+            if (parentElement.rightOperand !== childElement) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            inferResultTypes(parentElement)
+        }
 
         is ZigAddressOf -> {
             if (parentElement.operand !== childElement) {
