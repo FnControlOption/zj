@@ -1342,7 +1342,24 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             resolveValues(parentElement.leftElement).asSequence().map { it.typeOf }
         }
 
-        is ZigAssignDestructure -> sequenceOf(ZigUnknown.of(ZigTypeType)) // TODO
+        is ZigAssignDestructure -> {
+            if (parentElement.initializer !== childElement) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            val fields = parentElement.variables.map { variable ->
+                val types = when (variable) {
+                    is ZigVarProto -> {
+                        val typeElement = variable.typeElement?.innerElement
+                            ?: return@map ZigUnknown.of(ZigTypeType)
+                        resolveValues(typeElement).asSequence()
+                    }
+                    else -> resolveValues(variable).asSequence().map { it.typeOf }
+                }
+                // For efficiency, limit each field to a single possible type.
+                types.singleOrNull() ?: ZigUnknown.of(ZigTypeType)
+            }
+            sequenceOf(ZigTupleType(fields.toList()))
+        }
 
         is ZigListInitItem -> {
             if (parentElement.expression !== childElement) {
