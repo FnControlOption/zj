@@ -1263,6 +1263,7 @@ private fun computeCalledFuncAndArgs(callElement: ZigCall): Sequence<Triple<ZigV
     }
 }
 
+// TODO: can this return `emptySequence()` instead of `sequenceOf(ZigUnknown.ofUnknownType() to null)`?
 private fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<ZigValue, ZigValue?>> {
     return when (val functionElement = callElement.functionElement) {
         is ZigFieldAccess -> {
@@ -1292,7 +1293,12 @@ private fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<Zig
             }
         }
 
-        is ZigEnumLiteral -> sequenceOf(ZigUnknown.ofUnknownType() to null) // TODO
+        is ZigEnumLiteral -> {
+            resolveReferences(functionElement)
+                .filterIsInstance<ZigElement>()
+                .flatMap { resolveValuesFromReferenceTo(it).asSequence() }
+                .map { it to null }
+        }
 
         else -> resolveValues(functionElement).asSequence().map { it to null }
     }
