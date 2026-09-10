@@ -1122,97 +1122,11 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
         }
 
         is ZigPayloadItem -> {
-            // TODO: val isPointer = target.isPointer
-            when (val payloadElement = target.containingPayload) {
-                is ZigThenPayload -> {
-                    val conditionElement =
-                        payloadElement.containingIf?.conditionElement?.innerElement
-                            ?: payloadElement.containingWhile?.conditionElement?.innerElement
-                            ?: return sequenceOf(ZigUnknown.ofUnknownType())
-                    resolveValues(conditionElement).asSequence().map { condition ->
-                        when (val typeOfCondition = condition.typeOf) {
-                            is ZigOptionalType -> ZigUnknown.of(typeOfCondition.child)
-                            is ZigErrorUnionType -> ZigUnknown.of(typeOfCondition.payload)
-                            else -> ZigUnknown.ofUnknownType()
-                        }
-                    }
-                }
-
-                is ZigElsePayload -> {
-                    val conditionElement =
-                        payloadElement.containingIf?.conditionElement?.innerElement
-                            ?: payloadElement.containingWhile?.conditionElement?.innerElement
-                            ?: return sequenceOf(ZigUnknown.ofUnknownType())
-                    resolveValues(conditionElement).asSequence().map { condition ->
-                        when (val typeOfCondition = condition.typeOf) {
-                            is ZigErrorUnionType -> ZigUnknown.of(typeOfCondition.errorSet)
-                            else -> ZigUnknown.ofUnknownType()
-                        }
-                    }
-                }
-
-                is ZigCatchPayload -> {
-                    val leftElement = payloadElement.containingCatch.leftOperand
-                    resolveValues(leftElement).asSequence().map { condition ->
-                        when (val typeOfCondition = condition.typeOf) {
-                            is ZigErrorUnionType -> ZigUnknown.of(typeOfCondition.errorSet)
-                            else -> ZigUnknown.ofUnknownType()
-                        }
-                    }
-                }
-
-                is ZigSwitchPayload -> when (payloadElement.items.indexOf(target)) {
-                    0 -> {
-                        val switchProngElement = payloadElement.containingSwitchProng
-                        val switchItemElements = switchProngElement.items.map { it.innerElement }.toList()
-                        if (switchItemElements.isNotEmpty()) {
-                            val switchItemValues = switchItemElements.map { resolveValues(it) }
-                            if (switchItemValues.all { it.singleOrNull() is ZigErrorSetValue }) {
-                                val names = switchItemValues.map { (it.single() as ZigErrorSetValue).name }
-                                return sequenceOf(ZigUnknown.of(ZigErrorSetType(names.toSortedSet())))
-                            }
-                        }
-                        val switchElement = switchProngElement.containingSwitch
-                        val conditionElement = switchElement.conditionElement.innerElement
-                            ?: return sequenceOf(ZigUnknown.ofUnknownType())
-                        val conditionValues = resolveValues(conditionElement)
-                        if (conditionValues.none { isTaggedUnionType(it.typeOf) }) {
-                            return conditionValues.asSequence().map { ZigUnknown.of(it.typeOf) }
-                        }
-                        // TODO: peer type resolution
-                        switchItemElements.asSequence().flatMap { itemElement ->
-                            resolveReferences(itemElement)
-                                .filterIsInstance<ZigElement>()
-                                .flatMap { resolveValuesFromReferenceTo(it).asSequence() }
-                        }.ifEmpty { sequenceOf(ZigUnknown.ofUnknownType()) }
-                    }
-                    1 -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-                    else -> sequenceOf(ZigUnknown.ofUnknownType())
-                }
-
-                is ZigForPayload -> {
-                    val payloadIndex = payloadElement.items.indexOf(target)
-                    val forInputs = payloadElement.containingFor.inputs
-                    val inputElement = forInputs.elementAtOrNull(payloadIndex)?.innerElement
-                        ?: return sequenceOf(ZigUnknown.ofUnknownType())
-                    if (inputElement is ZigForRange) {
-                        return sequenceOf(ZigUnknown.of(ZigUsizeType))
-                    }
-                    resolveValues(inputElement).asSequence().map { input ->
-                        when (val typeOfInput = input.typeOf) {
-                            is ZigArrayType -> ZigUnknown.of(typeOfInput.child)
-                            is ZigPointerType -> when (typeOfInput.size) {
-                                ZigPointerSize.SLICE -> ZigUnknown.of(typeOfInput.child)
-                                ZigPointerSize.ONE -> when (typeOfInput.child) {
-                                    is ZigArrayType -> ZigUnknown.of(typeOfInput.child)
-                                    else -> ZigUnknown.ofUnknownType()
-                                }
-                                else -> ZigUnknown.ofUnknownType()
-                            }
-                            else -> ZigUnknown.ofUnknownType()
-                        }
-                    }
-                }
+            val values = computePayloadItemValues(target)
+            if (target.isPointer) {
+                values.map { ZigUnknown.of(ZigPointerType(ZigPointerSize.ONE, null, it.typeOf)) }
+            } else {
+                values
             }
         }
 
@@ -1678,6 +1592,100 @@ private fun createNamedHtmlChunkStartingFrom(element: PsiElement, typeParams: Ma
             HtmlChunk.fragment(parentChunk, HtmlChunk.text("."), elementChunk)
         }
         else -> parentChunk
+    }
+}
+
+private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigValue> {
+    return when (val payloadElement = payloadItem.containingPayload) {
+        is ZigThenPayload -> {
+            val conditionElement =
+                payloadElement.containingIf?.conditionElement?.innerElement
+                    ?: payloadElement.containingWhile?.conditionElement?.innerElement
+                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
+            resolveValues(conditionElement).asSequence().map { condition ->
+                when (val typeOfCondition = condition.typeOf) {
+                    is ZigOptionalType -> ZigUnknown.of(typeOfCondition.child)
+                    is ZigErrorUnionType -> ZigUnknown.of(typeOfCondition.payload)
+                    else -> ZigUnknown.ofUnknownType()
+                }
+            }
+        }
+
+        is ZigElsePayload -> {
+            val conditionElement =
+                payloadElement.containingIf?.conditionElement?.innerElement
+                    ?: payloadElement.containingWhile?.conditionElement?.innerElement
+                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
+            resolveValues(conditionElement).asSequence().map { condition ->
+                when (val typeOfCondition = condition.typeOf) {
+                    is ZigErrorUnionType -> ZigUnknown.of(typeOfCondition.errorSet)
+                    else -> ZigUnknown.ofUnknownType()
+                }
+            }
+        }
+
+        is ZigCatchPayload -> {
+            val leftElement = payloadElement.containingCatch.leftOperand
+            resolveValues(leftElement).asSequence().map { condition ->
+                when (val typeOfCondition = condition.typeOf) {
+                    is ZigErrorUnionType -> ZigUnknown.of(typeOfCondition.errorSet)
+                    else -> ZigUnknown.ofUnknownType()
+                }
+            }
+        }
+
+        is ZigSwitchPayload -> when (payloadElement.items.indexOf(payloadItem)) {
+            0 -> {
+                val switchProngElement = payloadElement.containingSwitchProng
+                val switchItemElements = switchProngElement.items.map { it.innerElement }.toList()
+                if (switchItemElements.isNotEmpty()) {
+                    val switchItemValues = switchItemElements.map { resolveValues(it) }
+                    if (switchItemValues.all { it.singleOrNull() is ZigErrorSetValue }) {
+                        val names = switchItemValues.map { (it.single() as ZigErrorSetValue).name }
+                        return sequenceOf(ZigUnknown.of(ZigErrorSetType(names.toSortedSet())))
+                    }
+                }
+                val switchElement = switchProngElement.containingSwitch
+                val conditionElement = switchElement.conditionElement.innerElement
+                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                val conditionValues = resolveValues(conditionElement)
+                if (conditionValues.none { isTaggedUnionType(it.typeOf) }) {
+                    return conditionValues.asSequence().map { ZigUnknown.of(it.typeOf) }
+                }
+                // TODO: peer type resolution
+                switchItemElements.asSequence().flatMap { itemElement ->
+                    resolveReferences(itemElement)
+                        .filterIsInstance<ZigElement>()
+                        .flatMap { resolveValuesFromReferenceTo(it).asSequence() }
+                }.ifEmpty { sequenceOf(ZigUnknown.ofUnknownType()) }
+            }
+            1 -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
+            else -> sequenceOf(ZigUnknown.ofUnknownType())
+        }
+
+        is ZigForPayload -> {
+            val payloadIndex = payloadElement.items.indexOf(payloadItem)
+            val forInputs = payloadElement.containingFor.inputs
+            val inputElement = forInputs.elementAtOrNull(payloadIndex)?.innerElement
+                ?: return sequenceOf(ZigUnknown.ofUnknownType())
+            if (inputElement is ZigForRange) {
+                return sequenceOf(ZigUnknown.of(ZigUsizeType))
+            }
+            resolveValues(inputElement).asSequence().map { input ->
+                when (val typeOfInput = input.typeOf) {
+                    is ZigArrayType -> ZigUnknown.of(typeOfInput.child)
+                    is ZigPointerType -> when (typeOfInput.size) {
+                        ZigPointerSize.SLICE -> ZigUnknown.of(typeOfInput.child)
+                        ZigPointerSize.ONE -> when (typeOfInput.child) {
+                            is ZigArrayType -> ZigUnknown.of(typeOfInput.child)
+                            else -> ZigUnknown.ofUnknownType()
+                        }
+                        else -> ZigUnknown.ofUnknownType()
+                    }
+                    else -> ZigUnknown.ofUnknownType()
+                }
+            }
+        }
     }
 }
 
