@@ -1089,6 +1089,11 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
                             else -> ZigUnknown.of(fieldType)
                         }
                     }
+
+                    is ZigArrayType -> ZigUnknown.of(typeOfInit.child)
+
+                    // TODO: destructure vector
+
                     else -> ZigUnknown.ofUnknownType()
                 }
             }

@@ -383,3 +383,6 @@ test {
         break @as(u4, 5);
     } else @as(u6, 7);
 }
+test {
+    const foobar0, const foobar1 = [2]u3{ 4, 5 };
+}
