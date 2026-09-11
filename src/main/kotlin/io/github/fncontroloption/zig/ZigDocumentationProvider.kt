@@ -114,6 +114,9 @@ private fun hasValue(element: PsiElement): Boolean {
 }
 
 private fun findDoc(element: PsiElement): String? {
+    if (element is ZigFile) {
+        return findFileDoc(element)
+    }
     val list = mutableListOf<String>()
     var prev = element.prevSibling
     while (true) {
@@ -134,5 +137,28 @@ private fun findDoc(element: PsiElement): String? {
         return null
     }
     list.reverse()
+    return list.joinToString("")
+}
+
+private fun findFileDoc(element: PsiElement): String? {
+    val list = mutableListOf<String>()
+    var child = element.firstChild
+    while (true) {
+        when (child) {
+            is PsiComment if child.tokenType == ZigTokenType.CONTAINER_DOC_COMMENT -> {
+                val text = child.text
+                assert(text.startsWith("//!"))
+                list.add(text.substring(3))
+            }
+            is PsiWhiteSpace -> {
+                // no-op
+            }
+            else -> break
+        }
+        child = child.nextSibling
+    }
+    if (list.isEmpty()) {
+        return null
+    }
     return list.joinToString("")
 }
