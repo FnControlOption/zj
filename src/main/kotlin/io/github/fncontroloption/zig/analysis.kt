@@ -1,6 +1,8 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.codeInsight.documentation.DocumentationManagerProtocol
+import com.intellij.openapi.editor.colors.TextAttributesKey
+import com.intellij.openapi.editor.richcopy.HtmlSyntaxInfoUtil
 import com.intellij.openapi.util.RecursionManager
 import com.intellij.openapi.util.text.HtmlBuilder
 import com.intellij.openapi.util.text.HtmlChunk
@@ -14,6 +16,7 @@ import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.findParentInFile
 import com.intellij.psi.util.findParentOfType
 import io.github.fncontroloption.zig.psi2.*
+import io.github.fncontroloption.zig.syntaxHighlighter.ZigHighlightingColors
 import org.jsoup.Jsoup
 
 object ZigAnalyzer {
@@ -46,12 +49,15 @@ sealed interface ZigValue {
 class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigValue {
     override fun toHtmlChunk(): HtmlChunk {
         if (typeOf is ZigUnknown && typeOf.typeOf == ZigTypeType) {
-            return HtmlChunk.text("_")
+            return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
         }
         return HtmlChunk.fragment(
-            HtmlChunk.text("@as("),
+            createStyledHtmlChunk(ZigHighlightingColors.BUILTIN, "@as"),
+            HtmlChunk.text("("),
             typeOf.toHtmlChunk(),
-            HtmlChunk.text(", _)")
+            HtmlChunk.text(", "),
+            createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_"),
+            HtmlChunk.text(")")
         )
     }
 
@@ -76,84 +82,94 @@ data object ZigTypeType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("type")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "type")
 }
 
 data object ZigAnyerrorType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("anyerror")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "anyerror")
 }
 
 data object ZigAnyopaqueType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("anyopaque")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "anyopaque")
 }
 
 data object ZigBoolType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("bool")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "bool")
 }
 
 data object ZigFalseValue : ZigValue {
     override val typeOf: ZigBoolType
         get() = ZigBoolType
 
-    override fun toHtmlChunk() = HtmlChunk.text("false")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "false")
 }
 
 data object ZigTrueValue : ZigValue {
     override val typeOf: ZigBoolType
         get() = ZigBoolType
 
-    override fun toHtmlChunk() = HtmlChunk.text("true")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "true")
 }
 
 data object ZigNullType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("@TypeOf(null)")
+    override fun toHtmlChunk() = HtmlChunk.fragment(
+        createStyledHtmlChunk(ZigHighlightingColors.BUILTIN, "@TypeOf"),
+        HtmlChunk.text("("),
+        createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "null"),
+        HtmlChunk.text(")")
+    )
 }
 
 data object ZigNullValue : ZigValue {
     override val typeOf: ZigNullType
         get() = ZigNullType
 
-    override fun toHtmlChunk() = HtmlChunk.text("null")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "null")
 }
 
 data object ZigNoreturnType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("noreturn")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "noreturn")
 }
 
 data object ZigUndefinedType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("@TypeOf(undefined)")
+    override fun toHtmlChunk() = HtmlChunk.fragment(
+        createStyledHtmlChunk(ZigHighlightingColors.BUILTIN, "@TypeOf"),
+        HtmlChunk.text("("),
+        createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "undefined"),
+        HtmlChunk.text(")")
+    )
 }
 
 data object ZigUndefinedValue : ZigValue {
     override val typeOf: ZigUndefinedType
         get() = ZigUndefinedType
 
-    override fun toHtmlChunk() = HtmlChunk.text("undefined")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "undefined")
 }
 
 data object ZigVoidType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("void")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "void")
 }
 
 data object ZigVoidValue : ZigValue {
@@ -167,7 +183,10 @@ data object ZigEnumLiteralType : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("@EnumLiteral()")
+    override fun toHtmlChunk() = HtmlChunk.fragment(
+        createStyledHtmlChunk(ZigHighlightingColors.BUILTIN, "@EnumLiteral"),
+        HtmlChunk.text("()")
+    )
 }
 
 data class ZigContainerType(
@@ -189,7 +208,8 @@ data class ZigFunctionType(
 
     override fun toHtmlChunk(): HtmlChunk {
         val builder = HtmlBuilder()
-        builder.append("fn (")
+        builder.append(createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "fn"))
+        builder.append(" (")
         for ((i, param) in element.parameters.withIndex()) {
             if (i > 0) {
                 builder.append(", ")
@@ -198,7 +218,7 @@ data class ZigFunctionType(
             if (paramType != null) {
                 builder.append(paramType.toHtmlChunk())
             } else {
-                builder.append("_")
+                builder.append(createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_"))
             }
         }
         builder.append(") ")
@@ -206,7 +226,7 @@ data class ZigFunctionType(
         if (returnType != null) {
             builder.append(returnType.toHtmlChunk())
         } else {
-            builder.append("_")
+            builder.append(createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_"))
         }
         return builder.toFragment()
     }
@@ -216,7 +236,10 @@ data class ZigTypeParamType(val element: ZigParamDecl) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text(element.name ?: "_")
+    override fun toHtmlChunk(): HtmlChunk {
+        val name = element.name ?: return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
+        return createStyledHtmlChunk(ZigHighlightingColors.TYPE_PARAMETER, name)
+    }
 }
 
 data class ZigOptionalType(val child: ZigValue) : ZigValue {
@@ -230,25 +253,36 @@ data class ZigErrorSetType(val names: Set<String>) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text(buildString {
-        append("error{")
+    override fun toHtmlChunk(): HtmlChunk {
+        val builder = HtmlBuilder()
+        builder.append(createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "error"))
+        builder.append("{")
         for ((i, name) in names.withIndex()) {
             if (i > 0) {
-                append(',')
+                builder.append(",")
             }
-            append(name)
+            builder.append(name)
         }
-        append('}')
-    })
+        builder.append("}")
+        return builder.toFragment()
+    }
 }
 
 data class ZigErrorSetValue(override val typeOf: ZigErrorSetType, val name: String) : ZigValue {
     override fun toHtmlChunk() = when (typeOf.names.singleOrNull()) {
-        name -> HtmlChunk.text("error.$name")
+        name -> HtmlChunk.fragment(
+            createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "error"),
+            HtmlChunk.text("."),
+            HtmlChunk.text(name)
+        )
         else -> HtmlChunk.fragment(
-            HtmlChunk.text("@as("),
+            createStyledHtmlChunk(ZigHighlightingColors.BUILTIN, "@as"),
+            HtmlChunk.text("("),
             typeOf.toHtmlChunk(),
-            HtmlChunk.text(", error.$name)")
+            HtmlChunk.text(", "),
+            createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "error"),
+            HtmlChunk.text("."),
+            HtmlChunk.text(name)
         )
     }
 }
@@ -320,7 +354,8 @@ data class ZigTupleType(val fields: List<ZigValue>) : ZigValue {
 
     override fun toHtmlChunk(): HtmlChunk {
         val builder = HtmlBuilder()
-        builder.append("struct { ")
+        builder.append(createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "struct"))
+        builder.append(" { ")
         for ((i, field) in fields.withIndex()) {
             if (i > 0) {
                 builder.append(", ")
@@ -340,21 +375,21 @@ data object ZigComptimeFloatType : ZigFloatType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("comptime_float")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "comptime_float")
 }
 
 data class ZigFixedFloatType(val bits: Int) : ZigFloatType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("f${bits}")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "f${bits}")
 }
 
 data object ZigCLongDoubleType : ZigFloatType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("c_longdouble")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "c_longdouble")
 }
 
 sealed interface ZigIntType : ZigValue {
@@ -363,11 +398,14 @@ sealed interface ZigIntType : ZigValue {
 
 data class ZigIntValue(override val typeOf: ZigIntType, val value: Int) : ZigValue {
     override fun toHtmlChunk() = when (typeOf) {
-        ZigComptimeIntType -> HtmlChunk.text("$value")
+        ZigComptimeIntType -> createStyledHtmlChunk(ZigHighlightingColors.NUMBER, value.toString())
         else -> HtmlChunk.fragment(
-          HtmlChunk.text("@as("),
+            createStyledHtmlChunk(ZigHighlightingColors.BUILTIN, "@as"),
+            HtmlChunk.text("("),
             typeOf.toHtmlChunk(),
-            HtmlChunk.text(", $value)"),
+            HtmlChunk.text(", "),
+            createStyledHtmlChunk(ZigHighlightingColors.NUMBER, value.toString()),
+            HtmlChunk.text(")")
         )
     }
 }
@@ -376,7 +414,7 @@ data object ZigComptimeIntType : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("comptime_int")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "comptime_int")
 }
 
 enum class ZigSignedness { SIGNED, UNSIGNED }
@@ -386,8 +424,8 @@ data class ZigFixedIntType(val signedness: ZigSignedness, val bits: Int) : ZigIn
         get() = ZigTypeType
 
     override fun toHtmlChunk() = when (signedness) {
-        ZigSignedness.SIGNED -> HtmlChunk.text("i${bits}")
-        ZigSignedness.UNSIGNED -> HtmlChunk.text("u${bits}")
+        ZigSignedness.SIGNED -> createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "i${bits}")
+        ZigSignedness.UNSIGNED -> createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "u${bits}")
     }
 }
 
@@ -395,49 +433,49 @@ data object ZigIsizeType : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("isize")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "isize")
 }
 
 data object ZigUsizeType : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("usize")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "usize")
 }
 
 data object ZigCCharType : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("c_char")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "c_char")
 }
 
 data class ZigCShortType(val signedness: ZigSignedness) : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("c_short")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "c_short")
 }
 
 data class ZigCIntType(val signedness: ZigSignedness) : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("c_int")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "c_int")
 }
 
 data class ZigCLongType(val signedness: ZigSignedness) : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("c_long")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "c_long")
 }
 
 data class ZigCLongLongType(val signedness: ZigSignedness) : ZigIntType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk() = HtmlChunk.text("c_longlong")
+    override fun toHtmlChunk() = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "c_longlong")
 }
 
 private fun resolveValues(element: ZigElement): Set<ZigValue> {
@@ -1534,7 +1572,13 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
     }
 }
 
-private fun createNamedChildHtmlChunk(element: PsiNamedElement): HtmlChunk {
+private fun createStyledHtmlChunk(attributesKey: TextAttributesKey, value: String): HtmlChunk {
+    val sb = StringBuilder()
+    HtmlSyntaxInfoUtil.appendStyledSpan(sb, attributesKey, value, 1f)
+    return HtmlChunk.raw(sb.toString())
+}
+
+private fun createNamedChildHtmlChunk(element: PsiNamedElement, attributesKey: TextAttributesKey): HtmlChunk {
     val name = element.name
     if (name != null) {
         val target = buildString {
@@ -1543,9 +1587,9 @@ private fun createNamedChildHtmlChunk(element: PsiNamedElement): HtmlChunk {
             append(ZIG_DOCUMENTATION_OFFSET_SEPARATOR)
             append(element.textOffset)
         }
-        return HtmlChunk.link(target, name)
+        return HtmlChunk.link(target, createStyledHtmlChunk(attributesKey, name))
     } else {
-        return HtmlChunk.text("_")
+        return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
     }
 }
 
@@ -1560,19 +1604,20 @@ private fun createNamedHtmlChunkStartingFrom(element: PsiElement, typeParams: Ma
                     append(DocumentationManagerProtocol.PSI_ELEMENT_PROTOCOL)
                     append(element.viewProvider.virtualFile.url)
                 }
-                HtmlChunk.link(target, text)
+                HtmlChunk.link(target, createStyledHtmlChunk(ZigHighlightingColors.CONSTANT, text))
             }
 
             is ZigContainerDecl -> when (val parent = element.parent!!) {
                 is ZigVarDecl if parent.initializer == element -> {
                     val grandparent = parent.parent!!
                     val grandparentChunk = createNamedHtmlChunkStartingFrom(grandparent, typeParams)
-                    val parentChunk = createNamedChildHtmlChunk(parent)
+                    val parentChunk = createNamedChildHtmlChunk(parent, ZigHighlightingColors.CONSTANT)
                     HtmlChunk.fragment(grandparentChunk, HtmlChunk.text("."), parentChunk)
                 }
 
                 is ZigReturn if parent.returnValue == element -> {
-                    val fnDecl = parent.findParentOfType<ZigFnDecl>() ?: return HtmlChunk.text("_")
+                    val fnDecl = parent.findParentOfType<ZigFnDecl>()
+                        ?: return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
                     val fnChunk = createNamedHtmlChunkStartingFrom(fnDecl, typeParams)
                     val builder = HtmlBuilder()
                     builder.append(fnChunk)
@@ -1586,7 +1631,7 @@ private fun createNamedHtmlChunkStartingFrom(element: PsiElement, typeParams: Ma
                         if (typeArg != null && typeArg != typeParam) {
                             builder.append(typeArg.toHtmlChunk())
                         } else {
-                            builder.append("_")
+                            builder.append(createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_"))
                         }
                     }
                     builder.append(")")
@@ -1611,18 +1656,24 @@ private fun createNamedHtmlChunkStartingFrom(element: PsiElement, typeParams: Ma
     val parentChunk = createNamedHtmlChunkStartingFrom(parent, typeParams)
     return when (element) {
         is ZigTestDecl -> {
-            val testChunk = HtmlChunk.text("test") // TODO: `test` -> `test_{0,1,etc.}`, `test "foo"` -> `test.foo`, `test foo` -> `decltest.foo`
+            // TODO: `test` -> `test_{0,1,etc.}`, `test "foo"` -> `test.foo`, `test foo` -> `decltest.foo`
+            val testChunk = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "test")
             HtmlChunk.fragment(parentChunk, HtmlChunk.text("."), testChunk)
         }
         is ZigComptime if parent is ZigContainer -> {
-            HtmlChunk.fragment(parentChunk, HtmlChunk.text(".comptime"))
+            val comptimeChunk = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "comptime")
+            HtmlChunk.fragment(parentChunk, HtmlChunk.text("."), comptimeChunk)
         }
         is ZigVarDecl if parent is ZigContainer -> {
-            val elementChunk = createNamedChildHtmlChunk(element)
+            val attributesKey = when (element.mutability) {
+                ZigMutability.CONST -> ZigHighlightingColors.CONSTANT
+                ZigMutability.VAR -> ZigHighlightingColors.STATIC_FIELD
+            }
+            val elementChunk = createNamedChildHtmlChunk(element, attributesKey)
             HtmlChunk.fragment(parentChunk, HtmlChunk.text("."), elementChunk)
         }
         is ZigFnDecl -> {
-            val elementChunk = createNamedChildHtmlChunk(element)
+            val elementChunk = createNamedChildHtmlChunk(element, ZigHighlightingColors.STATIC_METHOD)
             HtmlChunk.fragment(parentChunk, HtmlChunk.text("."), elementChunk)
         }
         else -> parentChunk
