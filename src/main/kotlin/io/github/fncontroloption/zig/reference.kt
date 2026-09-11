@@ -120,6 +120,21 @@ class ZigLabelReference(element: ZigLabelRef) :
 
     override fun handleElementRename(newElementName: String) =
         replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
+
+    override fun getVariants(): Array<out LookupElement> {
+        val variants = mutableSetOf<LookupElement>()
+        var parent = myElement.parent
+        while (parent != null) {
+            if (parent is ZigLabelable) {
+                val labelDecl = parent.labelDecl
+                if (labelDecl != null) {
+                    variants.add(LookupElementBuilder.create(labelDecl))
+                }
+            }
+            parent = parent.parent
+        }
+        return variants.toTypedArray()
+    }
 }
 
 /* TODO
