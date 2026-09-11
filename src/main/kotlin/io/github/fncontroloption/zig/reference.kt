@@ -62,67 +62,25 @@ fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
     return cached.asSequence()
 }
 
-private fun resolveIdentifierReference(element: PsiElement): ZigElement? {
-    val name = element.text
-    var element = element
-    var parent = element.parent
-    while (parent != null) {
-        val target = when (parent) {
-            is ZigContainer -> {
-                val member = parent.members.firstOrNull {
-                    it is PsiNameIdentifierOwner && it.name == name
-                }
-                if (member is ZigContainerField) null else member
-            }
-
-            is ZigFnDecl -> parent.parameters.firstOrNull { it.name == name }
-
-            is ZigBlock -> parent.statements.firstNotNullOfOrNull { statement ->
-                when (statement) {
-                    is ZigVarDecl -> if (statement.name == name) statement else null
-
-                    is ZigAssignDestructure -> statement.variables.firstOrNull { variable ->
-                        variable is ZigVarProto && variable.name == name
-                    }
-
-                    else -> null
-                }
-            }
-
-            is ZigThenElement -> parent.payload?.items?.firstOrNull { it.name == name }
-
-            is ZigElseElement -> parent.payload?.items?.firstOrNull { it.name == name }
-
-            is ZigSwitchProng if element !is ZigSwitchItem ->
-                parent.payload?.items?.firstOrNull { it.name == name }
-
-            is ZigCatch if element !== parent.leftOperand ->
-                parent.payload?.items?.firstOrNull { it.name == name }
-
-            else -> null
-        }
-        if (target != null) {
-            return target
-        }
-        element = parent
-        parent = parent.parent
-    }
-    return null
-}
-
 class ZigIdentifierReference(element: ZigIdentifier) :
     PsiReferenceBase<ZigIdentifier>(element, TextRange(0, element.textLength), true) {
 
-    override fun resolve() = resolveIdentifierReference(myElement)
+    override fun resolve(): PsiElement? {
+        val name = myElement.text
+        return identifierReferenceCandidates(myElement).firstOrNull { it.name == name }
+    }
 
     override fun handleElementRename(newElementName: String) =
         replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
 }
 
-class ZigTestReference(element: ZigTestDecl, val name: PsiElement) :
-    PsiReferenceBase<ZigTestDecl>(element, name.textRangeInParent, true) {
+class ZigTestReference(element: ZigTestDecl, val nameElement: PsiElement) :
+    PsiReferenceBase<ZigTestDecl>(element, nameElement.textRangeInParent, true) {
 
-    override fun resolve() = resolveIdentifierReference(name)
+    override fun resolve(): PsiElement? {
+        val name = nameElement.text
+        return identifierReferenceCandidates(nameElement).firstOrNull { it.name == name }
+    }
 
     override fun handleElementRename(newElementName: String) =
         replaceZigIdentifierElement(myElement, myElement.nameElement, newElementName)
@@ -812,4 +770,52 @@ private fun resolveInferredResultTypeReference(types: Sequence<ZigValue>, name: 
         }
     }
     return results.toTypedArray()
+}
+
+private fun identifierReferenceCandidates(element: PsiElement): Sequence<PsiNameIdentifierOwner> {
+    var it: Iterator<PsiNameIdentifierOwner>? = null
+    var element: PsiElement? = element
+    return generateSequence {
+        while (element != null) {
+            if (it?.hasNext() == true) {
+                return@generateSequence it!!.next()
+            }
+            val parent = element!!.parent
+            if (parent == null) {
+                element = null
+                break
+            }
+            val sequence = when (parent) {
+                is ZigContainer ->
+                    parent.members
+                        .filterIsInstance<PsiNameIdentifierOwner>()
+                        .filter { it !is ZigContainerField }
+
+                // TODO: iterate backwards from `element` if it is a function parameter
+                is ZigFnDecl -> parent.parameters
+
+                // TODO: iterate backwards from `element`
+                is ZigBlock -> parent.statements.flatMap { statement ->
+                    when (statement) {
+                        is ZigVarDecl -> sequenceOf(statement)
+                        is ZigAssignDestructure -> statement.variables.filterIsInstance<ZigVarProto>()
+                        else -> emptySequence()
+                    }
+                }
+
+                is ZigThenElement -> parent.payload?.items
+
+                is ZigElseElement -> parent.payload?.items
+
+                is ZigSwitchProng if element !is ZigSwitchItem -> parent.payload?.items
+
+                is ZigCatch if element !== parent.leftOperand -> parent.payload?.items
+
+                else -> null
+            }
+            it = sequence?.iterator()
+            element = element!!.parent
+        }
+        null
+    }
 }
