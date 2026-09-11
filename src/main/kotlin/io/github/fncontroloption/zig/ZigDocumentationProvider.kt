@@ -25,6 +25,19 @@ import io.github.fncontroloption.zig.psi2.ZigVarProto
 const val ZIG_DOCUMENTATION_OFFSET_SEPARATOR = $$"$zigDocumentationOffset$"
 
 class ZigDocumentationProvider : AbstractDocumentationProvider() {
+    override fun getQuickNavigateInfo(element: PsiElement, originalElement: PsiElement?): String? {
+        if (element !is ZigElement) {
+            return null
+        }
+        val definition = getDefinition(element) ?: return null
+        val sb = StringBuilder()
+        HtmlChunk.text(definition)
+            .wrapWith(DocumentationMarkup.PRE_ELEMENT)
+            .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
+            .appendTo(sb)
+        return sb.toString()
+    }
+
     override fun generateDoc(element: PsiElement, originalElement: PsiElement?): String? {
         if (element !is ZigElement) {
             return null
@@ -35,22 +48,27 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
             .wrapWith(DocumentationMarkup.PRE_ELEMENT)
             .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
             .appendTo(sb)
-        for (value in ZigAnalyzer.resolveValuesFromReferenceTo(element)) {
-            var chunk = value.typeOf.toHtmlChunk()
-            if (value !is ZigUnknown) {
-                chunk = HtmlChunk.fragment(chunk, HtmlChunk.text(" = "), value.toHtmlChunk())
+
+        if (hasValue(element)) {
+            for (value in ZigAnalyzer.resolveValuesFromReferenceTo(element)) {
+                var chunk = value.typeOf.toHtmlChunk()
+                if (value !is ZigUnknown) {
+                    chunk = HtmlChunk.fragment(chunk, HtmlChunk.text(" = "), value.toHtmlChunk())
+                }
+                chunk
+                    .wrapWith(DocumentationMarkup.PRE_ELEMENT)
+                    .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
+                    .appendTo(sb)
             }
-            chunk
-                .wrapWith(DocumentationMarkup.PRE_ELEMENT)
-                .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
-                .appendTo(sb)
         }
+
         val doc = findDoc(element)
         if (doc != null) {
             HtmlChunk.raw(convertMarkdownToHtml(doc))
                 .wrapWith(DocumentationMarkup.CONTENT_ELEMENT)
                 .appendTo(sb)
         }
+
         return sb.toString()
     }
 
@@ -74,7 +92,7 @@ private fun getDefinition(element: PsiElement): String? {
             val body = element.body ?: return text
             text.substring(0, body.textRangeInParent.startOffset)
         }
-        is ZigLabelDecl -> element.text
+        is ZigLabelDecl -> element.identifierElement.text
         is ZigParamDecl -> element.text
         is ZigPayloadItem -> element.text
         is ZigVarDecl -> {
@@ -89,6 +107,10 @@ private fun getDefinition(element: PsiElement): String? {
         is ZigVarProto -> element.text
         else -> null
     }
+}
+
+private fun hasValue(element: PsiElement): Boolean {
+    return element !is ZigLabelDecl
 }
 
 private fun findDoc(element: PsiElement): String? {
