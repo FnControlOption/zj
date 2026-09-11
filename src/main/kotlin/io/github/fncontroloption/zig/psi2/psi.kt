@@ -934,6 +934,10 @@ class ZigParamDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement 
     override fun getName() = nameIdentifier?.text
     override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
+
+    override fun isVisibilitySupported() = false
+    override fun getElementIcon(flags: Int) = baseIcon
+    override fun getBaseIcon() = AllIcons.Nodes.Parameter
 }
 
 class ZigPayloadItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement {

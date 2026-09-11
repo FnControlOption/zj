@@ -18,6 +18,7 @@ import com.intellij.psi.ResolveResult
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
+import com.intellij.psi.util.siblings
 import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
 import io.github.fncontroloption.zig.psi2.ZigBlock
@@ -72,6 +73,19 @@ class ZigIdentifierReference(element: ZigIdentifier) :
 
     override fun handleElementRename(newElementName: String) =
         replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
+
+    override fun getVariants(): Array<out LookupElement> {
+        val variants = mutableSetOf<LookupElement>()
+        for (candidate in identifierReferenceCandidates(myElement)) {
+            val value = ZigAnalyzer.resolveValuesFromReferenceTo(candidate as ZigElement).singleOrNull()
+            variants.add(
+                LookupElementBuilder.create(candidate)
+                    .withIcon(candidate.getIcon(0))
+                    .withTypeText(value?.typeOf?.toPlainText())
+            )
+        }
+        return variants.toTypedArray()
+    }
 }
 
 class ZigTestReference(element: ZigTestDecl, val nameElement: PsiElement) :
@@ -780,7 +794,8 @@ private fun identifierReferenceCandidates(element: PsiElement): Sequence<PsiName
             if (it?.hasNext() == true) {
                 return@generateSequence it!!.next()
             }
-            val parent = element!!.parent
+            val child = element!!
+            val parent = child.parent
             if (parent == null) {
                 element = null
                 break
@@ -791,11 +806,9 @@ private fun identifierReferenceCandidates(element: PsiElement): Sequence<PsiName
                         .filterIsInstance<PsiNameIdentifierOwner>()
                         .filter { it !is ZigContainerField }
 
-                // TODO: iterate backwards from `element` if it is a function parameter
-                is ZigFnDecl -> parent.parameters
+                is ZigFnDecl -> parent.parameters.takeWhile { it !== child }
 
-                // TODO: iterate backwards from `element`
-                is ZigBlock -> parent.statements.flatMap { statement ->
+                is ZigBlock -> child.siblings(forward = false, withSelf = false).flatMap { statement ->
                     when (statement) {
                         is ZigVarDecl -> sequenceOf(statement)
                         is ZigAssignDestructure -> statement.variables.filterIsInstance<ZigVarProto>()
@@ -807,14 +820,14 @@ private fun identifierReferenceCandidates(element: PsiElement): Sequence<PsiName
 
                 is ZigElseElement -> parent.payload?.items
 
-                is ZigSwitchProng if element !is ZigSwitchItem -> parent.payload?.items
+                is ZigSwitchProng if child !is ZigSwitchItem -> parent.payload?.items
 
-                is ZigCatch if element !== parent.leftOperand -> parent.payload?.items
+                is ZigCatch if child !== parent.leftOperand -> parent.payload?.items
 
                 else -> null
             }
             it = sequence?.iterator()
-            element = element!!.parent
+            element = parent
         }
         null
     }
