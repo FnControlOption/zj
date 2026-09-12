@@ -202,7 +202,7 @@ data class ZigContainerType(
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk(truncate: Boolean) = createNamedHtmlChunkStartingFrom(element, typeParams, truncate)
+    override fun toHtmlChunk(truncate: Boolean) = createContainerHtmlChunkStartingFrom(element, typeParams, truncate)
 }
 
 data class ZigFunctionType(
@@ -245,10 +245,7 @@ data class ZigTypeParamType(val element: ZigParamDecl) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
-    override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
-        val name = element.name ?: return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
-        return createStyledHtmlChunk(ZigHighlightingColors.TYPE_PARAMETER, name)
-    }
+    override fun toHtmlChunk(truncate: Boolean) = createNamedHtmlChunk(element, ZigHighlightingColors.TYPE_PARAMETER)
 }
 
 data class ZigOptionalType(val child: ZigValue) : ZigValue {
@@ -1622,7 +1619,7 @@ private fun createStyledHtmlChunk(attributesKey: TextAttributesKey, value: Strin
     return HtmlChunk.raw(sb.toString())
 }
 
-private fun createNamedChildHtmlChunk(element: PsiNamedElement, attributesKey: TextAttributesKey): HtmlChunk {
+private fun createNamedHtmlChunk(element: PsiNamedElement, attributesKey: TextAttributesKey): HtmlChunk {
     val name = element.name
     if (name != null) {
         val target = buildString {
@@ -1637,7 +1634,7 @@ private fun createNamedChildHtmlChunk(element: PsiNamedElement, attributesKey: T
     }
 }
 
-private fun createNamedHtmlChunkStartingFrom(
+private fun createContainerHtmlChunkStartingFrom(
     element: PsiElement,
     typeParams: Map<ZigParamDecl, Set<ZigValue>>,
     truncate: Boolean,
@@ -1657,19 +1654,19 @@ private fun createNamedHtmlChunkStartingFrom(
 
             is ZigContainerDecl -> when (val parent = element.parent!!) {
                 is ZigVarDecl if parent.initializer == element -> {
-                    val parentChunk = createNamedChildHtmlChunk(parent, ZigHighlightingColors.CONSTANT)
+                    val parentChunk = createNamedHtmlChunk(parent, ZigHighlightingColors.CONSTANT)
                     if (truncate) {
                         return parentChunk
                     }
                     val grandparent = parent.parent!!
-                    val grandparentChunk = createNamedHtmlChunkStartingFrom(grandparent, typeParams, false)
+                    val grandparentChunk = createContainerHtmlChunkStartingFrom(grandparent, typeParams, false)
                     HtmlChunk.fragment(grandparentChunk, HtmlChunk.text("."), parentChunk)
                 }
 
                 is ZigReturn if parent.returnValue == element -> {
                     val fnDecl = parent.findParentOfType<ZigFnDecl>()
                         ?: return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
-                    val fnChunk = createNamedHtmlChunkStartingFrom(fnDecl, typeParams, truncate)
+                    val fnChunk = createContainerHtmlChunkStartingFrom(fnDecl, typeParams, truncate)
                     val builder = HtmlBuilder()
                     builder.append(fnChunk)
                     builder.append("(")
@@ -1690,7 +1687,7 @@ private fun createNamedHtmlChunkStartingFrom(
                 }
 
                 else -> {
-                    val parentChunk = createNamedHtmlChunkStartingFrom(parent, typeParams, truncate)
+                    val parentChunk = createContainerHtmlChunkStartingFrom(parent, typeParams, truncate)
                     val suffix = when (element.containerKind) {
                         ZigContainerKind.STRUCT -> "__struct"
                         ZigContainerKind.OPAQUE -> "__opaque"
@@ -1717,17 +1714,17 @@ private fun createNamedHtmlChunkStartingFrom(
                 ZigMutability.CONST -> ZigHighlightingColors.CONSTANT
                 ZigMutability.VAR -> ZigHighlightingColors.STATIC_FIELD
             }
-            createNamedChildHtmlChunk(element, attributesKey)
+            createNamedHtmlChunk(element, attributesKey)
         }
         is ZigFnDecl -> {
-            createNamedChildHtmlChunk(element, ZigHighlightingColors.STATIC_METHOD)
+            createNamedHtmlChunk(element, ZigHighlightingColors.STATIC_METHOD)
         }
-        else -> return createNamedHtmlChunkStartingFrom(parent, typeParams, truncate)
+        else -> return createContainerHtmlChunkStartingFrom(parent, typeParams, truncate)
     }
     if (truncate) {
         return elementChunk
     }
-    val parentChunk = createNamedHtmlChunkStartingFrom(parent, typeParams, false)
+    val parentChunk = createContainerHtmlChunkStartingFrom(parent, typeParams, false)
     return HtmlChunk.fragment(parentChunk, HtmlChunk.text("."), elementChunk)
 }
 
