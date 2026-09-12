@@ -168,7 +168,7 @@ class ZigImportReference(element: ZigStringLiteral) :
             when (text) {
                 "std" -> {
                     val enumerator = run {
-                        val file = myElement.containingFile?.virtualFile
+                        val file = myElement.containingFile?.originalFile?.virtualFile
                         if (file != null) {
                             val module = ModuleUtilCore.findModuleForFile(file, myElement.project)
                             if (module != null) {
@@ -194,7 +194,7 @@ class ZigImportReference(element: ZigStringLiteral) :
         }
         val parts = text.split("/")
         val fileName = parts.lastOrNull() ?: return null
-        var directory = myElement.containingFile?.containingDirectory ?: return null
+        var directory = myElement.containingFile?.originalFile?.containingDirectory ?: return null
         parts.subList(0, parts.size - 1).forEach { dirName ->
             if (dirName == "..") {
                 directory = directory.parentDirectory ?: return null
@@ -224,7 +224,8 @@ class ZigImportReference(element: ZigStringLiteral) :
     override fun bindToElement(element: PsiElement): PsiElement {
         val psiFile = element as? PsiFile ?: throw IncorrectOperationException()
         val importedFile = psiFile.virtualFile ?: throw IncorrectOperationException()
-        val containingDir = myElement.containingFile?.virtualFile?.parent ?: throw IncorrectOperationException()
+        val containingDir = myElement.containingFile?.originalFile?.containingDirectory?.virtualFile
+            ?: throw IncorrectOperationException()
         val relativePath = containingDir.toNioPath().relativize(importedFile.toNioPath())
         val newValue = buildString {
             append(relativePath.getName(0))
