@@ -222,6 +222,9 @@ data class ZigFunctionType(
             }
         }
         builder.append(") ")
+        if (element.bangTokenElement != null) {
+            builder.append("!")
+        }
         val returnType = element.returnTypeElement?.innerElement?.let { resolveValues(it) }?.singleOrNull()
         if (returnType != null) {
             builder.append(returnType.toHtmlChunk(truncate))
@@ -1232,7 +1235,12 @@ private fun computeFunctionReturnValues(
 ): Sequence<ZigValue> {
     val returnTypeElement = type.element.returnTypeElement?.innerElement
         ?: return sequenceOf(ZigUnknown.ofUnknownType())
-    val returnTypes = resolveValues(returnTypeElement)
+    val returnTypes = if (type.element.bangTokenElement != null) {
+        val errorSet = ZigUnknown.ofUnknownType() // TODO: infer error set
+        resolveValues(returnTypeElement).map { ZigErrorUnionType(errorSet, it) }
+    } else {
+        resolveValues(returnTypeElement)
+    }
     if (returnTypes.contains(ZigTypeType)) {
         val functionBodyElement = (type.element as? ZigFnDecl)?.body
         if (functionBodyElement != null) {
@@ -1500,11 +1508,16 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigReturn -> {
-            val typeElement =
-                childElement.findParentOfType<ZigFnDecl>()
-                    ?.let { it.returnTypeElement?.innerElement }
-                    ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
-            resolveValues(typeElement).asSequence()
+            val fnDecl = childElement.findParentOfType<ZigFnDecl>()
+                ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+            val typeElement = fnDecl.returnTypeElement?.innerElement
+                ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+            if (fnDecl.bangTokenElement != null) {
+                val errorSet = ZigUnknown.ofUnknownType()
+                resolveValues(typeElement).asSequence().map { ZigErrorUnionType(errorSet, it) }
+            } else {
+                resolveValues(typeElement).asSequence()
+            }
         }
 
         is ZigBreak -> {

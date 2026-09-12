@@ -288,11 +288,14 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                                     .flatMap { ZigAnalyzer.substituteTypeParams(it, containerType.typeParams) }
                                     .singleOrNull()
                         }
+                        val typeText = returnType?.toPlainText()?.let {
+                            if (member.bangTokenElement != null) "!$it" else it
+                        }
                         variants.add(
                             LookupElementBuilder.create(member)
                                 .withIcon(member.getIcon(0))
                                 .withTailText("()") // TODO
-                                .withTypeText(returnType?.toPlainText())
+                                .withTypeText(typeText)
                         )
                     }
 
