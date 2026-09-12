@@ -11,11 +11,14 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.util.findParentInFile
+import com.intellij.psi.util.findParentOfType
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigElement
+import io.github.fncontroloption.zig.psi2.ZigFieldAccess
 import io.github.fncontroloption.zig.psi2.ZigFile
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigLabelDecl
+import io.github.fncontroloption.zig.psi2.ZigListInitItem
 import io.github.fncontroloption.zig.psi2.ZigParamDecl
 import io.github.fncontroloption.zig.psi2.ZigPayloadItem
 import io.github.fncontroloption.zig.psi2.ZigTokenType
@@ -50,7 +53,12 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
             .appendTo(sb)
 
         if (hasValue(element)) {
-            for (value in ZigAnalyzer.resolveValuesFromReferenceTo(element)) {
+            val typeParams = getOriginalContainerType(originalElement)?.typeParams ?: emptyMap()
+            val values =
+                ZigAnalyzer.resolveValuesFromReferenceTo(element)
+                    .asSequence()
+                    .flatMap { ZigAnalyzer.substituteTypeParams(it, typeParams) }
+            for (value in values) {
                 var chunk = value.typeOf.toHtmlChunk()
                 if (value !is ZigUnknown) {
                     chunk = HtmlChunk.fragment(chunk, HtmlChunk.text(" = "), value.toHtmlChunk())
@@ -161,4 +169,26 @@ private fun findFileDoc(element: PsiElement): String? {
         return null
     }
     return list.joinToString("")
+}
+
+private fun getOriginalContainerType(originalElement: PsiElement?): ZigContainerType? {
+    when (val zigElement = originalElement?.findParentOfType<ZigElement>(strict = false)) {
+        is ZigFieldAccess -> {
+            if (zigElement.identifierElement == originalElement) {
+                val leftValues = ZigAnalyzer.resolveValues(zigElement.leftOperand)
+                return leftValues.singleOrNull()?.typeOf as? ZigContainerType
+            }
+        }
+
+        is ZigListInitItem -> {
+            if (zigElement.identifierElement == originalElement) {
+                val leftTypes = ZigAnalyzer.inferListInitTypes(zigElement)
+                return leftTypes.singleOrNull() as? ZigContainerType
+            }
+        }
+
+        else -> {}
+    }
+
+    return null
 }

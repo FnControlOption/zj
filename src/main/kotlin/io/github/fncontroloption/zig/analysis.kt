@@ -38,6 +38,12 @@ object ZigAnalyzer {
     fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
         return io.github.fncontroloption.zig.inferResultTypes(childElement)
     }
+
+    fun inferListInitTypes(element: ZigListInitItem): Sequence<ZigValue> {
+        val typeExpression = element.containingListInit.typeExpression
+            ?: return inferResultTypes(element.containingListInit)
+        return resolveValues(typeExpression).asSequence()
+    }
 }
 
 sealed interface ZigValue {

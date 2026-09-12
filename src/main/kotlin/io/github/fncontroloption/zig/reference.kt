@@ -363,10 +363,7 @@ class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElem
     PsiPolyVariantReferenceBase<ZigListInitItem>(element, identifier.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
-        val types = when (val typeExpression = myElement.containingListInit.typeExpression) {
-            null -> ZigAnalyzer.inferResultTypes(myElement.containingListInit)
-            else -> ZigAnalyzer.resolveValues(typeExpression).asSequence()
-        }
+        val types = ZigAnalyzer.inferListInitTypes(myElement)
         val name = identifier.text
         return resolveInferredResultTypeReference(types, name)
     }
