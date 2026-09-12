@@ -1518,9 +1518,21 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             inferResultTypes(breakable)
         }
 
+        is ZigComptime -> {
+            if (parentElement.innerElement !== childElement) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            inferResultTypes(parentElement)
+        }
+
         is ZigCall -> {
             if (parentElement.functionElement !== childElement) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            val grandparentElement = parentElement.parent
+            if (grandparentElement is ZigTry) {
+                val errorSet = ZigUnknown.ofUnknownType()
+                return inferResultTypes(grandparentElement).map { ZigErrorUnionType(errorSet, it) }
             }
             inferResultTypes(parentElement)
         }
