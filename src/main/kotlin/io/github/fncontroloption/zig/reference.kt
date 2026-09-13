@@ -233,13 +233,17 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
         replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
 
     override fun getVariants(): Array<out LookupElement> {
+        val originalFile = myElement.containingFile
         val variants = mutableSetOf<LookupElement>()
         for ((containerType, isInstance) in getContainers()) {
+            val inSameFile = originalFile == containerType.element.containingFile
             val typeParams = containerType.typeParams
             for (member in containerType.element.members) {
                 when (member) {
                     is ZigVarDecl -> {
-                        // TODO: check visibility (i.e. `pub`)
+                        if (!inSameFile && !member.isPub) {
+                            continue
+                        }
                         // TODO: check if function/method
                         if (isInstance) {
                             continue
@@ -254,7 +258,9 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                     }
 
                     is ZigFnDecl -> {
-                        // TODO: check visibility (i.e. `pub`)
+                        if (!inSameFile && !member.isPub) {
+                            continue
+                        }
                         var (paramNames, paramTypes) = member.parameters.map { param ->
                             param.name to param.typeElement?.innerElement?.let {
                                 val initialValues = ZigAnalyzer.resolveValues(it)
