@@ -1,5 +1,6 @@
 package io.github.fncontroloption.zig
 
+import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
@@ -7,45 +8,13 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.findFile
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiElementResolveResult
-import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiManager
-import com.intellij.psi.PsiNameIdentifierOwner
-import com.intellij.psi.PsiPolyVariantReference
-import com.intellij.psi.PsiPolyVariantReferenceBase
-import com.intellij.psi.PsiReferenceBase
-import com.intellij.psi.ResolveResult
+import com.intellij.psi.*
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.siblings
 import com.intellij.util.IncorrectOperationException
-import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
-import io.github.fncontroloption.zig.psi2.ZigBlock
-import io.github.fncontroloption.zig.psi2.ZigCatch
-import io.github.fncontroloption.zig.psi2.ZigContainer
-import io.github.fncontroloption.zig.psi2.ZigContainerField
-import io.github.fncontroloption.zig.psi2.ZigContainerKind
-import io.github.fncontroloption.zig.psi2.ZigElement
-import io.github.fncontroloption.zig.psi2.ZigElseElement
-import io.github.fncontroloption.zig.psi2.ZigEnumLiteral
-import io.github.fncontroloption.zig.psi2.ZigFieldAccess
-import io.github.fncontroloption.zig.psi2.ZigFnDecl
-import io.github.fncontroloption.zig.psi2.ZigIdentifier
-import io.github.fncontroloption.zig.psi2.ZigLabelRef
-import io.github.fncontroloption.zig.psi2.ZigLabelable
-import io.github.fncontroloption.zig.psi2.ZigListInitItem
-import io.github.fncontroloption.zig.psi2.ZigPointerSize
-import io.github.fncontroloption.zig.psi2.ZigStringLiteral
-import io.github.fncontroloption.zig.psi2.ZigSwitchItem
-import io.github.fncontroloption.zig.psi2.ZigSwitchProng
-import io.github.fncontroloption.zig.psi2.ZigTestDecl
-import io.github.fncontroloption.zig.psi2.ZigThenElement
-import io.github.fncontroloption.zig.psi2.ZigVarDecl
-import io.github.fncontroloption.zig.psi2.ZigVarProto
-import io.github.fncontroloption.zig.psi2.createZigStringLiteral
-import io.github.fncontroloption.zig.psi2.replaceZigIdentifierElement
+import io.github.fncontroloption.zig.psi2.*
 
 /** @see com.intellij.psi.impl.source.resolve.reference.ReferenceProvidersRegistry.getReferencesFromProviders */
 fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
@@ -79,6 +48,7 @@ class ZigIdentifierReference(element: ZigIdentifier) :
         val variants = mutableSetOf<LookupElement>()
         for (candidate in identifierReferenceCandidates(myElement)) {
             val value = ZigAnalyzer.resolveValuesFromReferenceTo(candidate as ZigElement).singleOrNull()
+            // TODO: check if function and insert parentheses
             variants.add(
                 LookupElementBuilder.create(candidate)
                     .withIcon(candidate.getIcon(0))
@@ -315,7 +285,26 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                                 .withIcon(icon)
                                 .withTailText(tailText)
                                 .withTypeText(typeText)
-                                // TODO: .withInsertHandler
+                                .withInsertHandler { context, _ ->
+                                    val editor = context.editor
+                                    val document = editor.document
+                                    val tailOffset = context.tailOffset
+                                    val text = document.charsSequence
+                                    when (context.completionChar) {
+                                        Lookup.NORMAL_SELECT_CHAR -> {
+                                            document.insertString(tailOffset, "()")
+                                            editor.caretModel.moveToOffset(tailOffset + 1)
+                                        }
+                                        Lookup.REPLACE_SELECT_CHAR -> {
+                                            if (text[tailOffset] != '(') {
+                                                document.insertString(tailOffset, "()")
+                                            }
+                                            editor.caretModel.moveToOffset(tailOffset + 1)
+                                        }
+                                        // TODO
+                                        else -> {}
+                                    }
+                                }
                         )
                     }
 
