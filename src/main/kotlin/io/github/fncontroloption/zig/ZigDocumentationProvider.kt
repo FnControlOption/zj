@@ -54,11 +54,9 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
 
         if (hasValue(element)) {
             val typeParams = getOriginalContainerType(originalElement)?.typeParams ?: emptyMap()
-            val values =
-                ZigAnalyzer.resolveValuesFromReferenceTo(element)
-                    .asSequence()
-                    .flatMap { ZigAnalyzer.substituteTypeParams(it, typeParams) }
-            for (value in values) {
+            val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(element)
+            val substitutedValues = ZigAnalyzer.substituteTypeParams(initialValues, typeParams)
+            for (value in substitutedValues) {
                 var chunk = value.typeOf.toHtmlChunk()
                 if (value !is ZigUnknown) {
                     chunk = HtmlChunk.fragment(chunk, HtmlChunk.text(" = "), value.toHtmlChunk())

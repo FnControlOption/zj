@@ -234,14 +234,12 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
     override fun getVariants(): Array<out LookupElement> {
         val variants = mutableSetOf<LookupElement>()
         for ((containerType, isInstance) in getContainers()) {
+            val typeParams = containerType.typeParams
             for (member in containerType.element.members) {
                 when (member) {
                     is ZigVarDecl -> {
-                        val value =
-                            ZigAnalyzer.resolveValuesFromReferenceTo(member)
-                                .asSequence()
-                                .flatMap { ZigAnalyzer.substituteTypeParams(it, containerType.typeParams) }
-                                .singleOrNull()
+                        val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
+                        val value = ZigAnalyzer.substituteTypeParams(initialValues, typeParams).singleOrNull()
                         variants.add(
                             LookupElementBuilder.create(member)
                                 .withIcon(member.getIcon(0))
@@ -251,14 +249,9 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
 
                     is ZigFnDecl -> {
                         // TODO: check if instance & method
-                        var returnType: ZigValue? = null
-                        val returnTypeElement = member.returnTypeElement?.innerElement
-                        if (returnTypeElement != null) {
-                            returnType =
-                                ZigAnalyzer.resolveValues(returnTypeElement)
-                                    .asSequence()
-                                    .flatMap { ZigAnalyzer.substituteTypeParams(it, containerType.typeParams) }
-                                    .singleOrNull()
+                        val returnType = member.returnTypeElement?.innerElement?.let {
+                            val initialValues = ZigAnalyzer.resolveValues(it)
+                            ZigAnalyzer.substituteTypeParams(initialValues, typeParams).singleOrNull()
                         }
                         val typeText = returnType?.toPlainText()?.let {
                             if (member.bangTokenElement != null) "!$it" else it
@@ -279,11 +272,8 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                         if (!shouldIncludeField) {
                             continue
                         }
-                        val value =
-                            ZigAnalyzer.resolveValuesFromReferenceTo(member)
-                                .asSequence()
-                                .flatMap { ZigAnalyzer.substituteTypeParams(it, containerType.typeParams) }
-                                .singleOrNull()
+                        val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
+                        val value = ZigAnalyzer.substituteTypeParams(initialValues, typeParams).singleOrNull()
                         variants.add(
                             LookupElementBuilder.create(member)
                                 .withIcon(member.getIcon(0))

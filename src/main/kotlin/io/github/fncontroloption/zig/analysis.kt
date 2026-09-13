@@ -35,6 +35,20 @@ object ZigAnalyzer {
         return io.github.fncontroloption.zig.substituteTypeParams(value, typeParams)
     }
 
+    fun substituteTypeParams(
+        values: Sequence<ZigValue>,
+        typeParams: Map<ZigParamDecl, Set<ZigValue>>,
+    ): Sequence<ZigValue> {
+        return values.flatMap { substituteTypeParams(it, typeParams) }
+    }
+
+    fun substituteTypeParams(
+        values: Iterable<ZigValue>,
+        typeParams: Map<ZigParamDecl, Set<ZigValue>>,
+    ): Sequence<ZigValue> {
+        return substituteTypeParams(values.asSequence(), typeParams)
+    }
+
     fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
         return io.github.fncontroloption.zig.inferResultTypes(childElement)
     }
@@ -220,23 +234,13 @@ data class ZigFunctionType(
             if (i > 0) {
                 builder.append(", ")
             }
-            val paramType = param.typeElement?.innerElement?.let { resolveValues(it) }?.singleOrNull()
-            if (paramType != null) {
-                builder.append(paramType.toHtmlChunk(truncate))
-            } else {
-                builder.append(createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_"))
-            }
+            builder.append(createTypeElementHtmlChunk(param.typeElement, typeParams, truncate))
         }
         builder.append(") ")
         if (element.bangTokenElement != null) {
             builder.append("!")
         }
-        val returnType = element.returnTypeElement?.innerElement?.let { resolveValues(it) }?.singleOrNull()
-        if (returnType != null) {
-            builder.append(returnType.toHtmlChunk(truncate))
-        } else {
-            builder.append(createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_"))
-        }
+        builder.append(createTypeElementHtmlChunk(element.returnTypeElement, typeParams, truncate))
         return builder.toFragment()
     }
 }
@@ -1632,6 +1636,18 @@ private fun createNamedHtmlChunk(element: PsiNamedElement, attributesKey: TextAt
     } else {
         return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
     }
+}
+
+private fun createTypeElementHtmlChunk(
+    typeElement: ZigTypeElement?,
+    typeParams: Map<ZigParamDecl, Set<ZigValue>>,
+    truncate: Boolean,
+): HtmlChunk {
+    val value = typeElement?.innerElement?.let {
+        val initialValues = resolveValues(it)
+        ZigAnalyzer.substituteTypeParams(initialValues, typeParams).singleOrNull()
+    }
+    return value?.toHtmlChunk(truncate) ?: createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
 }
 
 private fun createContainerHtmlChunkStartingFrom(
