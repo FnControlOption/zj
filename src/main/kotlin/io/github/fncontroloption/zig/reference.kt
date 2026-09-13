@@ -2,6 +2,7 @@ package io.github.fncontroloption.zig
 
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.util.TextRange
@@ -238,6 +239,11 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
             for (member in containerType.element.members) {
                 when (member) {
                     is ZigVarDecl -> {
+                        // TODO: check visibility (i.e. `pub`)
+                        // TODO: check if function/method
+                        if (isInstance) {
+                            continue
+                        }
                         val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
                         val value = ZigAnalyzer.substituteTypeParams(initialValues, typeParams).singleOrNull()
                         variants.add(
@@ -248,7 +254,49 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                     }
 
                     is ZigFnDecl -> {
-                        // TODO: check if instance & method
+                        // TODO: check visibility (i.e. `pub`)
+                        var (paramNames, paramTypes) = member.parameters.map { param ->
+                            param.name to param.typeElement?.innerElement?.let {
+                                val initialValues = ZigAnalyzer.resolveValues(it)
+                                ZigAnalyzer.substituteTypeParams(initialValues, typeParams).singleOrNull()
+                            }
+                        }.unzip()
+                        val isMethod = run {
+                            val firstParamType = paramTypes.firstOrNull() ?: return@run false
+                            val receiverType = when (firstParamType) {
+                                is ZigPointerType if firstParamType.size == ZigPointerSize.ONE -> firstParamType.child
+                                else -> firstParamType
+                            }
+                            receiverType == containerType
+                        }
+                        if (isInstance) {
+                            if (!isMethod) {
+                                continue
+                            }
+                            paramNames = paramNames.subList(1, paramNames.size)
+                            paramTypes = paramTypes.subList(1, paramTypes.size)
+                        }
+                        val icon = if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function
+                        val tailText = buildString {
+                            append('(')
+                            for (i in paramNames.indices) {
+                                if (i > 0) {
+                                    append(", ")
+                                }
+                                val name = paramNames[i]
+                                if (name != null) {
+                                    append(name)
+                                    append(": ")
+                                }
+                                val type = paramTypes[i]
+                                if (type != null) {
+                                    append(type.toPlainText())
+                                } else {
+                                    append('_')
+                                }
+                            }
+                            append(')')
+                        }
                         val returnType = member.returnTypeElement?.innerElement?.let {
                             val initialValues = ZigAnalyzer.resolveValues(it)
                             ZigAnalyzer.substituteTypeParams(initialValues, typeParams).singleOrNull()
@@ -258,9 +306,10 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                         }
                         variants.add(
                             LookupElementBuilder.create(member)
-                                .withIcon(member.getIcon(0))
-                                .withTailText("()") // TODO
+                                .withIcon(icon)
+                                .withTailText(tailText)
                                 .withTypeText(typeText)
+                                // TODO: .withInsertHandler
                         )
                     }
 
