@@ -205,13 +205,7 @@ class ZigImportReference(element: ZigStringLiteral) :
         val containingDir = myElement.containingFile?.originalFile?.containingDirectory?.virtualFile
             ?: throw IncorrectOperationException()
         val relativePath = containingDir.toNioPath().relativize(importedFile.toNioPath())
-        val newValue = buildString {
-            append(relativePath.getName(0))
-            for (i in 1..<relativePath.nameCount) {
-                append('/')
-                append(relativePath.getName(i))
-            }
-        }
+        val newValue = nioPathToUnixString(relativePath)
         myElement.replace(createZigStringLiteral(myElement.project, newValue))
         return element
     }
