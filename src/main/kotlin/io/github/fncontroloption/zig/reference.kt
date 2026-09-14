@@ -209,29 +209,36 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
             val inSameFile = originalFile == containerType.element.containingFile
             val typeParams = containerType.typeParams
             for (member in containerType.element.members) {
-                when (member) {
-                    is ZigVarDecl -> {
-                        if (!inSameFile && !member.isPub) {
-                            continue
-                        }
-                        // TODO: check if function/method
-                        if (isInstance) {
-                            continue
-                        }
-                        val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
-                        val value = ZigAnalyzer.substituteTypeParams(initialValues, typeParams).singleOrNull()
-                        variants.add(
-                            LookupElementBuilder.create(member)
-                                .withIcon(member.getIcon(0))
-                                .withTypeText(value?.typeOf?.toPlainText())
-                        )
+                val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
+                val value = ZigAnalyzer.substituteTypeParams(initialValues, typeParams).singleOrNull()
+                val type = value?.typeOf
+                if (member is ZigContainerField) {
+                    val shouldIncludeField = when (containerType.element.containerKind) {
+                        ZigContainerKind.ENUM -> !isInstance
+                        else -> isInstance || containerType.element.isTaggedUnion
                     }
-
-                    is ZigFnDecl -> {
-                        if (!inSameFile && !member.isPub) {
-                            continue
-                        }
-                        var (paramNames, paramTypes) = member.parameters.map { param ->
+                    if (!shouldIncludeField) {
+                        continue
+                    }
+                    variants.add(
+                        LookupElementBuilder.create(member)
+                            .withIcon(member.getIcon(0))
+                            .withTypeText(type?.toPlainText())
+                    )
+                    continue
+                }
+                val isPub = when (member) {
+                    is ZigVarDecl -> member.isPub
+                    is ZigFnDecl -> member.isPub
+                    else -> continue
+                }
+                if (!inSameFile && !isPub) {
+                    continue
+                }
+                when (type) {
+                    is ZigFunctionType -> {
+                        val fnElement = type.element
+                        var (paramNames, paramTypes) = fnElement.parameters.map { param ->
                             param.name to param.typeElement?.innerElement?.let {
                                 val initialValues = ZigAnalyzer.resolveValues(it)
                                 ZigAnalyzer.substituteTypeParams(initialValues, typeParams).singleOrNull()
@@ -273,12 +280,12 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                             }
                             append(')')
                         }
-                        val returnType = member.returnTypeElement?.innerElement?.let {
+                        val returnType = fnElement.returnTypeElement?.innerElement?.let {
                             val initialValues = ZigAnalyzer.resolveValues(it)
                             ZigAnalyzer.substituteTypeParams(initialValues, typeParams).singleOrNull()
                         }
                         val typeText = returnType?.toPlainText()?.let {
-                            if (member.bangTokenElement != null) "!$it" else it
+                            if (fnElement.bangTokenElement != null) "!$it" else it
                         }
                         variants.add(
                             LookupElementBuilder.create(member)
@@ -308,24 +315,16 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                         )
                     }
 
-                    is ZigContainerField -> {
-                        val shouldIncludeField = when (containerType.element.containerKind) {
-                            ZigContainerKind.ENUM -> !isInstance
-                            else -> isInstance || containerType.element.isTaggedUnion
-                        }
-                        if (!shouldIncludeField) {
+                    else -> {
+                        if (isInstance) {
                             continue
                         }
-                        val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
-                        val value = ZigAnalyzer.substituteTypeParams(initialValues, typeParams).singleOrNull()
                         variants.add(
                             LookupElementBuilder.create(member)
                                 .withIcon(member.getIcon(0))
-                                .withTypeText(value?.typeOf?.toPlainText())
+                                .withTypeText(type?.toPlainText())
                         )
                     }
-
-                    else -> {}
                 }
             }
         }
