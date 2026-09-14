@@ -1066,9 +1066,13 @@ private fun substituteTypeParams(
                     sequenceOf(ZigFunctionType(value.element, newTypeParams))
                 }
             }
-            is ZigTypeParamType -> when (val values = typeParams[value.element]) {
-                null -> sequenceOf(value)
-                else -> values.asSequence().flatMap { substituteTypeParams(it, typeParams) }
+            is ZigTypeParamType -> {
+                val values = typeParams[value.element]
+                if (values.isNullOrEmpty()) {
+                    sequenceOf(value)
+                } else {
+                    values.asSequence().flatMap { substituteTypeParams(it, typeParams) }
+                }
             }
             is ZigOptionalType -> {
                 substituteTypeParams(value.child, typeParams).map { ZigOptionalType(it) }
