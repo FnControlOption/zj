@@ -85,6 +85,24 @@ class ZigTestReference(element: ZigTestDecl, val nameElement: PsiElement) :
 
     override fun handleElementRename(newElementName: String) =
         replaceZigIdentifierElement(myElement, myElement.nameElement, newElementName)
+
+    override fun getVariants(): Array<out LookupElement> {
+        val variants = mutableSetOf<LookupElement>()
+        for (candidate in identifierReferenceCandidates(nameElement)) {
+            when (candidate) {
+                is ZigFnDecl -> {}
+                is ZigVarDecl -> if (candidate.isLocal) continue
+                else -> continue
+            }
+            val value = ZigAnalyzer.resolveValuesFromReferenceTo(candidate).singleOrNull()
+            val icon = when (value?.typeOf) {
+                is ZigFunctionType -> AllIcons.Nodes.Function
+                else -> candidate.getIcon(0)
+            }
+            variants.add(LookupElementBuilder.create(candidate).withIcon(icon))
+        }
+        return variants.toTypedArray()
+    }
 }
 
 class ZigLabelReference(element: ZigLabelRef) :
