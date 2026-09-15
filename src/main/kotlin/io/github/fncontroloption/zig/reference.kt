@@ -53,9 +53,13 @@ class ZigIdentifierReference(element: ZigIdentifier) :
             when (val type = value?.typeOf) {
                 is ZigFunctionType -> {
                     val (paramNames, paramTypes) = getFunctionParamNamesAndTypes(type)
+                    val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
+                        is ZigContainerType -> receiverType.element == candidate.parent
+                        else -> false
+                    }
                     variants.add(
                         LookupElementBuilder.create(candidate)
-                            .withIcon(AllIcons.Nodes.Function)
+                            .withIcon(if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function)
                             .withTailText(getFunctionTailText(paramNames, paramTypes))
                             .withTypeText(getFunctionTypeText(type))
                             .withInsertHandler(FunctionInsertHandler)
@@ -63,11 +67,7 @@ class ZigIdentifierReference(element: ZigIdentifier) :
                 }
 
                 else -> {
-                    variants.add(
-                        LookupElementBuilder.create(candidate)
-                            .withIcon(candidate.getIcon(0))
-                            .withTypeText(type?.toPlainText())
-                    )
+                    variants.add(createLookupElementWithType(candidate, type))
                 }
             }
         }
@@ -95,8 +95,16 @@ class ZigTestReference(element: ZigTestDecl, val nameElement: PsiElement) :
                 else -> continue
             }
             val value = ZigAnalyzer.resolveValuesFromReferenceTo(candidate).singleOrNull()
-            val icon = when (value?.typeOf) {
-                is ZigFunctionType -> AllIcons.Nodes.Function
+            val icon = when (val type = value?.typeOf) {
+                is ZigFunctionType -> {
+                    val (_, paramTypes) = getFunctionParamNamesAndTypes(type)
+                    val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
+                        is ZigContainerType -> receiverType.element == candidate.parent
+                        else -> false
+                    }
+                    if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function
+                }
+                null -> null
                 else -> candidate.getIcon(0)
             }
             variants.add(LookupElementBuilder.create(candidate).withIcon(icon))
@@ -241,11 +249,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
         val variants = mutableSetOf<LookupElement>()
         for ((containerType, isInstance) in getContainers()) {
             val inSameFile = originalFile == containerType.element.containingFile
-            val typeParams = containerType.typeParams
             for (member in containerType.element.members) {
-                val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
-                val value = ZigAnalyzer.substituteTypeParams(initialValues, typeParams).singleOrNull()
-                val type = value?.typeOf
                 if (member is ZigContainerField) {
                     val shouldIncludeField = when (containerType.element.containerKind) {
                         ZigContainerKind.ENUM -> !isInstance
@@ -254,11 +258,9 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                     if (!shouldIncludeField) {
                         continue
                     }
-                    variants.add(
-                        LookupElementBuilder.create(member)
-                            .withIcon(member.getIcon(0))
-                            .withTypeText(type?.toPlainText())
-                    )
+                    val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
+                    val value = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams).singleOrNull()
+                    variants.add(createLookupElementWithType(member, value?.typeOf))
                     continue
                 }
                 val isPub = when (member) {
@@ -269,7 +271,9 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                 if (!inSameFile && !isPub) {
                     continue
                 }
-                when (type) {
+                val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
+                val value = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams).singleOrNull()
+                when (val type = value?.typeOf) {
                     is ZigFunctionType -> {
                         var (paramNames, paramTypes) = getFunctionParamNamesAndTypes(type)
                         val isMethod = getFunctionReceiverType(paramTypes) == containerType
@@ -293,11 +297,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                         if (isInstance) {
                             continue
                         }
-                        variants.add(
-                            LookupElementBuilder.create(member)
-                                .withIcon(member.getIcon(0))
-                                .withTypeText(type?.toPlainText())
-                        )
+                        variants.add(createLookupElementWithType(member, type))
                     }
                 }
             }
@@ -336,6 +336,61 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
 
     override fun handleElementRename(newElementName: String) =
         replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
+
+    override fun getVariants(): Array<out LookupElement> {
+        val originalFile = myElement.containingFile
+        val variants = mutableSetOf<LookupElement>()
+        for (originalType in ZigAnalyzer.inferResultTypes(myElement)) {
+            val containerType = getInferredResultTypeContainer(originalType) ?: continue
+            val inSameFile = originalFile == containerType.element.containingFile
+            for (member in containerType.element.members) {
+                if (member is ZigContainerField) {
+                    if (member.name == "_") {
+                        continue
+                    }
+                    val shouldIncludeField = when (containerType.element.containerKind) {
+                        ZigContainerKind.ENUM -> true
+                        else -> containerType.element.isTaggedUnion
+                    }
+                    if (!shouldIncludeField) {
+                        continue
+                    }
+                    variants.add(LookupElementBuilder.create(member).withIcon(member.getIcon(0)))
+                    continue
+                }
+                val isPub = when (member) {
+                    is ZigVarDecl -> member.isPub
+                    is ZigFnDecl -> member.isPub
+                    else -> continue
+                }
+                if (!inSameFile && !isPub) {
+                    continue
+                }
+                val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
+                val value = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams).singleOrNull()
+                when (val type = value?.typeOf) {
+                    is ZigFunctionType -> {
+                        // TODO: check if return type can coerce to original type
+                        val (paramNames, paramTypes) = getFunctionParamNamesAndTypes(type)
+                        val isMethod = getFunctionReceiverType(paramTypes) == containerType
+                        variants.add(
+                            LookupElementBuilder.create(member)
+                                .withIcon(if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function)
+                                .withTailText(getFunctionTailText(paramNames, paramTypes))
+                                .withTypeText(getFunctionTypeText(type))
+                                .withInsertHandler(FunctionInsertHandler)
+                        )
+                    }
+
+                    else -> {
+                        // TODO: check if decl type can coerce to original type
+                        variants.add(createLookupElementWithType(member, type))
+                    }
+                }
+            }
+        }
+        return variants.toTypedArray()
+    }
 }
 
 class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElement) :
@@ -353,20 +408,9 @@ class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElem
 
 private fun resolveInferredResultTypeReference(types: Sequence<ZigValue>, name: String): Array<ResolveResult> {
     val results = mutableSetOf<ResolveResult>()
-    for (type in types) {
-        var type = type
-        while (true) {
-            type = when (type) {
-                is ZigErrorUnionType -> type.payload
-                is ZigOptionalType -> type.child
-                is ZigPointerType if type.size == ZigPointerSize.ONE -> type.child
-                else -> break
-            }
-        }
-        if (type !is ZigContainerType) {
-            continue
-        }
-        val member = type.element.members.firstOrNull {
+    for (originalType in types) {
+        val containerType = getInferredResultTypeContainer(originalType) ?: continue
+        val member = containerType.element.members.firstOrNull {
             it is PsiNameIdentifierOwner && it.name == name
         }
         if (member != null) {
@@ -374,6 +418,18 @@ private fun resolveInferredResultTypeReference(types: Sequence<ZigValue>, name: 
         }
     }
     return results.toTypedArray()
+}
+
+private fun getInferredResultTypeContainer(originalType: ZigValue): ZigContainerType? {
+    var type = originalType
+    while (true) {
+        type = when (type) {
+            is ZigErrorUnionType -> type.payload
+            is ZigOptionalType -> type.child
+            is ZigPointerType if type.size == ZigPointerSize.ONE -> type.child
+            else -> return type as? ZigContainerType
+        }
+    }
 }
 
 private fun identifierReferenceCandidates(element: PsiElement): Sequence<PsiNameIdentifierOwner> {
@@ -495,5 +551,15 @@ private object FunctionInsertHandler : InsertHandler<LookupElement> {
             // TODO
             else -> {}
         }
+    }
+}
+
+private fun createLookupElementWithType(member: PsiNameIdentifierOwner, type: ZigValue?): LookupElement {
+    return if (type != null) {
+        LookupElementBuilder.create(member)
+            .withIcon(member.getIcon(0))
+            .withTypeText(type.toPlainText())
+    } else {
+        LookupElementBuilder.create(member)
     }
 }
