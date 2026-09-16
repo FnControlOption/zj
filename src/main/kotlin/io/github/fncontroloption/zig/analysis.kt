@@ -1725,7 +1725,8 @@ private fun createTypeElementHtmlChunk(
 ): HtmlChunk {
     val value = typeElement?.innerElement?.let {
         val initialValues = resolveValues(it)
-        ZigAnalyzer.substituteTypeParams(initialValues, typeParams).singleOrNull()
+        val values = ZigAnalyzer.substituteTypeParams(initialValues, typeParams)
+        values.singleOrNull()
     }
     return value?.toHtmlChunk(truncate) ?: createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
 }
@@ -1828,7 +1829,7 @@ private fun createParameterHtmlChunk(
         val paramTypes = resolveValues(paramTypeElement)
         if (paramTypes.singleOrNull() == ZigTypeType) {
             val typeParam = ZigTypeParamType(paramDecl)
-            val typeArg = ZigAnalyzer.substituteTypeParams(typeParam, typeParams).singleOrNull()
+            val typeArg = substituteTypeParams(typeParam, typeParams).singleOrNull()
             if (typeArg != null) {
                 return typeArg.toHtmlChunk(truncate)
             }

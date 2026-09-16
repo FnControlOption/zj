@@ -49,8 +49,9 @@ class ZigIdentifierReference(element: ZigIdentifier) :
     override fun getVariants(): Array<out LookupElement> {
         val variants = mutableSetOf<LookupElement>()
         for (candidate in identifierReferenceCandidates(myElement)) {
-            val value = ZigAnalyzer.resolveValuesFromReferenceTo(candidate as ZigElement).singleOrNull()
-            when (val type = value?.typeOf) {
+            val values = ZigAnalyzer.resolveValuesFromReferenceTo(candidate as ZigElement)
+            val types = values.map { it.typeOf }.toSet()
+            when (val type = types.singleOrNull()) {
                 is ZigFunctionType -> {
                     val (paramNames, paramTypes) = getFunctionParamNamesAndTypes(type)
                     val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
@@ -94,8 +95,9 @@ class ZigTestReference(element: ZigTestDecl, val nameElement: PsiElement) :
                 is ZigVarDecl -> if (candidate.isLocal) continue
                 else -> continue
             }
-            val value = ZigAnalyzer.resolveValuesFromReferenceTo(candidate).singleOrNull()
-            val icon = when (val type = value?.typeOf) {
+            val values = ZigAnalyzer.resolveValuesFromReferenceTo(candidate)
+            val types = values.map { it.typeOf }.toSet()
+            val icon = when (val type = types.singleOrNull()) {
                 is ZigFunctionType -> {
                     val (_, paramTypes) = getFunctionParamNamesAndTypes(type)
                     val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
@@ -283,8 +285,9 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                         continue
                     }
                     val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
-                    val value = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams).singleOrNull()
-                    variants.add(createLookupElementWithType(member, value?.typeOf))
+                    val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
+                    val types = values.map { it.typeOf }.toSet()
+                    variants.add(createLookupElementWithType(member, types.singleOrNull()))
                     continue
                 }
                 val isPub = when (member) {
@@ -296,8 +299,9 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                     continue
                 }
                 val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
-                val value = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams).singleOrNull()
-                when (val type = value?.typeOf) {
+                val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
+                val types = values.map { it.typeOf }.toSet()
+                when (val type = types.singleOrNull()) {
                     is ZigFunctionType -> {
                         var (paramNames, paramTypes) = getFunctionParamNamesAndTypes(type)
                         val isMethod = getFunctionReceiverType(paramTypes) == containerType
@@ -410,8 +414,9 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
                     continue
                 }
                 val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
-                val value = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams).singleOrNull()
-                when (val type = value?.typeOf) {
+                val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
+                val types = values.map { it.typeOf }.toSet()
+                when (val type = types.singleOrNull()) {
                     is ZigFunctionType -> {
                         // TODO: check if return type can coerce to original type
                         val (paramNames, paramTypes) = getFunctionParamNamesAndTypes(type)
@@ -546,7 +551,8 @@ private fun getFunctionParamNamesAndTypes(functionType: ZigFunctionType): Pair<L
     return functionType.element.parameters.map { param ->
         param.name to param.typeElement?.innerElement?.let {
             val initialValues = ZigAnalyzer.resolveValues(it)
-            ZigAnalyzer.substituteTypeParams(initialValues, functionType.typeParams).singleOrNull()
+            val values = ZigAnalyzer.substituteTypeParams(initialValues, functionType.typeParams)
+            values.singleOrNull()
         }
     }.unzip()
 }
@@ -585,7 +591,8 @@ private fun getFunctionTailText(paramNames: List<String?>, paramTypes: List<ZigV
 private fun getFunctionTypeText(functionType: ZigFunctionType): String? {
     val returnType = functionType.element.returnTypeElement?.innerElement?.let {
         val initialValues = ZigAnalyzer.resolveValues(it)
-        ZigAnalyzer.substituteTypeParams(initialValues, functionType.typeParams).singleOrNull()
+        val values = ZigAnalyzer.substituteTypeParams(initialValues, functionType.typeParams)
+        values.singleOrNull()
     }
     return returnType?.toPlainText()?.let {
         if (functionType.element.bangTokenElement != null) "!$it" else it
@@ -655,10 +662,11 @@ private fun getFieldInitVariants(containerType: ZigContainerType): Sequence<Look
     }
     return containerType.element.members.filterIsInstance<ZigContainerField>().map { member ->
         val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
-        val value = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams).singleOrNull()
+        val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
+        val types = values.map { it.typeOf }.toSet()
         LookupElementBuilder.create(member)
             .withIcon(AllIcons.Nodes.Field)
-            .withTypeText(value?.typeOf?.toPlainText())
+            .withTypeText(types.singleOrNull()?.toPlainText())
             .withInsertHandler(FieldInitInsertHandler)
     }
 }
