@@ -89,6 +89,47 @@ object ZigAnalyzer {
             }
         }
     }
+
+    fun getBuiltinFields(type: ZigValue): Array<String> {
+        return when (type) {
+            is ZigPointerType -> when (type.size) {
+                ZigPointerSize.ONE,
+                ZigPointerSize.MANY,
+                ZigPointerSize.C -> emptyArray()
+
+                ZigPointerSize.SLICE -> arrayOf("len", "ptr")
+            }
+
+            is ZigArrayType,
+            is ZigTupleType -> arrayOf("len")
+
+            else -> emptyArray()
+        }
+    }
+
+    fun getBuiltinFieldType(type: ZigValue, name: String): ZigValue? {
+        return when (type) {
+            is ZigPointerType -> when (type.size) {
+                ZigPointerSize.ONE,
+                ZigPointerSize.MANY,
+                ZigPointerSize.C -> null
+
+                ZigPointerSize.SLICE -> when (name) {
+                    "len" -> ZigUsizeType
+                    "ptr" -> ZigPointerType(ZigPointerSize.MANY, type.sentinel, type.child)
+                    else -> null
+                }
+            }
+
+            is ZigArrayType,
+            is ZigTupleType -> when (name) {
+                "len" -> ZigUsizeType
+                else -> null
+            }
+
+            else -> null
+        }
+    }
 }
 
 sealed interface ZigValue {
@@ -774,6 +815,10 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigFieldAccess -> {
             val name = element.identifierElement?.text ?: return sequenceOf(ZigUnknown.ofUnknownType())
             resolveValues(element.leftOperand).asSequence().flatMap { left ->
+                val builtinType = ZigAnalyzer.getBuiltinFieldType(left.typeOf, name)
+                if (builtinType != null) {
+                    return@flatMap sequenceOf(builtinType)
+                }
                 when (left) {
                     is ZigErrorSetType -> {
                         if (name in left.names) {

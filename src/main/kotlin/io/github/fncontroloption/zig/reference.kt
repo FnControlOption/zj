@@ -228,9 +228,10 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
     PsiPolyVariantReferenceBase<ZigFieldAccess>(element, identifier.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
+        val leftValues = ZigAnalyzer.resolveValues(myElement.leftOperand)
         val name = identifier.text
         val results = mutableSetOf<ResolveResult>()
-        for ((containerType, _) in getContainers()) {
+        for ((containerType, _) in getContainers(leftValues)) {
             val member = containerType.element.members.firstOrNull {
                 it is PsiNameIdentifierOwner && it.name == name
             }
@@ -245,9 +246,32 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
         replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
 
     override fun getVariants(): Array<out LookupElement> {
+        val leftValues = ZigAnalyzer.resolveValues(myElement.leftOperand)
         val originalFile = myElement.containingFile
         val variants = mutableSetOf<LookupElement>()
-        for ((containerType, isInstance) in getContainers()) {
+        for (left in leftValues) {
+            when (val typeOfLeft = left.typeOf) {
+                is ZigOptionalType -> {
+                    variants.add(LookupElementBuilder.create("?").withTypeText(typeOfLeft.child.toPlainText()))
+                }
+
+                is ZigPointerType if typeOfLeft.size == ZigPointerSize.ONE -> {
+                    variants.add(LookupElementBuilder.create("*").withTypeText(typeOfLeft.child.toPlainText()))
+                }
+
+                else -> {
+                    for (fieldName in ZigAnalyzer.getBuiltinFields(typeOfLeft)) {
+                        val fieldType = ZigAnalyzer.getBuiltinFieldType(typeOfLeft, fieldName)
+                        variants.add(
+                            LookupElementBuilder.create(fieldName)
+                                .withIcon(AllIcons.Nodes.Field)
+                                .withTypeText(fieldType?.toPlainText())
+                        )
+                    }
+                }
+            }
+        }
+        for ((containerType, isInstance) in getContainers(leftValues)) {
             val inSameFile = originalFile == containerType.element.containingFile
             for (member in containerType.element.members) {
                 if (member is ZigContainerField) {
@@ -305,8 +329,8 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
         return variants.toTypedArray()
     }
 
-    private fun getContainers(): Sequence<Pair<ZigContainerType, Boolean>> {
-        return ZigAnalyzer.resolveValues(myElement.leftOperand).asSequence().mapNotNull { left ->
+    private fun getContainers(leftValues: Set<ZigValue>): Sequence<Pair<ZigContainerType, Boolean>> {
+        return leftValues.asSequence().mapNotNull { left ->
             when (left) {
                 is ZigContainerType -> Pair(left, false)
                 else -> when (val typeOfLeft = left.typeOf) {

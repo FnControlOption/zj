@@ -45,6 +45,9 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
         if (element !is ZigElement) {
             return null
         }
+        if (element is ZigFieldAccess) {
+            return generateBuiltinFieldDoc(element, originalElement)
+        }
         val definition = getDefinition(element) ?: return null
         val sb = StringBuilder()
         HtmlChunk.text(definition)
@@ -75,6 +78,25 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
                 .appendTo(sb)
         }
 
+        return sb.toString()
+    }
+
+    private fun generateBuiltinFieldDoc(element: ZigFieldAccess, originalElement: PsiElement?): String? {
+        if (originalElement == null || element.identifierElement !== originalElement) {
+            return null
+        }
+        val name = originalElement.text
+        val left = ZigAnalyzer.resolveValues(element.leftOperand).singleOrNull() ?: return null
+        val type = ZigAnalyzer.getBuiltinFieldType(left.typeOf, name) ?: return null
+        val sb = StringBuilder()
+        HtmlChunk.text(name)
+            .wrapWith(DocumentationMarkup.PRE_ELEMENT)
+            .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
+            .appendTo(sb)
+        type.toHtmlChunk()
+            .wrapWith(DocumentationMarkup.PRE_ELEMENT)
+            .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
+            .appendTo(sb)
         return sb.toString()
     }
 
