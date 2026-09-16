@@ -1272,7 +1272,7 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
         is ZigParamDecl -> {
             val typeElement = target.typeElement?.innerElement ?: return sequenceOf(ZigUnknown.ofUnknownType())
             val types = resolveValues(typeElement)
-            if (types.contains(ZigTypeType)) {
+            if (types.singleOrNull() == ZigTypeType) {
                 return sequenceOf(ZigTypeParamType(target))
             }
             types.asSequence().map { ZigUnknown.of(it) }
@@ -1770,13 +1770,7 @@ private fun createContainerHtmlChunkStartingFrom(
                         if (i > 0) {
                             builder.append(", ")
                         }
-                        val typeParam = ZigTypeParamType(paramDecl)
-                        val typeArg = ZigAnalyzer.substituteTypeParams(typeParam, typeParams).singleOrNull()
-                        if (typeArg != null && typeArg != typeParam) {
-                            builder.append(typeArg.toHtmlChunk(truncate))
-                        } else {
-                            builder.append(createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_"))
-                        }
+                        builder.append(createParameterHtmlChunk(paramDecl, typeParams, truncate))
                     }
                     builder.append(")")
                     builder.toFragment()
@@ -1822,6 +1816,25 @@ private fun createContainerHtmlChunkStartingFrom(
     }
     val parentChunk = createContainerHtmlChunkStartingFrom(parent, typeParams, false)
     return HtmlChunk.fragment(parentChunk, HtmlChunk.text("."), elementChunk)
+}
+
+private fun createParameterHtmlChunk(
+    paramDecl: ZigParamDecl,
+    typeParams: Map<ZigParamDecl, Set<ZigValue>>,
+    truncate: Boolean,
+): HtmlChunk {
+    val paramTypeElement = paramDecl.typeElement?.innerElement
+    if (paramTypeElement != null) {
+        val paramTypes = resolveValues(paramTypeElement)
+        if (paramTypes.singleOrNull() == ZigTypeType) {
+            val typeParam = ZigTypeParamType(paramDecl)
+            val typeArg = ZigAnalyzer.substituteTypeParams(typeParam, typeParams).singleOrNull()
+            if (typeArg != null) {
+                return typeArg.toHtmlChunk(truncate)
+            }
+        }
+    }
+    return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
 }
 
 private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigValue> {
