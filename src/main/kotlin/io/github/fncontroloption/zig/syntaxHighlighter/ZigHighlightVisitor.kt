@@ -10,7 +10,6 @@ import com.intellij.psi.util.parentOfType
 import io.github.fncontroloption.zig.ZigAnalyzer
 import io.github.fncontroloption.zig.ZigFunctionType
 import io.github.fncontroloption.zig.ZigTypeType
-import io.github.fncontroloption.zig.psi2.ZigCall
 import io.github.fncontroloption.zig.psi2.ZigContainerDecl
 import io.github.fncontroloption.zig.psi2.ZigContainerField
 import io.github.fncontroloption.zig.psi2.ZigContainerKind
@@ -22,6 +21,7 @@ import io.github.fncontroloption.zig.psi2.ZigIdentifier
 import io.github.fncontroloption.zig.psi2.ZigListInitItem
 import io.github.fncontroloption.zig.psi2.ZigMutability
 import io.github.fncontroloption.zig.psi2.ZigParamDecl
+import io.github.fncontroloption.zig.psi2.ZigPayloadItem
 import io.github.fncontroloption.zig.psi2.ZigTestDecl
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 import io.github.fncontroloption.zig.psi2.ZigVarDeclOrProto
@@ -69,18 +69,23 @@ class ZigHighlightVisitor : HighlightVisitor {
                     }
                 }
 
-                val type = if (element is ZigVarDecl && element.isLocal) {
-                    when (element.mutability) {
-                        ZigMutability.CONST -> ZigHighlightInfoTypes.LOCAL_VARIABLE
-                        ZigMutability.VAR -> ZigHighlightInfoTypes.REASSIGNED_LOCAL_VARIABLE
-                    }
-                } else {
+                val type = if (element is ZigVarDecl && !element.isLocal) {
                     when (element.mutability) {
                         ZigMutability.CONST -> ZigHighlightInfoTypes.CONSTANT
                         ZigMutability.VAR -> ZigHighlightInfoTypes.STATIC_FIELD
                     }
+                } else {
+                    when (element.mutability) {
+                        ZigMutability.CONST -> ZigHighlightInfoTypes.LOCAL_VARIABLE
+                        ZigMutability.VAR -> ZigHighlightInfoTypes.REASSIGNED_LOCAL_VARIABLE
+                    }
                 }
                 createHighlightInfo(identifier, type)
+            }
+
+            is ZigPayloadItem -> {
+                val identifier = element.nameIdentifier ?: return null
+                createHighlightInfo(identifier, ZigHighlightInfoTypes.LOCAL_VARIABLE)
             }
 
             is ZigContainerField -> {
@@ -99,6 +104,9 @@ class ZigHighlightVisitor : HighlightVisitor {
             }
 
             is ZigIdentifier -> {
+                if (element.textMatches("_")) {
+                    return null
+                }
                 if (element.isPrimitive) {
                     return createHighlightInfo(element, ZigHighlightInfoTypes.KEYWORD)
                 }
