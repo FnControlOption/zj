@@ -180,8 +180,8 @@ private fun getOriginalContainerType(originalElement: PsiElement?): ZigContainer
 
         is ZigListInitItem -> {
             if (zigElement.identifierElement == originalElement) {
-                val leftTypes = ZigAnalyzer.inferListInitTypes(zigElement)
-                return leftTypes.singleOrNull() as? ZigContainerType
+                val leftTypes = ZigAnalyzer.resolveOrInferStructInitTypes(zigElement.containingListInit)
+                return leftTypes.singleOrNull()
             }
         }
 

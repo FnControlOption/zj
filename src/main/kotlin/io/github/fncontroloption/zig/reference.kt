@@ -329,19 +329,38 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
     PsiPolyVariantReferenceBase<ZigEnumLiteral>(element, identifier.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
-        val types = ZigAnalyzer.inferResultTypes(myElement)
+        val types = ZigAnalyzer.inferEnumLiteralTypes(myElement)
         val name = identifier.text
-        return resolveInferredResultTypeReference(types, name)
+        val results = mutableSetOf<ResolveResult>()
+        for ((_, containerType) in types) {
+            val member = containerType.element.members.firstOrNull {
+                it is PsiNameIdentifierOwner && it.name == name
+            }
+            if (member != null) {
+                results.add(PsiElementResolveResult(member))
+            }
+        }
+        return results.toTypedArray()
     }
 
     override fun handleElementRename(newElementName: String) =
         replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
 
     override fun getVariants(): Array<out LookupElement> {
+        val parentElement = myElement.parent
+        if (parentElement is ZigListInitItem) {
+            val types = ZigAnalyzer.resolveOrInferStructInitTypes(parentElement.containingListInit).toList()
+            if (types.isNotEmpty()) {
+                val variants = mutableSetOf<LookupElement>()
+                for (containerType in types) {
+                    variants.addAll(getFieldInitVariants(containerType))
+                }
+                return variants.toTypedArray()
+            }
+        }
         val originalFile = myElement.containingFile
         val variants = mutableSetOf<LookupElement>()
-        for (originalType in ZigAnalyzer.inferResultTypes(myElement)) {
-            val containerType = getInferredResultTypeContainer(originalType) ?: continue
+        for ((originalType, containerType) in ZigAnalyzer.inferEnumLiteralTypes(myElement)) {
             val inSameFile = originalFile == containerType.element.containingFile
             for (member in containerType.element.members) {
                 if (member is ZigContainerField) {
@@ -355,7 +374,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
                     if (!shouldIncludeField) {
                         continue
                     }
-                    variants.add(LookupElementBuilder.create(member).withIcon(member.getIcon(0)))
+                    variants.add(LookupElementBuilder.create(member).withIcon(AllIcons.Nodes.Field))
                     continue
                 }
                 val isPub = when (member) {
@@ -397,15 +416,34 @@ class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElem
     PsiPolyVariantReferenceBase<ZigListInitItem>(element, identifier.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
-        val types = ZigAnalyzer.inferListInitTypes(myElement)
+        val types = ZigAnalyzer.resolveOrInferStructInitTypes(myElement.containingListInit)
         val name = identifier.text
-        return resolveInferredResultTypeReference(types, name)
+        val results = mutableSetOf<ResolveResult>()
+        for (containerType in types) {
+            val member = containerType.element.members.firstOrNull {
+                it is ZigContainerField && it.name == name
+            }
+            if (member != null) {
+                results.add(PsiElementResolveResult(member))
+            }
+        }
+        return results.toTypedArray()
     }
 
     override fun handleElementRename(newElementName: String) =
         replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
+
+    override fun getVariants(): Array<out LookupElement> {
+        val types = ZigAnalyzer.resolveOrInferStructInitTypes(myElement.containingListInit)
+        val variants = mutableSetOf<LookupElement>()
+        for (containerType in types) {
+            variants.addAll(getFieldInitVariants(containerType))
+        }
+        return variants.toTypedArray()
+    }
 }
 
+/* TODO: delete
 private fun resolveInferredResultTypeReference(types: Sequence<ZigValue>, name: String): Array<ResolveResult> {
     val results = mutableSetOf<ResolveResult>()
     for (originalType in types) {
@@ -431,6 +469,7 @@ private fun getInferredResultTypeContainer(originalType: ZigValue): ZigContainer
         }
     }
 }
+ */
 
 private fun identifierReferenceCandidates(element: PsiElement): Sequence<PsiNameIdentifierOwner> {
     var it: Iterator<PsiNameIdentifierOwner>? = null
@@ -551,6 +590,52 @@ private object FunctionInsertHandler : InsertHandler<LookupElement> {
             // TODO
             else -> {}
         }
+    }
+}
+
+private object FieldInitInsertHandler : InsertHandler<LookupElement> {
+    override fun handleInsert(context: InsertionContext, item: LookupElement) {
+        val editor = context.editor
+        val document = editor.document
+        val tailOffset = context.tailOffset
+        val text = document.charsSequence
+        when (context.completionChar) {
+            Lookup.NORMAL_SELECT_CHAR -> {
+                document.insertString(tailOffset, " = ")
+                editor.caretModel.moveToOffset(tailOffset + 3)
+            }
+
+            Lookup.REPLACE_SELECT_CHAR -> {
+                val tail = text.subSequence(tailOffset, text.length)
+                if (tail.startsWith(" = ")) {
+                    // no-op
+                } else if (tail.startsWith(" =")) {
+                    document.insertString(tailOffset + 2, " ")
+                } else if (tail.startsWith(' ')) {
+                    document.insertString(tailOffset + 1, "= ")
+                } else {
+                    document.insertString(tailOffset, " = ")
+                }
+                editor.caretModel.moveToOffset(tailOffset + 3)
+            }
+
+            // TODO
+            else -> {}
+        }
+    }
+}
+
+private fun getFieldInitVariants(containerType: ZigContainerType): Sequence<LookupElement> {
+    if (containerType.element.containerKind == ZigContainerKind.ENUM) {
+        return emptySequence()
+    }
+    return containerType.element.members.filterIsInstance<ZigContainerField>().map { member ->
+        val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
+        val value = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams).singleOrNull()
+        LookupElementBuilder.create(member)
+            .withIcon(AllIcons.Nodes.Field)
+            .withTypeText(value?.typeOf?.toPlainText())
+            .withInsertHandler(FieldInitInsertHandler)
     }
 }
 

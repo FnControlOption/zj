@@ -53,10 +53,41 @@ object ZigAnalyzer {
         return io.github.fncontroloption.zig.inferResultTypes(childElement)
     }
 
-    fun inferListInitTypes(element: ZigListInitItem): Sequence<ZigValue> {
-        val typeExpression = element.containingListInit.typeExpression
-            ?: return inferResultTypes(element.containingListInit)
-        return resolveValues(typeExpression).asSequence()
+    fun resolveOrInferStructInitTypes(element: ZigListInit): Sequence<ZigContainerType> {
+        val typeExpression = element.typeExpression
+        if (typeExpression != null) {
+            return resolveValues(typeExpression).asSequence().filterIsInstance<ZigContainerType>()
+        }
+        return inferResultTypes(element).mapNotNull { originalType ->
+            var type = originalType
+            while (true) {
+                type = when (type) {
+                    is ZigErrorUnionType -> type.payload
+                    is ZigOptionalType -> type.child
+                    else -> break
+                }
+            }
+            type as? ZigContainerType
+        }
+    }
+
+    fun inferEnumLiteralTypes(element: ZigEnumLiteral): Sequence<Pair<ZigValue, ZigContainerType>> {
+        return inferResultTypes(element).mapNotNull { originalType ->
+            var type = originalType
+            while (true) {
+                type = when (type) {
+                    is ZigErrorUnionType -> type.payload
+                    is ZigOptionalType -> type.child
+                    is ZigPointerType if type.size == ZigPointerSize.ONE -> type.child
+                    else -> break
+                }
+            }
+            if (type is ZigContainerType) {
+                originalType to type
+            } else {
+                null
+            }
+        }
     }
 }
 
