@@ -1372,7 +1372,7 @@ private fun computeCalledFuncAndArgs(callElement: ZigCall): Sequence<Triple<ZigV
 }
 
 // TODO: can this return `emptySequence()` instead of `sequenceOf(ZigUnknown.ofUnknownType() to null)`?
-private fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<ZigValue, ZigValue?>> {
+internal fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<ZigValue, ZigValue?>> {
     return when (val functionElement = callElement.functionElement) {
         is ZigFieldAccess -> {
             val name = functionElement.identifierElement?.text

@@ -419,6 +419,9 @@ class ZigCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
                 .takeWhile { it !is ZigCallArg }
                 .first()
 
+    val leftParenElement: PsiElement
+        get() = findNotNullChildByType(ZigTokenType.L_PAREN)
+
     val argumentElements: Sequence<ZigCallArg>
         get() = firstChild.siblings().filterIsInstance<ZigCallArg>()
 

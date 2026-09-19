@@ -1,5 +1,6 @@
 package io.github.fncontroloption.zig
 
+import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.lookup.Lookup
@@ -547,7 +548,7 @@ private fun identifierReferenceCandidates(element: PsiElement): Sequence<PsiName
     }
 }
 
-private fun getFunctionParamNamesAndTypes(functionType: ZigFunctionType): Pair<List<String?>, List<ZigValue?>> {
+internal fun getFunctionParamNamesAndTypes(functionType: ZigFunctionType): Pair<List<String?>, List<ZigValue?>> {
     return functionType.element.parameters.map { param ->
         param.name to param.typeElement?.innerElement?.let {
             val initialValues = ZigAnalyzer.resolveValues(it)
@@ -572,19 +573,23 @@ private fun getFunctionTailText(paramNames: List<String?>, paramTypes: List<ZigV
             if (i > 0) {
                 append(", ")
             }
-            val name = paramNames[i]
-            if (name != null) {
-                append(name)
-                append(": ")
-            }
-            val type = paramTypes[i]
-            if (type != null) {
-                append(type.toPlainText())
-            } else {
-                append('_')
-            }
+            append(getParameterText(paramNames[i], paramTypes[i]))
         }
         append(')')
+    }
+}
+
+internal fun getParameterText(name: String?, type: ZigValue?): String {
+    return buildString {
+        if (name != null) {
+            append(name)
+            append(": ")
+        }
+        if (type != null) {
+            append(type.toPlainText())
+        } else {
+            append('_')
+        }
     }
 }
 
@@ -601,6 +606,7 @@ private fun getFunctionTypeText(functionType: ZigFunctionType): String? {
 
 private object FunctionInsertHandler : InsertHandler<LookupElement> {
     override fun handleInsert(context: InsertionContext, item: LookupElement) {
+        val project = context.project
         val editor = context.editor
         val document = editor.document
         val tailOffset = context.tailOffset
@@ -608,14 +614,19 @@ private object FunctionInsertHandler : InsertHandler<LookupElement> {
         when (context.completionChar) {
             Lookup.NORMAL_SELECT_CHAR -> {
                 document.insertString(tailOffset, "()")
+                // TODO: if function has no parameters, skip right paren
                 editor.caretModel.moveToOffset(tailOffset + 1)
+                AutoPopupController.getInstance(project).autoPopupParameterInfo(editor, null)
             }
 
-            Lookup.REPLACE_SELECT_CHAR -> {
+            Lookup.REPLACE_SELECT_CHAR,
+            Lookup.AUTO_INSERT_SELECT_CHAR -> {
+                // TODO: if function has no parameters and tail starts with "()", skip right paren
                 if (text[tailOffset] != '(') {
                     document.insertString(tailOffset, "()")
                 }
                 editor.caretModel.moveToOffset(tailOffset + 1)
+                AutoPopupController.getInstance(project).autoPopupParameterInfo(editor, null)
             }
 
             // TODO
@@ -636,7 +647,8 @@ private object FieldInitInsertHandler : InsertHandler<LookupElement> {
                 editor.caretModel.moveToOffset(tailOffset + 3)
             }
 
-            Lookup.REPLACE_SELECT_CHAR -> {
+            Lookup.REPLACE_SELECT_CHAR,
+            Lookup.AUTO_INSERT_SELECT_CHAR -> {
                 val tail = text.subSequence(tailOffset, text.length)
                 if (tail.startsWith(" = ")) {
                     // no-op
