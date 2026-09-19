@@ -54,6 +54,7 @@ class ZigIdentifierReference(element: ZigIdentifier) :
             val types = values.map { it.typeOf }.toSet()
             when (val type = types.singleOrNull()) {
                 is ZigFunctionType -> {
+                    // TODO: handle varargs
                     val (paramNames, paramTypes) = getFunctionParamNamesAndTypes(type)
                     val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
                         is ZigContainerType -> receiverType.element == candidate.parent
@@ -64,7 +65,7 @@ class ZigIdentifierReference(element: ZigIdentifier) :
                             .withIcon(if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function)
                             .withTailText(getFunctionTailText(paramNames, paramTypes))
                             .withTypeText(getFunctionTypeText(type))
-                            .withInsertHandler(FunctionInsertHandler)
+                            .withInsertHandler(FunctionInsertHandler(paramNames.isNotEmpty()))
                     )
                 }
 
@@ -304,6 +305,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                 val types = values.map { it.typeOf }.toSet()
                 when (val type = types.singleOrNull()) {
                     is ZigFunctionType -> {
+                        // TODO: handle varargs
                         var (paramNames, paramTypes) = getFunctionParamNamesAndTypes(type)
                         val isMethod = getFunctionReceiverType(paramTypes) == containerType
                         if (isInstance) {
@@ -318,7 +320,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                                 .withIcon(if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function)
                                 .withTailText(getFunctionTailText(paramNames, paramTypes))
                                 .withTypeText(getFunctionTypeText(type))
-                                .withInsertHandler(FunctionInsertHandler)
+                                .withInsertHandler(FunctionInsertHandler(paramNames.isNotEmpty()))
                         )
                     }
 
@@ -419,6 +421,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
                 val types = values.map { it.typeOf }.toSet()
                 when (val type = types.singleOrNull()) {
                     is ZigFunctionType -> {
+                        // TODO: handle varargs
                         // TODO: check if return type can coerce to original type
                         val (paramNames, paramTypes) = getFunctionParamNamesAndTypes(type)
                         val isMethod = getFunctionReceiverType(paramTypes) == containerType
@@ -427,7 +430,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
                                 .withIcon(if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function)
                                 .withTailText(getFunctionTailText(paramNames, paramTypes))
                                 .withTypeText(getFunctionTypeText(type))
-                                .withInsertHandler(FunctionInsertHandler)
+                                .withInsertHandler(FunctionInsertHandler(paramNames.isNotEmpty()))
                         )
                     }
 
@@ -604,7 +607,7 @@ private fun getFunctionTypeText(functionType: ZigFunctionType): String? {
     }
 }
 
-private object FunctionInsertHandler : InsertHandler<LookupElement> {
+private class FunctionInsertHandler(val hasParams: Boolean) : InsertHandler<LookupElement> {
     override fun handleInsert(context: InsertionContext, item: LookupElement) {
         val project = context.project
         val editor = context.editor
@@ -614,18 +617,30 @@ private object FunctionInsertHandler : InsertHandler<LookupElement> {
         when (context.completionChar) {
             Lookup.NORMAL_SELECT_CHAR -> {
                 document.insertString(tailOffset, "()")
-                // TODO: if function has no parameters, skip right paren
-                editor.caretModel.moveToOffset(tailOffset + 1)
+                if (hasParams) {
+                    editor.caretModel.moveToOffset(tailOffset + 1)
+                } else {
+                    editor.caretModel.moveToOffset(tailOffset + 2)
+                }
                 AutoPopupController.getInstance(project).autoPopupParameterInfo(editor, null)
             }
 
             Lookup.REPLACE_SELECT_CHAR,
             Lookup.AUTO_INSERT_SELECT_CHAR -> {
-                // TODO: if function has no parameters and tail starts with "()", skip right paren
-                if (text[tailOffset] != '(') {
+                val tail = text.subSequence(tailOffset, text.length)
+                var foundCallArgs = false
+                if (tail.startsWith("()")) {
+                    // no-op
+                } else if (tail.startsWith('(')) {
+                    foundCallArgs = true
+                } else {
                     document.insertString(tailOffset, "()")
                 }
-                editor.caretModel.moveToOffset(tailOffset + 1)
+                if (hasParams || foundCallArgs) {
+                    editor.caretModel.moveToOffset(tailOffset + 1)
+                } else {
+                    editor.caretModel.moveToOffset(tailOffset + 2)
+                }
                 AutoPopupController.getInstance(project).autoPopupParameterInfo(editor, null)
             }
 
