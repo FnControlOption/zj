@@ -693,6 +693,7 @@ private fun getFieldInitVariants(containerType: ZigContainerType): Sequence<Look
         val types = values.map { it.typeOf }.toSet()
         LookupElementBuilder.create(member)
             .withIcon(AllIcons.Nodes.Field)
+            .withTailText(" =")
             .withTypeText(types.singleOrNull()?.toPlainText())
             .withInsertHandler(FieldInitInsertHandler)
     }
