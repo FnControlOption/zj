@@ -131,7 +131,10 @@ enum class ZigContainerKind { STRUCT, OPAQUE, ENUM, UNION }
 sealed interface ZigContainer : ZigElement {
     val containerKind: ZigContainerKind
 
+    val containerTagElement: ZigContainerTag?
+
     val isTaggedUnion: Boolean
+        get() = containerKind == ZigContainerKind.UNION && containerTagElement != null
 
     val members: Sequence<ZigElement>
 }
@@ -140,8 +143,8 @@ class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLan
     override val containerKind: ZigContainerKind
         get() = ZigContainerKind.STRUCT
 
-    override val isTaggedUnion: Boolean
-        get() = false
+    override val containerTagElement: ZigContainerTag?
+        get() = null
 
     override val members: Sequence<ZigElement>
         get() = firstChild?.siblings()?.filterIsInstance<ZigElement>() ?: emptySequence()
@@ -494,11 +497,8 @@ class ZigContainerDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainer
             else -> throw IllegalStateException()
         }
 
-    val containerTagElement: ZigContainerTag?
+    override val containerTagElement: ZigContainerTag?
         get() = findChildByClass(ZigContainerTag::class.java)
-
-    override val isTaggedUnion: Boolean
-        get() = containerKind == ZigContainerKind.UNION && containerTagElement != null
 
     override val members: Sequence<ZigElement>
         get() =
@@ -554,9 +554,13 @@ class ZigContainerField : ZigStubPsiElement<ZigContainerFieldStub>, ZigNamedElem
 }
 
 class ZigContainerTag(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val innerElement: ZigElement?
+        get() = findChildByClass(ZigElement::class.java)
 }
 
 class ZigContainerTagEnum(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val innerElement: ZigElement?
+        get() = findChildByClass(ZigElement::class.java)
 }
 
 class ZigContinue(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {

@@ -236,7 +236,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
         val name = identifier.text
         val results = mutableSetOf<ResolveResult>()
         for ((containerType, _) in getContainers(leftValues)) {
-            val member = containerType.element.members.firstOrNull {
+            val member = containerType.members.firstOrNull {
                 it is PsiNameIdentifierOwner && it.name == name
             }
             if (member != null) {
@@ -276,28 +276,22 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
             }
         }
         for ((containerType, isInstance) in getContainers(leftValues)) {
-            val inSameFile = originalFile == containerType.element.containingFile
-            for (member in containerType.element.members) {
+            for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
                 if (member is ZigContainerField) {
-                    val shouldIncludeField = when (containerType.element.containerKind) {
-                        ZigContainerKind.ENUM -> !isInstance
-                        else -> isInstance || containerType.element.isTaggedUnion
+                    if (containerType.containerKind == ZigContainerKind.ENUM) {
+                        if (isInstance || member.name == "_") {
+                            continue
+                        }
+                        variants.add(createLookupElementWithType(member, containerType))
+                    } else if (isInstance) {
+                        val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
+                        val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
+                        val types = values.map { it.typeOf }.toSet()
+                        variants.add(createLookupElementWithType(member, types.singleOrNull()))
+                    } else if (containerType is ZigContainerType && containerType.element.isTaggedUnion) {
+                        val types = ZigAnalyzer.resolveUnionTagTypes(containerType)
+                        variants.add(createLookupElementWithType(member, types.singleOrNull()))
                     }
-                    if (!shouldIncludeField) {
-                        continue
-                    }
-                    val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
-                    val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
-                    val types = values.map { it.typeOf }.toSet()
-                    variants.add(createLookupElementWithType(member, types.singleOrNull()))
-                    continue
-                }
-                val isPub = when (member) {
-                    is ZigVarDecl -> member.isPub
-                    is ZigFnDecl -> member.isPub
-                    else -> continue
-                }
-                if (!inSameFile && !isPub) {
                     continue
                 }
                 val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
@@ -336,15 +330,15 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
         return variants.toTypedArray()
     }
 
-    private fun getContainers(leftValues: Set<ZigValue>): Sequence<Pair<ZigContainerType, Boolean>> {
+    private fun getContainers(leftValues: Set<ZigValue>): Sequence<Pair<IZigContainerType, Boolean>> {
         return leftValues.asSequence().mapNotNull { left ->
             when (left) {
-                is ZigContainerType -> Pair(left, false)
+                is IZigContainerType -> Pair(left, false)
                 else -> when (val typeOfLeft = left.typeOf) {
-                    is ZigContainerType -> Pair(typeOfLeft, true)
+                    is IZigContainerType -> Pair(typeOfLeft, true)
                     is ZigPointerType -> when (typeOfLeft.size) {
                         ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
-                            is ZigContainerType -> Pair(pointerChild, true)
+                            is IZigContainerType -> Pair(pointerChild, true)
                             else -> null
                         }
                         else -> null
@@ -364,7 +358,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
         val name = identifier.text
         val results = mutableSetOf<ResolveResult>()
         for ((_, containerType) in types) {
-            val member = containerType.element.members.firstOrNull {
+            val member = containerType.members.firstOrNull {
                 it is PsiNameIdentifierOwner && it.name == name
             }
             if (member != null) {
@@ -392,28 +386,24 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
         val originalFile = myElement.containingFile
         val variants = mutableSetOf<LookupElement>()
         for ((originalType, containerType) in ZigAnalyzer.inferEnumLiteralTypes(myElement)) {
-            val inSameFile = originalFile == containerType.element.containingFile
-            for (member in containerType.element.members) {
+            for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
                 if (member is ZigContainerField) {
-                    if (member.name == "_") {
-                        continue
+                    if (containerType.containerKind == ZigContainerKind.ENUM) {
+                        if (member.name == "_") {
+                            continue
+                        }
+                        variants.add(createLookupElementWithType(member, containerType))
+                    } else if (containerType is ZigContainerType && containerType.element.isTaggedUnion) {
+                        val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
+                        val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
+                        val types = values.map { it.typeOf }.toSet()
+                        val type = types.singleOrNull()
+                        if (type == ZigVoidType) {
+                            variants.add(createLookupElementWithType(member, containerType))
+                        } else {
+                            // TODO: add specialized completion item for non-void tagged union field
+                        }
                     }
-                    val shouldIncludeField = when (containerType.element.containerKind) {
-                        ZigContainerKind.ENUM -> true
-                        else -> containerType.element.isTaggedUnion
-                    }
-                    if (!shouldIncludeField) {
-                        continue
-                    }
-                    variants.add(LookupElementBuilder.create(member).withIcon(AllIcons.Nodes.Field))
-                    continue
-                }
-                val isPub = when (member) {
-                    is ZigVarDecl -> member.isPub
-                    is ZigFnDecl -> member.isPub
-                    else -> continue
-                }
-                if (!inSameFile && !isPub) {
                     continue
                 }
                 val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
