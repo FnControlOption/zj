@@ -294,6 +294,24 @@ data object ZigEnumLiteralType : ZigValue {
     )
 }
 
+data class ZigEnumLiteralValue(override val typeOf: ZigValue, val name: String) : ZigValue {
+    override fun toHtmlChunk(truncate: Boolean) = when (typeOf) {
+        ZigEnumLiteralType -> HtmlChunk.fragment(
+            HtmlChunk.text("."),
+            HtmlChunk.text(name)
+        )
+        else -> HtmlChunk.fragment(
+            createStyledHtmlChunk(ZigHighlightingColors.BUILTIN, "@as"),
+            HtmlChunk.text("("),
+            typeOf.toHtmlChunk(truncate),
+            HtmlChunk.text(", "),
+            HtmlChunk.text("."),
+            createStyledHtmlChunk(ZigHighlightingColors.INSTANCE_FIELD, name),
+            HtmlChunk.text(")")
+        )
+    }
+}
+
 sealed interface IZigContainerType : ZigValue {
     override val typeOf: ZigTypeType
     val typeParams: Map<ZigParamDecl, Set<ZigValue>>
@@ -408,7 +426,8 @@ data class ZigErrorSetValue(override val typeOf: ZigErrorSetType, val name: Stri
             HtmlChunk.text(", "),
             createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "error"),
             HtmlChunk.text("."),
-            HtmlChunk.text(name)
+            HtmlChunk.text(name),
+            HtmlChunk.text(")")
         )
     }
 }
@@ -1083,7 +1102,14 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
 
         is ZigCharLiteral -> sequenceOf(ZigUnknown.of(ZigComptimeIntType))
 
-        is ZigEnumLiteral -> sequenceOf(ZigUnknown.of(ZigEnumLiteralType))
+        is ZigEnumLiteral -> {
+            val name = element.identifierElement?.text
+            if (name != null) {
+                sequenceOf(ZigEnumLiteralValue(ZigEnumLiteralType, name))
+            } else {
+                sequenceOf(ZigUnknown.of(ZigEnumLiteralType))
+            }
+        }
 
         is ZigBreak,
         is ZigContinue,
@@ -1199,6 +1225,9 @@ private fun substituteTypeParams(
             is ZigUnknown -> {
                 substituteTypeParams(value.typeOf, typeParams).map { ZigUnknown.of(it) }
             }
+            is ZigEnumLiteralValue -> {
+                substituteTypeParams(value.typeOf, typeParams).map { ZigEnumLiteralValue(it, value.name) }
+            }
             is ZigContainerType -> {
                 sequenceOf(substituteContainerTypeParams(value, typeParams))
             }
@@ -1286,9 +1315,9 @@ private fun computeContainerDeclValues(type: IZigContainerType, name: String): S
     }
     if (member is ZigContainerField) {
         return if (type.containerKind == ZigContainerKind.ENUM) {
-            sequenceOf(ZigUnknown.of(type))
+            sequenceOf(ZigEnumLiteralValue(type, name))
         } else if (type is ZigContainerType && type.element.isTaggedUnion) {
-            ZigAnalyzer.resolveUnionTagTypes(type).map { ZigUnknown.of(it) }
+            ZigAnalyzer.resolveUnionTagTypes(type).map { ZigEnumLiteralValue(it, name) }
         } else {
             sequenceOf(ZigUnknown.ofUnknownType())
         }
@@ -1974,6 +2003,7 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
 
         is ZigSwitchPayload -> when (payloadElement.items.indexOf(payloadItem)) {
             0 -> {
+                // TODO: shrink error set in `else` prong
                 val switchProngElement = payloadElement.containingSwitchProng
                 val switchItemElements = switchProngElement.items.map { it.innerElement }.toList()
                 if (switchItemElements.isNotEmpty()) {
@@ -1988,7 +2018,13 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
                     ?: return sequenceOf(ZigUnknown.ofUnknownType())
                 resolveValues(conditionElement).asSequence().map { it.typeOf }.flatMap { type ->
                     if (type is ZigContainerType && type.element.isTaggedUnion) {
-                        sequenceOf(ZigUnknown.ofUnknownType()) // TODO: map each switch item from enum value to union field
+                        val fields = type.members.filterIsInstance<ZigContainerField>()
+                        switchItemElements
+                            .asSequence()
+                            .flatMap { resolveValues(it) }
+                            .filterIsInstance<ZigEnumLiteralValue>()
+                            .mapNotNull { value -> fields.firstOrNull { it.name == value.name } }
+                            .flatMap { resolveValuesFromReferenceTo(it) }
                     } else {
                         sequenceOf(ZigUnknown.of(type))
                     }
