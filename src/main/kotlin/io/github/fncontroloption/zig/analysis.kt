@@ -153,7 +153,7 @@ sealed interface ZigValue {
 
 class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigValue {
     override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
-        if (typeOf is ZigUnknown && typeOf.typeOf == ZigTypeType) {
+        if (truncate || (typeOf is ZigUnknown && typeOf.typeOf == ZigTypeType)) {
             return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
         }
         return HtmlChunk.fragment(
