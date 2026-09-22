@@ -152,6 +152,7 @@ object ZigAnalyzer {
                 }
                 else -> emptySequence()
             }
+            is ZigFieldEnumType -> emptySequence()
         }
     }
 
@@ -681,6 +682,41 @@ data class ZigInferredUnionTagType(val union: ZigContainerType) : IZigContainerT
 
     override fun getNamedMembersVisibleFrom(originalFile: PsiFile): Sequence<ZigContainerField> {
         return union.element.members.filterIsInstance<ZigContainerField>()
+    }
+}
+
+data class ZigFieldEnumType(val container: ZigValue) : IZigContainerType {
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
+
+    override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
+        val builder = HtmlBuilder()
+        builder.append(createStyledHtmlChunk(ZigHighlightingColors.STATIC_FIELD, "meta"))
+        builder.append(".")
+        builder.append(createStyledHtmlChunk(ZigHighlightingColors.STATIC_METHOD, "FieldEnum"))
+        builder.append("(")
+        builder.append(container.toHtmlChunk(truncate))
+        builder.append(")")
+        return builder.toFragment()
+    }
+
+    override val typeParams: Map<ZigParamDecl, Set<ZigValue>>
+        get() = emptyMap()
+
+    override val containerKind: ZigContainerKind
+        get() = ZigContainerKind.ENUM
+
+    override val members: Sequence<ZigContainerField>
+        get() = when (container) {
+            is IZigContainerType -> container.members.filterIsInstance<ZigContainerField>()
+            else -> emptySequence()
+        }
+
+    override fun getNamedMembersVisibleFrom(originalFile: PsiFile): Sequence<ZigContainerField> {
+        return when (container) {
+            is IZigContainerType -> container.members.filterIsInstance<ZigContainerField>()
+            else -> emptySequence()
+        }
     }
 }
 
@@ -1277,6 +1313,9 @@ private fun substituteTypeParams(
             is ZigInferredUnionTagType -> {
                 sequenceOf(ZigInferredUnionTagType(substituteContainerTypeParams(value.union, typeParams)))
             }
+            is ZigFieldEnumType -> {
+                substituteTypeParams(value.container, typeParams).map { ZigFieldEnumType(it) }
+            }
             ZigTypeType,
             ZigAnyerrorType,
             ZigAnyopaqueType,
@@ -1452,6 +1491,11 @@ private fun computeFunctionReturnValues(
                 val values = arguments.firstOrNull()
                     ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
                 return values.asSequence().flatMap { computeTagType(it) }
+            }
+            "FieldEnum" -> {
+                val values = arguments.firstOrNull()
+                    ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+                return values.asSequence().map { ZigFieldEnumType(it) }
             }
             else -> {}
         }
