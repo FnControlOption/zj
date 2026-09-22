@@ -9,11 +9,7 @@ import com.intellij.psi.FileViewProvider
 import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
-import io.github.fncontroloption.zig.psi2.ZigElementType
-import io.github.fncontroloption.zig.psi2.ZigFile
-import io.github.fncontroloption.zig.psi2.ZigFileElementType
-import io.github.fncontroloption.zig.psi2.ZigTokenSets
-import io.github.fncontroloption.zig.psi2.ZigTokenType
+import io.github.fncontroloption.zig.psi2.*
 
 class ZigParserDefinition : ParserDefinition {
     override fun createLexer(project: Project?) = ZigLexerAdapter()

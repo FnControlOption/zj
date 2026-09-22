@@ -5,17 +5,7 @@ import com.intellij.lang.cacheBuilder.WordsScanner
 import com.intellij.lang.findUsages.FindUsagesProvider
 import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.TokenSet
-import io.github.fncontroloption.zig.psi2.ZigContainerField
-import io.github.fncontroloption.zig.psi2.ZigFnDecl
-import io.github.fncontroloption.zig.psi2.ZigLabelDecl
-import io.github.fncontroloption.zig.psi2.ZigMutability
-import io.github.fncontroloption.zig.psi2.ZigNamedElement
-import io.github.fncontroloption.zig.psi2.ZigParamDecl
-import io.github.fncontroloption.zig.psi2.ZigPayloadItem
-import io.github.fncontroloption.zig.psi2.ZigTokenSets
-import io.github.fncontroloption.zig.psi2.ZigTokenType
-import io.github.fncontroloption.zig.psi2.ZigVarDecl
-import io.github.fncontroloption.zig.psi2.ZigVarProto
+import io.github.fncontroloption.zig.psi2.*
 
 class ZigFindUsagesProvider : FindUsagesProvider {
     override fun getWordsScanner(): WordsScanner {

@@ -6,16 +6,8 @@ import com.intellij.openapi.editor.richcopy.HtmlSyntaxInfoUtil
 import com.intellij.openapi.util.RecursionManager
 import com.intellij.openapi.util.text.HtmlBuilder
 import com.intellij.openapi.util.text.HtmlChunk
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiNameIdentifierOwner
-import com.intellij.psi.PsiNamedElement
-import com.intellij.psi.SyntaxTraverser
-import com.intellij.psi.util.CachedValueProvider
-import com.intellij.psi.util.CachedValuesManager
-import com.intellij.psi.util.PsiModificationTracker
-import com.intellij.psi.util.findParentInFile
-import com.intellij.psi.util.findParentOfType
+import com.intellij.psi.*
+import com.intellij.psi.util.*
 import io.github.fncontroloption.zig.psi2.*
 import io.github.fncontroloption.zig.syntaxHighlighter.ZigHighlightingColors
 import org.jsoup.Jsoup
@@ -1424,10 +1416,6 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
 
         else -> sequenceOf(ZigUnknown.ofUnknownType())
     }
-}
-
-private fun isTaggedUnionType(type: ZigValue): Boolean {
-    return type is ZigContainerType && type.element.isTaggedUnion
 }
 
 private fun computeFunctionReturnValues(

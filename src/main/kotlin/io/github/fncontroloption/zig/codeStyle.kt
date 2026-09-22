@@ -3,13 +3,8 @@ package io.github.fncontroloption.zig
 import com.intellij.application.options.CodeStyleAbstractConfigurable
 import com.intellij.application.options.GenerationCodeStylePanel
 import com.intellij.application.options.TabbedLanguageCodeStylePanel
-import com.intellij.psi.codeStyle.CodeStyleSettings
-import com.intellij.psi.codeStyle.CodeStyleSettingsCustomizable
-import com.intellij.psi.codeStyle.CodeStyleSettingsProvider
-import com.intellij.psi.codeStyle.CommonCodeStyleSettings
+import com.intellij.psi.codeStyle.*
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings.IndentOptions
-import com.intellij.psi.codeStyle.CustomCodeStyleSettings
-import com.intellij.psi.codeStyle.LanguageCodeStyleSettingsProvider
 
 class ZigCodeStyleSettings(settings: CodeStyleSettings) : CustomCodeStyleSettings("ZigCodeStyleSettings", settings)
 

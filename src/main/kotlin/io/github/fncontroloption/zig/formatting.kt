@@ -1,52 +1,13 @@
 package io.github.fncontroloption.zig
 
-import com.intellij.formatting.Alignment
-import com.intellij.formatting.Block as FormattingBlock
-import com.intellij.formatting.ChildAttributes
-import com.intellij.formatting.FormattingContext
-import com.intellij.formatting.FormattingModel
-import com.intellij.formatting.FormattingModelBuilder
-import com.intellij.formatting.FormattingModelProvider
-import com.intellij.formatting.Indent
-import com.intellij.formatting.Wrap
-import com.intellij.formatting.WrapType
+import com.intellij.formatting.*
 import com.intellij.lang.ASTNode
 import com.intellij.lang.tree.util.children
 import com.intellij.lang.tree.util.siblings
 import com.intellij.psi.TokenType
 import com.intellij.psi.util.siblings
-import io.github.fncontroloption.zig.psi2.ZigArrayAccess
-import io.github.fncontroloption.zig.psi2.ZigArrayTypeElement
-import io.github.fncontroloption.zig.psi2.ZigAsm
-import io.github.fncontroloption.zig.psi2.ZigAssignDestructure
-import io.github.fncontroloption.zig.psi2.ZigAssignElement
-import io.github.fncontroloption.zig.psi2.ZigBinaryExpression
-import io.github.fncontroloption.zig.psi2.ZigBlock
-import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
-import io.github.fncontroloption.zig.psi2.ZigCall
-import io.github.fncontroloption.zig.psi2.ZigCallArg
-import io.github.fncontroloption.zig.psi2.ZigCatch
-import io.github.fncontroloption.zig.psi2.ZigConditionElement
-import io.github.fncontroloption.zig.psi2.ZigContainerDecl
-import io.github.fncontroloption.zig.psi2.ZigContainerField
-import io.github.fncontroloption.zig.psi2.ZigElementType
-import io.github.fncontroloption.zig.psi2.ZigElseElement
-import io.github.fncontroloption.zig.psi2.ZigErrorSetDecl
-import io.github.fncontroloption.zig.psi2.ZigFieldAccess
-import io.github.fncontroloption.zig.psi2.ZigFnDecl
-import io.github.fncontroloption.zig.psi2.ZigFnProto
-import io.github.fncontroloption.zig.psi2.ZigFor
-import io.github.fncontroloption.zig.psi2.ZigForPayload
-import io.github.fncontroloption.zig.psi2.ZigGroupedExpression
-import io.github.fncontroloption.zig.psi2.ZigIf
-import io.github.fncontroloption.zig.psi2.ZigListInit
-import io.github.fncontroloption.zig.psi2.ZigListInitItem
-import io.github.fncontroloption.zig.psi2.ZigSwitch
-import io.github.fncontroloption.zig.psi2.ZigThenElement
-import io.github.fncontroloption.zig.psi2.ZigTokenSets
-import io.github.fncontroloption.zig.psi2.ZigTokenType
-import io.github.fncontroloption.zig.psi2.ZigVarDecl
-import io.github.fncontroloption.zig.psi2.ZigWhile
+import io.github.fncontroloption.zig.psi2.*
+import com.intellij.formatting.Block as FormattingBlock
 import com.intellij.psi.formatter.common.AbstractBlock as AbstractFormattingBlock
 
 class ZigFormattingModelBuilder : FormattingModelBuilder {

@@ -160,31 +160,10 @@ class ZigImportReference(element: ZigStringLiteral) :
     override fun resolve(): PsiElement? {
         val text = myElement?.value ?: return null
         if (!text.endsWith(".zig") && !text.endsWith(".zon")) {
-            when (text) {
-                "std" -> {
-                    val enumerator = run {
-                        val file = myElement.containingFile?.originalFile?.virtualFile
-                        if (file != null) {
-                            val module = ModuleUtilCore.findModuleForFile(file, myElement.project)
-                            if (module != null) {
-                                return@run OrderEnumerator.orderEntries(module)
-                            }
-                        }
-                        OrderEnumerator.orderEntries(myElement.project)
-                    }
-                    for (root in enumerator.sdkOnly().sourceRoots) {
-                        val virtualFile = root.findFile("std.zig")
-                        if (virtualFile != null) {
-                            val psiFile = PsiManager.getInstance(myElement.project).findFile(virtualFile)
-                            if (psiFile != null) {
-                                return psiFile
-                            }
-                        }
-                    }
-                    return null
-                }
-                "builtin" -> return null // TODO: get builtin text from `zig build-exe --show-builtin`
-                else -> return null // TODO: resolve imported modules
+            return when (text) {
+                "std" -> resolveStd()
+                "builtin" -> null // TODO: get builtin text from `zig build-exe --show-builtin`
+                else -> null // TODO: resolve imported modules
             }
         }
         val parts = text.split("/")
@@ -225,6 +204,29 @@ class ZigImportReference(element: ZigStringLiteral) :
         val newValue = nioPathToUnixString(relativePath)
         myElement.replace(createZigStringLiteral(myElement.project, newValue))
         return element
+    }
+
+    private fun resolveStd(): PsiElement? {
+        val enumerator = run {
+            val file = myElement.containingFile?.originalFile?.virtualFile
+            if (file != null) {
+                val module = ModuleUtilCore.findModuleForFile(file, myElement.project)
+                if (module != null) {
+                    return@run OrderEnumerator.orderEntries(module)
+                }
+            }
+            OrderEnumerator.orderEntries(myElement.project)
+        }
+        for (root in enumerator.sdkOnly().sourceRoots) {
+            val virtualFile = root.findFile("std.zig")
+            if (virtualFile != null) {
+                val psiFile = PsiManager.getInstance(myElement.project).findFile(virtualFile)
+                if (psiFile != null) {
+                    return psiFile
+                }
+            }
+        }
+        return null
     }
 }
 
@@ -465,34 +467,6 @@ class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElem
         return variants.toTypedArray()
     }
 }
-
-/* TODO: delete
-private fun resolveInferredResultTypeReference(types: Sequence<ZigValue>, name: String): Array<ResolveResult> {
-    val results = mutableSetOf<ResolveResult>()
-    for (originalType in types) {
-        val containerType = getInferredResultTypeContainer(originalType) ?: continue
-        val member = containerType.element.members.firstOrNull {
-            it is PsiNameIdentifierOwner && it.name == name
-        }
-        if (member != null) {
-            results.add(PsiElementResolveResult(member))
-        }
-    }
-    return results.toTypedArray()
-}
-
-private fun getInferredResultTypeContainer(originalType: ZigValue): ZigContainerType? {
-    var type = originalType
-    while (true) {
-        type = when (type) {
-            is ZigErrorUnionType -> type.payload
-            is ZigOptionalType -> type.child
-            is ZigPointerType if type.size == ZigPointerSize.ONE -> type.child
-            else -> return type as? ZigContainerType
-        }
-    }
-}
- */
 
 private fun identifierReferenceCandidates(element: PsiElement): Sequence<PsiNameIdentifierOwner> {
     var it: Iterator<PsiNameIdentifierOwner>? = null

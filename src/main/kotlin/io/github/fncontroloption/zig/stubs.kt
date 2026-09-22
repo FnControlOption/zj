@@ -3,30 +3,8 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.lang.ASTNode
-import com.intellij.psi.stubs.DefaultStubBuilder
-import com.intellij.psi.stubs.IndexSink
-import com.intellij.psi.stubs.LanguageStubDefinition
-import com.intellij.psi.stubs.NamedStub
-import com.intellij.psi.stubs.PsiFileStubImpl
-import com.intellij.psi.stubs.StringStubIndexExtension
-import com.intellij.psi.stubs.StubBase
-import com.intellij.psi.stubs.StubElement
-import com.intellij.psi.stubs.StubElementFactory
-import com.intellij.psi.stubs.StubIndexKey
-import com.intellij.psi.stubs.StubInputStream
-import com.intellij.psi.stubs.StubOutputStream
-import com.intellij.psi.stubs.StubRegistry
-import com.intellij.psi.stubs.StubRegistryExtension
-import com.intellij.psi.stubs.StubSerializer
-import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
-import io.github.fncontroloption.zig.psi2.ZigContainerField
-import io.github.fncontroloption.zig.psi2.ZigElementType
-import io.github.fncontroloption.zig.psi2.ZigFieldAccess
-import io.github.fncontroloption.zig.psi2.ZigFile
-import io.github.fncontroloption.zig.psi2.ZigFileElementType
-import io.github.fncontroloption.zig.psi2.ZigFnDecl
-import io.github.fncontroloption.zig.psi2.ZigMutability
-import io.github.fncontroloption.zig.psi2.ZigVarDecl
+import com.intellij.psi.stubs.*
+import io.github.fncontroloption.zig.psi2.*
 
 class ZigStubDefinition : LanguageStubDefinition {
     override val builder = DefaultStubBuilder()

@@ -5,25 +5,10 @@ import com.intellij.lang.documentation.DocumentationMarkup
 import com.intellij.markdown.utils.convertMarkdownToHtml
 import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.vfs.VirtualFileManager
-import com.intellij.psi.PsiComment
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiManager
-import com.intellij.psi.PsiNamedElement
-import com.intellij.psi.PsiWhiteSpace
+import com.intellij.psi.*
 import com.intellij.psi.util.findParentInFile
 import com.intellij.psi.util.findParentOfType
-import io.github.fncontroloption.zig.psi2.ZigContainerField
-import io.github.fncontroloption.zig.psi2.ZigElement
-import io.github.fncontroloption.zig.psi2.ZigFieldAccess
-import io.github.fncontroloption.zig.psi2.ZigFile
-import io.github.fncontroloption.zig.psi2.ZigFnDecl
-import io.github.fncontroloption.zig.psi2.ZigLabelDecl
-import io.github.fncontroloption.zig.psi2.ZigListInitItem
-import io.github.fncontroloption.zig.psi2.ZigParamDecl
-import io.github.fncontroloption.zig.psi2.ZigPayloadItem
-import io.github.fncontroloption.zig.psi2.ZigTokenType
-import io.github.fncontroloption.zig.psi2.ZigVarDecl
-import io.github.fncontroloption.zig.psi2.ZigVarProto
+import io.github.fncontroloption.zig.psi2.*
 
 const val ZIG_DOCUMENTATION_OFFSET_SEPARATOR = $$"$zigDocumentationOffset$"
 
@@ -100,7 +85,11 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
         return sb.toString()
     }
 
-    override fun getDocumentationElementForLink(psiManager: PsiManager, link: String, context: PsiElement): PsiElement? {
+    override fun getDocumentationElementForLink(
+        psiManager: PsiManager,
+        link: String,
+        context: PsiElement
+    ): PsiElement? {
         val offsetIdx = link.lastIndexOf(ZIG_DOCUMENTATION_OFFSET_SEPARATOR)
         val url = if (offsetIdx < 0) link else link.substring(0, offsetIdx)
         val virtualFile = VirtualFileManager.getInstance().findFileByUrl(url) ?: return null

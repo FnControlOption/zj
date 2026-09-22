@@ -9,13 +9,7 @@ import com.intellij.lang.ASTNode
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Iconable
-import com.intellij.psi.FileViewProvider
-import com.intellij.psi.NavigatablePsiElement
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiFileFactory
-import com.intellij.psi.PsiNameIdentifierOwner
-import com.intellij.psi.PsiReference
-import com.intellij.psi.StubBasedPsiElement
+import com.intellij.psi.*
 import com.intellij.psi.stubs.StubElement
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.elementType
@@ -24,18 +18,7 @@ import com.intellij.psi.util.siblings
 import com.intellij.ui.IconManager
 import com.intellij.util.BitUtil
 import com.intellij.util.IncorrectOperationException
-import io.github.fncontroloption.zig.ZigContainerFieldStub
-import io.github.fncontroloption.zig.ZigEnumLiteralReference
-import io.github.fncontroloption.zig.ZigFieldAccessReference
-import io.github.fncontroloption.zig.ZigFileType
-import io.github.fncontroloption.zig.ZigFnDeclStub
-import io.github.fncontroloption.zig.ZigIdentifierReference
-import io.github.fncontroloption.zig.ZigImportReference
-import io.github.fncontroloption.zig.ZigLabelReference
-import io.github.fncontroloption.zig.ZigLanguage
-import io.github.fncontroloption.zig.ZigListInitItemReference
-import io.github.fncontroloption.zig.ZigTestReference
-import io.github.fncontroloption.zig.ZigVarDeclStub
+import io.github.fncontroloption.zig.*
 import java.util.regex.Pattern
 import javax.swing.Icon
 
@@ -45,6 +28,7 @@ sealed interface ZigElement : PsiElement
 sealed class ZigStubPsiElement<T : StubElement<*>> : StubBasedPsiElementBase<T>, StubBasedPsiElement<T>, ZigElement {
     constructor(stub: T, nodeType: IElementType) : super(stub, nodeType)
     constructor(node: ASTNode) : super(node)
+
     override fun getLanguage() = ZigLanguage
     override fun getIElementType() = elementTypeImpl
     override fun toString() = "${javaClass.simpleName}(${elementTypeImpl})"

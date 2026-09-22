@@ -6,6 +6,8 @@ import io.github.fncontroloption.zig.ZigLanguage
 
 class ZigTokenType(debugName: String) : IElementType(debugName, ZigLanguage) {
     companion object {
+        // @formatter:off
+
         @JvmField val AMPERSAND = ZigTokenType("&")
         @JvmField val AMPERSAND_EQUAL = ZigTokenType("&=")
         @JvmField val ANGLE_BRACKET_ANGLE_BRACKET_LEFT = ZigTokenType("<<")
@@ -122,10 +124,14 @@ class ZigTokenType(debugName: String) : IElementType(debugName, ZigLanguage) {
         @JvmField val SLASH_EQUAL = ZigTokenType("/=")
         @JvmField val STRING_LITERAL = ZigTokenType("a string literal")
         @JvmField val TILDE = ZigTokenType("~")
+
+        // @formatter:on
     }
 }
 
 object ZigTokenSets {
+    // @formatter:off
+
     // *** Syntax highlighter ***
     @JvmField val KEYWORDS = TokenSet.create(
         ZigTokenType.KEYWORD_ADDRSPACE,
@@ -250,4 +256,6 @@ object ZigTokenSets {
         ZigTokenType.KEYWORD_ALLOWZERO,
         ZigTokenType.KEYWORD_ADDRSPACE
     )
+
+    // @formatter:on
 }

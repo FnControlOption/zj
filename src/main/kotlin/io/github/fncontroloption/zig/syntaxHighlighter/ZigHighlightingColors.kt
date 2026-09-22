@@ -6,6 +6,7 @@ import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.colors.TextAttributesKey
 
 object ZigHighlightingColors {
+    // @formatter:off
 
     // *** Highlighter ***
 
@@ -36,4 +37,6 @@ object ZigHighlightingColors {
     val REASSIGNED_LOCAL_VARIABLE = TextAttributesKey.createTextAttributesKey("ZIG_REASSIGNED_LOCAL_VARIABLE", DefaultLanguageHighlighterColors.REASSIGNED_LOCAL_VARIABLE)
     val PARAMETER = TextAttributesKey.createTextAttributesKey("ZIG_PARAMETER", DefaultLanguageHighlighterColors.PARAMETER)
     val TYPE_PARAMETER = TextAttributesKey.createTextAttributesKey("ZIG_TYPE_PARAMETER", JavaHighlightingColors.TYPE_PARAMETER_NAME_ATTRIBUTES)
+
+    // @formatter:on
 }

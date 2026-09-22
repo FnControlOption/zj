@@ -10,21 +10,7 @@ import com.intellij.psi.util.parentOfType
 import io.github.fncontroloption.zig.ZigAnalyzer
 import io.github.fncontroloption.zig.ZigFunctionType
 import io.github.fncontroloption.zig.ZigTypeType
-import io.github.fncontroloption.zig.psi2.ZigContainerDecl
-import io.github.fncontroloption.zig.psi2.ZigContainerField
-import io.github.fncontroloption.zig.psi2.ZigContainerKind
-import io.github.fncontroloption.zig.psi2.ZigEnumLiteral
-import io.github.fncontroloption.zig.psi2.ZigFieldAccess
-import io.github.fncontroloption.zig.psi2.ZigFile
-import io.github.fncontroloption.zig.psi2.ZigFnDecl
-import io.github.fncontroloption.zig.psi2.ZigIdentifier
-import io.github.fncontroloption.zig.psi2.ZigListInitItem
-import io.github.fncontroloption.zig.psi2.ZigMutability
-import io.github.fncontroloption.zig.psi2.ZigParamDecl
-import io.github.fncontroloption.zig.psi2.ZigPayloadItem
-import io.github.fncontroloption.zig.psi2.ZigTestDecl
-import io.github.fncontroloption.zig.psi2.ZigVarDecl
-import io.github.fncontroloption.zig.psi2.ZigVarDeclOrProto
+import io.github.fncontroloption.zig.psi2.*
 import io.github.fncontroloption.zig.resolveReferences
 
 /** @see com.intellij.codeInsight.daemon.impl.analysis.JavaNamesHighlightVisitor */
