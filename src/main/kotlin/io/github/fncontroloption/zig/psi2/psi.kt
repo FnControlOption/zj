@@ -918,6 +918,9 @@ class ZigOrelse(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
 }
 
 class ZigParamDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement {
+    val comptimeTokenElement: PsiElement?
+        get() = findChildByType(ZigTokenType.KEYWORD_COMPTIME)
+
     val typeElement: ZigTypeElement?
         get() = findChildByClass(ZigTypeElement::class.java)
 

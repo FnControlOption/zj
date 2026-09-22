@@ -302,7 +302,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                 when (val type = types.singleOrNull()) {
                     is ZigFunctionType -> {
                         // TODO: handle varargs
-                        var (paramNames, paramTypes) = getFunctionParamNamesAndTypes(type)
+                        var (paramNames, paramTypes) = getFunctionParamNamesAndTypes(type, containerType.typeParams)
                         val isMethod = getFunctionReceiverType(paramTypes) == containerType
                         if (isInstance) {
                             if (!isMethod) {
@@ -415,7 +415,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
                     is ZigFunctionType -> {
                         // TODO: handle varargs
                         // TODO: check if return type can coerce to original type
-                        val (paramNames, paramTypes) = getFunctionParamNamesAndTypes(type)
+                        val (paramNames, paramTypes) = getFunctionParamNamesAndTypes(type, containerType.typeParams)
                         val isMethod = getFunctionReceiverType(paramTypes) == containerType
                         variants.add(
                             LookupElementBuilder.create(member)
@@ -515,11 +515,14 @@ private fun identifierReferenceCandidates(element: PsiElement): Sequence<PsiName
     }
 }
 
-internal fun getFunctionParamNamesAndTypes(functionType: ZigFunctionType): Pair<List<String?>, List<ZigValue?>> {
+internal fun getFunctionParamNamesAndTypes(
+    functionType: ZigFunctionType,
+    typeParams: Map<ZigParamDecl, Set<ZigValue>> = functionType.typeParams,
+): Pair<List<String?>, List<ZigValue?>> {
     return functionType.element.parameters.map { param ->
         param.name to param.typeElement?.innerElement?.let {
             val initialValues = ZigAnalyzer.resolveValues(it)
-            val values = ZigAnalyzer.substituteTypeParams(initialValues, functionType.typeParams)
+            val values = ZigAnalyzer.substituteTypeParams(initialValues, typeParams)
             values.singleOrNull()
         }
     }.unzip()

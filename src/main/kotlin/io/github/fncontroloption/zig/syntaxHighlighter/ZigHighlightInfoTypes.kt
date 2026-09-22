@@ -18,5 +18,5 @@ object ZigHighlightInfoTypes {
     val LOCAL_VARIABLE = createSymbolTypeInfo(ZigHighlightingColors.LOCAL_VARIABLE)
     val REASSIGNED_LOCAL_VARIABLE = createSymbolTypeInfo(ZigHighlightingColors.REASSIGNED_LOCAL_VARIABLE)
     val PARAMETER = createSymbolTypeInfo(ZigHighlightingColors.PARAMETER)
-    val TYPE_PARAMETER = createSymbolTypeInfo(ZigHighlightingColors.TYPE_PARAMETER)
+    val COMPTIME_PARAMETER = createSymbolTypeInfo(ZigHighlightingColors.COMPTIME_PARAMETER)
 }

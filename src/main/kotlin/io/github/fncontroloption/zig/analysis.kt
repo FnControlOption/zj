@@ -166,6 +166,18 @@ object ZigAnalyzer {
             else -> resolveValues(tagElement).asSequence()
         }
     }
+
+    fun resolveComptimeParameterTypes(decl: ZigParamDecl): Set<ZigValue> {
+        val typeElement = decl.typeElement?.innerElement ?: return emptySet()
+        val types = resolveValues(typeElement)
+        if (decl.comptimeTokenElement != null) {
+            return types
+        }
+        if (types.singleOrNull() == ZigTypeType) {
+            return types
+        }
+        return emptySet()
+    }
 }
 
 sealed interface ZigValue {
@@ -396,11 +408,8 @@ data class ZigFunctionType(
     }
 }
 
-data class ZigTypeParamType(val element: ZigParamDecl) : ZigValue {
-    override val typeOf: ZigTypeType
-        get() = ZigTypeType
-
-    override fun toHtmlChunk(truncate: Boolean) = createNamedHtmlChunk(element, ZigHighlightingColors.TYPE_PARAMETER)
+data class ZigComptimeParameterValue(override val typeOf: ZigValue, val element: ZigParamDecl) : ZigValue {
+    override fun toHtmlChunk(truncate: Boolean) = createNamedHtmlChunk(element, ZigHighlightingColors.COMPTIME_PARAMETER)
 }
 
 data class ZigOptionalType(val child: ZigValue) : ZigValue {
@@ -1210,9 +1219,7 @@ private fun findUnboundTypeParams(element: ZigElement): Map<ZigParamDecl, Set<Zi
         while (element != null) {
             if (element is ZigFnDecl) {
                 for (paramDecl in element.parameters) {
-                    val paramTypeElement = paramDecl.typeElement?.innerElement ?: continue
-                    val paramTypes = resolveValues(paramTypeElement)
-                    if (paramTypes.contains(ZigTypeType)) {
+                    if (ZigAnalyzer.resolveComptimeParameterTypes(paramDecl).isNotEmpty()) {
                         this[paramDecl] = emptySet()
                     }
                 }
@@ -1231,9 +1238,7 @@ private fun computeTypeParams(
     }
     return function.typeParams.toMutableMap().apply {
         for ((paramDecl, argValues) in function.element.parameters.zip(arguments)) {
-            val paramTypeElement = paramDecl.typeElement?.innerElement ?: continue
-            val paramTypes = resolveValues(paramTypeElement)
-            if (paramTypes.contains(ZigTypeType)) {
+            if (ZigAnalyzer.resolveComptimeParameterTypes(paramDecl).isNotEmpty()) {
                 this[paramDecl] = argValues
             }
         }
@@ -1282,7 +1287,7 @@ private fun substituteTypeParams(
             is ZigFunctionType -> {
                 sequenceOf(substituteFunctionTypeParams(value, typeParams))
             }
-            is ZigTypeParamType -> {
+            is ZigComptimeParameterValue -> {
                 val values = typeParams[value.element]
                 if (values.isNullOrEmpty()) {
                     sequenceOf(value)
@@ -1294,13 +1299,24 @@ private fun substituteTypeParams(
                 substituteTypeParams(value.child, typeParams).map { ZigOptionalType(it) }
             }
             is ZigErrorUnionType -> {
-                substituteTypeParams(value.payload, typeParams).map { ZigErrorUnionType(value.errorSet, it) }
+                val errorSetTypes = substituteTypeParams(value.errorSet, typeParams)
+                val errorSet = errorSetTypes.singleOrNull() ?: ZigUnknown.of(ZigTypeType)
+                val payloadTypes = substituteTypeParams(value.payload, typeParams)
+                payloadTypes.map { ZigErrorUnionType(errorSet, it) }
             }
             is ZigArrayType -> {
-                substituteTypeParams(value.child, typeParams).map { ZigArrayType(value.length, value.sentinel, it) }
+                val lengthValues = substituteTypeParams(value.length, typeParams)
+                val length = lengthValues.singleOrNull() ?: ZigUnknown.ofUnknownType()
+                val sentinelValues = value.sentinel?.let { substituteTypeParams(it, typeParams) }
+                val sentinel = sentinelValues?.singleOrNull()
+                val childTypes = substituteTypeParams(value.child, typeParams)
+                childTypes.map { ZigArrayType(length, sentinel, it) }
             }
             is ZigPointerType -> {
-                substituteTypeParams(value.child, typeParams).map { ZigPointerType(value.size, value.sentinel, it) }
+                val sentinelValues = value.sentinel?.let { substituteTypeParams(it, typeParams) }
+                val sentinel = sentinelValues?.singleOrNull()
+                val childTypes = substituteTypeParams(value.child, typeParams)
+                childTypes.map { ZigPointerType(value.size, sentinel, it) }
             }
             is ZigTupleType -> {
                 val fields = value.fields.map { field ->
@@ -1438,11 +1454,12 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
         }
 
         is ZigParamDecl -> {
+            val comptimeTypes = ZigAnalyzer.resolveComptimeParameterTypes(target)
+            if (comptimeTypes.isNotEmpty()) {
+                return comptimeTypes.asSequence().map { ZigComptimeParameterValue(it, target) }
+            }
             val typeElement = target.typeElement?.innerElement ?: return sequenceOf(ZigUnknown.ofUnknownType())
             val types = resolveValues(typeElement)
-            if (types.singleOrNull() == ZigTypeType) {
-                return sequenceOf(ZigTypeParamType(target))
-            }
             types.asSequence().map { ZigUnknown.of(it) }
         }
 
@@ -1508,7 +1525,7 @@ private fun computeFunctionReturnValues(
     } else {
         resolveValues(returnTypeElement)
     }
-    if (returnTypes.contains(ZigTypeType)) {
+    if (returnTypes.singleOrNull() == ZigTypeType) {
         val functionBodyElement = (functionElement as? ZigFnDecl)?.body
         if (functionBodyElement != null) {
             val typeParams = computeTypeParams(type, arguments)
@@ -2029,15 +2046,11 @@ private fun createParameterHtmlChunk(
     typeParams: Map<ZigParamDecl, Set<ZigValue>>,
     truncate: Boolean,
 ): HtmlChunk {
-    val paramTypeElement = paramDecl.typeElement?.innerElement
-    if (paramTypeElement != null) {
-        val paramTypes = resolveValues(paramTypeElement)
-        if (paramTypes.singleOrNull() == ZigTypeType) {
-            val typeParam = ZigTypeParamType(paramDecl)
-            val typeArg = substituteTypeParams(typeParam, typeParams).singleOrNull()
-            if (typeArg != null) {
-                return typeArg.toHtmlChunk(truncate)
-            }
+    for (type in ZigAnalyzer.resolveComptimeParameterTypes(paramDecl)) {
+        val comptimeParam = ZigComptimeParameterValue(type, paramDecl)
+        val comptimeArg = substituteTypeParams(comptimeParam, typeParams).singleOrNull()
+        if (comptimeArg != null) {
+            return comptimeArg.toHtmlChunk(truncate)
         }
     }
     return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")

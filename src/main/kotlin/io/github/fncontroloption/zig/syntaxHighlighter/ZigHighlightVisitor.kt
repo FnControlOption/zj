@@ -37,10 +37,8 @@ class ZigHighlightVisitor : HighlightVisitor {
 
             is ZigParamDecl -> {
                 val identifier = element.nameIdentifier ?: return null
-                val paramTypeElement = element.typeElement ?: return null
-                val paramType = paramTypeElement.innerElement
-                if (paramType != null && ZigAnalyzer.resolveValues(paramType).contains(ZigTypeType)) {
-                    return createHighlightInfo(identifier, ZigHighlightInfoTypes.TYPE_PARAMETER)
+                if (ZigAnalyzer.resolveComptimeParameterTypes(element).isNotEmpty()) {
+                    return createHighlightInfo(identifier, ZigHighlightInfoTypes.COMPTIME_PARAMETER)
                 }
 
                 createHighlightInfo(identifier, ZigHighlightInfoTypes.PARAMETER)
