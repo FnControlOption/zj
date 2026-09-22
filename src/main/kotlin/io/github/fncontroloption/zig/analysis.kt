@@ -500,7 +500,8 @@ data class ZigTupleType(val fields: List<ZigValue>) : ZigValue {
     override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
         val builder = HtmlBuilder()
         if (fields.isEmpty()) {
-            TODO()
+            builder.append(createStyledHtmlChunk(ZigHighlightingColors.BUILTIN, "@TypeOf"))
+            builder.append("(.{})")
         } else if (truncate) {
             builder.append(createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "struct"))
             builder.append(" {...}")
