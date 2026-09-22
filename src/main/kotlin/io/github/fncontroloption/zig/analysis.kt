@@ -134,16 +134,36 @@ object ZigAnalyzer {
         }
     }
 
+    fun resolveEnumTagTypes(type: IZigContainerType): Sequence<ZigValue> {
+        if (type.containerKind != ZigContainerKind.ENUM) {
+            return emptySequence()
+        }
+        return when (type) {
+            is ZigContainerType -> when (val tagElement = type.element.containerTagElement?.innerElement) {
+                null -> emptySequence()
+                is ZigContainerTagEnum -> emptySequence()
+                else -> resolveValues(tagElement).asSequence()
+            }
+            is ZigInferredUnionTagType -> when (val tagElement = type.union.element.containerTagElement?.innerElement) {
+                null -> emptySequence()
+                is ZigContainerTagEnum -> when (val enumTagElement = tagElement.innerElement) {
+                    null -> emptySequence()
+                    else -> resolveValues(enumTagElement).asSequence()
+                }
+                else -> emptySequence()
+            }
+        }
+    }
+
     fun resolveUnionTagTypes(type: ZigContainerType): Sequence<ZigValue> {
         if (type.element.containerKind != ZigContainerKind.UNION) {
             return emptySequence()
         }
-        val tagElement = type.element.containerTagElement?.innerElement
-            ?: return emptySequence()
-        if (tagElement is ZigContainerTagEnum) {
-            return sequenceOf(ZigInferredUnionTagType(type))
+        return when (val tagElement = type.element.containerTagElement?.innerElement) {
+            null -> emptySequence()
+            is ZigContainerTagEnum -> sequenceOf(ZigInferredUnionTagType(type))
+            else -> resolveValues(tagElement).asSequence()
         }
-        return resolveValues(tagElement).asSequence()
     }
 }
 
@@ -1422,16 +1442,30 @@ private fun computeFunctionReturnValues(
     type: ZigFunctionType,
     arguments: Sequence<Set<ZigValue>>,
 ): Sequence<ZigValue> {
-    val returnTypeElement = type.element.returnTypeElement?.innerElement
+    val functionElement = type.element
+    if (functionElement is ZigFnDecl
+        && functionElement.containingFile.name == "meta.zig"
+        && functionElement.containingFile.containingDirectory?.name == "std"
+    ) {
+        when (functionElement.name) {
+            "Tag" -> {
+                val values = arguments.firstOrNull()
+                    ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+                return values.asSequence().flatMap { computeTagType(it) }
+            }
+            else -> {}
+        }
+    }
+    val returnTypeElement = functionElement.returnTypeElement?.innerElement
         ?: return sequenceOf(ZigUnknown.ofUnknownType())
-    val returnTypes = if (type.element.bangTokenElement != null) {
+    val returnTypes = if (functionElement.bangTokenElement != null) {
         val errorSet = ZigUnknown.ofUnknownType() // TODO: infer error set
         resolveValues(returnTypeElement).map { ZigErrorUnionType(errorSet, it) }
     } else {
         resolveValues(returnTypeElement)
     }
     if (returnTypes.contains(ZigTypeType)) {
-        val functionBodyElement = (type.element as? ZigFnDecl)?.body
+        val functionBodyElement = (functionElement as? ZigFnDecl)?.body
         if (functionBodyElement != null) {
             val typeParams = computeTypeParams(type, arguments)
             val traverser = SyntaxTraverser.psiTraverser(functionBodyElement).expand { it !is ZigContainerDecl }
@@ -1459,6 +1493,21 @@ private fun computeFunctionReturnValues(
         values = values.flatMap { substituteTypeParams(it, typeParams) }
     }
     return values.map { ZigUnknown.of(it) }
+}
+
+private fun computeTagType(type: ZigValue): Sequence<ZigValue> {
+    return when (type) {
+        is IZigContainerType -> {
+            if (type.containerKind == ZigContainerKind.ENUM) {
+                ZigAnalyzer.resolveEnumTagTypes(type)
+            } else if (type is ZigContainerType && type.element.isTaggedUnion) {
+                ZigAnalyzer.resolveUnionTagTypes(type)
+            } else {
+                emptySequence()
+            }
+        }
+        else -> emptySequence()
+    }
 }
 
 private fun computeCalledFuncAndArgs(callElement: ZigCall): Sequence<Triple<ZigValue, Boolean, Sequence<Set<ZigValue>>>> {
