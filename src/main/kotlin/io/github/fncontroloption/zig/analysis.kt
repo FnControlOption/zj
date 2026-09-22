@@ -101,8 +101,9 @@ object ZigAnalyzer {
                 ZigPointerSize.SLICE -> arrayOf("len", "ptr")
             }
 
-            is ZigArrayType,
-            is ZigTupleType -> arrayOf("len")
+            is ZigArrayType -> arrayOf("len")
+
+            is ZigTupleType -> arrayOf("len") + type.fields.indices.map { "@\"$it\"" }
 
             else -> emptyArray()
         }
@@ -122,10 +123,19 @@ object ZigAnalyzer {
                 }
             }
 
-            is ZigArrayType,
-            is ZigTupleType -> when (name) {
+            is ZigArrayType -> when (name) {
                 "len" -> ZigUsizeType
                 else -> null
+            }
+
+            is ZigTupleType -> when (name) {
+                "len" -> ZigUsizeType
+                else -> {
+                    val isEscaped = name.startsWith("@\"") && name.endsWith("\"")
+                    if (!isEscaped) return null
+                    val index = name.substring(2, name.length - 1).toIntOrNull() ?: return null
+                    type.fields.getOrNull(index)
+                }
             }
 
             else -> null
@@ -906,7 +916,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             resolveValues(element.leftOperand).asSequence().flatMap { left ->
                 val builtinType = ZigAnalyzer.getBuiltinFieldType(left.typeOf, name)
                 if (builtinType != null) {
-                    return@flatMap sequenceOf(builtinType)
+                    return@flatMap sequenceOf(ZigUnknown.of(builtinType))
                 }
                 when (left) {
                     is ZigErrorSetType -> {
@@ -919,7 +929,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                     is IZigContainerType -> computeContainerDeclValues(left, name)
                     else -> when (val typeOfLeft = left.typeOf) {
                         is IZigContainerType -> computeContainerInstanceFieldValues(typeOfLeft, name)
-                        is ZigTupleType -> sequenceOf(computeFieldAccessOnTuple(typeOfLeft, name))
                         is ZigPointerType -> when (typeOfLeft.size) {
                             ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
                                 is IZigContainerType -> computeContainerInstanceFieldValues(pointerChild, name)
@@ -1132,16 +1141,6 @@ private fun toFixedIntType(text: String): ZigFixedIntType? {
     }
     val bits = text.substring(1).toIntOrNull() ?: return null
     return ZigFixedIntType(signedness, bits)
-}
-
-private fun computeFieldAccessOnTuple(type: ZigTupleType, name: String): ZigValue {
-    val isEscaped = name.startsWith("@\"") && name.endsWith("\"")
-    if (!isEscaped) {
-        return ZigUnknown.ofUnknownType()
-    }
-    val index = name.substring(2, name.length - 1).toIntOrNull() ?: return ZigUnknown.ofUnknownType()
-    val fieldType = type.fields.getOrNull(index) ?: return ZigUnknown.ofUnknownType()
-    return ZigUnknown.of(fieldType)
 }
 
 private fun computeArrayAccessOnTuple(type: ZigTupleType, indexElement: ZigElement?): ZigValue {
