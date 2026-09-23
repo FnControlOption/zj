@@ -2037,6 +2037,28 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
                     resolveValues(firstArgElement).asSequence()
                 }
 
+                "@memset" -> {
+                    if (argIndex != 1) {
+                        return sequenceOf(ZigUnknown.of(ZigTypeType))
+                    }
+                    val firstArgElement = builtinCallElement.argumentElements.firstOrNull()?.innerElement
+                        ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                    resolveValues(firstArgElement).asSequence().mapNotNull {
+                        when (val type = it.typeOf) {
+                            is ZigPointerType -> when (type.size) {
+                                ZigPointerSize.SLICE -> type.child
+                                ZigPointerSize.ONE -> when (val child = type.child) {
+                                    is ZigArrayType -> child.child
+                                    else -> null
+                                }
+                                ZigPointerSize.MANY,
+                                ZigPointerSize.C -> null
+                            }
+                            else -> null
+                        }
+                    }
+                }
+
                 // TODO
                 else -> sequenceOf(ZigUnknown.of(ZigTypeType))
             }
