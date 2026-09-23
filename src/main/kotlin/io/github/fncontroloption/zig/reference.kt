@@ -7,10 +7,7 @@ import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
-import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.util.TextRange
-import com.intellij.openapi.vfs.findFile
 import com.intellij.psi.*
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
@@ -161,7 +158,7 @@ class ZigImportReference(element: ZigStringLiteral) :
         val text = myElement?.value ?: return null
         if (!text.endsWith(".zig") && !text.endsWith(".zon")) {
             return when (text) {
-                "std" -> resolveStd()
+                "std" -> ZigAnalyzer.findStdFile(myElement, "std.zig")
                 "builtin" -> null // TODO: get builtin text from `zig build-exe --show-builtin`
                 else -> null // TODO: resolve imported modules
             }
@@ -204,29 +201,6 @@ class ZigImportReference(element: ZigStringLiteral) :
         val newValue = nioPathToUnixString(relativePath)
         myElement.replace(createZigStringLiteral(myElement.project, newValue))
         return element
-    }
-
-    private fun resolveStd(): PsiElement? {
-        val enumerator = run {
-            val file = myElement.containingFile?.originalFile?.virtualFile
-            if (file != null) {
-                val module = ModuleUtilCore.findModuleForFile(file, myElement.project)
-                if (module != null) {
-                    return@run OrderEnumerator.orderEntries(module)
-                }
-            }
-            OrderEnumerator.orderEntries(myElement.project)
-        }
-        for (root in enumerator.sdkOnly().sourceRoots) {
-            val virtualFile = root.findFile("std.zig")
-            if (virtualFile != null) {
-                val psiFile = PsiManager.getInstance(myElement.project).findFile(virtualFile)
-                if (psiFile != null) {
-                    return psiFile
-                }
-            }
-        }
-        return null
     }
 }
 

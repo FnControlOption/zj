@@ -3,9 +3,12 @@ package io.github.fncontroloption.zig
 import com.intellij.codeInsight.documentation.DocumentationManagerProtocol
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.richcopy.HtmlSyntaxInfoUtil
+import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.util.RecursionManager
 import com.intellij.openapi.util.text.HtmlBuilder
 import com.intellij.openapi.util.text.HtmlChunk
+import com.intellij.openapi.vfs.findFile
 import com.intellij.psi.*
 import com.intellij.psi.util.*
 import io.github.fncontroloption.zig.psi2.*
@@ -177,6 +180,31 @@ object ZigAnalyzer {
             return types
         }
         return emptySet()
+    }
+
+    fun findStdFile(originalElement: PsiElement, path: String): ZigFile? {
+        val project = originalElement.project
+        val originalFile = originalElement.containingFile?.originalFile?.virtualFile
+        val enumerator = run {
+            if (originalFile != null) {
+                val module = ModuleUtilCore.findModuleForFile(originalFile, project)
+                if (module != null) {
+                    return@run OrderEnumerator.orderEntries(module)
+                }
+            }
+            OrderEnumerator.orderEntries(project)
+        }
+        val psiManager = PsiManager.getInstance(project)
+        for (root in enumerator.sdkOnly().sourceRoots) {
+            val virtualFile = root.findFile(path)
+            if (virtualFile != null) {
+                val psiFile = psiManager.findFile(virtualFile)
+                if (psiFile is ZigFile) {
+                    return psiFile
+                }
+            }
+        }
+        return null
     }
 }
 
@@ -1178,6 +1206,19 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                     ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
                 val typeParams = findUnboundTypeParams(containerElement)
                 sequenceOf(ZigContainerType(containerElement, typeParams))
+            }
+
+            "@typeInfo" -> {
+                val langFile = ZigAnalyzer.findStdFile(element, "lang.zig")
+                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                val member = langFile.members.firstOrNull {
+                    it is PsiNameIdentifierOwner && it.name == "Type"
+                }
+                if (member != null) {
+                    resolveValuesFromReferenceTo(member).asSequence().map { ZigUnknown.of(it) }
+                } else {
+                    sequenceOf(ZigUnknown.ofUnknownType())
+                }
             }
 
             "@EnumLiteral" -> sequenceOf(ZigEnumLiteralType)
