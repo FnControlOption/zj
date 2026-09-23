@@ -1963,7 +1963,9 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             }
             val label = parentElement.labelRef?.identifierElement?.text
             val breakable = if (label != null) {
-                parentElement.findParentInFile { it is ZigLabelable && label == it.labelDecl?.identifierElement?.text }
+                parentElement.findParentInFile {
+                    it is ZigLabelable && label == it.labelDecl?.identifierElement?.text
+                }
             } else {
                 var foundThenElemAsChild = false
                 parentElement.findParentInFile { current ->
@@ -1979,6 +1981,23 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
             }
             inferResultTypes(breakable)
+        }
+
+        is ZigContinue -> {
+            if (parentElement.continueOperand !== childElement) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            val label = parentElement.labelRef?.identifierElement?.text
+                ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+            val labelable = parentElement.findParentInFile {
+                it is ZigLabelable && label == it.labelDecl?.identifierElement?.text
+            }
+            if (labelable !is ZigSwitch) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            val conditionElement = labelable.conditionElement.innerElement
+                ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+            resolveValues(conditionElement).asSequence().map { it.typeOf }
         }
 
         is ZigComptime -> {

@@ -548,6 +548,16 @@ class ZigContainerTagEnum(node: ASTNode) : ASTWrapperPsiElement(node), ZigElemen
 }
 
 class ZigContinue(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val labelRef: ZigLabelRef?
+        get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigLabelRef }
+
+    val continueOperand: ZigElement?
+        get() =
+            lastChild
+                .siblings(forward = false)
+                .filterIsInstance<ZigElement>()
+                .takeWhile { it !is ZigLabelRef }
+                .firstOrNull()
 }
 
 class ZigDefer(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
