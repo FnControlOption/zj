@@ -2400,8 +2400,8 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
                     is ZigArrayType -> ZigUnknown.of(typeOfInput.child)
                     is ZigPointerType -> when (typeOfInput.size) {
                         ZigPointerSize.SLICE -> ZigUnknown.of(typeOfInput.child)
-                        ZigPointerSize.ONE -> when (typeOfInput.child) {
-                            is ZigArrayType -> ZigUnknown.of(typeOfInput.child)
+                        ZigPointerSize.ONE -> when (val pointerChild = typeOfInput.child) {
+                            is ZigArrayType -> ZigUnknown.of(pointerChild.child)
                             else -> ZigUnknown.ofUnknownType()
                         }
                         else -> ZigUnknown.ofUnknownType()
