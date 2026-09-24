@@ -502,7 +502,7 @@ class ZigContainerExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigCon
     }
 }
 
-class ZigContainerField : ZigStubPsiElement<ZigContainerFieldStub>, ZigNamedElement {
+class ZigContainerFieldImpl : ZigStubPsiElement<ZigContainerFieldStub>, ZigNamedElement {
     constructor(stub: ZigContainerFieldStub) : super(stub, ZigElementType.CONTAINER_FIELD)
     constructor(node: ASTNode) : super(node)
 

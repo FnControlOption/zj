@@ -202,7 +202,7 @@ class ZigElementType(debugName: String) : IElementType(debugName, ZigLanguage) {
                 CHAR_LITERAL -> ZigCharLiteral(node)
                 COMPTIME -> ZigComptime(node)
                 CONTAINER_EXPRESSION -> ZigContainerExpression(node)
-                CONTAINER_FIELD -> ZigContainerField(node)
+                CONTAINER_FIELD -> ZigContainerFieldImpl(node)
                 CONTAINER_TAG -> ZigContainerTag(node)
                 CONTAINER_TAG_ENUM -> ZigContainerTagEnum(node)
                 CONTINUE -> ZigContinue(node)

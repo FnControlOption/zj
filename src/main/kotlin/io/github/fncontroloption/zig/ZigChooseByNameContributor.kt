@@ -9,7 +9,7 @@ import com.intellij.psi.stubs.StubIndexKey
 import com.intellij.util.Processor
 import com.intellij.util.indexing.FindSymbolParameters
 import com.intellij.util.indexing.IdFilter
-import io.github.fncontroloption.zig.psi2.ZigContainerField
+import io.github.fncontroloption.zig.psi2.ZigContainerFieldImpl
 import io.github.fncontroloption.zig.psi2.ZigFnDecl
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 
@@ -41,7 +41,7 @@ class ZigChooseByNameContributor : ChooseByNameContributorEx {
             processor: Processor<in Psi>
         ) = stubIndex.processElements(indexKey, name, project, scope, filter, requiredClass, processor)
 
-        processStubIndexed(ZigStubIndexKeys.CONTAINER_FIELDS, ZigContainerField::class.java, processor)
+        processStubIndexed(ZigStubIndexKeys.CONTAINER_FIELDS, ZigContainerFieldImpl::class.java, processor)
         processStubIndexed(ZigStubIndexKeys.FN_DECLS, ZigFnDecl::class.java, processor)
         processStubIndexed(ZigStubIndexKeys.VAR_DECLS, ZigVarDecl::class.java, processor)
     }

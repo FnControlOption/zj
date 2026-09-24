@@ -103,7 +103,7 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
 private fun getDefinition(element: PsiElement): String? {
     return when (element) {
         is ZigFile -> element.name.substringBeforeLast('.')
-        is ZigContainerField -> element.text
+        is ZigContainerFieldImpl -> element.text
         is ZigFnDecl -> {
             val text = element.text
             val body = element.body ?: return text

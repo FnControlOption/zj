@@ -12,12 +12,12 @@ class ZigStubDefinition : LanguageStubDefinition {
 }
 
 object ZigStubIndexKeys {
-    val CONTAINER_FIELDS = StubIndexKey.createIndexKey<String, ZigContainerField>("zig.containerFields")
+    val CONTAINER_FIELDS = StubIndexKey.createIndexKey<String, ZigContainerFieldImpl>("zig.containerFields")
     val FN_DECLS = StubIndexKey.createIndexKey<String, ZigFnDecl>("zig.fnDecls")
     val VAR_DECLS = StubIndexKey.createIndexKey<String, ZigVarDecl>("zig.varDecls")
 }
 
-class ZigContainerFieldStubIndex : StringStubIndexExtension<ZigContainerField>() {
+class ZigContainerFieldStubIndex : StringStubIndexExtension<ZigContainerFieldImpl>() {
     override fun getVersion() = super.getVersion() + 1
     override fun getKey() = ZigStubIndexKeys.CONTAINER_FIELDS
 }
@@ -65,7 +65,7 @@ object ZigFileStubSerializer : StubSerializer<ZigFileStub> {
 // ---------- CONTAINER_FIELD ---------- //
 
 class ZigContainerFieldStub(parent: StubElement<*>?, name: String?) :
-    StubBase<ZigContainerField>(parent, ZigElementType.CONTAINER_FIELD), NamedStub<ZigContainerField> {
+    StubBase<ZigContainerFieldImpl>(parent, ZigElementType.CONTAINER_FIELD), NamedStub<ZigContainerFieldImpl> {
     private val myName = name
     override fun getName() = myName
 }
@@ -93,11 +93,11 @@ object ZigContainerFieldStubSerializer : StubSerializer<ZigContainerFieldStub> {
     }
 }
 
-object ZigContainerFieldStubFactory : StubElementFactory<ZigContainerFieldStub, ZigContainerField> {
-    override fun createStub(psi: ZigContainerField, parentStub: StubElement<*>?) =
+object ZigContainerFieldStubFactory : StubElementFactory<ZigContainerFieldStub, ZigContainerFieldImpl> {
+    override fun createStub(psi: ZigContainerFieldImpl, parentStub: StubElement<*>?) =
         ZigContainerFieldStub(parentStub, psi.name)
 
-    override fun createPsi(stub: ZigContainerFieldStub) = ZigContainerField(stub)
+    override fun createPsi(stub: ZigContainerFieldStub) = ZigContainerFieldImpl(stub)
 }
 
 // ---------- FN_DECL ---------- //

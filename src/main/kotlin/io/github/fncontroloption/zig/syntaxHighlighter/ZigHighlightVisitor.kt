@@ -72,7 +72,7 @@ class ZigHighlightVisitor : HighlightVisitor {
                 createHighlightInfo(identifier, ZigHighlightInfoTypes.LOCAL_VARIABLE)
             }
 
-            is ZigContainerField -> {
+            is ZigContainerFieldImpl -> {
                 val identifier = element.nameIdentifier ?: return null
                 val container = element.parentOfType<ZigContainerExpression>()
                 val type = when (container?.containerKind) {

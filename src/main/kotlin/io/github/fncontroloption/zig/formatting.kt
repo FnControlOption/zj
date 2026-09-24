@@ -67,7 +67,7 @@ class ZigFormattingBlock(
     override fun buildChildren(): List<FormattingBlock> {
         val blocks = mutableListOf<FormattingBlock>()
         when (val element = myNode.psi) {
-            is ZigVarDecl, is ZigAssignDestructure, is ZigContainerField -> {
+            is ZigVarDecl, is ZigAssignDestructure, is ZigContainerFieldImpl -> {
                 var indent = Indent.getNoneIndent()
                 for (child in myNode.children()) {
                     addChild(blocks, child, indent)
@@ -280,7 +280,7 @@ class ZigFormattingBlock(
         val prevElement = prevNode?.psi
         var indent = Indent.getNoneIndent()
         when (myNode.psi) {
-            is ZigVarDecl, is ZigAssignDestructure, is ZigContainerField -> {
+            is ZigVarDecl, is ZigAssignDestructure, is ZigContainerFieldImpl -> {
                 if (prevNode != null) {
                     val isAfterEqual =
                         prevNode

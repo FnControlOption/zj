@@ -714,11 +714,11 @@ data class ZigInferredUnionTagType(val union: ZigContainerType) : IZigContainerT
     override val containerKind: ZigContainerKind
         get() = ZigContainerKind.ENUM
 
-    override val members: Sequence<ZigContainerField>
-        get() = union.element.members.filterIsInstance<ZigContainerField>()
+    override val members: Sequence<ZigContainerFieldImpl>
+        get() = union.element.members.filterIsInstance<ZigContainerFieldImpl>()
 
-    override fun getNamedMembersVisibleFrom(originalFile: PsiFile): Sequence<ZigContainerField> {
-        return union.element.members.filterIsInstance<ZigContainerField>()
+    override fun getNamedMembersVisibleFrom(originalFile: PsiFile): Sequence<ZigContainerFieldImpl> {
+        return union.element.members.filterIsInstance<ZigContainerFieldImpl>()
     }
 }
 
@@ -743,15 +743,15 @@ data class ZigFieldEnumType(val container: ZigValue) : IZigContainerType {
     override val containerKind: ZigContainerKind
         get() = ZigContainerKind.ENUM
 
-    override val members: Sequence<ZigContainerField>
+    override val members: Sequence<ZigContainerFieldImpl>
         get() = when (container) {
-            is IZigContainerType -> container.members.filterIsInstance<ZigContainerField>()
+            is IZigContainerType -> container.members.filterIsInstance<ZigContainerFieldImpl>()
             else -> emptySequence()
         }
 
-    override fun getNamedMembersVisibleFrom(originalFile: PsiFile): Sequence<ZigContainerField> {
+    override fun getNamedMembersVisibleFrom(originalFile: PsiFile): Sequence<ZigContainerFieldImpl> {
         return when (container) {
-            is IZigContainerType -> container.members.filterIsInstance<ZigContainerField>()
+            is IZigContainerType -> container.members.filterIsInstance<ZigContainerFieldImpl>()
             else -> emptySequence()
         }
     }
@@ -826,7 +826,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             val tupleType = run {
                 val fields = mutableListOf<ZigValue>()
                 for (member in element.members) {
-                    if (member !is ZigContainerField) {
+                    if (member !is ZigContainerFieldImpl) {
                         return@run null
                     }
                     if (member.nameIdentifier != null) {
@@ -1491,7 +1491,7 @@ private fun computeContainerInstanceFieldValues(type: IZigContainerType, name: S
     val member = type.members.firstOrNull {
         it is PsiNameIdentifierOwner && it.name == name
     }
-    if (member == null || member !is ZigContainerField) {
+    if (member == null || member !is ZigContainerFieldImpl) {
         return sequenceOf(ZigUnknown.ofUnknownType())
     }
     var values = resolveValuesFromReferenceTo(member).asSequence()
@@ -1508,7 +1508,7 @@ private fun computeContainerTypeDeclValues(type: IZigContainerType, name: String
     if (member == null) {
         return sequenceOf(ZigUnknown.ofUnknownType())
     }
-    if (member is ZigContainerField) {
+    if (member is ZigContainerFieldImpl) {
         return if (type.containerKind == ZigContainerKind.ENUM) {
             sequenceOf(ZigEnumLiteralValue(type, name))
         } else if (type is ZigContainerType && type.element.isTaggedUnion) {
@@ -1591,7 +1591,7 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
             types.asSequence().map { ZigUnknown.of(it) }
         }
 
-        is ZigContainerField -> {
+        is ZigContainerFieldImpl -> {
             when (val typeElement = target.typeElement?.innerElement) {
                 null -> when (target.container.containerKind) {
                     ZigContainerKind.STRUCT,
@@ -1799,7 +1799,7 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             resolveValues(typeElement).asSequence()
         }
 
-        is ZigContainerField -> {
+        is ZigContainerFieldImpl -> {
             if (parentElement.initializer !== childElement) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
             }
@@ -2290,7 +2290,7 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
                     ?: return sequenceOf(ZigUnknown.ofUnknownType())
                 resolveValues(conditionElement).asSequence().map { it.typeOf }.flatMap { type ->
                     if (type is ZigContainerType && type.element.isTaggedUnion) {
-                        val fields = type.members.filterIsInstance<ZigContainerField>()
+                        val fields = type.members.filterIsInstance<ZigContainerFieldImpl>()
                         switchItemElements
                             .asSequence()
                             .flatMap { resolveValues(it) }
@@ -2339,7 +2339,7 @@ private fun computeFieldTypeValues(containerTypes: Sequence<ZigValue>, fieldName
                     || container.containerKind == ZigContainerKind.UNION)
             && fieldName is ZigNullTerminatedStringValue
         ) {
-            val fields = container.members.filterIsInstance<ZigContainerField>()
+            val fields = container.members.filterIsInstance<ZigContainerFieldImpl>()
             val field = fields.firstOrNull { it.name == fieldName.value }
             val typeElement = field?.typeElement?.innerElement
             if (typeElement != null) {

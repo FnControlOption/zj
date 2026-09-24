@@ -3,7 +3,7 @@ package io.github.fncontroloption.zig
 import com.intellij.psi.PsiFileFactory
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.requireIs
-import io.github.fncontroloption.zig.psi2.ZigContainerField
+import io.github.fncontroloption.zig.psi2.ZigContainerFieldImpl
 import io.github.fncontroloption.zig.psi2.ZigContainerKind
 import io.github.fncontroloption.zig.psi2.ZigElement
 import io.github.fncontroloption.zig.psi2.ZigFile
@@ -39,7 +39,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigContainerKind.STRUCT, type.element.containerKind)
         val members = type.element.members.toList()
         assertEquals(1, members.size)
-        val field = members[0].requireIs<ZigContainerField>()
+        val field = members[0].requireIs<ZigContainerFieldImpl>()
         assertEquals("foo", field.name)
     }
 
