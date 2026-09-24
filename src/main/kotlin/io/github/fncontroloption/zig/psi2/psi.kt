@@ -1133,6 +1133,12 @@ class ZigSwitchProng(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val containingSwitch: ZigSwitch
         get() = parent as ZigSwitch
 
+    val inlineTokenElement: PsiElement?
+        get() = findChildByType(ZigTokenType.KEYWORD_INLINE)
+
+    val isInline: Boolean
+        get() = inlineTokenElement != null
+
     val elseTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.KEYWORD_ELSE)
 

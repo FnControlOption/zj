@@ -2281,6 +2281,9 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
             0 -> {
                 // TODO: shrink error set in `else` prong
                 val switchProngElement = payloadElement.containingSwitchProng
+                if (switchProngElement.isInline) {
+                    return sequenceOf(ZigUnknown.ofUnknownType()) // TODO
+                }
                 val switchItemElements = switchProngElement.items.map { it.innerElement }.toList()
                 if (switchItemElements.isNotEmpty()) {
                     val switchItemValues = switchItemElements.map { resolveValues(it) }
@@ -2292,7 +2295,11 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
                 val switchElement = switchProngElement.containingSwitch
                 val conditionElement = switchElement.conditionElement.innerElement
                     ?: return sequenceOf(ZigUnknown.ofUnknownType())
-                resolveValues(conditionElement).asSequence().map { it.typeOf }.flatMap { type ->
+                val conditionValues = resolveValues(conditionElement).asSequence()
+                if (switchItemElements.isEmpty()) {
+                    return conditionValues.map { ZigUnknown.of(it.typeOf) }
+                }
+                conditionValues.map { it.typeOf }.flatMap { type ->
                     if (type is ZigContainerType && type.element.isTaggedUnion) {
                         val fields = type.members.filterIsInstance<ZigContainerField>()
                         switchItemElements
