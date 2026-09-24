@@ -230,25 +230,23 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
         val originalFile = myElement.containingFile
         val variants = mutableSetOf<LookupElement>()
         for (left in leftValues) {
-            when (val typeOfLeft = left.typeOf) {
+            val typeOfLeft = left.typeOf
+            when (typeOfLeft) {
                 is ZigOptionalType -> {
                     variants.add(LookupElementBuilder.create("?").withTypeText(typeOfLeft.child.toPlainText()))
                 }
-
                 is ZigPointerType if typeOfLeft.size == ZigPointerSize.ONE -> {
                     variants.add(LookupElementBuilder.create("*").withTypeText(typeOfLeft.child.toPlainText()))
                 }
-
-                else -> {
-                    for (fieldName in ZigAnalyzer.getBuiltinFields(typeOfLeft)) {
-                        val fieldType = ZigAnalyzer.getBuiltinFieldType(typeOfLeft, fieldName)
-                        variants.add(
-                            LookupElementBuilder.create(fieldName)
-                                .withIcon(AllIcons.Nodes.Field)
-                                .withTypeText(fieldType?.toPlainText())
-                        )
-                    }
-                }
+                else -> {}
+            }
+            for (fieldName in ZigAnalyzer.getBuiltinFields(typeOfLeft)) {
+                val fieldType = ZigAnalyzer.getBuiltinFieldType(typeOfLeft, fieldName)
+                variants.add(
+                    LookupElementBuilder.create(fieldName)
+                        .withIcon(AllIcons.Nodes.Field)
+                        .withTypeText(fieldType?.toPlainText())
+                )
             }
         }
         for ((containerType, isInstance) in getContainers(leftValues)) {

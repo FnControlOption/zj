@@ -87,6 +87,10 @@ object ZigAnalyzer {
     }
 
     fun getBuiltinFields(type: ZigValue): Array<String> {
+        var type = type
+        if (type is ZigPointerType && type.size == ZigPointerSize.ONE) {
+            type = type.child
+        }
         return when (type) {
             is ZigPointerType -> when (type.size) {
                 ZigPointerSize.ONE,
@@ -105,6 +109,10 @@ object ZigAnalyzer {
     }
 
     fun getBuiltinFieldType(type: ZigValue, name: String): ZigValue? {
+        var type = type
+        if (type is ZigPointerType && type.size == ZigPointerSize.ONE) {
+            type = type.child
+        }
         return when (type) {
             is ZigPointerType -> when (type.size) {
                 ZigPointerSize.ONE,
