@@ -63,7 +63,7 @@ class ZigParser : PsiParser {
             expectToken(builder, ZigTokenType.R_BRACE)
         }
         containerStack.removeLast()
-        container.done(ZigElementType.CONTAINER_DECL)
+        container.done(ZigElementType.CONTAINER_EXPRESSION)
         return container
     }
 

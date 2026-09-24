@@ -132,7 +132,7 @@ class ZigFormattingBlock(
             }
 
             is ZigBlock,
-            is ZigContainerDecl,
+            is ZigContainerExpression,
             is ZigErrorSetDecl,
             is ZigListInit,
             is ZigSwitch -> {
@@ -298,7 +298,7 @@ class ZigFormattingBlock(
             is ZigArrayAccess, is ZigArrayTypeElement -> indent = Indent.getNormalIndent()
 
             is ZigBlock,
-            is ZigContainerDecl,
+            is ZigContainerExpression,
             is ZigErrorSetDecl,
             is ZigListInit,
             is ZigSwitch -> {

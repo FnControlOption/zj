@@ -8,7 +8,7 @@ class ZigBreadcrumbsProvider : BreadcrumbsProvider {
     override fun getLanguages() = arrayOf(ZigLanguage)
 
     override fun acceptElement(element: PsiElement) = when (element) {
-        is ZigContainerDecl,
+        is ZigContainerExpression,
         is ZigErrorSetDecl,
         is ZigFnDecl,
         is ZigTestDecl -> true
@@ -16,7 +16,7 @@ class ZigBreadcrumbsProvider : BreadcrumbsProvider {
     }
 
     override fun getElementInfo(element: PsiElement) = when (element) {
-        is ZigContainerDecl -> {
+        is ZigContainerExpression -> {
             val varDecl = element.parent as? ZigVarDecl
             varDecl?.name ?: buildString {
                 append(element.containerKindElement.text)

@@ -468,7 +468,7 @@ class ZigConditionElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElemen
         get() = findChildByClass(ZigElement::class.java)
 }
 
-class ZigContainerDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainer {
+class ZigContainerExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainer {
     val containerKindElement: PsiElement
         get() = findNotNullChildByType(ZigTokenSets.CONTAINERS)
 

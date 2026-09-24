@@ -16,7 +16,7 @@ import io.github.fncontroloption.zig.psi2.ZigTokenType
 
 private val BRACE_ENCLOSED = TokenSet.create(
     ZigElementType.BLOCK,
-    ZigElementType.CONTAINER_DECL,
+    ZigElementType.CONTAINER_EXPRESSION,
     ZigElementType.ERROR_SET_DECL,
     ZigElementType.LIST_INIT,
     ZigElementType.SWITCH,

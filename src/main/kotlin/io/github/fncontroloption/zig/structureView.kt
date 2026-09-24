@@ -17,7 +17,7 @@ import io.github.fncontroloption.zig.psi2.*
 
 private fun shouldIncludeInStructureView(element: NavigatablePsiElement): Boolean {
     return when (element) {
-        is ZigContainerDecl,
+        is ZigContainerExpression,
         is ZigContainerField,
         is ZigFnDecl,
         is ZigTestDecl -> true

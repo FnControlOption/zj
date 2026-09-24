@@ -822,7 +822,7 @@ private fun resolveValues(element: ZigElement): Set<ZigValue> {
 
 private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
     return when (element) {
-        is ZigContainerDecl -> {
+        is ZigContainerExpression -> {
             val tupleType = run {
                 val fields = mutableListOf<ZigValue>()
                 for (member in element.members) {
@@ -1065,7 +1065,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                             sequenceOf(ZigUnknown.of(left))
                         }
                     }
-                    is IZigContainerType -> computeContainerDeclValues(left, name)
+                    is IZigContainerType -> computeContainerTypeDeclValues(left, name)
                     else -> when (val typeOfLeft = left.typeOf) {
                         is IZigContainerType -> computeContainerInstanceFieldValues(typeOfLeft, name)
                         is ZigPointerType -> when (typeOfLeft.size) {
@@ -1501,7 +1501,7 @@ private fun computeContainerInstanceFieldValues(type: IZigContainerType, name: S
     return values
 }
 
-private fun computeContainerDeclValues(type: IZigContainerType, name: String): Sequence<ZigValue> {
+private fun computeContainerTypeDeclValues(type: IZigContainerType, name: String): Sequence<ZigValue> {
     val member = type.members.firstOrNull {
         it is PsiNameIdentifierOwner && it.name == name
     }
@@ -1600,7 +1600,7 @@ private fun computeValuesFromReferenceUncached(target: ZigElement): Sequence<Zig
                         val typeParams = findUnboundTypeParams(target.container)
                         sequenceOf(ZigUnknown.of(ZigContainerType(target.container, typeParams)))
                     }
-                    ZigContainerKind.UNION -> when ((target.container as ZigContainerDecl).containerTagElement) {
+                    ZigContainerKind.UNION -> when ((target.container as ZigContainerExpression).containerTagElement) {
                         null -> sequenceOf(ZigUnknown.ofUnknownType())
                         else -> sequenceOf(ZigVoidValue)
                     }
@@ -1657,7 +1657,7 @@ private fun computeFunctionReturnValues(
         val functionBodyElement = (functionElement as? ZigFnDecl)?.body
         if (functionBodyElement != null) {
             val typeParams = computeTypeParams(type, arguments)
-            val traverser = SyntaxTraverser.psiTraverser(functionBodyElement).expand { it !is ZigContainerDecl }
+            val traverser = SyntaxTraverser.psiTraverser(functionBodyElement).expand { it !is ZigContainerExpression }
             return traverser.asSequence().flatMap { descendant ->
                 if (descendant is ZigReturn) {
                     when (val returnValue = descendant.returnValue) {
@@ -1720,16 +1720,16 @@ internal fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<Zi
             resolveValues(functionElement.leftOperand).asSequence().flatMap { left ->
                 when (left) {
                     is IZigContainerType -> {
-                        computeContainerDeclValues(left, name).map { it to null }
+                        computeContainerTypeDeclValues(left, name).map { it to null }
                     }
                     else -> when (val typeOfLeft = left.typeOf) {
                         is IZigContainerType -> {
-                            computeContainerDeclValues(typeOfLeft, name).map { it to left }
+                            computeContainerTypeDeclValues(typeOfLeft, name).map { it to left }
                         }
                         is ZigPointerType -> when (typeOfLeft.size) {
                             ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
                                 is IZigContainerType -> {
-                                    computeContainerDeclValues(pointerChild, name).map { it to left }
+                                    computeContainerTypeDeclValues(pointerChild, name).map { it to left }
                                 }
                                 else -> sequenceOf(ZigUnknown.ofUnknownType() to null)
                             }
@@ -1755,7 +1755,7 @@ internal fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<Zi
 private fun computeValuesFromLabeledBreaks(element: ZigLabelable): Sequence<ZigValue> {
     val labelDecl = element.labelDecl ?: return emptySequence()
     val labelName = labelDecl.identifierElement.text
-    val traverser = SyntaxTraverser.psiTraverser(element).expand { it !is ZigContainerDecl }
+    val traverser = SyntaxTraverser.psiTraverser(element).expand { it !is ZigContainerExpression }
     return traverser.asSequence().flatMap { descendant ->
         if (descendant is ZigBreak && labelName == descendant.labelRef?.identifierElement?.text) {
             when (val breakValue = descendant.breakValue) {
@@ -1771,7 +1771,7 @@ private fun computeValuesFromLabeledBreaks(element: ZigLabelable): Sequence<ZigV
 private fun computeValuesFromUnlabeledBreaks(loop: ZigLoop): Sequence<ZigValue> {
     val traverser = SyntaxTraverser.psiTraverser(loop.thenElement).expand { descendant ->
         when (descendant) {
-            is ZigContainerDecl -> false
+            is ZigContainerExpression -> false
             is ZigThenElement -> descendant.parent == loop || descendant.parent !is ZigLoop
             else -> true
         }
@@ -2149,7 +2149,7 @@ private fun createContainerHtmlChunkStartingFrom(
                 HtmlChunk.link(target, createStyledHtmlChunk(ZigHighlightingColors.CONSTANT, text))
             }
 
-            is ZigContainerDecl -> when (val parent = element.parent!!) {
+            is ZigContainerExpression -> when (val parent = element.parent!!) {
                 is ZigVarDecl if parent.initializer == element -> {
                     val parentChunk = createNamedHtmlChunk(parent, ZigHighlightingColors.CONSTANT)
                     if (truncate) {
