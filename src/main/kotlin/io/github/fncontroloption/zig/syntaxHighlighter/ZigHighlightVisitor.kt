@@ -35,7 +35,7 @@ class ZigHighlightVisitor : HighlightVisitor {
                 createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD)
             }
 
-            is ZigParamDecl -> {
+            is ZigFnParam -> {
                 val identifier = element.nameIdentifier ?: return null
                 if (ZigAnalyzer.resolveComptimeParameterTypes(element).isNotEmpty()) {
                     return createHighlightInfo(identifier, ZigHighlightInfoTypes.COMPTIME_PARAMETER)

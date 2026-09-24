@@ -110,7 +110,7 @@ private fun getDefinition(element: PsiElement): String? {
             text.substring(0, body.textRangeInParent.startOffset)
         }
         is ZigLabelDecl -> element.identifierElement.text
-        is ZigParamDecl -> element.text
+        is ZigFnParam -> element.text
         is ZigPayloadItem -> element.text
         is ZigVarDecl -> {
             val text = element.text

@@ -33,7 +33,7 @@ class ZigFindUsagesProvider : FindUsagesProvider {
             is ZigContainerField -> "field"
             is ZigFnDecl -> "function"
             is ZigLabelDecl -> "label"
-            is ZigParamDecl -> "parameter"
+            is ZigFnParam -> "parameter"
             is ZigPayloadItem -> "payload capture"
             is ZigVarDecl, is ZigVarProto -> when (element.mutability) {
                 ZigMutability.CONST -> "constant"

@@ -659,8 +659,8 @@ class ZigFieldAccess(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 sealed interface ZigFnDeclOrProto : ZigElement {
-    val parameters: Sequence<ZigParamDecl>
-        get() = firstChild.siblings().filterIsInstance<ZigParamDecl>()
+    val parameters: Sequence<ZigFnParam>
+        get() = firstChild.siblings().filterIsInstance<ZigFnParam>()
 
     val ellipsisTokenElement: PsiElement?
         get() = firstChild.siblings().firstOrNull { it.elementType === ZigTokenType.ELLIPSIS3 }
@@ -927,7 +927,7 @@ class ZigOrelse(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
         get() = ZigTokenType.KEYWORD_ORELSE
 }
 
-class ZigParamDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement {
+class ZigFnParam(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement {
     val comptimeTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.KEYWORD_COMPTIME)
 

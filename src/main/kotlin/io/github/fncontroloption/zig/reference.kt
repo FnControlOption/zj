@@ -491,7 +491,7 @@ private fun identifierReferenceCandidates(element: PsiElement): Sequence<PsiName
 
 internal fun getFunctionParamNamesAndTypes(
     functionType: ZigFunctionType,
-    typeParams: Map<ZigParamDecl, Set<ZigValue>> = functionType.typeParams,
+    typeParams: Map<ZigFnParam, Set<ZigValue>> = functionType.typeParams,
 ): Pair<List<String?>, List<ZigValue?>> {
     return functionType.element.parameters.map { param ->
         param.name to param.typeElement?.innerElement?.let {

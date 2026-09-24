@@ -328,7 +328,7 @@ class ZigParser : PsiParser {
             }
             type.done(ZigElementType.TYPE)
         }
-        decl.done(ZigElementType.PARAM_DECL)
+        decl.done(ZigElementType.FN_PARAM)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_PAREN) {
             builder.mark().error("Expected ',' after parameter")
         }
