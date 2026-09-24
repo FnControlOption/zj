@@ -790,6 +790,27 @@ data class ZigLazyFieldType(val container: ZigValue, val fieldName: ZigValue) : 
     }
 }
 
+data class ZigLazyFieldValue(val left: ZigValue, val fieldName: ZigValue) : ZigValue {
+    override val typeOf = ZigUnknown.of(ZigTypeType)
+
+    override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
+        val builder = HtmlBuilder()
+        if (fieldName is ZigNullTerminatedStringValue) {
+            builder.append(left.toHtmlChunk(truncate))
+            builder.append(".")
+            builder.append(fieldName.value)
+        } else {
+            builder.append(createStyledHtmlChunk(ZigHighlightingColors.BUILTIN, "@field"))
+            builder.append("(")
+            builder.append(left.toHtmlChunk(truncate))
+            builder.append(", ")
+            builder.append(fieldName.toHtmlChunk(truncate))
+            builder.append(")")
+        }
+        return builder.toFragment()
+    }
+}
+
 data class ZigLazyTagNameValue(val value: ZigValue) : ZigValue {
     override val typeOf = ZigPointerType(
         ZigPointerSize.ONE,
@@ -1080,33 +1101,8 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
 
         is ZigFieldAccess -> {
             val name = element.identifierElement?.text ?: return sequenceOf(ZigUnknown.ofUnknownType())
-            resolveValues(element.leftOperand).asSequence().flatMap { left ->
-                val builtinType = ZigAnalyzer.getBuiltinFieldType(left.typeOf, name)
-                if (builtinType != null) {
-                    return@flatMap sequenceOf(ZigUnknown.of(builtinType))
-                }
-                when (left) {
-                    is ZigErrorSetType -> {
-                        if (name in left.names) {
-                            sequenceOf(ZigErrorSetValue(left, name))
-                        } else {
-                            sequenceOf(ZigUnknown.of(left))
-                        }
-                    }
-                    is IZigContainerType -> computeContainerTypeDeclValues(left, name)
-                    else -> when (val typeOfLeft = left.typeOf) {
-                        is IZigContainerType -> computeContainerInstanceFieldValues(typeOfLeft, name)
-                        is ZigPointerType -> when (typeOfLeft.size) {
-                            ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
-                                is IZigContainerType -> computeContainerInstanceFieldValues(pointerChild, name)
-                                else -> sequenceOf(ZigUnknown.ofUnknownType())
-                            }
-                            else -> sequenceOf(ZigUnknown.ofUnknownType())
-                        }
-                        else -> sequenceOf(ZigUnknown.ofUnknownType())
-                    }
-                }
-            }
+            val fieldName = ZigNullTerminatedStringValue(name)
+            resolveValues(element.leftOperand).asSequence().flatMap { computeFieldAccess(it, fieldName) }
         }
 
         is ZigArrayAccess -> {
@@ -1196,6 +1192,17 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 val argElement = element.argumentElements.firstOrNull()?.innerElement
                     ?: return sequenceOf(ZigUnknown.ofUnknownType())
                 resolveValues(argElement).asSequence().map { ZigUnknown.of(it) }
+            }
+
+            "@field" -> {
+                val argElements = element.argumentElements.toList()
+                val leftElement = argElements.getOrNull(0)?.innerElement
+                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                val fieldNameElement = argElements.getOrNull(1)?.innerElement
+                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                val leftValues = resolveValues(leftElement).asSequence()
+                val fieldNameValues = resolveValues(fieldNameElement).asSequence()
+                computeFieldValues(leftValues, fieldNameValues)
             }
 
             "@FieldType" -> {
@@ -1344,6 +1351,38 @@ private fun toFixedIntType(text: String): ZigFixedIntType? {
     return ZigFixedIntType(signedness, bits)
 }
 
+private fun computeFieldAccess(
+    left: ZigValue,
+    fieldName: ZigNullTerminatedStringValue,
+): Sequence<ZigValue> {
+    val name = fieldName.value
+    val builtinType = ZigAnalyzer.getBuiltinFieldType(left.typeOf, name)
+    if (builtinType != null) {
+        return sequenceOf(ZigUnknown.of(builtinType))
+    }
+    return when (left) {
+        is ZigErrorSetType -> {
+            if (name in left.names) {
+                sequenceOf(ZigErrorSetValue(left, name))
+            } else {
+                sequenceOf(ZigUnknown.of(left))
+            }
+        }
+        is IZigContainerType -> computeContainerTypeDeclValues(left, fieldName)
+        else -> when (val typeOfLeft = left.typeOf) {
+            is IZigContainerType -> computeContainerInstanceFieldValues(left, typeOfLeft, fieldName)
+            is ZigPointerType -> when (typeOfLeft.size) {
+                ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
+                    is IZigContainerType -> computeContainerInstanceFieldValues(left, pointerChild, fieldName)
+                    else -> sequenceOf(ZigLazyFieldValue(left, fieldName))
+                }
+                else -> sequenceOf(ZigLazyFieldValue(left, fieldName))
+            }
+            else -> sequenceOf(ZigLazyFieldValue(left, fieldName))
+        }
+    }
+}
+
 private fun computeArrayAccessOnTuple(type: ZigTupleType, indexElement: ZigElement?): ZigValue {
     if (indexElement == null) {
         return ZigUnknown.ofUnknownType()
@@ -1481,6 +1520,11 @@ private fun substituteTypeParams(
                 val fieldNameValues = substituteTypeParams(value.fieldName, typeParams)
                 computeFieldTypeValues(containerTypes, fieldNameValues)
             }
+            is ZigLazyFieldValue -> {
+                val leftValues = substituteTypeParams(value.left, typeParams)
+                val fieldNameValues = substituteTypeParams(value.fieldName, typeParams)
+                computeFieldValues(leftValues, fieldNameValues)
+            }
             is ZigLazyTagNameValue -> {
                 computeTagNameValues(substituteTypeParams(value.value, typeParams))
             }
@@ -1510,15 +1554,20 @@ private fun substituteTypeParams(
     } ?: sequenceOf(value)
 }
 
-private fun computeContainerInstanceFieldValues(type: IZigContainerType, name: String): Sequence<ZigValue> {
+private fun computeContainerInstanceFieldValues(
+    left: ZigValue,
+    type: IZigContainerType,
+    fieldName: ZigNullTerminatedStringValue,
+): Sequence<ZigValue> {
+    val name = fieldName.value
     if (type.containerKind == ZigContainerKind.ENUM) {
-        return sequenceOf(ZigUnknown.ofUnknownType())
+        return sequenceOf(ZigLazyFieldValue(left, fieldName))
     }
     val member = type.members.firstOrNull {
         it is PsiNameIdentifierOwner && it.name == name
     }
     if (member == null || member !is ZigContainerField) {
-        return sequenceOf(ZigUnknown.ofUnknownType())
+        return sequenceOf(ZigLazyFieldValue(left, fieldName))
     }
     var values = resolveValuesFromReferenceTo(member).asSequence()
     if (type.typeParams.isNotEmpty()) {
@@ -1527,10 +1576,14 @@ private fun computeContainerInstanceFieldValues(type: IZigContainerType, name: S
     return values
 }
 
-private fun computeContainerTypeDeclValues(type: IZigContainerType, name: String): Sequence<ZigValue> {
+private fun computeContainerTypeDeclValues(
+    type: IZigContainerType,
+    fieldName: ZigNullTerminatedStringValue,
+): Sequence<ZigValue> {
+    val name = fieldName.value
     val member = type.members.filterIsInstance<ZigNamedContainerMember>().firstOrNull { it.name == name }
     if (member == null) {
-        return sequenceOf(ZigUnknown.ofUnknownType())
+        return sequenceOf(ZigLazyFieldValue(type, fieldName))
     }
     if (member is ZigContainerField) {
         return if (type.containerKind == ZigContainerKind.ENUM) {
@@ -1538,7 +1591,7 @@ private fun computeContainerTypeDeclValues(type: IZigContainerType, name: String
         } else if (type is ZigContainerType && type.element.isTaggedUnion) {
             ZigAnalyzer.resolveUnionTagTypes(type).map { ZigEnumLiteralValue(it, name) }
         } else {
-            sequenceOf(ZigUnknown.ofUnknownType())
+            sequenceOf(ZigLazyFieldValue(type, fieldName))
         }
     }
     var values = resolveValuesFromReferenceTo(member).asSequence()
@@ -1741,19 +1794,20 @@ internal fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<Zi
         is ZigFieldAccess -> {
             val name = functionElement.identifierElement?.text
                 ?: return sequenceOf(ZigUnknown.ofUnknownType() to null)
+            val fieldName = ZigNullTerminatedStringValue(name)
             resolveValues(functionElement.leftOperand).asSequence().flatMap { left ->
                 when (left) {
                     is IZigContainerType -> {
-                        computeContainerTypeDeclValues(left, name).map { it to null }
+                        computeContainerTypeDeclValues(left, fieldName).map { it to null }
                     }
                     else -> when (val typeOfLeft = left.typeOf) {
                         is IZigContainerType -> {
-                            computeContainerTypeDeclValues(typeOfLeft, name).map { it to left }
+                            computeContainerTypeDeclValues(typeOfLeft, fieldName).map { it to left }
                         }
                         is ZigPointerType -> when (typeOfLeft.size) {
                             ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
                                 is IZigContainerType -> {
-                                    computeContainerTypeDeclValues(pointerChild, name).map { it to left }
+                                    computeContainerTypeDeclValues(pointerChild, fieldName).map { it to left }
                                 }
                                 else -> sequenceOf(ZigUnknown.ofUnknownType() to null)
                             }
@@ -2359,7 +2413,10 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
     }
 }
 
-private fun computeFieldTypeValues(containerTypes: Sequence<ZigValue>, fieldNameValues: Sequence<ZigValue>): Sequence<ZigValue> {
+private fun computeFieldTypeValues(
+    containerTypes: Sequence<ZigValue>,
+    fieldNameValues: Sequence<ZigValue>,
+): Sequence<ZigValue> {
     return containerTypes.zip(fieldNameValues).flatMap { (container, fieldName) ->
         if (container is IZigContainerType
             && (container.containerKind == ZigContainerKind.STRUCT
@@ -2375,6 +2432,19 @@ private fun computeFieldTypeValues(containerTypes: Sequence<ZigValue>, fieldName
             }
         } else {
             sequenceOf(ZigLazyFieldType(container, fieldName))
+        }
+    }
+}
+
+private fun computeFieldValues(
+    leftValues: Sequence<ZigValue>,
+    fieldNameValues: Sequence<ZigValue>,
+): Sequence<ZigValue> {
+    return leftValues.zip(fieldNameValues).flatMap { (left, fieldName) ->
+        if (fieldName is ZigNullTerminatedStringValue) {
+            computeFieldAccess(left, fieldName)
+        } else {
+            sequenceOf(ZigLazyFieldValue(left, fieldName))
         }
     }
 }
