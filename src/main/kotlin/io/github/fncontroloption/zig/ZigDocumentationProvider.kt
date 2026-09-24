@@ -122,6 +122,13 @@ private fun getDefinition(element: PsiElement): String? {
             text.substring(0, typeElement.textRangeInParent.endOffset)
         }
         is ZigVarProto -> element.text
+        is LightZigTupleField -> {
+            var originalText: String? = null
+            if (element.navigationElement != element) {
+                originalText = element.navigationElement.text
+            }
+            originalText ?: element.container.fieldTypes[element.fieldIndex].toPlainText()
+        }
         else -> null
     }
 }

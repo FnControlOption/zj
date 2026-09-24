@@ -98,7 +98,7 @@ object ZigAnalyzer {
 
             is ZigArrayType -> arrayOf("len")
 
-            is ZigTupleType -> arrayOf("len") + type.fields.indices.map { "@\"$it\"" }
+            is ZigTupleType -> arrayOf("len")
 
             else -> emptyArray()
         }
@@ -125,12 +125,7 @@ object ZigAnalyzer {
 
             is ZigTupleType -> when (name) {
                 "len" -> ZigUsizeType
-                else -> {
-                    val isEscaped = name.startsWith("@\"") && name.endsWith("\"")
-                    if (!isEscaped) return null
-                    val index = name.substring(2, name.length - 1).toIntOrNull() ?: return null
-                    type.fields.getOrNull(index)
-                }
+                else -> null
             }
 
             else -> null
@@ -156,6 +151,7 @@ object ZigAnalyzer {
                 else -> emptySequence()
             }
             is ZigFieldEnumType -> emptySequence()
+            is ZigTupleType -> emptySequence()
         }
     }
 
@@ -553,9 +549,12 @@ data class ZigArrayType(val length: ZigValue, val sentinel: ZigValue?, val child
     }
 }
 
-data class ZigTupleType(val fields: List<ZigValue>) : ZigValue {
+data class ZigTupleType(val element: LightZigTuple) : IZigContainerType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    val fields: List<ZigValue>
+        get() = element.fieldTypes
 
     override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
         val builder = HtmlBuilder()
@@ -578,6 +577,17 @@ data class ZigTupleType(val fields: List<ZigValue>) : ZigValue {
         }
         return builder.toFragment()
     }
+
+    override val typeParams: Map<ZigFnParam, Set<ZigValue>>
+        get() = emptyMap()
+
+    override val containerKind: ZigContainerKind
+        get() = ZigContainerKind.STRUCT
+
+    override val members: Sequence<LightZigTupleField>
+        get() = element.fields.asSequence()
+
+    override fun getNamedMembersVisibleFrom(originalFile: PsiFile) = members
 }
 
 sealed interface ZigFloatType : ZigValue {
@@ -717,9 +727,7 @@ data class ZigInferredUnionTagType(val union: ZigContainerType) : IZigContainerT
     override val members: Sequence<ZigContainerField>
         get() = union.element.members.filterIsInstance<ZigContainerField>()
 
-    override fun getNamedMembersVisibleFrom(originalFile: PsiFile): Sequence<ZigContainerField> {
-        return union.element.members.filterIsInstance<ZigContainerField>()
-    }
+    override fun getNamedMembersVisibleFrom(originalFile: PsiFile) = members
 }
 
 data class ZigFieldEnumType(val container: ZigValue) : IZigContainerType {
@@ -749,12 +757,7 @@ data class ZigFieldEnumType(val container: ZigValue) : IZigContainerType {
             else -> emptySequence()
         }
 
-    override fun getNamedMembersVisibleFrom(originalFile: PsiFile): Sequence<ZigContainerField> {
-        return when (container) {
-            is IZigContainerType -> container.members.filterIsInstance<ZigContainerField>()
-            else -> emptySequence()
-        }
-    }
+    override fun getNamedMembersVisibleFrom(originalFile: PsiFile) = members
 }
 
 data class ZigLazyFieldType(val container: ZigValue, val fieldName: ZigValue) : ZigValue {
@@ -842,7 +845,12 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 if (fields.isEmpty()) {
                     return@run null
                 }
-                ZigTupleType(fields)
+                val lightTuple = LightZigTuple(element.manager, fields)
+                lightTuple.navigationElement = element
+                for ((i, member) in element.members.withIndex()) {
+                    lightTuple.fields[i].navigationElement = member
+                }
+                ZigTupleType(lightTuple)
             }
             if (tupleType != null) {
                 return sequenceOf(tupleType)
@@ -1029,7 +1037,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 val value = values.singleOrNull() ?: ZigUnknown.ofUnknownType()
                 fieldTypes.add(value.typeOf)
             }
-            sequenceOf(ZigUnknown.of(ZigTupleType(fieldTypes)))
+            sequenceOf(ZigUnknown.of(ZigTupleType(LightZigTuple(element.manager, fieldTypes))))
         }
 
         is ZigIdentifier -> {
@@ -1440,7 +1448,7 @@ private fun substituteTypeParams(
                     // For efficiency, limit each field to a single possible type.
                     substitutions.singleOrNull() ?: ZigUnknown.of(ZigTypeType)
                 }
-                sequenceOf(ZigTupleType(fields))
+                sequenceOf(ZigTupleType(LightZigTuple(value.element.manager, fields)))
             }
             is ZigInferredUnionTagType -> {
                 sequenceOf(ZigInferredUnionTagType(substituteContainerTypeParams(value.union, typeParams)))
@@ -1613,6 +1621,8 @@ private fun computeValuesFromReferenceUncached(target: ZigReferenceable): Sequen
                 values
             }
         }
+
+        is LightZigTupleField -> sequenceOf(ZigUnknown.of(target.container.fieldTypes[target.fieldIndex]))
     }
 }
 
@@ -1825,7 +1835,7 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
                 // For efficiency, limit each field to a single possible type.
                 types.singleOrNull() ?: ZigUnknown.of(ZigTypeType)
             }
-            sequenceOf(ZigTupleType(fields.toList()))
+            sequenceOf(ZigTupleType(LightZigTuple(childElement.manager, fields.toList())))
         }
 
         is ZigListInitItem -> {

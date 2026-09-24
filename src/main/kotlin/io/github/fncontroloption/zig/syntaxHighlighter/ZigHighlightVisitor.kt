@@ -145,9 +145,12 @@ class ZigHighlightVisitor : HighlightVisitor {
 
     private fun createHighlightInfoFromReference(element: PsiElement, range: PsiElement): HighlightInfo? {
         for (target in resolveReferences(element)) {
-            val info = createHighlightInfo(target)
-            if (info != null) {
-                return createHighlightInfo(range, info.type)
+            val type = when (target) {
+                is LightZigTupleField -> ZigHighlightInfoTypes.INSTANCE_FIELD
+                else -> createHighlightInfo(target)?.type
+            }
+            if (type != null) {
+                return createHighlightInfo(range, type)
             }
         }
         return null

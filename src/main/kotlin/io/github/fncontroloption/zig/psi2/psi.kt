@@ -10,6 +10,7 @@ import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Iconable
 import com.intellij.psi.*
+import com.intellij.psi.impl.light.LightElement
 import com.intellij.psi.stubs.StubElement
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.elementType
@@ -1310,6 +1311,42 @@ class ZigWhile(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop {
 }
 
 class ZigWhileContinueExpr(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+}
+
+sealed class LightZigElement(manager: PsiManager) : LightElement(manager, ZigLanguage), ZigElement {
+    override fun toString() = this::class.simpleName ?: "LightZigElement"
+}
+
+class LightZigTuple(
+    manager: PsiManager,
+    val fieldTypes: List<ZigValue>,
+) : LightZigElement(manager), ZigContainer {
+    val fields = fieldTypes.indices.map { LightZigTupleField(this, it) }
+
+    override val containerKind: ZigContainerKind
+        get() = ZigContainerKind.STRUCT
+
+    override val containerTagElement: ZigContainerTag?
+        get() = null
+
+    override val members: Sequence<LightZigTupleField>
+        get() = fields.asSequence()
+
+    override fun equals(other: Any?) = other is LightZigTuple && other.fieldTypes == fieldTypes
+    override fun hashCode() = fieldTypes.hashCode()
+}
+
+data class LightZigTupleField(
+    override val container: LightZigTuple,
+    val fieldIndex: Int,
+) : LightZigElement(container.manager), ZigContainerField {
+    override fun getNameIdentifier() = null
+    override fun getName() = "@\"$fieldIndex\""
+    override fun setName(name: String) = throw IncorrectOperationException()
+
+    override fun isVisibilitySupported() = false
+    override fun getElementIcon(flags: Int) = baseIcon
+    override fun getBaseIcon() = AllIcons.Nodes.Field
 }
 
 fun createZigFile(project: Project, text: String): ZigFile {
