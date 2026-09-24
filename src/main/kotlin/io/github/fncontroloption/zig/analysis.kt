@@ -212,17 +212,17 @@ sealed interface ZigValue {
 
 class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigValue {
     override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
-        if (truncate || (typeOf is ZigUnknown && typeOf.typeOf == ZigTypeType)) {
-            return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
+        if (DEBUG) {
+            return HtmlChunk.fragment(
+                createStyledHtmlChunk(ZigHighlightingColors.BUILTIN, "@as"),
+                HtmlChunk.text("("),
+                typeOf.toHtmlChunk(truncate),
+                HtmlChunk.text(", "),
+                createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_"),
+                HtmlChunk.text(")")
+            )
         }
-        return HtmlChunk.fragment(
-            createStyledHtmlChunk(ZigHighlightingColors.BUILTIN, "@as"),
-            HtmlChunk.text("("),
-            typeOf.toHtmlChunk(truncate),
-            HtmlChunk.text(", "),
-            createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_"),
-            HtmlChunk.text(")")
-        )
+        return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
     }
 
     override fun toString() = "ZigUnknown(typeOf=$typeOf)"
@@ -239,6 +239,8 @@ class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigValue {
         }
 
         fun ofUnknownType() = ZigUnknown(ZigUnknown(ZigTypeType))
+
+        private const val DEBUG = false
     }
 }
 
