@@ -852,7 +852,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                     if (member.nameIdentifier != null) {
                         return@run null
                     }
-                    val types = resolveValuesFromReferenceTo(member).asSequence().map { it.typeOf }
+                    val types = resolveValuesFromReferenceTo(member).asSequence().map { it.typeOf }.toSet()
                     // For efficiency, limit each field to a single possible type.
                     fields.add(types.singleOrNull() ?: ZigUnknown.of(ZigTypeType))
                 }
@@ -1043,13 +1043,12 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 if (item.isStructField) {
                     return sequenceOf(ZigUnknown.ofUnknownType())
                 }
-                val values = when (val expressionElement = item.expression) {
-                    null -> emptySequence()
-                    else -> resolveValues(expressionElement).asSequence()
+                val types = when (val expressionElement = item.expression) {
+                    null -> emptySet()
+                    else -> resolveValues(expressionElement).asSequence().map { it.typeOf }.toSet()
                 }
                 // For efficiency, limit each field to a single possible type.
-                val value = values.singleOrNull() ?: ZigUnknown.ofUnknownType()
-                fieldTypes.add(value.typeOf)
+                fieldTypes.add(types.singleOrNull() ?: ZigUnknown.ofUnknownType())
             }
             sequenceOf(ZigUnknown.of(ZigTupleType(LightZigTuple(element.manager, fieldTypes))))
         }
@@ -1458,7 +1457,7 @@ private fun substituteTypeParams(
             }
             is ZigTupleType -> {
                 val fields = value.fields.map { field ->
-                    val substitutions = substituteTypeParams(field, typeParams)
+                    val substitutions = substituteTypeParams(field, typeParams).toSet()
                     // For efficiency, limit each field to a single possible type.
                     substitutions.singleOrNull() ?: ZigUnknown.of(ZigTypeType)
                 }
@@ -1842,9 +1841,9 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
                     is ZigVarProto -> {
                         val typeElement = variable.typeElement?.innerElement
                             ?: return@map ZigUnknown.of(ZigTypeType)
-                        resolveValues(typeElement).asSequence()
+                        resolveValues(typeElement)
                     }
-                    else -> resolveValues(variable).asSequence().map { it.typeOf }
+                    else -> resolveValues(variable).asSequence().map { it.typeOf }.toSet()
                 }
                 // For efficiency, limit each field to a single possible type.
                 types.singleOrNull() ?: ZigUnknown.of(ZigTypeType)
