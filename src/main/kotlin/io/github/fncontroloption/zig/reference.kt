@@ -47,7 +47,7 @@ class ZigIdentifierReference(element: ZigIdentifier) :
     override fun getVariants(): Array<out LookupElement> {
         val variants = mutableSetOf<LookupElement>()
         for (candidate in identifierReferenceCandidates(myElement)) {
-            val values = ZigAnalyzer.resolveValuesFromReferenceTo(candidate as ZigElement)
+            val values = ZigAnalyzer.resolveValuesFromReferenceTo(candidate)
             val types = values.map { it.typeOf }.toSet()
             when (val type = types.singleOrNull()) {
                 is ZigFunctionType -> {
@@ -253,7 +253,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
         }
         for ((containerType, isInstance) in getContainers(leftValues)) {
             for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
-                if (member is ZigContainerFieldImpl) {
+                if (member is ZigContainerField) {
                     if (containerType.containerKind == ZigContainerKind.ENUM) {
                         if (isInstance || member.name == "_") {
                             continue
@@ -363,7 +363,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
         val variants = mutableSetOf<LookupElement>()
         for ((originalType, containerType) in ZigAnalyzer.inferEnumLiteralTypes(myElement)) {
             for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
-                if (member is ZigContainerFieldImpl) {
+                if (member is ZigContainerField) {
                     if (containerType.containerKind == ZigContainerKind.ENUM) {
                         if (member.name == "_") {
                             continue
@@ -420,7 +420,7 @@ class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElem
         val results = mutableSetOf<ResolveResult>()
         for (containerType in types) {
             val member = containerType.element.members.firstOrNull {
-                it is ZigContainerFieldImpl && it.name == name
+                it is ZigContainerField && it.name == name
             }
             if (member != null) {
                 results.add(PsiElementResolveResult(member))
@@ -442,8 +442,8 @@ class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElem
     }
 }
 
-private fun identifierReferenceCandidates(element: PsiElement): Sequence<PsiNameIdentifierOwner> {
-    var it: Iterator<PsiNameIdentifierOwner>? = null
+private fun identifierReferenceCandidates(element: PsiElement): Sequence<ZigNamedReferenceable> {
+    var it: Iterator<ZigNamedReferenceable>? = null
     var element: PsiElement? = element
     return generateSequence {
         while (element != null) {
@@ -457,10 +457,7 @@ private fun identifierReferenceCandidates(element: PsiElement): Sequence<PsiName
                 break
             }
             val sequence = when (parent) {
-                is ZigContainer ->
-                    parent.members
-                        .filterIsInstance<PsiNameIdentifierOwner>()
-                        .filter { it !is ZigContainerFieldImpl }
+                is ZigContainer -> parent.members.filterIsInstance<ZigNamedContainerDecl>()
 
                 is ZigFnDecl -> parent.parameters.takeWhile { it !== child }
 
@@ -628,7 +625,7 @@ private fun getFieldInitVariants(containerType: ZigContainerType): Sequence<Look
     if (containerType.element.containerKind == ZigContainerKind.ENUM) {
         return emptySequence()
     }
-    return containerType.element.members.filterIsInstance<ZigContainerFieldImpl>().map { member ->
+    return containerType.element.members.filterIsInstance<ZigContainerField>().map { member ->
         val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
         val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
         val types = values.map { it.typeOf }.toSet()

@@ -36,6 +36,11 @@ sealed class ZigStubPsiElement<T : StubElement<*>> : StubBasedPsiElementBase<T>,
 
 sealed interface ZigNamedElement : ZigElement, PsiNameIdentifierOwner, NavigatablePsiElement
 
+/** @see ZigAnalyzer.resolveValuesFromReferenceTo */
+sealed interface ZigReferenceable : ZigElement
+
+sealed interface ZigNamedReferenceable : ZigNamedElement, ZigReferenceable
+
 sealed interface ZigUnaryExpression : ZigElement {
     val operand: ZigElement?
         get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigElement }
@@ -112,6 +117,18 @@ sealed interface ZigPayload : ZigElement {
 
 enum class ZigContainerKind { STRUCT, OPAQUE, ENUM, UNION }
 
+sealed interface ZigContainerMember : ZigElement {
+    val container: ZigContainer?
+}
+
+sealed interface ZigNamedContainerMember : ZigNamedReferenceable, ZigContainerMember
+
+sealed interface ZigContainerDecl : ZigContainerMember
+
+sealed interface ZigNamedContainerDecl : ZigNamedContainerMember, ZigContainerDecl
+
+sealed interface ZigContainerField : ZigNamedContainerMember
+
 sealed interface ZigContainer : ZigElement {
     val containerKind: ZigContainerKind
 
@@ -120,18 +137,18 @@ sealed interface ZigContainer : ZigElement {
     val isTaggedUnion: Boolean
         get() = containerKind == ZigContainerKind.UNION && containerTagElement != null
 
-    val members: Sequence<ZigElement>
+    val members: Sequence<ZigContainerMember>
 }
 
-class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage), ZigContainer {
+class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage), ZigContainer, ZigReferenceable {
     override val containerKind: ZigContainerKind
         get() = ZigContainerKind.STRUCT
 
     override val containerTagElement: ZigContainerTag?
         get() = null
 
-    override val members: Sequence<ZigElement>
-        get() = firstChild?.siblings()?.filterIsInstance<ZigElement>() ?: emptySequence()
+    override val members: Sequence<ZigContainerMember>
+        get() = firstChild?.siblings()?.filterIsInstance<ZigContainerMember>() ?: emptySequence()
 
     override fun getFileType() = ZigFileType
     override fun toString() = "ZigFile:$name"
@@ -458,7 +475,10 @@ class ZigCatchPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
 class ZigCharLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigComptime(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+class ZigComptime(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainerDecl {
+    override val container: ZigContainer?
+        get() = parent as? ZigContainer
+
     val innerElement: ZigElement?
         get() = findChildByClass(ZigElement::class.java)
 }
@@ -484,12 +504,8 @@ class ZigContainerExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigCon
     override val containerTagElement: ZigContainerTag?
         get() = findChildByClass(ZigContainerTag::class.java)
 
-    override val members: Sequence<ZigElement>
-        get() =
-            firstChild
-                .siblings()
-                .filterIsInstance<ZigElement>()
-                .filter { it !is ZigContainerTag }
+    override val members: Sequence<ZigContainerMember>
+        get() = firstChild.siblings().filterIsInstance<ZigContainerMember>()
 
     override fun isVisibilitySupported() = false
     override fun getElementIcon(flags: Int) = baseIcon
@@ -502,11 +518,11 @@ class ZigContainerExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigCon
     }
 }
 
-class ZigContainerFieldImpl : ZigStubPsiElement<ZigContainerFieldStub>, ZigNamedElement {
+class ZigContainerFieldImpl : ZigStubPsiElement<ZigContainerFieldStub>, ZigContainerField {
     constructor(stub: ZigContainerFieldStub) : super(stub, ZigElementType.CONTAINER_FIELD)
     constructor(node: ASTNode) : super(node)
 
-    val container: ZigContainer
+    override val container: ZigContainer
         get() = parent as ZigContainer
 
     val typeElement: ZigTypeElement?
@@ -672,9 +688,12 @@ sealed interface ZigFnDeclOrProto : ZigElement {
         get() = firstChild.siblings().filterIsInstance<ZigTypeElement>().firstOrNull()
 }
 
-class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigFnDeclOrProto, ZigNamedElement {
+class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigFnDeclOrProto, ZigNamedContainerDecl {
     constructor(stub: ZigFnDeclStub) : super(stub, ZigElementType.FN_DECL)
     constructor(node: ASTNode) : super(node)
+
+    override val container: ZigContainer
+        get() = parent as ZigContainer
 
     val pubTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.KEYWORD_PUB)
@@ -927,7 +946,7 @@ class ZigOrelse(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
         get() = ZigTokenType.KEYWORD_ORELSE
 }
 
-class ZigFnParam(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement {
+class ZigFnParam(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedReferenceable {
     val comptimeTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.KEYWORD_COMPTIME)
 
@@ -944,7 +963,7 @@ class ZigFnParam(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement {
     override fun getBaseIcon() = AllIcons.Nodes.Parameter
 }
 
-class ZigPayloadItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement {
+class ZigPayloadItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedReferenceable {
     val asteriskTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.ASTERISK)
 
@@ -1137,7 +1156,10 @@ class ZigSwitchProng(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigSwitchRange(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigTestDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+class ZigTestDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainerDecl {
+    override val container: ZigContainer
+        get() = parent as ZigContainer
+
     val nameElement: PsiElement?
         get() = findChildByType(ZigTokenSets.TEST_NAME)
 
@@ -1206,7 +1228,7 @@ class ZigUnwrapOptional(node: ASTNode) : ASTWrapperPsiElement(node), ZigPostfixE
 
 enum class ZigMutability { CONST, VAR }
 
-sealed interface ZigVarDeclOrProto : ZigNamedElement {
+sealed interface ZigVarDeclOrProto : ZigNamedReferenceable {
     val mutabilityElement: PsiElement
         get() = firstChild.siblings().first { it.elementType in ZigTokenSets.MUT_TOKENS }
 
@@ -1221,9 +1243,12 @@ sealed interface ZigVarDeclOrProto : ZigNamedElement {
         get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigTypeElement }
 }
 
-class ZigVarDecl : ZigStubPsiElement<ZigVarDeclStub>, ZigVarDeclOrProto {
+class ZigVarDecl : ZigStubPsiElement<ZigVarDeclStub>, ZigVarDeclOrProto, ZigNamedContainerDecl {
     constructor(stub: ZigVarDeclStub) : super(stub, ZigElementType.VAR_DECL)
     constructor(node: ASTNode) : super(node)
+
+    override val container: ZigContainer?
+        get() = parent as? ZigContainer
 
     val isLocal: Boolean
         get() = findParentInFile { it is ZigBlock || it is ZigContainer } is ZigBlock

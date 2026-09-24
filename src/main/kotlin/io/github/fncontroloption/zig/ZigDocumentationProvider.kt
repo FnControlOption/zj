@@ -40,7 +40,7 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
             .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
             .appendTo(sb)
 
-        if (hasValue(element)) {
+        if (element is ZigReferenceable) {
             val typeParams = getOriginalContainerType(originalElement)?.typeParams ?: emptyMap()
             val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(element)
             val substitutedValues = ZigAnalyzer.substituteTypeParams(initialValues, typeParams)
@@ -124,10 +124,6 @@ private fun getDefinition(element: PsiElement): String? {
         is ZigVarProto -> element.text
         else -> null
     }
-}
-
-private fun hasValue(element: PsiElement): Boolean {
-    return element !is ZigLabelDecl
 }
 
 private fun findDoc(element: PsiElement): String? {

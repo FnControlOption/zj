@@ -74,8 +74,7 @@ class ZigHighlightVisitor : HighlightVisitor {
 
             is ZigContainerFieldImpl -> {
                 val identifier = element.nameIdentifier ?: return null
-                val container = element.parentOfType<ZigContainerExpression>()
-                val type = when (container?.containerKind) {
+                val type = when (element.container.containerKind) {
                     ZigContainerKind.ENUM -> ZigHighlightInfoTypes.CONSTANT
                     else -> ZigHighlightInfoTypes.INSTANCE_FIELD
                 }

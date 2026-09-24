@@ -30,7 +30,7 @@ class ZigFindUsagesProvider : FindUsagesProvider {
             return ""
         }
         return when (element) {
-            is ZigContainerFieldImpl -> "field"
+            is ZigContainerField -> "field"
             is ZigFnDecl -> "function"
             is ZigLabelDecl -> "label"
             is ZigFnParam -> "parameter"
