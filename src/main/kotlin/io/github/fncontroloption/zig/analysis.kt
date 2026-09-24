@@ -941,6 +941,13 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigUnwrapOptional -> {
+            val unionElement = getUnwrapUnionTagTypeArgument(element)
+            if (unionElement != null) {
+                return resolveValues(unionElement)
+                    .asSequence()
+                    .filterIsInstance<ZigContainerType>()
+                    .flatMap { ZigAnalyzer.resolveUnionTagTypes(it) }
+            }
             val operandElement = element.operand ?: return sequenceOf(ZigUnknown.ofUnknownType())
             resolveValues(operandElement).asSequence().map { operand ->
                 when (val typeOfOperand = operand.typeOf) {
@@ -2379,6 +2386,20 @@ fun computeTagNameValues(values: Sequence<ZigValue>): Sequence<ZigValue> {
             else -> ZigLazyTagNameValue(it)
         }
     }
+}
+
+/** Gets `Foo` in `@typeInfo(Foo).@"union".tag_type.?` */
+private fun getUnwrapUnionTagTypeArgument(element: ZigUnwrapOptional): ZigElement? {
+    var child = element.operand
+    if (child !is ZigFieldAccess) return null
+    if (child.identifierElement?.text != "tag_type") return null
+    child = child.leftOperand
+    if (child !is ZigFieldAccess) return null
+    if (child.identifierElement?.text != "@\"union\"") return null
+    child = child.leftOperand
+    if (child !is ZigBuiltinCall) return null
+    if (child.builtinElement.text != "@typeInfo") return null
+    return child.argumentElements.firstOrNull()?.innerElement
 }
 
 private val PRIMITIVE_VALUES = mapOf(
