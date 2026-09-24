@@ -349,7 +349,7 @@ class ZigParser : PsiParser {
             parseErrorSetMember(builder)
         }
         expectToken(builder, ZigTokenType.R_BRACE)
-        marker.done(ZigElementType.ERROR_SET_DECL)
+        marker.done(ZigElementType.ERROR_SET)
         return marker
     }
 

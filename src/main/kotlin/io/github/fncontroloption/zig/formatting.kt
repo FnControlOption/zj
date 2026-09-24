@@ -133,7 +133,7 @@ class ZigFormattingBlock(
 
             is ZigBlock,
             is ZigContainerExpression,
-            is ZigErrorSetDecl,
+            is ZigErrorSet,
             is ZigListInit,
             is ZigSwitch -> {
                 var indent = Indent.getNoneIndent()
@@ -299,7 +299,7 @@ class ZigFormattingBlock(
 
             is ZigBlock,
             is ZigContainerExpression,
-            is ZigErrorSetDecl,
+            is ZigErrorSet,
             is ZigListInit,
             is ZigSwitch -> {
                 if (prevNode != null) {

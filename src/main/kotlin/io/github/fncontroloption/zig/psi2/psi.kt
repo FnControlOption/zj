@@ -608,7 +608,7 @@ class ZigEqualEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpres
 class ZigErrdefer(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigErrorSetDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+class ZigErrorSet(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val setItems: Sequence<ZigErrorSetItem>
         get() = firstChild.siblings().filterIsInstance<ZigErrorSetItem>()
 }

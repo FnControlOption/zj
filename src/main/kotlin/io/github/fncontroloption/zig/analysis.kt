@@ -862,7 +862,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             resolveValues(childElement).asSequence().map { ZigOptionalType(it) }
         }
 
-        is ZigErrorSetDecl -> {
+        is ZigErrorSet -> {
             val names = element.setItems.map { it.identifierElement.text }
             sequenceOf(ZigErrorSetType(names.toSortedSet()))
         }
