@@ -50,11 +50,15 @@ object ZigAnalyzer {
     }
 
     fun resolveOrInferStructInitTypes(element: ZigListInit): Sequence<ZigContainerType> {
+        return resolveOrInferListInitTypes(element).filterIsInstance<ZigContainerType>()
+    }
+
+    fun resolveOrInferListInitTypes(element: ZigListInit): Sequence<ZigValue> {
         val typeExpression = element.typeExpression
         if (typeExpression != null) {
-            return resolveValues(typeExpression).asSequence().filterIsInstance<ZigContainerType>()
+            return resolveValues(typeExpression).asSequence()
         }
-        return inferResultTypes(element).mapNotNull { originalType ->
+        return inferResultTypes(element).map { originalType ->
             var type = originalType
             while (true) {
                 type = when (type) {
@@ -63,7 +67,7 @@ object ZigAnalyzer {
                     else -> break
                 }
             }
-            type as? ZigContainerType
+            type
         }
     }
 
@@ -1860,11 +1864,7 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
                     .ifEmpty { sequenceOf(ZigUnknown.of(ZigTypeType)) }
             } else {
                 val initElement = parentElement.containingListInit
-                val initTypes = when (val typeElement = initElement.typeExpression) {
-                    null -> inferResultTypes(initElement)
-                    else -> resolveValues(typeElement).asSequence()
-                }
-                initTypes.map { type ->
+                ZigAnalyzer.resolveOrInferListInitTypes(initElement).map { type ->
                     when (type) {
                         is ZigArrayType -> type.child
                         is ZigTupleType -> {
