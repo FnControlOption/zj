@@ -246,6 +246,7 @@ class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigValue {
                 ZigUndefinedType -> ZigUndefinedValue
                 ZigVoidType -> ZigVoidValue
                 is ZigFixedIntType if type.bits == 0 -> ZigIntValue(type, 0)
+                is ZigErrorSetType if type.names.size ==  1 -> ZigErrorSetValue(type, type.names.first())
                 else -> ZigUnknown(type)
             }
         }
@@ -916,13 +917,13 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigErrorSet -> {
-            val names = mutableSetOf<String>()
+            val names = sortedSetOf<String>()
             for (item in element.setItems) {
                 val name = parseZigIdentifier(item.identifierElement)
                     ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
                 names.add(name)
             }
-            sequenceOf(ZigErrorSetType(names.toSortedSet()))
+            sequenceOf(ZigErrorSetType(names))
         }
 
         is ZigErrorValueElement -> {
@@ -2405,37 +2406,102 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
 
         is ZigSwitchPayload -> when (payloadElement.items.indexOf(payloadItem)) {
             0 -> {
-                // TODO: shrink error set in `else` prong
-                val switchProngElement = payloadElement.containingSwitchProng
-                if (switchProngElement.isInline) {
-                    return sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-                }
-                val switchItemElements = switchProngElement.items.map { it.innerElement }.toList()
-                if (switchItemElements.isNotEmpty()) {
-                    val switchItemValues = switchItemElements.map { resolveValues(it) }
-                    if (switchItemValues.all { it.singleOrNull() is ZigErrorSetValue }) {
-                        val names = switchItemValues.map { (it.single() as ZigErrorSetValue).name }
-                        return sequenceOf(ZigUnknown.of(ZigErrorSetType(names.toSortedSet())))
-                    }
-                }
-                val switchElement = switchProngElement.containingSwitch
+                val switchProng = payloadElement.containingSwitchProng
+                val switchElement = switchProng.containingSwitch
                 val conditionElement = switchElement.conditionElement.innerElement
                     ?: return sequenceOf(ZigUnknown.ofUnknownType())
-                val conditionValues = resolveValues(conditionElement).asSequence()
-                if (switchItemElements.isEmpty()) {
-                    return conditionValues.map { ZigUnknown.of(it.typeOf) }
-                }
-                conditionValues.map { it.typeOf }.flatMap { type ->
-                    if (type is ZigContainerType && type.element.isTaggedUnion) {
-                        val fields = type.members.filterIsInstance<ZigContainerField>()
-                        switchItemElements
-                            .asSequence()
-                            .flatMap { resolveValues(it) }
-                            .filterIsInstance<ZigEnumLiteralValue>()
-                            .mapNotNull { value -> fields.firstOrNull { it.name == value.name } }
-                            .flatMap { resolveValuesFromReferenceTo(it) }
-                    } else {
-                        sequenceOf(ZigUnknown.of(type))
+
+                val otherSwitchItems =
+                    switchElement.prongs
+                        .filter { it !== switchProng }
+                        .flatMap { it.items }
+                        .flatMap { resolveValues(it.innerElement) }
+                        .toSet()
+                val prongSwitchItems =
+                    switchProng.items
+                        .flatMap { resolveValues(it.innerElement) }
+                        .toSet()
+
+                // Helper variables for error sets:
+                val otherErrorNames =
+                    otherSwitchItems
+                        .asSequence()
+                        .filterIsInstance<ZigErrorSetValue>()
+                        .map { it.name }
+                        .toSet()
+                val prongErrorValues =
+                    prongSwitchItems
+                        .asSequence()
+                        .filterIsInstance<ZigErrorSetValue>()
+                        .toList()
+                val prongErrorNames =
+                    prongErrorValues
+                        .asSequence()
+                        .map { it.name }
+                        .toSortedSet()
+                val prongErrorSet = ZigErrorSetType(prongErrorNames)
+
+                // Helper variables for tagged unions:
+                val otherEnumLiterals =
+                    otherSwitchItems
+                        .asSequence()
+                        .filterIsInstance<ZigEnumLiteralValue>()
+                        .map { it.name }
+                        .toSet()
+                val prongEnumLiterals =
+                    prongSwitchItems
+                        .asSequence()
+                        .filterIsInstance<ZigEnumLiteralValue>()
+                        .map { it.name }
+                        .toSet()
+
+                resolveValues(conditionElement).asSequence().flatMap { condition ->
+                    when (val conditionType = condition.typeOf) {
+                        is ZigErrorSetType -> {
+                            if (switchProng.isElse) {
+                                val names = conditionType.names.toSortedSet()
+                                names.removeAll(otherErrorNames)
+                                if (switchProng.isInline) {
+                                    names.asSequence().map { ZigErrorSetValue(ZigErrorSetType(setOf(it)), it) }
+                                } else {
+                                    sequenceOf(ZigUnknown.of(ZigErrorSetType(names)))
+                                }
+                            } else {
+                                if (switchProng.isInline) {
+                                    prongErrorValues.asSequence()
+                                } else {
+                                    sequenceOf(ZigUnknown.of(prongErrorSet))
+                                }
+                            }
+                        }
+                        is ZigContainerType if conditionType.element.isTaggedUnion -> {
+                            if (switchProng.isElse) {
+                                if (switchProng.isInline) {
+                                    conditionType.members
+                                        .filterIsInstance<ZigContainerField>()
+                                        .filter { it.name !in otherEnumLiterals }
+                                        .flatMap { resolveValuesFromReferenceTo(it) }
+                                        .flatMap { substituteTypeParams(it, conditionType.typeParams) }
+                                } else {
+                                    sequenceOf(ZigUnknown.of(conditionType))
+                                }
+                            } else {
+                                val fieldValues =
+                                    conditionType.members
+                                        .filterIsInstance<ZigContainerField>()
+                                        .filter { it.name in prongEnumLiterals }
+                                        .sortedBy { prongEnumLiterals.indexOf(it.name) }
+                                        .flatMap { resolveValuesFromReferenceTo(it) }
+                                        .flatMap { substituteTypeParams(it, conditionType.typeParams) }
+                                if (switchProng.isInline) {
+                                    fieldValues
+                                } else {
+                                    // TODO: peer type resolution
+                                    fieldValues
+                                }
+                            }
+                        }
+                        else -> sequenceOf(ZigUnknown.of(conditionType)) // TODO
                     }
                 }
             }
