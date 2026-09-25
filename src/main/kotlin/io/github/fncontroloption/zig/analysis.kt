@@ -844,8 +844,10 @@ data class ZigNullTerminatedStringValue(val value: String) : ZigValue {
     )
 
     override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
-        // TODO: escape string literal
-        return createStyledHtmlChunk(ZigHighlightingColors.STRING, "\"$value\"")
+        val text = buildString {
+            escapeZigString(value, this)
+        }
+        return createStyledHtmlChunk(ZigHighlightingColors.STRING, text)
     }
 }
 

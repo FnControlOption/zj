@@ -1384,9 +1384,37 @@ fun replaceZigIdentifierElement(parent: PsiElement, oldElement: PsiElement?, new
 }
 
 fun createZigStringLiteral(project: Project, value: String): ZigStringLiteral {
-    val file = createZigFile(project, "const dummy = \"$value\";") // TODO: escape string literal
+    val text = buildString {
+        append("const dummy = ")
+        escapeZigString(value, this)
+        append(";")
+    }
+    val file = createZigFile(project, text)
     val varDecl = file.members.first() as ZigVarDecl
     return varDecl.initializer as ZigStringLiteral
+}
+
+// Based on std.zig.stringEscape
+// https://codeberg.org/ziglang/zig/src/commit/e19a73c/lib/std/zig.zig#L540-L585
+fun escapeZigString(chars: CharSequence, builder: StringBuilder) {
+    builder.append('"')
+    for (c in chars) {
+        when (c) {
+            '\t' -> builder.append("\\t")
+            '\n' -> builder.append("\\n")
+            '\r' -> builder.append("\\r")
+            '\\' -> builder.append("\\\\")
+            '"' -> builder.append("\\\"")
+            else -> when (val code = c.code) {
+                in 0..8, 11, 12, in 14..0x1f, 0x7f -> {
+                    builder.append("\\x")
+                    builder.append(code.toString(16).padStart(2, '0'))
+                }
+                else -> builder.append(c)
+            }
+        }
+    }
+    builder.append('"')
 }
 
 private fun addVisibilityIcon(isPub: Boolean, flags: Int, baseIcon: Icon): Icon {
