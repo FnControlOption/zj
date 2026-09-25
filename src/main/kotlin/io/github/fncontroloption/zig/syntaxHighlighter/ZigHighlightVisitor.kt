@@ -90,7 +90,7 @@ class ZigHighlightVisitor : HighlightVisitor {
                 if (element.textMatches("_")) {
                     return null
                 }
-                if (element.isPrimitive) {
+                if (isZigPrimitiveText(element.text)) {
                     return createHighlightInfo(element, ZigHighlightInfoTypes.KEYWORD)
                 }
 

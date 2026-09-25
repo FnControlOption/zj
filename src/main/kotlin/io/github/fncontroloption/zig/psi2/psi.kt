@@ -809,12 +809,13 @@ private val PRIMITIVES = setOf(
 
 private val INT_PATTERN: Pattern = Pattern.compile("\\A[iu]\\d+\\Z")
 
+fun isZigPrimitiveText(chars: CharSequence): Boolean {
+    return PRIMITIVES.any { chars.contentEquals(it) } || INT_PATTERN.matcher(chars).matches()
+}
+
 class ZigIdentifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val identifierElement: PsiElement
         get() = findNotNullChildByType(ZigTokenType.IDENTIFIER)
-
-    val isPrimitive: Boolean
-        get() = text.let { it in PRIMITIVES || INT_PATTERN.matcher(it).matches() }
 
     override fun getReferences() = arrayOf(ZigIdentifierReference(this))
 }
@@ -1428,6 +1429,129 @@ fun parseZigIdentifier(element: PsiElement?): String? {
     } else {
         text
     }
+}
+
+fun escapeZigIdentifier(chars: CharSequence): String {
+    val builder = StringBuilder()
+    escapeZigIdentifier(chars, builder)
+    return builder.toString()
+}
+
+fun escapeZigIdentifier(chars: CharSequence, builder: StringBuilder) {
+    builder.append('@')
+    escapeZigString(chars, builder)
+}
+
+enum class ZigIdQuoteBehavior {
+    EAGERLY_UNQUOTE,
+    PRESERVE_WHEN_SHADOWING,
+}
+
+fun renderZigIdentifier(chars: CharSequence, quote: ZigIdQuoteBehavior): String {
+    val builder = StringBuilder()
+    renderZigIdentifier(chars, quote, builder)
+    return builder.toString()
+}
+
+// Based on std.zig.Ast.Render.renderIdentifier
+// https://codeberg.org/ziglang/zig/src/commit/5b9147e/lib/std/zig/Ast/Render.zig#L2806-L2909
+fun renderZigIdentifier(chars: CharSequence, quote: ZigIdQuoteBehavior, builder: StringBuilder) {
+    if (chars.isEmpty()) {
+        escapeZigIdentifier(chars, builder)
+        return
+    }
+    if (chars.length == 1 && chars[0] == '_') {
+        when (quote) {
+            ZigIdQuoteBehavior.EAGERLY_UNQUOTE -> {
+                builder.append(chars)
+                return
+            }
+            ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING -> {
+                escapeZigIdentifier(chars, builder)
+                return
+            }
+        }
+    }
+    if (!isValidZigIdentifier(chars)) {
+        escapeZigIdentifier(chars, builder)
+        return
+    }
+    if (isZigPrimitiveText(chars)) {
+        when (quote) {
+            ZigIdQuoteBehavior.EAGERLY_UNQUOTE -> {
+                builder.append(chars)
+                return
+            }
+            ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING -> {
+                escapeZigIdentifier(chars, builder)
+                return
+            }
+        }
+    }
+    builder.append(chars)
+}
+
+private val KEYWORDS = setOf(
+    "addrspace",
+    "align",
+    "allowzero",
+    "and",
+    "anyframe",
+    "anytype",
+    "asm",
+    "break",
+    "callconv",
+    "catch",
+    "comptime",
+    "const",
+    "continue",
+    "defer",
+    "else",
+    "enum",
+    "errdefer",
+    "error",
+    "export",
+    "extern",
+    "fn",
+    "for",
+    "if",
+    "inline",
+    "linksection",
+    "noalias",
+    "noinline",
+    "nosuspend",
+    "opaque",
+    "or",
+    "orelse",
+    "packed",
+    "pub",
+    "resume",
+    "return",
+    "struct",
+    "suspend",
+    "switch",
+    "test",
+    "threadlocal",
+    "try",
+    "union",
+    "unreachable",
+    "var",
+    "volatile",
+    "while",
+)
+
+private fun isValidZigIdentifier(chars: CharSequence): Boolean {
+    if (chars.isEmpty()) {
+        return false
+    }
+    for ((i, c) in chars.withIndex()) {
+        when (c) {
+            '_', in 'a'..'z', in 'A'..'Z' -> {}
+            in '0'..'9' -> if (i == 0) return false
+            else -> return false
+        }
+    }
+    return KEYWORDS.none { chars.contentEquals(it) }
 }
 
 private fun addVisibilityIcon(isPub: Boolean, flags: Int, baseIcon: Icon): Icon {

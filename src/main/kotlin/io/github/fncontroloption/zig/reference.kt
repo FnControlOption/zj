@@ -48,6 +48,7 @@ class ZigIdentifierReference(element: ZigIdentifier) :
     override fun getVariants(): Array<out LookupElement> {
         val variants = mutableSetOf<LookupElement>()
         for (candidate in identifierReferenceCandidates(myElement)) {
+            val name = candidate.name ?: continue
             val values = ZigAnalyzer.resolveValuesFromReferenceTo(candidate)
             val types = values.map { it.typeOf }.toSet()
             when (val type = types.singleOrNull()) {
@@ -59,7 +60,7 @@ class ZigIdentifierReference(element: ZigIdentifier) :
                         else -> false
                     }
                     variants.add(
-                        LookupElementBuilder.create(candidate)
+                        buildLookupElement(candidate, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
                             .withIcon(if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function)
                             .withTailText(getFunctionTailText(paramNames, paramTypes))
                             .withTypeText(getFunctionTypeText(type))
@@ -68,7 +69,7 @@ class ZigIdentifierReference(element: ZigIdentifier) :
                 }
 
                 else -> {
-                    variants.add(createLookupElementWithType(candidate, type))
+                    variants.add(createLookupElementWithType(candidate, name, type, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING))
                 }
             }
         }
@@ -90,6 +91,7 @@ class ZigTestReference(element: ZigTestDecl, val nameElement: PsiElement) :
     override fun getVariants(): Array<out LookupElement> {
         val variants = mutableSetOf<LookupElement>()
         for (candidate in identifierReferenceCandidates(nameElement)) {
+            val name = candidate.name ?: continue
             when (candidate) {
                 is ZigFnDecl -> {}
                 is ZigVarDecl -> if (candidate.isLocal) continue
@@ -109,7 +111,7 @@ class ZigTestReference(element: ZigTestDecl, val nameElement: PsiElement) :
                 null -> null
                 else -> candidate.getIcon(0)
             }
-            variants.add(LookupElementBuilder.create(candidate).withIcon(icon))
+            variants.add(buildLookupElement(candidate, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING).withIcon(icon))
         }
         return variants.toTypedArray()
     }
@@ -142,8 +144,9 @@ class ZigLabelReference(element: ZigLabelRef) :
         while (parent != null) {
             if (parent is ZigLabelable) {
                 val labelDecl = parent.labelDecl
-                if (labelDecl != null) {
-                    variants.add(LookupElementBuilder.create(labelDecl))
+                val label = parseZigIdentifier(labelDecl?.identifierElement)
+                if (labelDecl != null && label != null) {
+                    variants.add(buildLookupElement(labelDecl, label, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
                 }
             }
             parent = parent.parent
@@ -244,7 +247,9 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
             for (fieldName in ZigAnalyzer.getBuiltinFields(typeOfLeft)) {
                 val fieldType = ZigAnalyzer.getBuiltinFieldType(typeOfLeft, fieldName)
                 variants.add(
-                    LookupElementBuilder.create(fieldName)
+                    LookupElementBuilder.create(renderZigIdentifier(fieldName, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
+                        .withLookupString(fieldName)
+                        .withLookupString(escapeZigIdentifier(fieldName))
                         .withIcon(AllIcons.Nodes.Field)
                         .withTypeText(fieldType?.toPlainText())
                 )
@@ -252,20 +257,21 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
         }
         for ((containerType, isInstance) in getContainers(leftValues)) {
             for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
+                val name = member.name ?: continue
                 if (member is ZigContainerField) {
                     if (containerType.containerKind == ZigContainerKind.ENUM) {
                         if (isInstance || member.nameIdentifier?.textMatches("_") == true) {
                             continue
                         }
-                        variants.add(createLookupElementWithType(member, containerType))
+                        variants.add(createLookupElementWithType(member, name, containerType, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
                     } else if (isInstance) {
                         val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
                         val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
                         val types = values.map { it.typeOf }.toSet()
-                        variants.add(createLookupElementWithType(member, types.singleOrNull()))
+                        variants.add(createLookupElementWithType(member, name, types.singleOrNull(), ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
                     } else if (containerType is ZigContainerType && containerType.element.isTaggedUnion) {
                         val types = ZigAnalyzer.resolveUnionTagTypes(containerType)
-                        variants.add(createLookupElementWithType(member, types.singleOrNull()))
+                        variants.add(createLookupElementWithType(member, name, types.singleOrNull(), ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
                     }
                     continue
                 }
@@ -285,7 +291,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                             paramTypes = paramTypes.subList(1, paramTypes.size)
                         }
                         variants.add(
-                            LookupElementBuilder.create(member)
+                            buildLookupElement(member, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
                                 .withIcon(if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function)
                                 .withTailText(getFunctionTailText(paramNames, paramTypes))
                                 .withTypeText(getFunctionTypeText(type))
@@ -297,7 +303,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                         if (isInstance) {
                             continue
                         }
-                        variants.add(createLookupElementWithType(member, type))
+                        variants.add(createLookupElementWithType(member, name, type, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
                     }
                 }
             }
@@ -362,19 +368,20 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
         val variants = mutableSetOf<LookupElement>()
         for ((originalType, containerType) in ZigAnalyzer.inferEnumLiteralTypes(myElement)) {
             for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
+                val name = member.name ?: continue
                 if (member is ZigContainerField) {
                     if (containerType.containerKind == ZigContainerKind.ENUM) {
                         if (member.nameIdentifier?.textMatches("_") == true) {
                             continue
                         }
-                        variants.add(createLookupElementWithType(member, containerType))
+                        variants.add(createLookupElementWithType(member, name, containerType, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
                     } else if (containerType is ZigContainerType && containerType.element.isTaggedUnion) {
                         val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
                         val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
                         val types = values.map { it.typeOf }.toSet()
                         val type = types.singleOrNull()
                         if (type == ZigVoidType) {
-                            variants.add(createLookupElementWithType(member, containerType))
+                            variants.add(createLookupElementWithType(member, name, containerType, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
                         } else {
                             // TODO: add specialized completion item for non-void tagged union field
                         }
@@ -391,7 +398,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
                         val (paramNames, paramTypes) = getFunctionParamNamesAndTypes(type, containerType.typeParams)
                         val isMethod = getFunctionReceiverType(paramTypes) == containerType
                         variants.add(
-                            LookupElementBuilder.create(member)
+                            buildLookupElement(member, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
                                 .withIcon(if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function)
                                 .withTailText(getFunctionTailText(paramNames, paramTypes))
                                 .withTypeText(getFunctionTypeText(type))
@@ -401,7 +408,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
 
                     else -> {
                         // TODO: check if decl type can coerce to original type
-                        variants.add(createLookupElementWithType(member, type))
+                        variants.add(createLookupElementWithType(member, name, type, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
                     }
                 }
             }
@@ -628,11 +635,12 @@ private fun getFieldInitVariants(containerType: ZigContainerType): Sequence<Look
     if (containerType.element.containerKind == ZigContainerKind.ENUM) {
         return emptySequence()
     }
-    return containerType.element.members.filterIsInstance<ZigContainerField>().map { member ->
+    return containerType.element.members.filterIsInstance<ZigContainerField>().mapNotNull { member ->
+        val name = member.name ?: return@mapNotNull null
         val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
         val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
         val types = values.map { it.typeOf }.toSet()
-        LookupElementBuilder.create(member)
+        buildLookupElement(member, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
             .withIcon(AllIcons.Nodes.Field)
             .withTailText(" =")
             .withTypeText(types.singleOrNull()?.toPlainText())
@@ -640,12 +648,26 @@ private fun getFieldInitVariants(containerType: ZigContainerType): Sequence<Look
     }
 }
 
-private fun createLookupElementWithType(member: PsiNameIdentifierOwner, type: ZigValue?): LookupElement {
+private fun createLookupElementWithType(
+    element: ZigNamedElement,
+    name: String,
+    type: ZigValue?,
+    quote: ZigIdQuoteBehavior,
+): LookupElement {
     return if (type != null) {
-        LookupElementBuilder.create(member)
-            .withIcon(member.getIcon(0))
+        buildLookupElement(element, name, quote)
+            .withIcon(element.getIcon(0))
             .withTypeText(type.toPlainText())
     } else {
-        LookupElementBuilder.create(member)
+        buildLookupElement(element, name, quote)
     }
 }
+
+private fun buildLookupElement(
+    element: ZigNamedElement,
+    name: String,
+    quote: ZigIdQuoteBehavior,
+): LookupElementBuilder =
+    LookupElementBuilder.create(element, renderZigIdentifier(name, quote))
+        .withLookupString(name)
+        .withLookupString(escapeZigIdentifier(name))
