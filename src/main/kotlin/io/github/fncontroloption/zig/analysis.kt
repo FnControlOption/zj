@@ -1987,7 +1987,16 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             if (parentElement.innerElement !== childElement) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
             }
-            inferResultTypes(parentElement.parent as ZigElement)
+            val parentTypes = inferResultTypes(parentElement.parent as ZigElement)
+            val grandparentElement = parentElement.parent
+            if (grandparentElement is ZigIf) {
+                val elseElement = grandparentElement.elseElement?.innerElement
+                if (elseElement != null) {
+                    val elseTypes = resolveValues(elseElement).asSequence().map { it.typeOf }
+                    return parentTypes + elseTypes
+                }
+            }
+            parentTypes
         }
 
         is ZigElseElement -> {
