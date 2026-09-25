@@ -1076,8 +1076,8 @@ class ZigSliceSentinel(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-    val value: String
-        get() = text.substring(1, textLength - 1) // TODO: unescape string literal
+    val value: String?
+        get() = ZigStringLiteralParser.parse(text)
 
     override fun getReferences(): Array<out PsiReference> {
         val callArg = parent as? ZigCallArg ?: return emptyArray()

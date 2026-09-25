@@ -177,7 +177,7 @@ class ZigImportReference(element: ZigStringLiteral) :
     }
 
     override fun handleElementRename(newElementName: String): PsiElement {
-        val oldValue = myElement.value
+        val oldValue = myElement.value ?: throw IncorrectOperationException()
         val oldParts = oldValue.split("/")
         if (oldParts.isEmpty()) {
             throw IncorrectOperationException()

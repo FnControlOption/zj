@@ -60,7 +60,7 @@ private class ZigRefactoringFileListener(val oldDirPath: Path) : RefactoringElem
                     if (oldElement !is ZigStringLiteral) {
                         return
                     }
-                    val oldValue = oldElement.value
+                    val oldValue = oldElement.value ?: return
                     if (!oldValue.endsWith(".zig") && !oldValue.endsWith(".zon")) {
                         return
                     }
