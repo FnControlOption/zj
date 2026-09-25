@@ -2006,12 +2006,32 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             parentTypes
         }
 
-        is ZigOrelse,
+        is ZigOrelse -> {
+            if (parentElement.rightOperand !== childElement) {
+                return sequenceOf(ZigUnknown.of(ZigTypeType))
+            }
+            val parentTypes = inferResultTypes(parentElement)
+            val leftTypes = resolveValues(parentElement.leftOperand).asSequence().map { left ->
+                when (val typeOfLeft = left.typeOf) {
+                    is ZigOptionalType -> typeOfLeft.child
+                    else -> ZigUnknown.ofUnknownType()
+                }
+            }
+            parentTypes + leftTypes
+        }
+
         is ZigCatch -> {
             if (parentElement.rightOperand !== childElement) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
             }
-            inferResultTypes(parentElement)
+            val parentTypes = inferResultTypes(parentElement)
+            val leftTypes = resolveValues(parentElement.leftOperand).asSequence().map { left ->
+                when (val typeOfLeft = left.typeOf) {
+                    is ZigErrorUnionType -> typeOfLeft.payload
+                    else -> ZigUnknown.ofUnknownType()
+                }
+            }
+            parentTypes + leftTypes
         }
 
         is ZigAddressOf -> {
