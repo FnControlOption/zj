@@ -181,7 +181,7 @@ object ZigVarDeclStubFactory : StubElementFactory<ZigVarDeclStub, ZigVarDecl> {
         val initializer = element.initializer
         if (element.mutability == ZigMutability.CONST
             && initializer is ZigFieldAccess
-            && initializer.identifierElement?.text == name
+            && parseZigIdentifier(initializer.identifierElement) == name
         ) {
             return false
         }

@@ -104,7 +104,7 @@ class ZigHighlightVisitor : HighlightVisitor {
 
             is ZigFieldAccess -> {
                 val name = element.identifierElement ?: return null
-                val text = name.text
+                val text = parseZigIdentifier(name) ?: return null
                 for (value in ZigAnalyzer.resolveValues(element.leftOperand)) {
                     if (ZigAnalyzer.getBuiltinFieldType(value.typeOf, text) != null) {
                         return createHighlightInfo(name, ZigHighlightInfoTypes.INSTANCE_FIELD)

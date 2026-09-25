@@ -908,12 +908,18 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigErrorSet -> {
-            val names = element.setItems.map { it.identifierElement.text }
+            val names = mutableSetOf<String>()
+            for (item in element.setItems) {
+                val name = parseZigIdentifier(item.identifierElement)
+                    ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+                names.add(name)
+            }
             sequenceOf(ZigErrorSetType(names.toSortedSet()))
         }
 
         is ZigErrorValueElement -> {
-            val name = element.identifierElement?.text ?: return sequenceOf(ZigUnknown.ofUnknownType())
+            val name = parseZigIdentifier(element.identifierElement)
+                ?: return sequenceOf(ZigUnknown.ofUnknownType())
             val type = ZigErrorSetType(setOf(name))
             sequenceOf(ZigErrorSetValue(type, name))
         }
@@ -1102,7 +1108,8 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigFieldAccess -> {
-            val name = element.identifierElement?.text ?: return sequenceOf(ZigUnknown.ofUnknownType())
+            val name = parseZigIdentifier(element.identifierElement)
+                ?: return sequenceOf(ZigUnknown.ofUnknownType())
             val fieldName = ZigNullTerminatedStringValue(name)
             resolveValues(element.leftOperand).asSequence().flatMap { computeFieldAccess(it, fieldName) }
         }
@@ -1317,7 +1324,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigCharLiteral -> sequenceOf(ZigUnknown.of(ZigComptimeIntType))
 
         is ZigEnumLiteral -> {
-            val name = element.identifierElement?.text
+            val name = parseZigIdentifier(element.identifierElement)
             if (name != null) {
                 sequenceOf(ZigEnumLiteralValue(ZigEnumLiteralType, name))
             } else {
@@ -1794,7 +1801,7 @@ private fun computeCalledFuncAndArgs(callElement: ZigCall): Sequence<Triple<ZigV
 internal fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<ZigValue, ZigValue?>> {
     return when (val functionElement = callElement.functionElement) {
         is ZigFieldAccess -> {
-            val name = functionElement.identifierElement?.text
+            val name = parseZigIdentifier(functionElement.identifierElement)
                 ?: return sequenceOf(ZigUnknown.ofUnknownType() to null)
             val fieldName = ZigNullTerminatedStringValue(name)
             resolveValues(functionElement.leftOperand).asSequence().flatMap { left ->
@@ -1834,10 +1841,10 @@ internal fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<Zi
 
 private fun computeValuesFromLabeledBreaks(element: ZigLabelable): Sequence<ZigValue> {
     val labelDecl = element.labelDecl ?: return emptySequence()
-    val labelName = labelDecl.identifierElement.text
+    val labelName = parseZigIdentifier(labelDecl.identifierElement) ?: return emptySequence()
     val traverser = SyntaxTraverser.psiTraverser(element).expand { it !is ZigContainerExpression }
     return traverser.asSequence().flatMap { descendant ->
-        if (descendant is ZigBreak && labelName == descendant.labelRef?.identifierElement?.text) {
+        if (descendant is ZigBreak && labelName == parseZigIdentifier(descendant.labelRef?.identifierElement)) {
             when (val breakValue = descendant.breakValue) {
                 null -> sequenceOf(ZigVoidValue)
                 else -> resolveValues(breakValue).asSequence()
@@ -2046,10 +2053,12 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             if (parentElement.breakValue !== childElement) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
             }
-            val label = parentElement.labelRef?.identifierElement?.text
-            val breakable = if (label != null) {
+            val labelElement = parentElement.labelRef?.identifierElement
+            val breakable = if (labelElement != null) {
+                val label = parseZigIdentifier(labelElement)
+                    ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
                 parentElement.findParentInFile {
-                    it is ZigLabelable && label == it.labelDecl?.identifierElement?.text
+                    it is ZigLabelable && label == parseZigIdentifier(it.labelDecl?.identifierElement)
                 }
             } else {
                 var foundThenElemAsChild = false
@@ -2072,10 +2081,10 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             if (parentElement.continueOperand !== childElement) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
             }
-            val label = parentElement.labelRef?.identifierElement?.text
+            val label = parseZigIdentifier(parentElement.labelRef?.identifierElement)
                 ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
             val labelable = parentElement.findParentInFile {
-                it is ZigLabelable && label == it.labelDecl?.identifierElement?.text
+                it is ZigLabelable && label == parseZigIdentifier(it.labelDecl?.identifierElement)
             }
             if (labelable !is ZigSwitch) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
@@ -2464,13 +2473,13 @@ fun computeTagNameValues(values: Sequence<ZigValue>): Sequence<ZigValue> {
 private fun getUnwrapUnionTagTypeArgument(element: ZigUnwrapOptional): ZigElement? {
     var child = element.operand
     if (child !is ZigFieldAccess) return null
-    if (child.identifierElement?.text != "tag_type") return null
+    if (child.identifierElement?.textMatches("tag_type") != true) return null
     child = child.leftOperand
     if (child !is ZigFieldAccess) return null
-    if (child.identifierElement?.text != "@\"union\"") return null
+    if (child.identifierElement?.textMatches("@\"union\"") != true) return null
     child = child.leftOperand
     if (child !is ZigBuiltinCall) return null
-    if (child.builtinElement.text != "@typeInfo") return null
+    if (!child.builtinElement.textMatches("@typeInfo")) return null
     return child.argumentElements.firstOrNull()?.innerElement
 }
 

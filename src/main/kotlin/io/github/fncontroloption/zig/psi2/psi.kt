@@ -539,7 +539,7 @@ class ZigContainerFieldImpl : ZigStubPsiElement<ZigContainerFieldStub>, ZigConta
                 ?.firstNotNullOfOrNull { it as? ZigElement }
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
-    override fun getName() = nameIdentifier?.text
+    override fun getName() = parseZigIdentifier(nameIdentifier)
     override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
@@ -548,7 +548,7 @@ class ZigContainerFieldImpl : ZigStubPsiElement<ZigContainerFieldStub>, ZigConta
     override fun getBaseIcon() = AllIcons.Nodes.Field
 
     override fun getPresentation(): ItemPresentation {
-        val name = nameIdentifier?.text
+        val name = parseZigIdentifier(nameIdentifier)
         val location = "in ${containingFile.name}"
         return PresentationData(name, location, baseIcon, null)
     }
@@ -706,7 +706,7 @@ class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigFnDeclOrProto, ZigNamedCo
         get() = findChildByClass(ZigBlock::class.java)
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
-    override fun getName() = nameIdentifier?.text
+    override fun getName() = parseZigIdentifier(nameIdentifier)
     override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
@@ -715,7 +715,7 @@ class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigFnDeclOrProto, ZigNamedCo
     override fun getBaseIcon() = AllIcons.Nodes.Function
 
     override fun getPresentation(): ItemPresentation {
-        val name = nameIdentifier?.text
+        val name = parseZigIdentifier(nameIdentifier)
         val text = if (name != null) "$name()" else null
         val location = "in ${containingFile.name}"
         val icon = getElementIcon(ICON_FLAG_VISIBILITY)
@@ -844,7 +844,7 @@ class ZigLabelDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement 
         get() = findNotNullChildByType(ZigTokenType.IDENTIFIER)
 
     override fun getNameIdentifier() = identifierElement
-    override fun getName() = identifierElement.text!!
+    override fun getName() = parseZigIdentifier(identifierElement)
     override fun setName(name: String) = replaceZigIdentifierElement(this, identifierElement, name)
     override fun getTextOffset() = identifierElement.textOffset
 }
@@ -955,7 +955,7 @@ class ZigFnParam(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedReferencea
         get() = findChildByClass(ZigTypeElement::class.java)
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
-    override fun getName() = nameIdentifier?.text
+    override fun getName() = parseZigIdentifier(nameIdentifier)
     override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
@@ -975,7 +975,7 @@ class ZigPayloadItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedRefere
         get() = parent as ZigPayload
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
-    override fun getName() = nameIdentifier?.text
+    override fun getName() = parseZigIdentifier(nameIdentifier)
     override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
@@ -1276,7 +1276,7 @@ class ZigVarDecl : ZigStubPsiElement<ZigVarDeclStub>, ZigVarDeclOrProto, ZigName
                 ?.firstNotNullOfOrNull { it as? ZigElement }
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
-    override fun getName() = nameIdentifier?.text
+    override fun getName() = parseZigIdentifier(nameIdentifier)
     override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
@@ -1288,7 +1288,7 @@ class ZigVarDecl : ZigStubPsiElement<ZigVarDeclStub>, ZigVarDeclOrProto, ZigName
     }
 
     override fun getPresentation(): ItemPresentation {
-        val name = nameIdentifier?.text
+        val name = parseZigIdentifier(nameIdentifier)
         val location = "in ${containingFile.name}"
         val icon = getElementIcon(ICON_FLAG_VISIBILITY)
         return PresentationData(name, location, icon, null)
@@ -1300,7 +1300,7 @@ class ZigVarProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto
         get() = parent as ZigAssignDestructure
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
-    override fun getName() = nameIdentifier?.text
+    override fun getName() = parseZigIdentifier(nameIdentifier)
     override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
@@ -1347,7 +1347,7 @@ data class LightZigTupleField(
     val fieldIndex: Int,
 ) : LightZigElement(container.manager), ZigContainerField {
     override fun getNameIdentifier() = null
-    override fun getName() = "@\"$fieldIndex\""
+    override fun getName() = fieldIndex.toString()
     override fun setName(name: String) = throw IncorrectOperationException()
 
     override fun isVisibilitySupported() = false
@@ -1362,7 +1362,8 @@ fun createZigFile(project: Project, text: String): ZigFile {
 }
 
 fun createZigIdentifier(project: Project, name: String): ZigIdentifier {
-    val file = createZigFile(project, "const dummy = $name;")
+    val text = "const dummy = $name;" // TODO: escape identifier
+    val file = createZigFile(project, text)
     val varDecl = file.members.first() as ZigVarDecl
     return varDecl.initializer as ZigIdentifier
 }
@@ -1415,6 +1416,18 @@ fun escapeZigString(chars: CharSequence, builder: StringBuilder) {
         }
     }
     builder.append('"')
+}
+
+fun parseZigIdentifier(element: PsiElement?): String? {
+    if (element == null) return null
+    assert(element.elementType === ZigTokenType.IDENTIFIER
+            || element.elementType === ZigElementType.IDENTIFIER)
+    val text = element.text
+    return if (text.startsWith('@')) {
+        ZigStringLiteralParser.parse(text.subSequence(1, text.length))
+    } else {
+        text
+    }
 }
 
 private fun addVisibilityIcon(isPub: Boolean, flags: Int, baseIcon: Icon): Icon {

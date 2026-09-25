@@ -70,7 +70,7 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
         if (originalElement == null || element.identifierElement !== originalElement) {
             return null
         }
-        val name = originalElement.text
+        val name = parseZigIdentifier(originalElement) ?: return null
         val left = ZigAnalyzer.resolveValues(element.leftOperand).singleOrNull() ?: return null
         val type = ZigAnalyzer.getBuiltinFieldType(left.typeOf, name) ?: return null
         val sb = StringBuilder()

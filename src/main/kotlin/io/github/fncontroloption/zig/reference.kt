@@ -37,7 +37,8 @@ class ZigIdentifierReference(element: ZigIdentifier) :
     PsiReferenceBase<ZigIdentifier>(element, TextRange(0, element.textLength), true) {
 
     override fun resolve(): PsiElement? {
-        val name = myElement.text
+        if (element.textMatches("_")) return null
+        val name = parseZigIdentifier(myElement) ?: return null
         return identifierReferenceCandidates(myElement).firstOrNull { it.name == name }
     }
 
@@ -79,7 +80,7 @@ class ZigTestReference(element: ZigTestDecl, val nameElement: PsiElement) :
     PsiReferenceBase<ZigTestDecl>(element, nameElement.textRangeInParent, true) {
 
     override fun resolve(): PsiElement? {
-        val name = nameElement.text
+        val name = parseZigIdentifier(nameElement) ?: return null
         return identifierReferenceCandidates(nameElement).firstOrNull { it.name == name }
     }
 
@@ -118,12 +119,12 @@ class ZigLabelReference(element: ZigLabelRef) :
     PsiReferenceBase<ZigLabelRef>(element, element.identifierElement.textRangeInParent, true) {
 
     override fun resolve(): PsiElement? {
-        val name = myElement.identifierElement.text
+        val name = parseZigIdentifier(myElement.identifierElement) ?: return null
         var parent = myElement.parent
         while (parent != null) {
             if (parent is ZigLabelable) {
                 val labelDecl = parent.labelDecl
-                if (labelDecl != null && labelDecl.identifierElement.textMatches(name)) {
+                if (labelDecl != null && parseZigIdentifier(labelDecl.identifierElement) == name) {
                     return labelDecl
                 }
             }
@@ -209,7 +210,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
         val leftValues = ZigAnalyzer.resolveValues(myElement.leftOperand)
-        val name = identifier.text
+        val name = parseZigIdentifier(identifier) ?: return emptyArray()
         val results = mutableSetOf<ResolveResult>()
         for ((containerType, _) in getContainers(leftValues)) {
             val member = containerType.members.firstOrNull {
@@ -253,7 +254,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
             for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
                 if (member is ZigContainerField) {
                     if (containerType.containerKind == ZigContainerKind.ENUM) {
-                        if (isInstance || member.name == "_") {
+                        if (isInstance || member.nameIdentifier?.textMatches("_") == true) {
                             continue
                         }
                         variants.add(createLookupElementWithType(member, containerType))
@@ -329,7 +330,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
         val types = ZigAnalyzer.inferEnumLiteralTypes(myElement)
-        val name = identifier.text
+        val name = parseZigIdentifier(identifier) ?: return emptyArray()
         val results = mutableSetOf<ResolveResult>()
         for ((_, containerType) in types) {
             val member = containerType.members.firstOrNull {
@@ -363,7 +364,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
             for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
                 if (member is ZigContainerField) {
                     if (containerType.containerKind == ZigContainerKind.ENUM) {
-                        if (member.name == "_") {
+                        if (member.nameIdentifier?.textMatches("_") == true) {
                             continue
                         }
                         variants.add(createLookupElementWithType(member, containerType))
@@ -414,7 +415,7 @@ class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElem
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
         val types = ZigAnalyzer.resolveOrInferStructInitTypes(myElement.containingListInit)
-        val name = identifier.text
+        val name = parseZigIdentifier(identifier) ?: return emptyArray()
         val results = mutableSetOf<ResolveResult>()
         for (containerType in types) {
             val member = containerType.element.members.firstOrNull {
@@ -446,7 +447,11 @@ private fun identifierReferenceCandidates(element: PsiElement): Sequence<ZigName
     return generateSequence {
         while (element != null) {
             if (it?.hasNext() == true) {
-                return@generateSequence it!!.next()
+                val candidate = it!!.next()
+                if (candidate.nameIdentifier?.textMatches("_") == true) {
+                    continue
+                }
+                return@generateSequence candidate
             }
             val child = element!!
             val parent = child.parent
