@@ -13,6 +13,9 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.light.LightElement
 import com.intellij.psi.stubs.StubElement
 import com.intellij.psi.tree.IElementType
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.elementType
 import com.intellij.psi.util.findParentInFile
 import com.intellij.psi.util.siblings
@@ -1421,6 +1424,13 @@ fun escapeZigString(chars: CharSequence, builder: StringBuilder) {
 
 fun parseZigIdentifier(element: PsiElement?): String? {
     if (element == null) return null
+    return CachedValuesManager.getCachedValue(element) {
+        val value = parseZigIdentifierUncached(element)
+        CachedValueProvider.Result.create(value, PsiModificationTracker.MODIFICATION_COUNT)
+    }
+}
+
+private fun parseZigIdentifierUncached(element: PsiElement): String? {
     assert(element.elementType === ZigTokenType.IDENTIFIER
             || element.elementType === ZigElementType.IDENTIFIER)
     val text = element.text
