@@ -2442,6 +2442,8 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
                 val conditionElement = switchElement.conditionElement.innerElement
                     ?: return sequenceOf(ZigUnknown.ofUnknownType())
 
+                val isElseProng = switchProng.isElse
+                val isInlineProng = switchProng.isInline
                 val otherSwitchItems =
                     switchElement.prongs
                         .filter { it !== switchProng }
@@ -2489,16 +2491,16 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
                 resolveValues(conditionElement).asSequence().flatMap { condition ->
                     when (val conditionType = condition.typeOf) {
                         is ZigErrorSetType -> {
-                            if (switchProng.isElse) {
+                            if (isElseProng) {
                                 val names = conditionType.names.toSortedSet()
                                 names.removeAll(otherErrorNames)
-                                if (switchProng.isInline) {
+                                if (isInlineProng) {
                                     names.asSequence().map { ZigErrorSetValue(ZigErrorSetType(setOf(it)), it) }
                                 } else {
                                     sequenceOf(ZigUnknown.of(ZigErrorSetType(names)))
                                 }
                             } else {
-                                if (switchProng.isInline) {
+                                if (isInlineProng) {
                                     prongErrorValues.asSequence()
                                 } else {
                                     sequenceOf(ZigUnknown.of(prongErrorSet))
@@ -2506,8 +2508,8 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
                             }
                         }
                         is ZigContainerType if conditionType.element.isTaggedUnion -> {
-                            if (switchProng.isElse) {
-                                if (switchProng.isInline) {
+                            if (isElseProng) {
+                                if (isInlineProng) {
                                     conditionType.members
                                         .filterIsInstance<ZigContainerField>()
                                         .filter { it.name !in otherEnumLiterals }
@@ -2524,7 +2526,7 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
                                         .sortedBy { prongEnumLiterals.indexOf(it.name) }
                                         .flatMap { resolveValuesFromReferenceTo(it) }
                                         .flatMap { substituteTypeParams(it, conditionType.typeParams) }
-                                if (switchProng.isInline) {
+                                if (isInlineProng) {
                                     fieldValues
                                 } else {
                                     // TODO: peer type resolution
@@ -2537,15 +2539,50 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
                 }
             }
             1 -> {
-                // TODO: resolve tag value in inline switch prong?
                 val switchProng = payloadElement.containingSwitchProng
                 val switchElement = switchProng.containingSwitch
                 val conditionElement = switchElement.conditionElement.innerElement
                     ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                val isElseProng = switchProng.isElse
+                val isInlineProng = switchProng.isInline
+                val otherEnumLiterals =
+                    switchElement.prongs
+                        .filter { it !== switchProng }
+                        .flatMap { it.items }
+                        .flatMap { resolveValues(it.innerElement) }
+                        .filterIsInstance<ZigEnumLiteralValue>()
+                        .map { it.name }
+                        .toSet()
+                val prongEnumLiterals =
+                    switchProng.items
+                        .flatMap { resolveValues(it.innerElement) }
+                        .filterIsInstance<ZigEnumLiteralValue>()
+                        .map { it.name }
+                        .toSet()
                 resolveValues(conditionElement).asSequence().flatMap { condition ->
                     val conditionType = condition.typeOf
                     if (conditionType is ZigContainerType && conditionType.element.isTaggedUnion) {
-                        ZigAnalyzer.resolveUnionTagTypes(conditionType).map { ZigUnknown.of(it) }
+                        val tagTypes = ZigAnalyzer.resolveUnionTagTypes(conditionType)
+                        if (isInlineProng) {
+                            if (isElseProng) {
+                                tagTypes
+                                    .filterIsInstance<IZigContainerType>()
+                                    .filter { it.containerKind == ZigContainerKind.ENUM }
+                                    .flatMap { type ->
+                                        type.members
+                                            .filterIsInstance<ZigContainerField>()
+                                            .mapNotNull { it.name }
+                                            .filter { it !in otherEnumLiterals }
+                                            .map { ZigEnumLiteralValue(type, it) }
+                                    }
+                            } else {
+                                tagTypes.flatMap { type ->
+                                    prongEnumLiterals.map { ZigEnumLiteralValue(type, it) }
+                                }
+                            }
+                        } else {
+                            tagTypes.map { ZigUnknown.of(it) }
+                        }
                     } else {
                         sequenceOf(ZigUnknown.ofUnknownType())
                     }
