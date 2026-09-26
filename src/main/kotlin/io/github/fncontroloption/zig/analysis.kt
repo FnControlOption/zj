@@ -246,7 +246,7 @@ class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigValue {
                 ZigUndefinedType -> ZigUndefinedValue
                 ZigVoidType -> ZigVoidValue
                 is ZigFixedIntType if type.bits == 0 -> ZigIntValue(type, 0)
-                is ZigErrorSetType if type.names.size ==  1 -> ZigErrorSetValue(type, type.names.first())
+                is ZigErrorSetType if type.names.size == 1 -> ZigErrorSetValue(type, type.names.first())
                 else -> ZigUnknown(type)
             }
         }
@@ -1212,6 +1212,8 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 resolveValues(argElement).asSequence().map { ZigUnknown.of(it) }
             }
 
+            "@EnumLiteral" -> sequenceOf(ZigEnumLiteralType)
+
             "@field" -> {
                 val argElements = element.argumentElements.toList()
                 val leftElement = argElements.getOrNull(0)?.innerElement
@@ -1273,8 +1275,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                     sequenceOf(ZigUnknown.ofUnknownType())
                 }
             }
-
-            "@EnumLiteral" -> sequenceOf(ZigEnumLiteralType)
 
             // TODO
             else -> sequenceOf(ZigUnknown.ofUnknownType())

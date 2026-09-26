@@ -13,12 +13,7 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.light.LightElement
 import com.intellij.psi.stubs.StubElement
 import com.intellij.psi.tree.IElementType
-import com.intellij.psi.util.CachedValueProvider
-import com.intellij.psi.util.CachedValuesManager
-import com.intellij.psi.util.PsiModificationTracker
-import com.intellij.psi.util.elementType
-import com.intellij.psi.util.findParentInFile
-import com.intellij.psi.util.siblings
+import com.intellij.psi.util.*
 import com.intellij.ui.IconManager
 import com.intellij.util.BitUtil
 import com.intellij.util.IncorrectOperationException
@@ -1431,8 +1426,10 @@ fun parseZigIdentifier(element: PsiElement?): String? {
 }
 
 private fun parseZigIdentifierUncached(element: PsiElement): String? {
-    assert(element.elementType === ZigTokenType.IDENTIFIER
-            || element.elementType === ZigElementType.IDENTIFIER)
+    assert(
+        element.elementType === ZigTokenType.IDENTIFIER
+                || element.elementType === ZigElementType.IDENTIFIER
+    )
     val text = element.text
     return if (text.startsWith('@')) {
         ZigStringLiteralParser.parse(text.subSequence(1, text.length))

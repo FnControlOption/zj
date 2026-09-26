@@ -69,7 +69,14 @@ class ZigIdentifierReference(element: ZigIdentifier) :
                 }
 
                 else -> {
-                    variants.add(createLookupElementWithType(candidate, name, type, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING))
+                    variants.add(
+                        createLookupElementWithType(
+                            candidate,
+                            name,
+                            type,
+                            ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING
+                        )
+                    )
                 }
             }
         }
@@ -263,15 +270,36 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                         if (isInstance || member.nameIdentifier?.textMatches("_") == true) {
                             continue
                         }
-                        variants.add(createLookupElementWithType(member, name, containerType, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
+                        variants.add(
+                            createLookupElementWithType(
+                                member,
+                                name,
+                                containerType,
+                                ZigIdQuoteBehavior.EAGERLY_UNQUOTE
+                            )
+                        )
                     } else if (isInstance) {
                         val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
                         val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
                         val types = values.map { it.typeOf }.toSet()
-                        variants.add(createLookupElementWithType(member, name, types.singleOrNull(), ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
+                        variants.add(
+                            createLookupElementWithType(
+                                member,
+                                name,
+                                types.singleOrNull(),
+                                ZigIdQuoteBehavior.EAGERLY_UNQUOTE
+                            )
+                        )
                     } else if (containerType is ZigContainerType && containerType.element.isTaggedUnion) {
                         val types = ZigAnalyzer.resolveUnionTagTypes(containerType)
-                        variants.add(createLookupElementWithType(member, name, types.singleOrNull(), ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
+                        variants.add(
+                            createLookupElementWithType(
+                                member,
+                                name,
+                                types.singleOrNull(),
+                                ZigIdQuoteBehavior.EAGERLY_UNQUOTE
+                            )
+                        )
                     }
                     continue
                 }
@@ -303,7 +331,14 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                         if (isInstance) {
                             continue
                         }
-                        variants.add(createLookupElementWithType(member, name, type, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
+                        variants.add(
+                            createLookupElementWithType(
+                                member,
+                                name,
+                                type,
+                                ZigIdQuoteBehavior.EAGERLY_UNQUOTE
+                            )
+                        )
                     }
                 }
             }
@@ -374,14 +409,28 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
                         if (member.nameIdentifier?.textMatches("_") == true) {
                             continue
                         }
-                        variants.add(createLookupElementWithType(member, name, containerType, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
+                        variants.add(
+                            createLookupElementWithType(
+                                member,
+                                name,
+                                containerType,
+                                ZigIdQuoteBehavior.EAGERLY_UNQUOTE
+                            )
+                        )
                     } else if (containerType is ZigContainerType && containerType.element.isTaggedUnion) {
                         val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
                         val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
                         val types = values.map { it.typeOf }.toSet()
                         val type = types.singleOrNull()
                         if (type == ZigVoidType) {
-                            variants.add(createLookupElementWithType(member, name, containerType, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
+                            variants.add(
+                                createLookupElementWithType(
+                                    member,
+                                    name,
+                                    containerType,
+                                    ZigIdQuoteBehavior.EAGERLY_UNQUOTE
+                                )
+                            )
                         } else {
                             // TODO: add specialized completion item for non-void tagged union field
                         }
@@ -408,7 +457,14 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
 
                     else -> {
                         // TODO: check if decl type can coerce to original type
-                        variants.add(createLookupElementWithType(member, name, type, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
+                        variants.add(
+                            createLookupElementWithType(
+                                member,
+                                name,
+                                type,
+                                ZigIdQuoteBehavior.EAGERLY_UNQUOTE
+                            )
+                        )
                     }
                 }
             }

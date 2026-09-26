@@ -6,10 +6,8 @@ import com.intellij.codeInsight.daemon.impl.HighlightVisitor
 import com.intellij.codeInsight.daemon.impl.analysis.HighlightInfoHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.intellij.psi.util.parentOfType
 import io.github.fncontroloption.zig.ZigAnalyzer
 import io.github.fncontroloption.zig.ZigFunctionType
-import io.github.fncontroloption.zig.ZigTypeType
 import io.github.fncontroloption.zig.psi2.*
 import io.github.fncontroloption.zig.resolveReferences
 
