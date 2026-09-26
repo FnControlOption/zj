@@ -2518,7 +2518,21 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
                     }
                 }
             }
-            1 -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
+            1 -> {
+                // TODO: resolve tag value in inline switch prong?
+                val switchProng = payloadElement.containingSwitchProng
+                val switchElement = switchProng.containingSwitch
+                val conditionElement = switchElement.conditionElement.innerElement
+                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                resolveValues(conditionElement).asSequence().flatMap { condition ->
+                    val conditionType = condition.typeOf
+                    if (conditionType is ZigContainerType && conditionType.element.isTaggedUnion) {
+                        ZigAnalyzer.resolveUnionTagTypes(conditionType).map { ZigUnknown.of(it) }
+                    } else {
+                        sequenceOf(ZigUnknown.ofUnknownType())
+                    }
+                }
+            }
             else -> sequenceOf(ZigUnknown.ofUnknownType())
         }
 
