@@ -1264,7 +1264,9 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             "@typeInfo" -> {
                 val langFile = ZigAnalyzer.findStdFile(element, "lang.zig")
                     ?: return sequenceOf(ZigUnknown.ofUnknownType())
-                val member = langFile.members.filterIsInstance<ZigNamedContainerMember>().firstOrNull { it.name == "Type" }
+                val member = langFile.members.firstNotNullOfOrNull {
+                    if (it is ZigNamedContainerMember && it.name == "Type") it else null
+                }
                 if (member != null) {
                     resolveValuesFromReferenceTo(member).asSequence().map { ZigUnknown.of(it) }
                 } else {
@@ -1581,10 +1583,10 @@ private fun computeContainerInstanceFieldValues(
     if (type.containerKind == ZigContainerKind.ENUM) {
         return sequenceOf(ZigLazyFieldValue(left, fieldName))
     }
-    val member = type.members.firstOrNull {
-        it is PsiNameIdentifierOwner && it.name == name
+    val member = type.members.firstNotNullOfOrNull {
+        if (it is ZigContainerField && it.name == name) it else null
     }
-    if (member == null || member !is ZigContainerField) {
+    if (member == null) {
         return sequenceOf(ZigLazyFieldValue(left, fieldName))
     }
     var values = resolveValuesFromReferenceTo(member).asSequence()
@@ -1599,7 +1601,9 @@ private fun computeContainerTypeDeclValues(
     fieldName: ZigNullTerminatedStringValue,
 ): Sequence<ZigValue> {
     val name = fieldName.value
-    val member = type.members.filterIsInstance<ZigNamedContainerMember>().firstOrNull { it.name == name }
+    val member = type.members.firstNotNullOfOrNull {
+        if (it is ZigNamedContainerMember && it.name == name) it else null
+    }
     if (member == null) {
         return sequenceOf(ZigLazyFieldValue(type, fieldName))
     }
@@ -1934,14 +1938,23 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             if (parentElement.expression !== childElement) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
             }
+            val initElement = parentElement.containingListInit
             if (parentElement.isStructField) {
-                resolveReferences(parentElement)
-                    .filterIsInstance<ZigReferenceable>()
-                    .flatMap { resolveValuesFromReferenceTo(it).asSequence() }
-                    .map { it.typeOf }
-                    .ifEmpty { sequenceOf(ZigUnknown.of(ZigTypeType)) }
+                val name = parseZigIdentifier(parentElement.identifierElement)
+                    ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+                ZigAnalyzer.resolveOrInferStructInitTypes(initElement).flatMap { type ->
+                    val member = type.members.firstNotNullOfOrNull {
+                        if (it is ZigContainerField && it.name == name) it else null
+                    }
+                    if (member != null) {
+                        resolveValuesFromReferenceTo(member)
+                            .asSequence()
+                            .flatMap { substituteTypeParams(it.typeOf, type.typeParams) }
+                    } else {
+                        sequenceOf(ZigUnknown.of(ZigTypeType))
+                    }
+                }
             } else {
-                val initElement = parentElement.containingListInit
                 ZigAnalyzer.resolveOrInferListInitTypes(initElement).map { type ->
                     when (type) {
                         is ZigArrayType -> type.child
@@ -2545,8 +2558,9 @@ private fun computeFieldTypeValues(
                     || container.containerKind == ZigContainerKind.UNION)
             && fieldName is ZigNullTerminatedStringValue
         ) {
-            val fields = container.members.filterIsInstance<ZigContainerField>()
-            val field = fields.firstOrNull { it.name == fieldName.value }
+            val field = container.members.firstNotNullOfOrNull {
+                if (it is ZigContainerField && it.name == fieldName.value) it else null
+            }
             if (field != null) {
                 resolveValuesFromReferenceTo(field).asSequence().map { it.typeOf }
             } else {
