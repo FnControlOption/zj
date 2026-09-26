@@ -2059,7 +2059,14 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             if (parentElement.expression !== childElement) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
             }
-            inferResultTypes(parentElement.containingSwitch)
+            val parentTypes = inferResultTypes(parentElement.containingSwitch)
+            val otherTypes =
+                parentElement.containingSwitch.prongs
+                    .filter { it !== parentElement }
+                    .mapNotNull { it.expression }
+                    .flatMap { resolveValues(it) }
+                    .map { it.typeOf }
+            parentTypes + otherTypes
         }
 
         is ZigThenElement -> {
