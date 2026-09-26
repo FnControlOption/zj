@@ -178,16 +178,17 @@ object ZigAnalyzer {
         }
     }
 
-    fun resolveComptimeParameterTypes(param: ZigFnParam): Set<ZigValue> {
-        val typeElement = param.typeElement?.innerElement ?: return emptySet()
+    fun createGenericParameterValues(param: ZigFnParam): Sequence<ZigGenericParameterValue> {
+        if (param.isAnytype) {
+            return sequenceOf(ZigAnytypeParameterValue(param))
+        }
+        val typeElement = param.typeElement?.innerElement ?: return emptySequence()
         val types = resolveValues(typeElement)
-        if (param.comptimeTokenElement != null) {
-            return types
+        val isComptime = param.isComptime || types.singleOrNull() == ZigTypeType
+        if (isComptime) {
+            return types.asSequence().map { ZigComptimeParameterValue(it, param) }
         }
-        if (types.singleOrNull() == ZigTypeType) {
-            return types
-        }
-        return emptySet()
+        return emptySequence()
     }
 
     fun findStdFile(originalElement: PsiElement, path: String): ZigFile? {
@@ -439,7 +440,11 @@ data class ZigFunctionType(
             if (i > 0) {
                 builder.append(", ")
             }
-            builder.append(createTypeElementHtmlChunk(param.typeElement, typeParams, truncate))
+            if (param.isAnytype) {
+                builder.append(createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "anytype"))
+            } else {
+                builder.append(createTypeElementHtmlChunk(param.typeElement, typeParams, truncate))
+            }
         }
         builder.append(") ")
         if (element.bangTokenElement != null) {
@@ -450,13 +455,45 @@ data class ZigFunctionType(
     }
 }
 
-data class ZigComptimeParameterValue(override val typeOf: ZigValue, val element: ZigFnParam) : ZigValue {
+sealed interface ZigGenericParameterValue : ZigValue {
+    val element: ZigFnParam
+}
+
+data class ZigComptimeParameterValue(
+    override val typeOf: ZigValue,
+    override val element: ZigFnParam,
+) : ZigGenericParameterValue {
     override fun toHtmlChunk(truncate: Boolean) =
         createNamedHtmlChunk(
             element,
             ZigHighlightingColors.COMPTIME_PARAMETER,
             ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING,
         )
+}
+
+data class ZigAnytypeParameterValue(override val element: ZigFnParam) : ZigGenericParameterValue {
+    override val typeOf = ZigAnytypeParameterType(this)
+
+    override fun toHtmlChunk(truncate: Boolean) =
+        createNamedHtmlChunk(
+            element,
+            ZigHighlightingColors.PARAMETER,
+            ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING,
+        )
+}
+
+data class ZigAnytypeParameterType(val value: ZigAnytypeParameterValue) : ZigValue {
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
+
+    override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
+        val builder = HtmlBuilder()
+        builder.append(createStyledHtmlChunk(ZigHighlightingColors.BUILTIN, "@TypeOf"))
+        builder.append("(")
+        builder.append(value.toHtmlChunk(truncate))
+        builder.append(")")
+        return builder.toFragment()
+    }
 }
 
 data class ZigOptionalType(val child: ZigValue) : ZigValue {
@@ -1429,7 +1466,7 @@ private fun findUnboundTypeParams(element: ZigElement): Map<ZigFnParam, Set<ZigV
         while (element != null) {
             if (element is ZigFnDecl) {
                 for (paramDecl in element.parameters) {
-                    if (ZigAnalyzer.resolveComptimeParameterTypes(paramDecl).isNotEmpty()) {
+                    if (ZigAnalyzer.createGenericParameterValues(paramDecl).any()) {
                         this[paramDecl] = emptySet()
                     }
                 }
@@ -1448,7 +1485,7 @@ private fun computeTypeParams(
     }
     return function.typeParams.toMutableMap().apply {
         for ((paramDecl, argValues) in function.element.parameters.zip(arguments)) {
-            if (ZigAnalyzer.resolveComptimeParameterTypes(paramDecl).isNotEmpty()) {
+            if (ZigAnalyzer.createGenericParameterValues(paramDecl).any()) {
                 this[paramDecl] = argValues
             }
         }
@@ -1497,13 +1534,16 @@ private fun substituteTypeParams(
             is ZigFunctionType -> {
                 sequenceOf(substituteFunctionTypeParams(value, typeParams))
             }
-            is ZigComptimeParameterValue -> {
+            is ZigGenericParameterValue -> {
                 val values = typeParams[value.element]
                 if (values.isNullOrEmpty()) {
                     sequenceOf(value)
                 } else {
                     values.asSequence().flatMap { substituteTypeParams(it, typeParams) }
                 }
+            }
+            is ZigAnytypeParameterType -> {
+                substituteTypeParams(value.value, typeParams).map { it.typeOf }
             }
             is ZigOptionalType -> {
                 substituteTypeParams(value.child, typeParams).map { ZigOptionalType(it) }
@@ -1688,13 +1728,12 @@ private fun computeValuesFromReferenceUncached(target: ZigReferenceable): Sequen
         }
 
         is ZigFnParam -> {
-            val comptimeTypes = ZigAnalyzer.resolveComptimeParameterTypes(target)
-            if (comptimeTypes.isNotEmpty()) {
-                return comptimeTypes.asSequence().map { ZigComptimeParameterValue(it, target) }
+            ZigAnalyzer.createGenericParameterValues(target).ifEmpty {
+                val typeElement = target.typeElement?.innerElement
+                    ?: return@ifEmpty sequenceOf(ZigUnknown.ofUnknownType())
+                val types = resolveValues(typeElement)
+                types.asSequence().map { ZigUnknown.of(it) }
             }
-            val typeElement = target.typeElement?.innerElement ?: return sequenceOf(ZigUnknown.ofUnknownType())
-            val types = resolveValues(typeElement)
-            types.asSequence().map { ZigUnknown.of(it) }
         }
 
         is ZigContainerFieldImpl -> {
@@ -2251,7 +2290,7 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
     }
 }
 
-private fun createStyledHtmlChunk(attributesKey: TextAttributesKey, value: String): HtmlChunk {
+internal fun createStyledHtmlChunk(attributesKey: TextAttributesKey, value: String): HtmlChunk {
     val sb = StringBuilder()
     HtmlSyntaxInfoUtil.appendStyledSpan(sb, attributesKey, value, 1f)
     return HtmlChunk.raw(sb.toString())
@@ -2386,8 +2425,7 @@ private fun createParameterHtmlChunk(
     typeParams: Map<ZigFnParam, Set<ZigValue>>,
     truncate: Boolean,
 ): HtmlChunk {
-    for (type in ZigAnalyzer.resolveComptimeParameterTypes(param)) {
-        val comptimeParam = ZigComptimeParameterValue(type, param)
+    for (comptimeParam in ZigAnalyzer.createGenericParameterValues(param)) {
         val comptimeArg = substituteTypeParams(comptimeParam, typeParams).singleOrNull()
         if (comptimeArg != null) {
             return comptimeArg.toHtmlChunk(truncate)

@@ -7,6 +7,7 @@ import com.intellij.codeInsight.daemon.impl.analysis.HighlightInfoHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import io.github.fncontroloption.zig.ZigAnalyzer
+import io.github.fncontroloption.zig.ZigComptimeParameterValue
 import io.github.fncontroloption.zig.ZigFunctionType
 import io.github.fncontroloption.zig.psi2.*
 import io.github.fncontroloption.zig.resolveReferences
@@ -35,7 +36,7 @@ class ZigHighlightVisitor : HighlightVisitor {
 
             is ZigFnParam -> {
                 val identifier = element.nameIdentifier ?: return null
-                if (ZigAnalyzer.resolveComptimeParameterTypes(element).isNotEmpty()) {
+                if (ZigAnalyzer.createGenericParameterValues(element).any { it is ZigComptimeParameterValue }) {
                     return createHighlightInfo(identifier, ZigHighlightInfoTypes.COMPTIME_PARAMETER)
                 }
 

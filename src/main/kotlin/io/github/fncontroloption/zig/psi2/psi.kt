@@ -950,8 +950,17 @@ class ZigFnParam(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedReferencea
     val comptimeTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.KEYWORD_COMPTIME)
 
+    val isComptime: Boolean
+        get() = comptimeTokenElement != null
+
     val typeElement: ZigTypeElement?
         get() = findChildByClass(ZigTypeElement::class.java)
+
+    val anytypeTokenElement: PsiElement?
+        get() = findChildByType(ZigTokenType.KEYWORD_ANYTYPE)
+
+    val isAnytype: Boolean
+        get() = anytypeTokenElement != null
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = parseZigIdentifier(nameIdentifier)

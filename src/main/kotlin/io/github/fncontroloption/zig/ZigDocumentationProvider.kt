@@ -9,6 +9,7 @@ import com.intellij.psi.*
 import com.intellij.psi.util.findParentInFile
 import com.intellij.psi.util.findParentOfType
 import io.github.fncontroloption.zig.psi2.*
+import io.github.fncontroloption.zig.syntaxHighlighter.ZigHighlightingColors
 
 const val ZIG_DOCUMENTATION_OFFSET_SEPARATOR = $$"$zigDocumentationOffset$"
 
@@ -45,9 +46,18 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
             val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(element)
             val substitutedValues = ZigAnalyzer.substituteTypeParams(initialValues, typeParams)
             for (value in substitutedValues) {
-                var chunk = value.typeOf.toHtmlChunk()
-                if (value !is ZigUnknown) {
-                    chunk = HtmlChunk.fragment(chunk, HtmlChunk.text(" = "), value.toHtmlChunk())
+                val chunk = when (value) {
+                    is ZigAnytypeParameterValue if value.element == element -> {
+                        createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "anytype")
+                    }
+                    is ZigUnknown -> {
+                        value.typeOf.toHtmlChunk()
+                    }
+                    else -> {
+                        val typeChunk = value.typeOf.toHtmlChunk()
+                        val valueChunk = value.toHtmlChunk()
+                        HtmlChunk.fragment(typeChunk, HtmlChunk.text(" = "), valueChunk)
+                    }
                 }
                 chunk
                     .wrapWith(DocumentationMarkup.PRE_ELEMENT)
