@@ -1276,6 +1276,13 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 }
             }
 
+            "@TypeOf" -> {
+                // TODO: peer type resolution
+                val argElement = element.argumentElements.singleOrNull()?.innerElement
+                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                resolveValues(argElement).asSequence().map { it.typeOf }
+            }
+
             // TODO
             else -> sequenceOf(ZigUnknown.ofUnknownType())
         }
