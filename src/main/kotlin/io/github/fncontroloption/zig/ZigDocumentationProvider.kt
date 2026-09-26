@@ -183,12 +183,12 @@ private fun findFileDoc(element: PsiElement): String? {
     return list.joinToString("")
 }
 
-private fun getOriginalContainerType(originalElement: PsiElement?): ZigContainerType? {
+private fun getOriginalContainerType(originalElement: PsiElement?): IZigContainerType? {
     when (val zigElement = originalElement?.findParentOfType<ZigElement>(strict = false)) {
         is ZigFieldAccess -> {
             if (zigElement.identifierElement == originalElement) {
                 val leftValues = ZigAnalyzer.resolveValues(zigElement.leftOperand)
-                return leftValues.singleOrNull()?.typeOf as? ZigContainerType
+                return leftValues.singleOrNull()?.typeOf as? IZigContainerType
             }
         }
 

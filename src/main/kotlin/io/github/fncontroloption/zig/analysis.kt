@@ -49,8 +49,8 @@ object ZigAnalyzer {
         return io.github.fncontroloption.zig.inferResultTypes(childElement)
     }
 
-    fun resolveOrInferStructInitTypes(element: ZigListInit): Sequence<ZigContainerType> {
-        return resolveOrInferListInitTypes(element).filterIsInstance<ZigContainerType>()
+    fun resolveOrInferStructInitTypes(element: ZigListInit): Sequence<IZigContainerType> {
+        return resolveOrInferListInitTypes(element).filterIsInstance<IZigContainerType>()
     }
 
     fun resolveOrInferListInitTypes(element: ZigListInit): Sequence<ZigValue> {

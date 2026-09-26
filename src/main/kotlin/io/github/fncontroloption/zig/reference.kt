@@ -425,7 +425,7 @@ class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElem
         val name = parseZigIdentifier(identifier) ?: return emptyArray()
         val results = mutableSetOf<ResolveResult>()
         for (containerType in types) {
-            val member = containerType.element.members.firstOrNull {
+            val member = containerType.members.firstOrNull {
                 it is ZigContainerField && it.name == name
             }
             if (member != null) {
@@ -631,11 +631,11 @@ private object FieldInitInsertHandler : InsertHandler<LookupElement> {
     }
 }
 
-private fun getFieldInitVariants(containerType: ZigContainerType): Sequence<LookupElement> {
-    if (containerType.element.containerKind == ZigContainerKind.ENUM) {
+private fun getFieldInitVariants(containerType: IZigContainerType): Sequence<LookupElement> {
+    if (containerType.containerKind == ZigContainerKind.ENUM) {
         return emptySequence()
     }
-    return containerType.element.members.filterIsInstance<ZigContainerField>().mapNotNull { member ->
+    return containerType.members.filterIsInstance<ZigContainerField>().mapNotNull { member ->
         val name = member.name ?: return@mapNotNull null
         val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
         val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
