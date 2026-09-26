@@ -1849,10 +1849,21 @@ internal fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<Zi
         }
 
         is ZigEnumLiteral -> {
-            resolveReferences(functionElement)
-                .filterIsInstance<ZigReferenceable>()
-                .flatMap { resolveValuesFromReferenceTo(it).asSequence() }
-                .map { it to null }
+            val name = parseZigIdentifier(functionElement.identifierElement)
+                ?: return sequenceOf(ZigUnknown.ofUnknownType() to null)
+            ZigAnalyzer.inferEnumLiteralTypes(functionElement).flatMap { (_, type) ->
+                val member = type.members.firstNotNullOfOrNull {
+                    if (it is ZigNamedContainerDecl && it.name == name) it else null
+                }
+                if (member != null) {
+                    resolveValuesFromReferenceTo(member)
+                        .asSequence()
+                        .flatMap { substituteTypeParams(it, type.typeParams) }
+                        .map { it to null }
+                } else {
+                    sequenceOf(ZigUnknown.ofUnknownType() to null)
+                }
+            }
         }
 
         else -> resolveValues(functionElement).asSequence().map { it to null }
