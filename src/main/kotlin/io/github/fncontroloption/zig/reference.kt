@@ -543,6 +543,8 @@ private fun identifierReferenceCandidates(element: PsiElement): Sequence<ZigName
 
                 is ZigCatch if child !== parent.leftOperand -> parent.payload?.items
 
+                is ZigWhile if child === parent.whileContinueExpr -> parent.thenPayload?.items
+
                 else -> null
             }
             it = sequence?.iterator()

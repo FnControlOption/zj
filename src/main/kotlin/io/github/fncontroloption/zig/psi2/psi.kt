@@ -1320,6 +1320,9 @@ class ZigWhile(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop {
     val thenPayload: ZigThenPayload?
         get() = findChildByClass(ZigThenPayload::class.java)
 
+    val whileContinueExpr: ZigWhileContinueExpr?
+        get() = findChildByClass(ZigWhileContinueExpr::class.java)
+
     val elsePayload: ZigElsePayload?
         get() = findChildByClass(ZigElsePayload::class.java)
 }
