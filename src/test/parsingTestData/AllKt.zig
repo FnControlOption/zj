@@ -416,3 +416,4 @@ test {
     const foobar0 = foo[bar..baz];
     const foobar1 = foo[0..1];
 }
+const foo = @import("builtin").zig_version_string;

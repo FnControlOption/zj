@@ -170,7 +170,7 @@ class ZigImportReference(element: ZigStringLiteral) :
         if (!text.endsWith(".zig") && !text.endsWith(".zon")) {
             return when (text) {
                 "std" -> ZigAnalyzer.findStdFile(myElement, "std.zig")
-                "builtin" -> null // TODO: get builtin text from `zig build-exe --show-builtin`
+                "builtin" -> ZigAnalyzer.findBuiltinFile(myElement)
                 else -> null // TODO: resolve imported modules
             }
         }

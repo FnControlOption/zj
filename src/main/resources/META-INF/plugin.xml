@@ -75,6 +75,7 @@
     <typedHandler implementation="io.github.fncontroloption.zig.ZigAutoPopupHandler" id="zigAuto" />
     <refactoring.elementListenerProvider implementation="io.github.fncontroloption.zig.ZigRefactoringListenerProvider"/>
     <codeInsight.parameterInfo language="Zig" implementationClass="io.github.fncontroloption.zig.ZigParameterInfoHandler"/>
+    <additionalLibraryRootsProvider implementation="io.github.fncontroloption.zig.ZigLibraryRootsProvider"/>
     <!--
     <fileType name="Simple File" implementationClass="org.intellij.sdk.language.SimpleFileType" fieldName="INSTANCE"
               language="Simple" extensions="simple"/>

@@ -1,6 +1,7 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.codeInsight.documentation.DocumentationManagerProtocol
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.richcopy.HtmlSyntaxInfoUtil
 import com.intellij.openapi.module.ModuleUtilCore
@@ -214,6 +215,14 @@ object ZigAnalyzer {
             }
         }
         return null
+    }
+
+    fun findBuiltinFile(originalElement: PsiElement): ZigFile? {
+        val project = originalElement.project
+        val service = project.service<ZigBuiltinService>()
+        val virtualFile = service.builtinFile ?: return null
+        val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
+        return psiFile as? ZigFile
     }
 }
 

@@ -19,8 +19,9 @@ import kotlin.io.path.Path
 import kotlin.io.path.exists
 import kotlin.io.path.isExecutable
 
+private val log = Logger.getInstance(ZigSdkType::class.java)
+
 class ZigSdkType : SdkType("ZigSdk") {
-    private val log = Logger.getInstance(ZigSdkType::class.java)
 
     @Suppress("OVERRIDE_DEPRECATION")
     override fun suggestHomePath() = null
@@ -28,10 +29,8 @@ class ZigSdkType : SdkType("ZigSdk") {
     override fun suggestHomePath(path: Path) = null
 
     override fun isValidSdkHome(path: String): Boolean {
-        val exeName = if (SystemInfoRt.isWindows) "zig.exe" else "zig"
         return Path(path, "lib", "std", "std.zig").exists() &&
-                (Path(path, exeName).isExecutable() ||
-                        Path(path, "bin", exeName).isExecutable())
+                getPossibleZigExePaths(path).any { it.isExecutable() }
     }
 
     override fun suggestSdkName(currentSdkName: String?, sdkHome: String) = "Zig SDK"
@@ -45,34 +44,7 @@ class ZigSdkType : SdkType("ZigSdk") {
     override fun getIcon() = ZigIcons.ZIG
 
     override fun getVersionString(sdkHome: String): String? {
-        val exeName = if (SystemInfoRt.isWindows) "zig.exe" else "zig"
-        return detectFromOutput(Path(sdkHome, exeName))
-            ?: detectFromOutput(Path(sdkHome, "bin", exeName))
-    }
-
-    /** @see org.jetbrains.jps.model.java.impl.JdkVersionDetectorImpl.detectFromOutput */
-    private fun detectFromOutput(zigExe: Path): String? {
-        if (!zigExe.isExecutable()) {
-            return null
-        }
-        val process = try {
-            with(ProcessBuilder(zigExe.toString(), "version")) {
-                redirectOutput(ProcessBuilder.Redirect.PIPE)
-                redirectError(ProcessBuilder.Redirect.PIPE)
-                start()
-            }
-        } catch (e: IOException) {
-            log.error(zigExe.toString(), e)
-            return null
-        }
-        try {
-            process.waitFor()
-        } catch (e: InterruptedException) {
-            log.error(e)
-            process.destroy()
-            return null
-        }
-        return process.inputStream.bufferedReader().readText().trimEnd()
+        return getZigExeOutput(sdkHome, "version")?.trimEnd()
     }
 
     override fun setupSdkPaths(sdk: Sdk) {
@@ -121,4 +93,40 @@ class ZigProjectSdkSetupValidator : ProjectSdkSetupValidator {
             .withSdkTypeFilter { it is ZigSdkType }
             .updateSdkForFile(file)
             .buildEditorNotificationPanelHandler()
+}
+
+private fun getPossibleZigExePaths(sdkHome: String): Array<Path> {
+    val exeName = if (SystemInfoRt.isWindows) "zig.exe" else "zig"
+    return arrayOf(
+        Path(sdkHome, exeName),
+        Path(sdkHome, "bin", exeName),
+    )
+}
+
+/** @see org.jetbrains.jps.model.java.impl.JdkVersionDetectorImpl.detectFromOutput */
+internal fun getZigExeOutput(sdkHome: String, vararg args: String): String? {
+    for (zigExe in getPossibleZigExePaths(sdkHome)) {
+        if (!zigExe.isExecutable()) {
+            continue
+        }
+        val process = try {
+            with(ProcessBuilder(zigExe.toString(), *args)) {
+                redirectOutput(ProcessBuilder.Redirect.PIPE)
+                redirectError(ProcessBuilder.Redirect.PIPE)
+                start()
+            }
+        } catch (e: IOException) {
+            log.error(zigExe.toString(), e)
+            return null
+        }
+        try {
+            process.waitFor()
+        } catch (e: InterruptedException) {
+            log.error(e)
+            process.destroy()
+            return null
+        }
+        return process.inputStream.bufferedReader().readText()
+    }
+    return null
 }
