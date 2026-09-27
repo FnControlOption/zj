@@ -2624,6 +2624,30 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
                                 }
                             }
                         }
+                        is IZigContainerType if conditionType.containerKind == ZigContainerKind.ENUM -> {
+                            if (isElseProng) {
+                                if (isInlineProng) {
+                                    val fields = conditionType.members.filterIsInstance<ZigContainerField>().toList()
+                                    if (fields.any { it.nameIdentifier?.textMatches("_") == true }) {
+                                        sequenceOf(ZigUnknown.of(conditionType))
+                                    } else {
+                                        fields
+                                            .asSequence()
+                                            .mapNotNull { it.name }
+                                            .filter { it !in otherEnumLiterals }
+                                            .map { ZigEnumLiteralValue(conditionType, it) }
+                                    }
+                                } else {
+                                    sequenceOf(ZigUnknown.of(conditionType))
+                                }
+                            } else {
+                                if (isInlineProng) {
+                                    prongEnumLiterals.asSequence().map { ZigEnumLiteralValue(conditionType, it) }
+                                } else {
+                                    sequenceOf(ZigUnknown.of(conditionType))
+                                }
+                            }
+                        }
                         else -> sequenceOf(ZigUnknown.of(conditionType)) // TODO
                     }
                 }
