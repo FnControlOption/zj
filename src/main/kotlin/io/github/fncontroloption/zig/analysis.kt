@@ -2306,18 +2306,16 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             }
             val builtinCallElement = parentElement.containingBuiltinCall
                 ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+            val builtinName = builtinCallElement.builtinElement.text
             val argIndex = builtinCallElement.argumentElements.indexOf(parentElement)
             assert(argIndex >= 0)
-            when (val builtinName = builtinCallElement.builtinElement.text) {
-                "@as" -> {
-                    if (argIndex != 1) {
-                        return sequenceOf(ZigUnknown.of(ZigTypeType))
-                    }
-                    val firstArgElement = builtinCallElement.argumentElements.firstOrNull()?.innerElement
-                        ?: return sequenceOf(ZigUnknown.ofUnknownType())
-                    resolveValues(firstArgElement).asSequence()
-                }
-
+            val genericParamIndexes = BUILTINS_WITH_GENERIC_PARAMS[builtinName]
+            if (genericParamIndexes != null && argIndex in genericParamIndexes) {
+                val firstArgElement = builtinCallElement.argumentElements.firstOrNull()?.innerElement
+                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                return resolveValues(firstArgElement).asSequence()
+            }
+            when (builtinName) {
                 "@memset" -> {
                     if (argIndex != 1) {
                         return sequenceOf(ZigUnknown.of(ZigTypeType))
@@ -2890,4 +2888,13 @@ private val BUILTINS_WITH_GENERIC_RETURN_TYPE = mapOf(
     "@extern" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
     "@mulAdd" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
     "@unionInit" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
+)
+
+private val BUILTINS_WITH_GENERIC_PARAMS = mapOf(
+    "@as" to listOf(1),
+    "@atomicRmw" to listOf(3),
+    "@atomicStore" to listOf(2),
+    "@cmpxchgStrong" to listOf(2, 3),
+    "@cmpxchgWeak" to listOf(2, 3),
+    "@mulAdd" to listOf(1, 2, 3),
 )
