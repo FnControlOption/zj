@@ -374,12 +374,15 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = """
             "foo"
         """.trimIndent()
-        val value = resolveValue(text).requireIs<ZigUnknown>()
+        val value = resolveValue(text).requireIs<ZigNullTerminatedStringValue>()
+        assertEquals("foo", value.value)
         val pointer = value.typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.ONE, pointer.size)
         val array = pointer.child.requireIs<ZigArrayType>()
         assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), array.child)
-        array.length.requireIs<ZigUnknown>()
+        val length = array.length.requireIs<ZigIntValue>()
+        assertEquals(ZigComptimeIntType, length.typeOf)
+        assertEquals(3, length.value)
         val sentinel = array.sentinel.requireIs<ZigIntValue>()
         assertEquals(ZigComptimeIntType, sentinel.typeOf)
         assertEquals(0, sentinel.value)

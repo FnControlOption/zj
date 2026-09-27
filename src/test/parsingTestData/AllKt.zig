@@ -419,3 +419,8 @@ test {
 const foo = @import("builtin").zig_version_string;
 const foo = @typeInfo(union {}).@"union";
 const foo = @branchHint(.cold);
+const foo = @field(struct {
+    const bar = struct {
+        const baz = undefined;
+    };
+}, "bar").baz;
