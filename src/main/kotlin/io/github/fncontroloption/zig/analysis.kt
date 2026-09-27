@@ -1253,12 +1253,6 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         is ZigNegationWrap -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
 
         is ZigBuiltinCall -> when (val builtinName = element.builtinElement.text) {
-            "@as" -> {
-                val argElement = element.argumentElements.firstOrNull()?.innerElement
-                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
-                resolveValues(argElement).asSequence().map { ZigUnknown.of(it) }
-            }
-
             "@constCast" -> {
                 val argElement = element.argumentElements.firstOrNull()?.innerElement
                     ?: return sequenceOf(ZigUnknown.ofUnknownType())
@@ -1333,6 +1327,19 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             }
 
             else -> {
+                val genericReturnType = BUILTINS_WITH_GENERIC_RETURN_TYPE[builtinName]
+                if (genericReturnType != null) {
+                    val typeParamIndex = genericReturnType.typeParamIndex
+                    val typeElement = element.argumentElements.elementAtOrNull(typeParamIndex)?.innerElement
+                        ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                    return when (genericReturnType.kind) {
+                        GenericReturnType.Kind.DEFAULT ->
+                            resolveValues(typeElement).asSequence().map { ZigUnknown.of(it) }
+
+                        GenericReturnType.Kind.OPTIONAL ->
+                            resolveValues(typeElement).asSequence().map { ZigUnknown.of(ZigOptionalType(it)) }
+                    }
+                }
                 val service = ApplicationManager.getApplication().service<ZigBuiltinFunctionsService>()
                 val builtin = service.builtinFunctions[builtinName]
                     ?: return sequenceOf(ZigUnknown.ofUnknownType())
@@ -2864,4 +2871,23 @@ private val PRIMITIVE_VALUES = mapOf(
     "undefined" to ZigUndefinedValue,
     "usize" to ZigUsizeType,
     "void" to ZigVoidType,
+)
+
+private data class GenericReturnType(
+    val typeParamIndex: Int,
+    val kind: Kind,
+) {
+    enum class Kind { DEFAULT, OPTIONAL }
+}
+
+private val BUILTINS_WITH_GENERIC_RETURN_TYPE = mapOf(
+    "@as" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
+    "@atomicLoad" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
+    "@atomicRmw" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
+    "@cmpxchgStrong" to GenericReturnType(0, GenericReturnType.Kind.OPTIONAL),
+    "@cmpxchgWeak" to GenericReturnType(0, GenericReturnType.Kind.OPTIONAL),
+    "@cVaArg" to GenericReturnType(1, GenericReturnType.Kind.DEFAULT),
+    "@extern" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
+    "@mulAdd" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
+    "@unionInit" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
 )
