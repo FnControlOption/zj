@@ -374,7 +374,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = """
             "foo"
         """.trimIndent()
-        val value = resolveValue(text).requireIs<ZigNullTerminatedStringValue>()
+        val value = resolveValue(text).requireIs<ZigStringLiteralValue>()
         assertEquals("foo", value.value)
         val pointer = value.typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.ONE, pointer.size)
