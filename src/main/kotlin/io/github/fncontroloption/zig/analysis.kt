@@ -1912,22 +1912,27 @@ internal fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<Zi
 }
 
 private fun computeValuesFromLabeledBreaks(element: ZigLabelable): Sequence<ZigValue> {
+    return getLabeledBreaksFor(element).flatMap { resolveBreakValue(it) }
+}
+
+private fun getLabeledBreaksFor(element: ZigLabelable): Sequence<ZigBreak> {
     val labelDecl = element.labelDecl ?: return emptySequence()
     val labelName = parseZigIdentifier(labelDecl.identifierElement) ?: return emptySequence()
     val traverser = SyntaxTraverser.psiTraverser(element).expand { it !is ZigContainerExpression }
-    return traverser.asSequence().flatMap { descendant ->
+    return traverser.asSequence().mapNotNull { descendant ->
         if (descendant is ZigBreak && labelName == parseZigIdentifier(descendant.labelRef?.identifierElement)) {
-            when (val breakValue = descendant.breakValue) {
-                null -> sequenceOf(ZigVoidValue)
-                else -> resolveValues(breakValue).asSequence()
-            }
+            descendant
         } else {
-            emptySequence()
+            null
         }
     }
 }
 
 private fun computeValuesFromUnlabeledBreaks(loop: ZigLoop): Sequence<ZigValue> {
+    return getUnlabeledBreaksFor(loop).flatMap { resolveBreakValue(it) }
+}
+
+private fun getUnlabeledBreaksFor(loop: ZigLoop): Sequence<ZigBreak> {
     val traverser = SyntaxTraverser.psiTraverser(loop.thenElement).expand { descendant ->
         when (descendant) {
             is ZigContainerExpression -> false
@@ -1935,15 +1940,19 @@ private fun computeValuesFromUnlabeledBreaks(loop: ZigLoop): Sequence<ZigValue> 
             else -> true
         }
     }
-    return traverser.asSequence().flatMap { descendant ->
+    return traverser.asSequence().mapNotNull { descendant ->
         if (descendant is ZigBreak && descendant.labelRef == null) {
-            when (val breakValue = descendant.breakValue) {
-                null -> sequenceOf(ZigVoidValue)
-                else -> resolveValues(breakValue).asSequence()
-            }
+            descendant
         } else {
-            emptySequence()
+            null
         }
+    }
+}
+
+private fun resolveBreakValue(element: ZigBreak): Set<ZigValue> {
+    return when (val breakValue = element.breakValue) {
+        null -> setOf(ZigVoidValue)
+        else -> resolveValues(breakValue)
     }
 }
 
@@ -2174,24 +2183,37 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             val breakable = if (labelElement != null) {
                 val label = parseZigIdentifier(labelElement)
                     ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
-                parentElement.findParentInFile {
-                    it is ZigLabelable && label == parseZigIdentifier(it.labelDecl?.identifierElement)
+                parentElement.parents(withSelf = false).firstNotNullOfOrNull {
+                    when (it) {
+                        is ZigLabelable if label == parseZigIdentifier(it.labelDecl?.identifierElement) -> it
+                        else -> null
+                    }
                 }
             } else {
                 var foundThenElemAsChild = false
-                parentElement.findParentInFile { current ->
+                parentElement.parents(withSelf = false).firstNotNullOfOrNull { current ->
                     if (foundThenElemAsChild && current is ZigLoop) {
-                        true
+                        current
                     } else {
                         foundThenElemAsChild = current is ZigThenElement
-                        false
+                        null
                     }
                 }
             }
-            if (breakable !is ZigElement) {
+            if (breakable == null) {
                 return sequenceOf(ZigUnknown.of(ZigTypeType))
             }
-            inferResultTypes(breakable)
+            val parentTypes = inferResultTypes(breakable)
+            var breakElements = getLabeledBreaksFor(breakable)
+            if (breakable is ZigLoop) {
+                breakElements += getUnlabeledBreaksFor(breakable)
+            }
+            val otherTypes =
+                breakElements
+                    .filter { it !== parentElement }
+                    .flatMap { resolveBreakValue(it) }
+                    .map { it.typeOf }
+            parentTypes + otherTypes
         }
 
         is ZigContinue -> {
