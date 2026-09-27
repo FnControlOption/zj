@@ -417,3 +417,5 @@ test {
     const foobar1 = foo[0..1];
 }
 const foo = @import("builtin").zig_version_string;
+const foo = @typeInfo(union {}).@"union";
+const foo = @branchHint(.cold);
