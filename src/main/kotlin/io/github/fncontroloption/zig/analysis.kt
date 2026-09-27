@@ -1259,6 +1259,21 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 resolveValues(argElement).asSequence().map { ZigUnknown.of(it) }
             }
 
+            "@constCast" -> {
+                val argElement = element.argumentElements.firstOrNull()?.innerElement
+                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                resolveValues(argElement).asSequence().map { value ->
+                    when (val type = value.typeOf) {
+                        is ZigPointerType -> {
+                            // TODO: remove const qualifier
+                            val type = ZigPointerType(type.size, type.sentinel, type.child)
+                            ZigUnknown.of(type)
+                        }
+                        else -> ZigUnknown.ofUnknownType()
+                    }
+                }
+            }
+
             "@EnumLiteral" -> sequenceOf(ZigEnumLiteralType)
 
             "@field" -> {
