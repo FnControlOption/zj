@@ -6,6 +6,7 @@ import com.intellij.codeInsight.daemon.impl.HighlightVisitor
 import com.intellij.codeInsight.daemon.impl.analysis.HighlightInfoHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.util.elementType
 import io.github.fncontroloption.zig.ZigAnalyzer
 import io.github.fncontroloption.zig.ZigComptimeParameterValue
 import io.github.fncontroloption.zig.ZigFunctionType
@@ -98,6 +99,9 @@ class ZigHighlightVisitor : HighlightVisitor {
 
             is ZigTestDecl -> {
                 val name = element.nameElement ?: return null
+                if (name.elementType !== ZigTokenType.IDENTIFIER) {
+                    return null
+                }
                 createHighlightInfoFromReference(element, name)
             }
 
