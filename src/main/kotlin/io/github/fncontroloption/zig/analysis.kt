@@ -1464,6 +1464,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigNumberLiteral -> {
+            // TODO: parse float
             val value = element.text.toIntOrNull() ?: return sequenceOf(ZigUnknown.ofUnknownType())
             sequenceOf(ZigIntValue(ZigComptimeIntType, value))
         }
@@ -3145,11 +3146,25 @@ private fun resolvePeerTypesInner(
         }
 
         PeerResolveStrategy.COMPTIME_INT -> {
-            return null // TODO
+            for (optTy in peerTys) {
+                val ty = optTy ?: continue
+                when (ty) {
+                    ZigComptimeIntType -> {}
+                    else -> return null
+                }
+            }
+            return ZigComptimeIntType
         }
 
         PeerResolveStrategy.COMPTIME_FLOAT -> {
-            return null // TODO
+            for (optTy in peerTys) {
+                val ty = optTy ?: continue
+                when (ty) {
+                    ZigComptimeIntType, ZigComptimeFloatType -> {}
+                    else -> return null
+                }
+            }
+            return ZigComptimeFloatType
         }
 
         PeerResolveStrategy.FIXED_INT -> {

@@ -495,4 +495,14 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue(text).requireIs<ZigOptionalType>()
         assertEquals(ZigBoolType, type.child)
     }
+
+    fun testPeerTypesComptimeInt() {
+        val text = "@TypeOf(42, undefined)"
+        assertEquals(ZigComptimeIntType, resolveValue(text))
+    }
+
+    fun testPeerTypesComptimeFloat() {
+        val text = "@TypeOf(42, @as(comptime_float, undefined))"
+        assertEquals(ZigComptimeFloatType, resolveValue(text))
+    }
 }
