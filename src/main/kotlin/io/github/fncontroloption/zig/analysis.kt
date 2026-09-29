@@ -3309,7 +3309,40 @@ private fun resolvePeerTypesInner(
         }
 
         PeerResolveStrategy.FIXED_FLOAT -> {
-            return null // TODO
+            var curTy: ZigFixedFloatType? = null
+            for (ty in peerTys) {
+                if (ty == null) continue
+                when (ty) {
+                    ZigComptimeFloatType, ZigComptimeIntType, is ZigFixedIntType -> {}
+                    is ZigFixedFloatType -> {
+                        if (curTy != null) {
+                            if (curTy == ty) continue
+                            val bits = maxOf(curTy.bits, ty.bits)
+                            curTy = ZigFixedFloatType(bits)
+                        } else {
+                            curTy = ty
+                        }
+                    }
+                    else -> return null
+                }
+            }
+            check(curTy != null)
+            for (ty in peerTys) {
+                if (ty == null) continue
+                when (ty) {
+                    ZigComptimeFloatType, ZigComptimeIntType, is ZigFixedFloatType -> {}
+                    is ZigFixedIntType -> {
+                        val intPrecision = when (ty.signedness) {
+                            ZigSignedness.SIGNED -> ty.bits - 1
+                            ZigSignedness.UNSIGNED -> ty.bits
+                        }
+                        if (intPrecision > floatSignificandBits(curTy))
+                            return null
+                    }
+                    else -> throw IllegalStateException()
+                }
+            }
+            return curTy
         }
 
         PeerResolveStrategy.TUPLE -> {
@@ -3328,5 +3361,18 @@ private fun resolvePeerTypesInner(
             }
             return expectTy!!
         }
+    }
+}
+
+// Based on Type.floatSignificandBits
+// https://codeberg.org/ziglang/zig/src/commit/ebb8683/src/Type.zig#L1952-L1962
+private fun floatSignificandBits(ty: ZigFixedFloatType): Int {
+    return when (ty.bits) {
+        16 -> 11
+        32 -> 24
+        64 -> 53
+        80 -> 64
+        128 -> 113
+        else -> throw IllegalStateException()
     }
 }

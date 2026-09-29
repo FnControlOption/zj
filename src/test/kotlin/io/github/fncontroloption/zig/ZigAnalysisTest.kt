@@ -650,4 +650,9 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "@TypeOf(1, @as(u8, 2), @as(i42, 3))"
         assertEquals(ZigFixedIntType(ZigSignedness.SIGNED, 42), resolveValue(text))
     }
+
+    fun testPeerTypesFixedFloat() {
+        val text = "@TypeOf(1, @as(u8, 2), @as(f16, 3), @as(f80, 4), @as(comptime_float, 5))"
+        assertEquals(ZigFixedFloatType(80), resolveValue(text))
+    }
 }
