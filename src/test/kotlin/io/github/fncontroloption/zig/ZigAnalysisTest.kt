@@ -635,4 +635,19 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue(text).requireIs<ZigContainerType>()
         assertEquals(ZigContainerKind.UNION, type.containerKind)
     }
+
+    fun testPeerTypesUnsignedFixedInt() {
+        val text = "@TypeOf(1, @as(u8, 2), @as(u42, 3))"
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), resolveValue(text))
+    }
+
+    fun testPeerTypesSignedFixedInt() {
+        val text = "@TypeOf(1, @as(i8, 2), @as(i42, 3))"
+        assertEquals(ZigFixedIntType(ZigSignedness.SIGNED, 42), resolveValue(text))
+    }
+
+    fun testPeerTypesUnsignedAndSignedFixedInt() {
+        val text = "@TypeOf(1, @as(u8, 2), @as(i42, 3))"
+        assertEquals(ZigFixedIntType(ZigSignedness.SIGNED, 42), resolveValue(text))
+    }
 }

@@ -3261,7 +3261,51 @@ private fun resolvePeerTypesInner(
         }
 
         PeerResolveStrategy.FIXED_INT -> {
-            return null // TODO
+            var idxUnsigned: Int? = null
+            var idxSigned: Int? = null
+            for (idx in peerTys.indices) {
+                val ty = peerTys[idx] ?: continue
+                when (ty) {
+                    ZigComptimeIntType -> continue
+                    is ZigFixedIntType -> {}
+                    else -> return null
+                }
+                val largestIdx = when (ty.signedness) {
+                    ZigSignedness.UNSIGNED -> {
+                        if (idxUnsigned == null) {
+                            idxUnsigned = idx
+                            continue
+                        }
+                        idxUnsigned
+                    }
+                    ZigSignedness.SIGNED -> {
+                        if (idxSigned == null) {
+                            idxSigned = idx
+                            continue
+                        }
+                        idxSigned
+                    }
+                }
+                val curTy = peerTys[largestIdx] as ZigFixedIntType
+                if (ty.bits > curTy.bits) {
+                    when (ty.signedness) {
+                        ZigSignedness.UNSIGNED -> idxUnsigned = idx
+                        ZigSignedness.SIGNED -> idxSigned = idx
+                    }
+                }
+            }
+            if (idxSigned == null) {
+                return peerTys[idxUnsigned!!]
+            }
+            if (idxUnsigned == null) {
+                return peerTys[idxSigned]
+            }
+            val unsignedTy = peerTys[idxUnsigned] as ZigFixedIntType
+            val signedTy = peerTys[idxSigned] as ZigFixedIntType
+            if (signedTy.bits > unsignedTy.bits) {
+                return signedTy
+            }
+            return null
         }
 
         PeerResolveStrategy.FIXED_FLOAT -> {
