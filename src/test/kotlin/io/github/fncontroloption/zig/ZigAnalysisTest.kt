@@ -505,4 +505,12 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "@TypeOf(42, @as(comptime_float, undefined))"
         assertEquals(ZigComptimeFloatType, resolveValue(text))
     }
+
+    fun testPeerTypesErrorUnion() {
+        val text = "@TypeOf(error.Foo, @as(error{Bar}!bool, true))"
+        val type = resolveValue(text).requireIs<ZigErrorUnionType>()
+        assertEquals(ZigBoolType, type.payload)
+        val errorSet = type.errorSet.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo", "Bar"), errorSet.names)
+    }
 }

@@ -3091,7 +3091,31 @@ private fun resolvePeerTypesInner(
         }
 
         PeerResolveStrategy.ERROR_UNION -> {
-            return null // TODO
+            var finalSet: ZigErrorSetType? = null
+            for (idx in peerTys.indices) {
+                val ty = peerTys[idx] ?: continue
+                val setTy = when (ty) {
+                    is ZigErrorSetType -> {
+                        peerTys[idx] = null
+                        peerVals[idx] = null
+                        ty
+                    }
+                    is ZigErrorUnionType -> {
+                        peerTys[idx] = ty.payload
+                        peerVals[idx] = null // TODO
+                        ty.errorSet as? ZigErrorSetType ?: return null
+                    }
+                    else -> continue
+                }
+                if (finalSet != null) {
+                    val names = finalSet.names + setTy.names
+                    finalSet = ZigErrorSetType(names.toSortedSet())
+                } else {
+                    finalSet = setTy
+                }
+            }
+            val finalPayload = resolvePeerTypesInner(peerTys, peerVals) ?: return null
+            return ZigErrorUnionType(finalSet!!, finalPayload)
         }
 
         PeerResolveStrategy.NULLABLE -> {
