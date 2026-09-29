@@ -314,18 +314,14 @@ class ZigAnalysisTest : BasePlatformTestCase() {
 
     fun testCatch() {
         val text = "@as(error{Foo}!usize, undefined) catch undefined"
-        val values = resolveValues(text)
-        assertEquals(2, values.size)
-        assertTrue(values.any { it is ZigUnknown && it.typeOf == ZigUsizeType })
-        assertTrue(values.contains(ZigUndefinedValue))
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        assertEquals(ZigUsizeType, value.typeOf)
     }
 
     fun testOrelse() {
         val text = "@as(?usize, undefined) orelse undefined"
-        val values = resolveValues(text)
-        assertEquals(2, values.size)
-        assertTrue(values.any { it is ZigUnknown && it.typeOf == ZigUsizeType })
-        assertTrue(values.contains(ZigUndefinedValue))
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        assertEquals(ZigUsizeType, value.typeOf)
     }
 
     fun testMergeErrorSets() {
@@ -482,5 +478,21 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigErrorSetType>()
         assertEquals(setOf("Foo", "Bar", "Baz"), type.names)
+    }
+
+    fun testPeerTypesBool() {
+        val text = "@TypeOf(true, undefined)"
+        assertEquals(ZigBoolType, resolveValue(text))
+    }
+
+    fun testPeerTypesNull() {
+        val text = "@TypeOf(null, undefined)"
+        assertEquals(ZigNullType, resolveValue(text))
+    }
+
+    fun testPeerTypesOptional() {
+        val text = "@TypeOf(null, true)"
+        val type = resolveValue(text).requireIs<ZigOptionalType>()
+        assertEquals(ZigBoolType, type.child)
     }
 }

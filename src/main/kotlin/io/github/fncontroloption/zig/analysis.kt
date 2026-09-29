@@ -3094,11 +3094,30 @@ private fun resolvePeerTypesInner(
         }
 
         PeerResolveStrategy.NULLABLE -> {
-            return null // TODO
+            for (optTy in peerTys) {
+                val ty = optTy ?: continue
+                if (ty != ZigNullType) return null
+            }
+            return ZigNullType
         }
 
         PeerResolveStrategy.OPTIONAL -> {
-            return null // TODO
+            for (idx in peerTys.indices) {
+                val ty = peerTys[idx] ?: continue
+                when (ty) {
+                    ZigNullType -> {
+                        peerTys[idx] = null
+                        peerVals[idx] = null
+                    }
+                    is ZigOptionalType -> {
+                        peerTys[idx] = ty.child
+                        peerVals[idx] = null // TODO
+                    }
+                    else -> {}
+                }
+            }
+            val childTy = resolvePeerTypesInner(peerTys, peerVals) ?: return null
+            return ZigOptionalType(childTy)
         }
 
         PeerResolveStrategy.ARRAY -> {
@@ -3146,7 +3165,16 @@ private fun resolvePeerTypesInner(
         }
 
         PeerResolveStrategy.EXACT -> {
-            return null // TODO
+            var expectTy: ZigValue? = null
+            for (optTy in peerTys) {
+                val ty = optTy ?: continue
+                if (expectTy != null) {
+                    if (ty != expectTy) return null
+                } else {
+                    expectTy = ty
+                }
+            }
+            return expectTy!!
         }
     }
 }
