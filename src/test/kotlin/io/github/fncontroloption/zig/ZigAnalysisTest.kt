@@ -668,4 +668,20 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigFixedIntType(ZigSignedness.SIGNED, 42), type.fields[0])
         assertEquals(ZigFixedFloatType(80), type.fields[1])
     }
+
+    fun testPeerTypesCPointer() {
+        val text = """
+            @TypeOf(
+                @as(*u8, undefined),
+                @as([*:0]u8, undefined),
+                @as([*c]u8, undefined),
+                @as(?[*:0]u8, undefined),
+                @as(?*u8, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.C, type.size)
+        assertNull(type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
 }

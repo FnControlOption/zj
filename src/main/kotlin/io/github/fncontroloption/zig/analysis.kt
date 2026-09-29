@@ -3170,7 +3170,38 @@ private fun resolvePeerTypesInner(
         }
 
         PeerResolveStrategy.C_PTR -> {
-            return null // TODO
+            var ptrTy: ZigPointerType? = null
+            for (ty in peerTys) {
+                if (ty == null) continue
+                val peerTy = when (ty) {
+                    ZigComptimeIntType, ZigNullType -> continue
+                    is ZigPointerType -> when (ty.size) {
+                        ZigPointerSize.SLICE -> return null
+                        ZigPointerSize.ONE, ZigPointerSize.MANY, ZigPointerSize.C -> ty
+                    }
+                    is ZigOptionalType -> when (val child = ty.child) {
+                        is ZigPointerType -> when (child.size) {
+                            ZigPointerSize.SLICE, ZigPointerSize.C -> return null
+                            ZigPointerSize.MANY, ZigPointerSize.ONE -> {
+                                // TODO: check if allowzero
+                                child
+                            }
+                        }
+                        else -> return null
+                    }
+                    else -> return null
+                }
+                if (ptrTy == null) {
+                    ptrTy = ZigPointerType(ZigPointerSize.C, null, peerTy.child)
+                    continue
+                }
+                if (ptrTy.child != peerTy.child) {
+                    // TODO: resolve pair in memory coercible
+                    return null
+                }
+                // TODO: pointer modifiers
+            }
+            return ptrTy!!
         }
 
         PeerResolveStrategy.PTR -> {
