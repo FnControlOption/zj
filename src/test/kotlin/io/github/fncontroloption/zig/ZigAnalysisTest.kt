@@ -427,8 +427,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
 
     fun testPeerTypesTypeOf() {
         val text = "@TypeOf(error.Foo, error.Bar, error.Baz)"
-        val value = resolveValue(text).requireIs<ZigUnknown>()
-        val type = value.typeOf.requireIs<ZigErrorSetType>()
+        val type = resolveValue(text).requireIs<ZigErrorSetType>()
         assertEquals(setOf("Foo", "Bar", "Baz"), type.names)
     }
 

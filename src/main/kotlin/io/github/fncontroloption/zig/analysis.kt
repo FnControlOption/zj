@@ -1386,7 +1386,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                     resolveValues(argElements[0]).asSequence().map { it.typeOf }
                 } else {
                     val values = argElements.flatMap { resolveValues(it) }
-                    resolvePeerValues(values.toList()).asSequence()
+                    resolvePeerValues(values.toList()).asSequence().map { it.typeOf }
                 }
             }
 
