@@ -3346,7 +3346,42 @@ private fun resolvePeerTypesInner(
         }
 
         PeerResolveStrategy.TUPLE -> {
-            return null // TODO
+            var manager: PsiManager? = null
+            var fieldCount = -1
+            for (idx in peerTys.indices) {
+                val ty = peerTys[idx] ?: continue
+                if (ty !is ZigTupleType) {
+                    return null
+                }
+                if (manager == null) {
+                    manager = ty.element.manager
+                    fieldCount = ty.fields.size
+                    continue
+                }
+                if (ty.fields.size != fieldCount) {
+                    return null
+                }
+            }
+            check(manager != null)
+            val fieldTypes = mutableListOf<ZigValue>()
+            val subPeerTys = MutableList<ZigValue?>(peerTys.size) { null }
+            val subPeerVals = MutableList<ZigValue?>(peerVals.size) { null }
+            for (fieldIndex in 0 until fieldCount) {
+                for (idx in peerTys.indices) {
+                    val ty = peerTys[idx]
+                    if (ty == null) {
+                        subPeerTys[idx] = null
+                        subPeerVals[idx] = null
+                        continue
+                    }
+                    check(ty is ZigTupleType)
+                    subPeerTys[idx] = ty.element.fieldTypes[fieldIndex]
+                    subPeerVals[idx] = null // TODO
+                }
+                val fieldTy = resolvePeerTypesInner(subPeerTys, subPeerVals) ?: return null
+                fieldTypes.add(fieldTy)
+            }
+            return ZigTupleType(LightZigTuple(manager, fieldTypes))
         }
 
         PeerResolveStrategy.EXACT -> {

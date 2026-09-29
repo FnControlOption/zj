@@ -655,4 +655,17 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "@TypeOf(1, @as(u8, 2), @as(f16, 3), @as(f80, 4), @as(comptime_float, 5))"
         assertEquals(ZigFixedFloatType(80), resolveValue(text))
     }
+
+    fun testPeerTypesTuple() {
+        val text = """
+            @TypeOf(
+                @as(struct { u8, f80 }, undefined),
+                @as(struct { i42, f16 }, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigTupleType>()
+        assertEquals(2, type.fields.size)
+        assertEquals(ZigFixedIntType(ZigSignedness.SIGNED, 42), type.fields[0])
+        assertEquals(ZigFixedFloatType(80), type.fields[1])
+    }
 }
