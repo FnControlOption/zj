@@ -90,7 +90,7 @@ private fun parseBuiltin(originalText: String): ZigBuiltinFunction {
     val text =
         originalText
             .replace("""\s*//.*""".toRegex(), "")
-            .replace( """\s+""".toRegex() , " ")
+            .replace("""\s+""".toRegex(), " ")
             .replace("( ", "(")
             .replace(", )", ")")
 
