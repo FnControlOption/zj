@@ -403,4 +403,85 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigComptimeIntType, sentinel.typeOf)
         assertEquals(0, sentinel.value)
     }
+
+    fun testPeerTypesIf() {
+        val text = "if (undefined) error.Foo else error.Bar"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        val type = value.typeOf.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo", "Bar"), type.names)
+    }
+
+    fun testPeerTypesCatch() {
+        val text = "@as(error{Foo}!error{Bar}, undefined) catch error.Baz"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        val type = value.typeOf.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Bar", "Baz"), type.names)
+    }
+
+    fun testPeerTypesOrelse() {
+        val text = "@as(?error{Foo}, undefined) orelse error.Bar"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        val type = value.typeOf.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo", "Bar"), type.names)
+    }
+
+    fun testPeerTypesTypeOf() {
+        val text = "@TypeOf(error.Foo, error.Bar, error.Baz)"
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        val type = value.typeOf.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo", "Bar", "Baz"), type.names)
+    }
+
+    fun testPeerTypesBlock() {
+        val text = """
+            blk: {
+                if (undefined) break :blk error.Foo;
+                if (undefined) break :blk error.Bar;
+                break :blk error.Baz;
+            }
+        """.trimIndent()
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        val type = value.typeOf.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo", "Bar", "Baz"), type.names)
+    }
+
+    fun testPeerTypesSwitch() {
+        val text = """
+            blk: switch (undefined) {
+                undefined => error.Foo,
+                undefined => error.Bar,
+                undefined => break :blk error.Baz,
+            }
+        """.trimIndent()
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        val type = value.typeOf.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo", "Bar", "Baz"), type.names)
+    }
+
+    fun testPeerTypesFor() {
+        val text = """
+            blk: for (undefined) |_| {
+                if (undefined) break error.Foo;
+                if (undefined) break :blk error.Bar;
+            } else error.Baz
+        """.trimIndent()
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        val type = value.typeOf.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo", "Bar", "Baz"), type.names)
+    }
+
+    fun testPeerTypesTaggedUnionFields() {
+        val text = """
+            switch (@as(union(enum) {
+                foo: error{Foo},
+                bar: error{Bar},
+                baz: error{Baz},
+            }, undefined)) {
+                .foo, .bar, .baz => |e| e,
+            }
+        """.trimIndent()
+        val value = resolveValue(text).requireIs<ZigUnknown>()
+        val type = value.typeOf.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo", "Bar", "Baz"), type.names)
+    }
 }

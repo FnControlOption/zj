@@ -1140,8 +1140,8 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                     else -> resolveValues(innerElement).asSequence()
                 }
             }
-            // TODO: peer type resolution
-            thenValues + elseValues
+            val values = thenValues + elseValues
+            resolvePeerValues(values.toList()).asSequence()
         }
 
         is ZigCatch -> {
@@ -1155,8 +1155,8 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 null -> sequenceOf(ZigUnknown.ofUnknownType())
                 else -> resolveValues(rightElement).asSequence()
             }
-            // TODO: peer type resolution?
-            leftValues + rightValues
+            val values = leftValues + rightValues
+            resolvePeerValues(values.toList()).asSequence()
         }
 
         is ZigOrelse -> {
@@ -1170,8 +1170,8 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 null -> sequenceOf(ZigUnknown.ofUnknownType())
                 else -> resolveValues(rightElement).asSequence()
             }
-            // TODO: peer type resolution?
-            leftValues + rightValues
+            val values = leftValues + rightValues
+            resolvePeerValues(values.toList()).asSequence()
         }
 
         is ZigMergeErrorSets -> {
@@ -1381,10 +1381,13 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             }
 
             "@TypeOf" -> {
-                // TODO: peer type resolution
-                val argElement = element.argumentElements.singleOrNull()?.innerElement
-                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
-                resolveValues(argElement).asSequence().map { it.typeOf }
+                val argElements = element.argumentElements.map { it.innerElement }.toList()
+                if (argElements.size == 1) {
+                    resolveValues(argElements[0]).asSequence().map { it.typeOf }
+                } else {
+                    val values = argElements.flatMap { resolveValues(it) }
+                    resolvePeerValues(values.toList()).asSequence()
+                }
             }
 
             else -> {
@@ -1419,9 +1422,8 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigBlock -> {
-            val values = computeValuesFromLabeledBreaks(element)
-            // TODO: peer type resolution
-            values.ifEmpty { sequenceOf(ZigVoidValue) }
+            val values = computeValuesFromLabeledBreaks(element).toList()
+            resolvePeerValues(values).asSequence().ifEmpty { sequenceOf(ZigVoidValue) }
         }
 
         is ZigSwitch -> {
@@ -1430,8 +1432,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
                 prongElement.expression?.let { resolveValues(it).asSequence() }
                     ?: sequenceOf(ZigUnknown.ofUnknownType())
             }
-            // TODO: peer type resolution
-            values.ifEmpty { sequenceOf(ZigUnknown.ofUnknownType()) }
+            resolvePeerValues(values.toList()).asSequence().ifEmpty {sequenceOf(ZigUnknown.ofUnknownType()) }
         }
 
         is ZigFor,
@@ -1444,8 +1445,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             } else {
                 values += sequenceOf(ZigVoidValue)
             }
-            // TODO: peer type resolution
-            values
+            resolvePeerValues(values.toList()).asSequence()
         }
 
         is ZigStringLiteral, is ZigMultilineStringLiteral -> {
@@ -2692,8 +2692,7 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
                                 if (isInlineProng) {
                                     fieldValues
                                 } else {
-                                    // TODO: peer type resolution
-                                    fieldValues
+                                    resolvePeerValues(fieldValues.toList()).asSequence()
                                 }
                             }
                         }
@@ -2896,5 +2895,258 @@ private fun resolveStdLangDecl(originalElement: PsiElement, name: String): Set<Z
         ZigAnalyzer.resolveValuesFromReferenceTo(decl)
     } else {
         emptySet()
+    }
+}
+
+// Based on Sema.resolvePeerTypes
+// https://codeberg.org/ziglang/zig/src/branch/master/src/Sema.zig#L32687
+private fun resolvePeerValues(values: List<ZigValue>): List<ZigValue> {
+    when (values.size) {
+        0 -> return listOf(ZigUnknown.of(ZigNoreturnType))
+        1 -> return listOf(ZigUnknown.of(values[0].typeOf))
+        else -> {}
+    }
+
+    var sameType = true
+    val firstType = values[0].typeOf
+    for (i in 1 until values.size) {
+        if (values[i].typeOf != firstType) {
+            sameType = false
+            break
+        }
+    }
+    if (sameType) {
+        return listOf(ZigUnknown.of(firstType))
+    }
+
+    val peerTys: MutableList<ZigValue?> = values.map { it.typeOf }.toMutableList()
+    val peerVals: MutableList<ZigValue?> = values.toMutableList()
+    val type = resolvePeerTypesInner(peerTys, peerVals)
+    return if (type != null) listOf(ZigUnknown.of(type)) else values
+}
+
+private enum class PeerResolveStrategy {
+    UNKNOWN,
+    ERROR_SET,
+    ERROR_UNION,
+    NULLABLE,
+    OPTIONAL,
+    ARRAY,
+    VECTOR,
+    C_PTR,
+    PTR,
+    FUNC,
+    ENUM_OR_UNION,
+    COMPTIME_INT,
+    COMPTIME_FLOAT,
+    FIXED_INT,
+    FIXED_FLOAT,
+    TUPLE,
+    EXACT;
+
+    fun merge(other: PeerResolveStrategy): PeerResolveStrategy {
+        val s0IsThis = ordinal <= other.ordinal
+        val s0 = if (s0IsThis) this else other
+        val s1 = if (s0IsThis) other else this
+        return when (s0) {
+            UNKNOWN -> s1
+            ERROR_SET -> when (s1) {
+                ERROR_SET -> ERROR_SET
+                else -> ERROR_UNION
+            }
+            ERROR_UNION -> when (s1) {
+                ERROR_UNION -> ERROR_UNION
+                else -> ERROR_UNION
+            }
+            NULLABLE -> when (s1) {
+                NULLABLE -> NULLABLE
+                C_PTR -> C_PTR
+                else -> OPTIONAL
+            }
+            OPTIONAL -> when (s1) {
+                OPTIONAL -> OPTIONAL
+                C_PTR -> C_PTR
+                else -> OPTIONAL
+            }
+            ARRAY -> when (s1) {
+                ARRAY -> ARRAY
+                VECTOR -> VECTOR
+                else -> ARRAY
+            }
+            VECTOR -> when (s1) {
+                VECTOR -> VECTOR
+                else -> VECTOR
+            }
+            C_PTR -> when (s1) {
+                C_PTR -> C_PTR
+                else -> C_PTR
+            }
+            PTR -> when (s1) {
+                PTR -> PTR
+                else -> PTR
+            }
+            FUNC -> when (s1) {
+                FUNC -> FUNC
+                else -> s1
+            }
+            ENUM_OR_UNION -> when (s1) {
+                ENUM_OR_UNION -> ENUM_OR_UNION
+                else -> ENUM_OR_UNION
+            }
+            COMPTIME_INT -> when (s1) {
+                COMPTIME_INT -> COMPTIME_INT
+                else -> s1
+            }
+            COMPTIME_FLOAT -> when (s1) {
+                COMPTIME_FLOAT -> COMPTIME_FLOAT
+                else -> s1
+            }
+            FIXED_INT -> when (s1) {
+                FIXED_INT -> FIXED_INT
+                else -> s1
+            }
+            FIXED_FLOAT -> when (s1) {
+                FIXED_FLOAT -> FIXED_FLOAT
+                else -> s1
+            }
+            TUPLE -> when (s1) {
+                EXACT -> EXACT
+                else -> TUPLE
+            }
+            EXACT -> EXACT
+        }
+    }
+
+    companion object {
+        fun select(ty: ZigValue): PeerResolveStrategy {
+            return when (ty) {
+                ZigTypeType, ZigVoidType, ZigBoolType -> EXACT
+                ZigNoreturnType, ZigUndefinedType -> UNKNOWN
+                ZigNullType -> NULLABLE
+                ZigComptimeIntType -> COMPTIME_INT
+                is ZigFixedIntType -> FIXED_INT
+                ZigComptimeFloatType -> COMPTIME_FLOAT
+                is ZigFixedFloatType -> FIXED_FLOAT
+                is ZigPointerType if ty.size == ZigPointerSize.C -> C_PTR
+                is ZigPointerType -> PTR
+                is ZigArrayType -> ARRAY
+                // TODO: vector
+                is ZigOptionalType -> OPTIONAL
+                is ZigErrorSetType -> ERROR_SET
+                is ZigErrorUnionType -> ERROR_UNION
+                is ZigEnumLiteralType -> ENUM_OR_UNION
+                is ZigFunctionType -> FUNC
+                is ZigTupleType -> TUPLE
+                is IZigContainerType -> when (ty.containerKind) {
+                    ZigContainerKind.OPAQUE -> EXACT
+                    ZigContainerKind.ENUM -> ENUM_OR_UNION
+                    ZigContainerKind.UNION -> ENUM_OR_UNION
+                    ZigContainerKind.STRUCT -> EXACT
+                }
+                else -> EXACT
+            }
+        }
+    }
+}
+
+private fun resolvePeerTypesInner(
+    peerTys: MutableList<ZigValue?>,
+    peerVals: MutableList<ZigValue?>,
+): ZigValue? {
+    var s = PeerResolveStrategy.UNKNOWN
+    for (optTy in peerTys) {
+        val ty = optTy ?: continue
+        s = s.merge(PeerResolveStrategy.select(ty))
+    }
+    
+    if (s == PeerResolveStrategy.UNKNOWN) {
+        s = PeerResolveStrategy.EXACT
+    } else {
+        for (idx in peerTys.indices) {
+            val ty = peerTys[idx] ?: continue
+            when (ty) {
+                ZigNoreturnType, ZigUndefinedType -> peerTys[idx] = null
+                else -> {}
+            }
+        }
+    }
+    
+    when (s) {
+        PeerResolveStrategy.UNKNOWN -> throw IllegalStateException()
+
+        PeerResolveStrategy.ERROR_SET -> {
+            var finalSet: ZigErrorSetType? = null
+            for (optTy in peerTys) {
+                val ty = optTy ?: continue
+                if (ty !is ZigErrorSetType) return null
+                if (finalSet != null) {
+                    val names = finalSet.names + ty.names
+                    finalSet = ZigErrorSetType(names.toSortedSet())
+                } else {
+                    finalSet = ty
+                }
+            }
+            return finalSet!!
+        }
+
+        PeerResolveStrategy.ERROR_UNION -> {
+            return null // TODO
+        }
+
+        PeerResolveStrategy.NULLABLE -> {
+            return null // TODO
+        }
+
+        PeerResolveStrategy.OPTIONAL -> {
+            return null // TODO
+        }
+
+        PeerResolveStrategy.ARRAY -> {
+            return null // TODO
+        }
+
+        PeerResolveStrategy.VECTOR -> {
+            return null // TODO
+        }
+
+        PeerResolveStrategy.C_PTR -> {
+            return null // TODO
+        }
+
+        PeerResolveStrategy.PTR -> {
+            return null // TODO
+        }
+
+        PeerResolveStrategy.FUNC -> {
+            return null // TODO
+        }
+
+        PeerResolveStrategy.ENUM_OR_UNION -> {
+            return null // TODO
+        }
+
+        PeerResolveStrategy.COMPTIME_INT -> {
+            return null // TODO
+        }
+
+        PeerResolveStrategy.COMPTIME_FLOAT -> {
+            return null // TODO
+        }
+
+        PeerResolveStrategy.FIXED_INT -> {
+            return null // TODO
+        }
+
+        PeerResolveStrategy.FIXED_FLOAT -> {
+            return null // TODO
+        }
+
+        PeerResolveStrategy.TUPLE -> {
+            return null // TODO
+        }
+
+        PeerResolveStrategy.EXACT -> {
+            return null // TODO
+        }
     }
 }
