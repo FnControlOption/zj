@@ -513,4 +513,126 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val errorSet = type.errorSet.requireIs<ZigErrorSetType>()
         assertEquals(setOf("Foo", "Bar"), errorSet.names)
     }
+
+    fun testPeerTypesEnumLiteral() {
+        val text = "@TypeOf(.foo, undefined)"
+        assertEquals(ZigEnumLiteralType, resolveValue(text))
+    }
+
+    fun testPeerTypesEnum() {
+        val text = """
+            blk: {
+                const E = enum { foo, bar };
+                break :blk @TypeOf(E.foo, undefined);
+            }
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigContainerType>()
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
+    }
+
+    fun testPeerTypesUnion() {
+        val text = """
+            blk: {
+                const U = union(enum) { foo, bar: bool };
+                break :blk @TypeOf(@as(U, undefined), undefined);
+            }
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigContainerType>()
+        assertEquals(ZigContainerKind.UNION, type.containerKind)
+    }
+
+    fun testPeerTypesEnumLiteralAndLiteral() {
+        val text = "@TypeOf(.foo, .bar, undefined)"
+        assertEquals(ZigEnumLiteralType, resolveValue(text))
+    }
+
+    fun testPeerTypesEnumLiteralAndEnum() {
+        val text = """
+            blk: {
+                const E = enum { foo, bar };
+                break :blk @TypeOf(.foo, E.bar);
+            }
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigContainerType>()
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
+    }
+
+    fun testPeerTypesEnumLiteralAndUnion() {
+        val text = """
+            blk: {
+                const U = union(enum) { foo, bar: bool };
+                break :blk @TypeOf(.foo, @as(U, undefined));
+            }
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigContainerType>()
+        assertEquals(ZigContainerKind.UNION, type.containerKind)
+    }
+
+    fun testPeerTypesEnumAndLiteral() {
+        val text = """
+            blk: {
+                const E = enum { foo, bar };
+                break :blk @TypeOf(E.foo, .bar);
+            }
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigContainerType>()
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
+    }
+
+    fun testPeerTypesEnumAndEnum() {
+        val text = """
+            blk: {
+                const E = enum { foo, bar };
+                break :blk @TypeOf(E.foo, E.bar, undefined);
+            }
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigContainerType>()
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
+    }
+
+    fun testPeerTypesEnumAndUnion() {
+        val text = """
+            blk: {
+                const E = enum { foo, bar };
+                const U = union(E) { foo, bar: bool };
+                break :blk @TypeOf(E.foo, @as(U, undefined));
+            }
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigContainerType>()
+        assertEquals(ZigContainerKind.UNION, type.containerKind)
+    }
+
+    fun testPeerTypesUnionAndLiteral() {
+        val text = """
+            blk: {
+                const U = union(enum) { foo, bar: bool };
+                break :blk @TypeOf(@as(U, undefined), .foo);
+            }
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigContainerType>()
+        assertEquals(ZigContainerKind.UNION, type.containerKind)
+    }
+
+    fun testPeerTypesUnionAndEnum() {
+        val text = """
+            blk: {
+                const E = enum { foo, bar };
+                const U = union(E) { foo, bar: bool };
+                break :blk @TypeOf(@as(U, undefined), E.foo);
+            }
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigContainerType>()
+        assertEquals(ZigContainerKind.UNION, type.containerKind)
+    }
+
+    fun testPeerTypesUnionAndUnion() {
+        val text = """
+            blk: {
+                const U = union(enum) { foo, bar: bool };
+                break :blk @TypeOf(@as(U, undefined), @as(U, undefined), undefined);
+            }
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigContainerType>()
+        assertEquals(ZigContainerKind.UNION, type.containerKind)
+    }
 }

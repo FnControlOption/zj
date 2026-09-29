@@ -230,7 +230,10 @@ object ZigAnalyzer {
         }
     }
 
-    fun resolveUnionTagTypes(type: ZigContainerType): Sequence<ZigValue> {
+    fun resolveUnionTagTypes(type: IZigContainerType): Sequence<ZigValue> {
+        if (type !is ZigContainerType) {
+            return emptySequence()
+        }
         if (type.element.containerKind != ZigContainerKind.UNION) {
             return emptySequence()
         }
@@ -465,6 +468,7 @@ sealed interface IZigContainerType : ZigValue {
     override val typeOf: ZigTypeType
     val typeParams: Map<ZigFnParam, Set<ZigValue>>
     val containerKind: ZigContainerKind
+    val isTaggedUnion: Boolean
     val members: Sequence<ZigContainerMember>
     fun getNamedMembersVisibleFrom(originalFile: PsiFile): Sequence<ZigNamedContainerMember>
 }
@@ -480,6 +484,9 @@ data class ZigContainerType(
 
     override val containerKind: ZigContainerKind
         get() = element.containerKind
+
+    override val isTaggedUnion: Boolean
+        get() = element.isTaggedUnion
 
     override val members: Sequence<ZigContainerMember>
         get() = element.members
@@ -715,6 +722,9 @@ data class ZigTupleType(val element: LightZigTuple) : IZigContainerType {
     override val containerKind: ZigContainerKind
         get() = ZigContainerKind.STRUCT
 
+    override val isTaggedUnion: Boolean
+        get() = false
+
     override val members: Sequence<LightZigTupleField>
         get() = element.fields.asSequence()
 
@@ -855,6 +865,9 @@ data class ZigInferredUnionTagType(val union: ZigContainerType) : IZigContainerT
     override val containerKind: ZigContainerKind
         get() = ZigContainerKind.ENUM
 
+    override val isTaggedUnion: Boolean
+        get() = false
+
     override val members: Sequence<ZigContainerField>
         get() = union.element.members.filterIsInstance<ZigContainerField>()
 
@@ -881,6 +894,9 @@ data class ZigFieldEnumType(val container: ZigValue) : IZigContainerType {
 
     override val containerKind: ZigContainerKind
         get() = ZigContainerKind.ENUM
+
+    override val isTaggedUnion: Boolean
+        get() = false
 
     override val members: Sequence<ZigContainerField>
         get() = when (container) {
@@ -1750,7 +1766,7 @@ private fun computeContainerTypeDeclValues(
     if (member is ZigContainerField) {
         return if (type.containerKind == ZigContainerKind.ENUM) {
             sequenceOf(ZigEnumLiteralValue(type, name))
-        } else if (type is ZigContainerType && type.element.isTaggedUnion) {
+        } else if (type.isTaggedUnion) {
             ZigAnalyzer.resolveUnionTagTypes(type).map { ZigEnumLiteralValue(it, name) }
         } else {
             sequenceOf(ZigLazyFieldValue(type, fieldName))
@@ -1927,7 +1943,7 @@ private fun computeTagType(type: ZigValue): Sequence<ZigValue> {
         is IZigContainerType -> {
             if (type.containerKind == ZigContainerKind.ENUM) {
                 ZigAnalyzer.resolveEnumTagTypes(type)
-            } else if (type is ZigContainerType && type.element.isTaggedUnion) {
+            } else if (type.isTaggedUnion) {
                 ZigAnalyzer.resolveUnionTagTypes(type)
             } else {
                 emptySequence()
@@ -2149,7 +2165,7 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
                 ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
             resolveValues(conditionElement).asSequence().flatMap {
                 val type = it.typeOf
-                if (type is ZigContainerType && type.element.isTaggedUnion) {
+                if (type is IZigContainerType && type.isTaggedUnion) {
                     ZigAnalyzer.resolveUnionTagTypes(type)
                 } else {
                     sequenceOf(type)
@@ -2671,7 +2687,7 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
                                 }
                             }
                         }
-                        is ZigContainerType if conditionType.element.isTaggedUnion -> {
+                        is IZigContainerType if conditionType.isTaggedUnion -> {
                             if (isElseProng) {
                                 if (isInlineProng) {
                                     conditionType.members
@@ -2748,7 +2764,7 @@ private fun computePayloadItemValues(payloadItem: ZigPayloadItem): Sequence<ZigV
                         .toSet()
                 resolveValues(conditionElement).asSequence().flatMap { condition ->
                     val conditionType = condition.typeOf
-                    if (conditionType is ZigContainerType && conditionType.element.isTaggedUnion) {
+                    if (conditionType is IZigContainerType && conditionType.isTaggedUnion) {
                         val tagTypes = ZigAnalyzer.resolveUnionTagTypes(conditionType)
                         if (isInlineProng) {
                             if (isElseProng) {
@@ -2904,7 +2920,7 @@ private fun resolveStdLangDecl(originalElement: PsiElement, name: String): Set<Z
 private fun resolvePeerValues(values: List<ZigValue>): List<ZigValue> {
     when (values.size) {
         0 -> return listOf(ZigUnknown.of(ZigNoreturnType))
-        1 -> return listOf(ZigUnknown.of(values[0].typeOf))
+        1 -> return values
         else -> {}
     }
 
@@ -3055,8 +3071,8 @@ private fun resolvePeerTypesInner(
     peerVals: MutableList<ZigValue?>,
 ): ZigValue? {
     var s = PeerResolveStrategy.UNKNOWN
-    for (optTy in peerTys) {
-        val ty = optTy ?: continue
+    for (ty in peerTys) {
+        if (ty == null) continue
         s = s.merge(PeerResolveStrategy.select(ty))
     }
     
@@ -3077,8 +3093,8 @@ private fun resolvePeerTypesInner(
 
         PeerResolveStrategy.ERROR_SET -> {
             var finalSet: ZigErrorSetType? = null
-            for (optTy in peerTys) {
-                val ty = optTy ?: continue
+            for (ty in peerTys) {
+                if (ty == null) continue
                 if (ty !is ZigErrorSetType) return null
                 if (finalSet != null) {
                     val names = finalSet.names + ty.names
@@ -3119,8 +3135,8 @@ private fun resolvePeerTypesInner(
         }
 
         PeerResolveStrategy.NULLABLE -> {
-            for (optTy in peerTys) {
-                val ty = optTy ?: continue
+            for (ty in peerTys) {
+                if (ty == null) continue
                 if (ty != ZigNullType) return null
             }
             return ZigNullType
@@ -3166,12 +3182,65 @@ private fun resolvePeerTypesInner(
         }
 
         PeerResolveStrategy.ENUM_OR_UNION -> {
-            return null // TODO
+            var curTy: ZigValue? = null
+            for (ty in peerTys) {
+                if (ty == null) continue
+                when (ty) {
+                    ZigEnumLiteralType -> {}
+                    is IZigContainerType -> when (ty.containerKind) {
+                        ZigContainerKind.ENUM -> {}
+                        ZigContainerKind.UNION -> {}
+                        else -> return null
+                    }
+                    else -> return null
+                }
+                if (curTy == null) {
+                    curTy = ty
+                    continue
+                }
+                when (curTy) {
+                    ZigEnumLiteralType -> {
+                        curTy = ty
+                    }
+                    is IZigContainerType -> when (curTy.containerKind) {
+                        ZigContainerKind.ENUM -> when (ty) {
+                            ZigEnumLiteralType -> {}
+                            is IZigContainerType -> when (ty.containerKind) {
+                                ZigContainerKind.ENUM -> {
+                                    if (ty != curTy) return null
+                                }
+                                ZigContainerKind.UNION -> {
+                                    val tagTys = ZigAnalyzer.resolveUnionTagTypes(ty)
+                                    if (!tagTys.contains(curTy)) return null
+                                    curTy = ty
+                                }
+                                else -> throw IllegalStateException()
+                            }
+                        }
+                        ZigContainerKind.UNION -> when (ty) {
+                            ZigEnumLiteralType -> {}
+                            is IZigContainerType -> when (ty.containerKind) {
+                                ZigContainerKind.ENUM -> {
+                                    val curTagTys = ZigAnalyzer.resolveUnionTagTypes(curTy)
+                                    if (!curTagTys.contains(ty)) return null
+                                }
+                                ZigContainerKind.UNION -> {
+                                    if (ty != curTy) return null
+                                }
+                                else -> throw IllegalStateException()
+                            }
+                        }
+                        else -> throw IllegalStateException()
+                    }
+                    else -> throw IllegalStateException()
+                }
+            }
+            return curTy!!
         }
 
         PeerResolveStrategy.COMPTIME_INT -> {
-            for (optTy in peerTys) {
-                val ty = optTy ?: continue
+            for (ty in peerTys) {
+                if (ty == null) continue
                 when (ty) {
                     ZigComptimeIntType -> {}
                     else -> return null
@@ -3181,8 +3250,8 @@ private fun resolvePeerTypesInner(
         }
 
         PeerResolveStrategy.COMPTIME_FLOAT -> {
-            for (optTy in peerTys) {
-                val ty = optTy ?: continue
+            for (ty in peerTys) {
+                if (ty == null) continue
                 when (ty) {
                     ZigComptimeIntType, ZigComptimeFloatType -> {}
                     else -> return null
@@ -3205,8 +3274,8 @@ private fun resolvePeerTypesInner(
 
         PeerResolveStrategy.EXACT -> {
             var expectTy: ZigValue? = null
-            for (optTy in peerTys) {
-                val ty = optTy ?: continue
+            for (ty in peerTys) {
+                if (ty == null) continue
                 if (expectTy != null) {
                     if (ty != expectTy) return null
                 } else {

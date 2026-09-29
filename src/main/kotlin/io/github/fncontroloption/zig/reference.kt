@@ -290,7 +290,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                                 ZigIdQuoteBehavior.EAGERLY_UNQUOTE
                             )
                         )
-                    } else if (containerType is ZigContainerType && containerType.element.isTaggedUnion) {
+                    } else if (containerType.isTaggedUnion) {
                         val types = ZigAnalyzer.resolveUnionTagTypes(containerType)
                         variants.add(
                             createLookupElementWithType(
@@ -417,7 +417,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
                                 ZigIdQuoteBehavior.EAGERLY_UNQUOTE
                             )
                         )
-                    } else if (containerType is ZigContainerType && containerType.element.isTaggedUnion) {
+                    } else if (containerType.isTaggedUnion) {
                         val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(member)
                         val values = ZigAnalyzer.substituteTypeParams(initialValues, containerType.typeParams)
                         val types = values.map { it.typeOf }.toSet()
