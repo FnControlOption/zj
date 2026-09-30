@@ -1,7 +1,6 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.codeInsight.documentation.DocumentationManagerProtocol
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.richcopy.HtmlSyntaxInfoUtil
@@ -48,34 +47,6 @@ private val PRIMITIVE_VALUES = mapOf(
     "undefined" to ZigUndefinedValue,
     "usize" to ZigUsizeType,
     "void" to ZigVoidType,
-)
-
-private data class GenericReturnType(
-    val typeParamIndex: Int,
-    val kind: Kind,
-) {
-    enum class Kind { DEFAULT, OPTIONAL }
-}
-
-private val BUILTINS_WITH_GENERIC_RETURN_TYPE = mapOf(
-    "@as" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
-    "@atomicLoad" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
-    "@atomicRmw" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
-    "@cmpxchgStrong" to GenericReturnType(0, GenericReturnType.Kind.OPTIONAL),
-    "@cmpxchgWeak" to GenericReturnType(0, GenericReturnType.Kind.OPTIONAL),
-    "@cVaArg" to GenericReturnType(1, GenericReturnType.Kind.DEFAULT),
-    "@extern" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
-    "@mulAdd" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
-    "@unionInit" to GenericReturnType(0, GenericReturnType.Kind.DEFAULT),
-)
-
-private val BUILTINS_WITH_GENERIC_PARAMS = mapOf(
-    "@as" to listOf(1),
-    "@atomicRmw" to listOf(3),
-    "@atomicStore" to listOf(2),
-    "@cmpxchgStrong" to listOf(2, 3),
-    "@cmpxchgWeak" to listOf(2, 3),
-    "@mulAdd" to listOf(1, 2, 3),
 )
 
 object ZigAnalyzer {
@@ -988,7 +959,11 @@ private fun resolveValues(element: ZigElement): Set<ZigValue> {
     return CachedValuesManager.getCachedValue(element) {
         RecursionManager.doPreventingRecursion(element, true) {
             val values = computeValuesUncached(element).toSet()
-            CachedValueProvider.Result.create(values, PsiModificationTracker.MODIFICATION_COUNT)
+            CachedValueProvider.Result.create(
+                values,
+                PsiModificationTracker.MODIFICATION_COUNT,
+                ZigBuiltinFunctionsService.getModificationTracker(element.project)
+            )
         }
     } ?: emptySet()
 }
@@ -1224,13 +1199,9 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
 
         is ZigIdentifier -> {
             val text = element.text
-            val primitiveValue = PRIMITIVE_VALUES[text]
+            val primitiveValue = toPrimitive(text)
             if (primitiveValue != null) {
                 return sequenceOf(primitiveValue)
-            }
-            val intType = toFixedIntType(text)
-            if (intType != null) {
-                return sequenceOf(intType)
             }
             resolveReferences(element).flatMap { target ->
                 when (target) {
@@ -1407,24 +1378,16 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             }
 
             else -> {
-                val genericReturnType = BUILTINS_WITH_GENERIC_RETURN_TYPE[builtinName]
-                if (genericReturnType != null) {
-                    val typeParamIndex = genericReturnType.typeParamIndex
-                    val typeElement = element.argumentElements.elementAtOrNull(typeParamIndex)?.innerElement
-                        ?: return sequenceOf(ZigUnknown.ofUnknownType())
-                    return when (genericReturnType.kind) {
-                        GenericReturnType.Kind.DEFAULT ->
-                            resolveValues(typeElement).asSequence().map { ZigUnknown.of(it) }
-
-                        GenericReturnType.Kind.OPTIONAL ->
-                            resolveValues(typeElement).asSequence().map { ZigUnknown.of(ZigOptionalType(it)) }
-                    }
-                }
-                val service = ApplicationManager.getApplication().service<ZigBuiltinFunctionsService>()
-                val builtin = service.builtinFunctions[builtinName]
+                val builtin = ZigBuiltinFunctionsService.getBuiltinFnProto(element.project, builtinName)
                     ?: return sequenceOf(ZigUnknown.ofUnknownType())
-                val types = resolveBuiltinType(element, builtin.returnType)
-                types.asSequence().map { ZigUnknown.of(it) }
+                val typeElement = builtin.returnTypeElement?.innerElement
+                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                val arguments = element.argumentElements.map { resolveValues(it.innerElement) }
+                val typeParams = computeBuiltinFnGenericParams(builtin, arguments)
+                resolveValuesFromBuiltinFnProto(typeElement)
+                    .asSequence()
+                    .flatMap { substituteTypeParams(it, typeParams) }
+                    .map { ZigUnknown.of(it) }
             }
         }
 
@@ -1514,6 +1477,96 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
     }
 }
 
+private fun resolveValuesFromBuiltinFnProto(element: ZigElement): Set<ZigValue> {
+    return CachedValuesManager.getCachedValue(element) {
+        RecursionManager.doPreventingRecursion(element, true) {
+            val values = computeValuesFromBuiltinFnProtoUncached(element).toSet()
+            CachedValueProvider.Result.create(
+                values,
+                PsiModificationTracker.MODIFICATION_COUNT,
+                ZigBuiltinFunctionsService.getModificationTracker(element.project)
+            )
+        }
+    } ?: emptySet()
+}
+
+private fun computeValuesFromBuiltinFnProtoUncached(element: ZigElement): Sequence<ZigValue> {
+    return when (element) {
+        is ZigIdentifier -> {
+            val text = element.text
+            val primitiveValue = toPrimitive(text)
+            if (primitiveValue != null) {
+                return sequenceOf(primitiveValue)
+            }
+            if (text == "std") {
+                val stdFile = ZigAnalyzer.findStdFile(element, "std.zig") ?: return emptySequence()
+                return resolveValuesFromReferenceTo(stdFile).asSequence()
+            }
+            val name = parseZigIdentifier(element) ?: return emptySequence()
+            val fnElement = element.findParentOfType<ZigBuiltinFnProto>()!!
+            val param = fnElement.parameters.find { it.name == name }
+            if (param != null) {
+                return ZigAnalyzer.createGenericParameterValues(param)
+            }
+            val langFile = ZigAnalyzer.findStdFile(element, "lang.zig") ?: return emptySequence()
+            val decl = langFile.members.firstNotNullOfOrNull {
+                if (it is ZigNamedContainerDecl && it.name == name) it else null
+            }
+            if (decl != null) {
+                ZigAnalyzer.resolveValuesFromReferenceTo(decl).asSequence()
+            } else {
+                emptySequence()
+            }
+        }
+
+        is ZigFieldAccess -> {
+            val name = parseZigIdentifier(element.identifierElement) ?: return emptySequence()
+            val fieldName = ZigStringLiteralValue(name)
+            resolveValuesFromBuiltinFnProto(element.leftOperand).asSequence().flatMap { computeFieldAccess(it, fieldName) }
+        }
+
+        is ZigOptionalTypeElement -> {
+            val childElement = element.optionalChildElement
+                ?: return sequenceOf(ZigOptionalType(ZigUnknown.of(ZigTypeType)))
+            resolveValuesFromBuiltinFnProto(childElement).asSequence().map { ZigOptionalType(it) }
+        }
+
+        is ZigArrayTypeElement -> {
+            val length = resolveValuesFromBuiltinFnProto(element.lengthElement.innerElement).singleOrNull() ?: ZigUnknown.of(ZigUsizeType)
+            val sentinel = element.sentinelElement?.let { outerElement ->
+                outerElement.innerElement?.let { resolveValuesFromBuiltinFnProto(it) }?.singleOrNull() ?: ZigUnknown.ofUnknownType()
+            }
+            val childElement = element.arrayChildElement
+                ?: return sequenceOf(ZigArrayType(length, sentinel, ZigUnknown.of(ZigTypeType)))
+            resolveValuesFromBuiltinFnProto(childElement).asSequence().map { ZigArrayType(length, sentinel, it) }
+        }
+
+        is ZigPointerTypeElement -> {
+            val size = element.pointerSize
+            val sentinel = element.sentinelElement?.let { outerElement ->
+                outerElement.innerElement?.let { resolveValuesFromBuiltinFnProto(it) }?.singleOrNull() ?: ZigUnknown.ofUnknownType()
+            }
+            val childElement = element.pointerChildElement
+                ?: return sequenceOf(ZigPointerType(size, sentinel, ZigUnknown.of(ZigTypeType)))
+            resolveValuesFromBuiltinFnProto(childElement).asSequence().map { ZigPointerType(size, sentinel, it) }
+        }
+
+        else -> resolveValues(element).asSequence()
+    }
+}
+
+private fun toPrimitive(text: String): ZigValue? {
+    val primitiveValue = PRIMITIVE_VALUES[text]
+    if (primitiveValue != null) {
+        return primitiveValue
+    }
+    val intType = toFixedIntType(text)
+    if (intType != null) {
+        return intType
+    }
+    return null
+}
+
 private fun toFixedIntType(text: String): ZigFixedIntType? {
     if (text.length < 2) {
         return null
@@ -1583,7 +1636,7 @@ private fun findUnboundTypeParams(element: ZigElement): Map<ZigFnParam, Set<ZigV
     return buildMap {
         var element: PsiElement? = element
         while (element != null) {
-            if (element is ZigFnDecl) {
+            if (element is ZigFnDeclOrProto) {
                 for (paramDecl in element.parameters) {
                     if (ZigAnalyzer.createGenericParameterValues(paramDecl).any()) {
                         this[paramDecl] = emptySet()
@@ -1604,6 +1657,19 @@ private fun computeTypeParams(
     }
     return function.typeParams.toMutableMap().apply {
         for ((paramDecl, argValues) in function.element.parameters.zip(arguments)) {
+            if (ZigAnalyzer.createGenericParameterValues(paramDecl).any()) {
+                this[paramDecl] = argValues
+            }
+        }
+    }
+}
+
+private fun computeBuiltinFnGenericParams(
+    element: ZigBuiltinFnProto,
+    arguments: Sequence<Set<ZigValue>>,
+): Map<ZigFnParam, Set<ZigValue>> {
+    return buildMap {
+        for ((paramDecl, argValues) in element.parameters.zip(arguments)) {
             if (ZigAnalyzer.createGenericParameterValues(paramDecl).any()) {
                 this[paramDecl] = argValues
             }
@@ -1793,7 +1859,11 @@ private fun resolveValuesFromReferenceTo(target: ZigReferenceable): Set<ZigValue
     return CachedValuesManager.getCachedValue(target) {
         RecursionManager.doPreventingRecursion(target, true) {
             val values = computeValuesFromReferenceUncached(target).toSet()
-            CachedValueProvider.Result.create(values, PsiModificationTracker.MODIFICATION_COUNT)
+            CachedValueProvider.Result.create(
+                values,
+                PsiModificationTracker.MODIFICATION_COUNT,
+                ZigBuiltinFunctionsService.getModificationTracker(target.project)
+            )
         }
     } ?: emptySet()
 }
@@ -2397,13 +2467,16 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
             val builtinName = builtinCallElement.builtinElement.text
             val argIndex = builtinCallElement.argumentElements.indexOf(parentElement)
             assert(argIndex >= 0)
-            val genericParamIndexes = BUILTINS_WITH_GENERIC_PARAMS[builtinName]
-            if (genericParamIndexes != null && argIndex in genericParamIndexes) {
-                val firstArgElement = builtinCallElement.argumentElements.firstOrNull()?.innerElement
-                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
-                return resolveValues(firstArgElement).asSequence()
-            }
             when (builtinName) {
+                "@as" -> {
+                    if (argIndex != 1) {
+                        return sequenceOf(ZigUnknown.of(ZigTypeType))
+                    }
+                    val firstArgElement = builtinCallElement.argumentElements.firstOrNull()?.innerElement
+                        ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                    resolveValues(firstArgElement).asSequence()
+                }
+
                 "@memset" -> {
                     if (argIndex != 1) {
                         return sequenceOf(ZigUnknown.of(ZigTypeType))
@@ -2427,12 +2500,15 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
                 }
 
                 else -> {
-                    val service = ApplicationManager.getApplication().service<ZigBuiltinFunctionsService>()
-                    val builtin = service.builtinFunctions[builtinName]
+                    val builtin = ZigBuiltinFunctionsService.getBuiltinFnProto(childElement.project, builtinName)
                         ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
-                    val builtinParamType = builtin.parameters.getOrNull(argIndex)?.type
+                    val typeElement = builtin.parameters.elementAtOrNull(argIndex)?.typeElement?.innerElement
                         ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
-                    resolveBuiltinType(childElement, builtinParamType).asSequence()
+                    val arguments = builtinCallElement.argumentElements.map { resolveValues(it.innerElement) }
+                    val typeParams = computeBuiltinFnGenericParams(builtin, arguments)
+                    resolveValuesFromBuiltinFnProto(typeElement)
+                        .asSequence()
+                        .flatMap { substituteTypeParams(it, typeParams) }
                 }
             }
         }
@@ -2888,41 +2964,6 @@ private fun getUnwrapUnionTagTypeArgument(element: ZigUnwrapOptional): ZigElemen
     if (child !is ZigBuiltinCall) return null
     if (!child.builtinElement.textMatches("@typeInfo")) return null
     return child.argumentElements.firstOrNull()?.innerElement
-}
-
-private fun resolveBuiltinType(originalElement: PsiElement, name: String): Set<ZigValue> {
-    val primitiveValue = PRIMITIVE_VALUES[name]
-    if (primitiveValue != null) {
-        return setOf(primitiveValue)
-    }
-    val intType = toFixedIntType(name)
-    if (intType != null) {
-        return setOf(intType)
-    }
-    if (name.startsWith("std.lang.")) {
-        return resolveStdLangDecl(originalElement, name.substring("std.lang.".length))
-    }
-    return when (name) {
-        "AtomicOrder",
-        "AtomicRmwOp",
-        "BranchHint",
-        "FloatMode",
-        "PrefetchOptions",
-            -> resolveStdLangDecl(originalElement, name)
-        else -> emptySet()
-    }
-}
-
-private fun resolveStdLangDecl(originalElement: PsiElement, name: String): Set<ZigValue> {
-    val langFile = ZigAnalyzer.findStdFile(originalElement, "lang.zig") ?: return emptySet()
-    val decl = langFile.members.firstNotNullOfOrNull {
-        if (it is ZigNamedContainerDecl && it.name == name) it else null
-    }
-    return if (decl != null) {
-        ZigAnalyzer.resolveValuesFromReferenceTo(decl)
-    } else {
-        emptySet()
-    }
 }
 
 // Based on Sema.resolvePeerTypes

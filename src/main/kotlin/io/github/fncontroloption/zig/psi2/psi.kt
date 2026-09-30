@@ -681,10 +681,10 @@ sealed interface ZigFnDeclOrProto : ZigElement {
         get() = firstChild.siblings().firstOrNull { it.elementType === ZigTokenType.ELLIPSIS3 }
 
     val bangTokenElement: PsiElement?
-        get() = firstChild.siblings().firstOrNull { it.elementType === ZigTokenType.BANG }
+        get() = lastChild.siblings(forward = false).firstOrNull { it.elementType === ZigTokenType.BANG }
 
     val returnTypeElement: ZigTypeElement?
-        get() = firstChild.siblings().filterIsInstance<ZigTypeElement>().firstOrNull()
+        get() = lastChild.siblings(forward = false).filterIsInstance<ZigTypeElement>().firstOrNull()
 }
 
 class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigFnDeclOrProto, ZigNamedContainerDecl {
@@ -722,6 +722,11 @@ class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigFnDeclOrProto, ZigNamedCo
 }
 
 class ZigFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnDeclOrProto
+
+class ZigBuiltinFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnDeclOrProto {
+    val builtinElement: PsiElement
+        get() = findNotNullChildByType(ZigTokenType.BUILTIN)
+}
 
 class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop {
     val inputs: Sequence<ZigForInput>

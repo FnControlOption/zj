@@ -149,6 +149,8 @@ class ZigElementType(debugName: String) : IElementType(debugName, ZigLanguage) {
         val CALLCONV_MODIFIER = ZigElementType("CALLCONV_MODIFIER")
         val LINKSECTION_MODIFIER = ZigElementType("LINKSECTION_MODIFIER")
 
+        val BUILTIN_FN_PROTO = ZigElementType("BUILTIN_FN_PROTO")
+
         fun createPsiElement(node: ASTNode): PsiElement {
             return when (node.elementType) {
                 ADD -> ZigAdd(node)
@@ -289,6 +291,8 @@ class ZigElementType(debugName: String) : IElementType(debugName, ZigLanguage) {
                 ALIGN_MODIFIER -> ZigAlignModifier(node)
                 CALLCONV_MODIFIER -> ZigCallconvModifier(node)
                 LINKSECTION_MODIFIER -> ZigLinksectionModifier(node)
+
+                BUILTIN_FN_PROTO -> ZigBuiltinFnProto(node)
 
                 else -> throw IllegalArgumentException("Unexpected node type ${node.elementType}")
             }

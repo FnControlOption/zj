@@ -424,3 +424,5 @@ const foo = @field(struct {
         const baz = undefined;
     };
 }, "bar").baz;
+const foo = @atomicStore(struct { bar: u32 }, undefined, .{ .bar = 42 }, .monotonic);
+const foo = @atomicLoad(struct { bar: u32 }, &.{ .bar = 42 }, .monotonic);

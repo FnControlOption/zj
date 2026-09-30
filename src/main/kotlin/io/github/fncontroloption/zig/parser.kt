@@ -4,6 +4,8 @@ import com.intellij.lang.ASTNode
 import com.intellij.lang.ParserDefinition
 import com.intellij.lang.PsiBuilder
 import com.intellij.lang.PsiParser
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.psi.FileViewProvider
 import com.intellij.psi.TokenType
@@ -11,11 +13,24 @@ import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
 import io.github.fncontroloption.zig.psi2.*
 
+enum class ZigParserMode {
+    DEFAULT,
+    BUILTIN_FN_PROTO,
+}
+
+@Service(Service.Level.PROJECT)
+class ZigParserService {
+    var mode = ZigParserMode.DEFAULT
+}
+
 class ZigParserDefinition : ParserDefinition {
     override fun createLexer(project: Project?) = ZigLexerAdapter()
     override fun getCommentTokens() = ZigTokenSets.COMMENTS
     override fun getStringLiteralElements() = ZigTokenSets.STRINGS
-    override fun createParser(project: Project?) = ZigParser()
+    override fun createParser(project: Project?): ZigParser {
+        val mode = project?.service<ZigParserService>()?.mode ?: ZigParserMode.DEFAULT
+        return ZigParser(mode)
+    }
     override fun getFileNodeType() = ZigFileElementType
     override fun createFile(viewProvider: FileViewProvider) = ZigFile(viewProvider)
     override fun createElement(node: ASTNode) = ZigElementType.createPsiElement(node)
@@ -23,11 +38,22 @@ class ZigParserDefinition : ParserDefinition {
 
 // Based on https://codeberg.org/ziglang/zig/src/commit/69a2697/lib/std/zig/Parse.zig
 /** @see com.intellij.java.syntax.parser.JavaParser */
-class ZigParser : PsiParser {
+class ZigParser(private val mode: ZigParserMode) : PsiParser {
     private val enclosureStack = ArrayDeque<IElementType?>()
     private val containerStack = ArrayDeque<IElementType>()
 
     override fun parse(root: IElementType, builder: PsiBuilder): ASTNode {
+        enclosureStack.clear()
+        containerStack.clear()
+        when (mode) {
+            ZigParserMode.DEFAULT -> {}
+            ZigParserMode.BUILTIN_FN_PROTO -> {
+                val rootMarker = builder.mark()
+                assertBuiltinFnProto(builder)
+                rootMarker.done(root)
+                return builder.treeBuilt
+            }
+        }
         containerStack.addLast(ZigFileElementType)
         val rootMarker = builder.mark()
         parseEnclosed(builder, null) {
@@ -251,6 +277,24 @@ class ZigParser : PsiParser {
         return parseParenEnclosedExpr(builder, ZigTokenType.KEYWORD_CALLCONV, ZigElementType.CALLCONV_MODIFIER)
     }
 
+    private fun assertBuiltinFnProto(builder: PsiBuilder): PsiBuilder.Marker {
+        val marker = builder.mark()
+        check(builder.tokenType === ZigTokenType.BUILTIN)
+        builder.advanceLexer()
+        check(eatToken(builder, ZigTokenType.L_PAREN))
+        parseEnclosed(builder, ZigTokenType.R_PAREN) {
+            assertBuiltinFnParam(builder)
+        }
+        check(eatToken(builder, ZigTokenType.R_PAREN))
+        if (!eatToken(builder, ZigTokenType.KEYWORD_ANYTYPE)) {
+            val returnType = builder.mark()
+            check(parseTypeExpr(builder) != null)
+            returnType.done(ZigElementType.TYPE)
+        }
+        marker.done(ZigElementType.BUILTIN_FN_PROTO)
+        return marker
+    }
+
     private fun parseFnProto(builder: PsiBuilder, expectName: Boolean): PsiBuilder.Marker? {
         val proto = builder.mark()
         if (!eatToken(builder, ZigTokenType.KEYWORD_FN)) {
@@ -303,6 +347,27 @@ class ZigParser : PsiParser {
         }
         parseBlock(builder)
         decl.done(ZigElementType.FN_DECL)
+        return decl
+    }
+
+    private fun assertBuiltinFnParam(builder: PsiBuilder): PsiBuilder.Marker {
+        val decl = builder.mark()
+        if (eatToken(builder, ZigTokenType.ELLIPSIS3)) {
+            decl.drop()
+            check(builder.tokenType === ZigTokenType.R_PAREN)
+            return decl
+        }
+        eatToken(builder, ZigTokenSets.NOALIAS_COMPTIME)
+        check(eatToken(builder, ZigTokenType.IDENTIFIER))
+        if (eatToken(builder, ZigTokenType.COLON)
+            && !eatToken(builder, ZigTokenType.KEYWORD_ANYTYPE)
+        ) {
+            val type = builder.mark()
+            check(parseTypeExpr(builder) != null)
+            type.done(ZigElementType.TYPE)
+        }
+        decl.done(ZigElementType.FN_PARAM)
+        eatToken(builder, ZigTokenType.COMMA)
         return decl
     }
 

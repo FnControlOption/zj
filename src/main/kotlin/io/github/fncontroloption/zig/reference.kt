@@ -28,7 +28,11 @@ fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
                 if (target != null) sequenceOf(target) else emptySequence()
             }
         }
-        CachedValueProvider.Result.create(targets.toSet(), PsiModificationTracker.MODIFICATION_COUNT)
+        CachedValueProvider.Result.create(
+            targets.toSet(),
+            PsiModificationTracker.MODIFICATION_COUNT,
+            ZigBuiltinFunctionsService.getModificationTracker(element.project),
+        )
     }
     return cached.asSequence()
 }

@@ -1,5 +1,6 @@
 package io.github.fncontroloption.zig
 
+import com.intellij.openapi.components.service
 import com.intellij.psi.PsiFileFactory
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.requireIs
@@ -11,6 +12,13 @@ import io.github.fncontroloption.zig.psi2.ZigPointerSize
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 
 class ZigAnalysisTest : BasePlatformTestCase() {
+    override fun setUp() {
+        super.setUp()
+
+        // Load builtin function prototypes
+        project.service<ZigBuiltinFunctionsService>().builtinFunctions
+    }
+
     fun createFile(text: String): ZigFile {
         val fileFactory = PsiFileFactory.getInstance(project)
         val file = fileFactory.createFileFromText("dummy.zig", ZigLanguage, text)

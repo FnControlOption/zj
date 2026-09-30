@@ -2,14 +2,20 @@ package io.github.fncontroloption.zig
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.ModificationTracker
+import com.intellij.openapi.util.SimpleModificationTracker
+import io.github.fncontroloption.zig.psi2.ZigBuiltinFnProto
+import io.github.fncontroloption.zig.psi2.createZigFile
 import org.jsoup.Jsoup
 import java.io.InputStream
 
-@Service(Service.Level.APP)
-class ZigBuiltinFunctionsService {
-    private var cachedBuiltinFunctions: Map<String, ZigBuiltinFunction>? = null
+@Service(Service.Level.PROJECT)
+class ZigBuiltinFunctionsService(private val project: Project) {
+    private var cachedBuiltinFunctions: Map<String, ZigBuiltinFnProto>? = null
 
-    val builtinFunctions: Map<String, ZigBuiltinFunction>
+    val builtinFunctions: Map<String, ZigBuiltinFnProto>
         get() {
             // We do an initial null check here to avoid unnecessary
             // acquisitions of the write lock.
@@ -23,14 +29,35 @@ class ZigBuiltinFunctionsService {
             return cachedBuiltinFunctions ?: emptyMap()
         }
 
+    val modificationTracker = SimpleModificationTracker()
+
     private fun loadBuiltinFunctions() {
         if (cachedBuiltinFunctions == null) {
             val stream = javaClass.classLoader.getResourceAsStream("langref.html")!!
-            cachedBuiltinFunctions = stream.use { parseBuiltinsFromLangref(it) }
+            val parserService = project.service<ZigParserService>()
+            val previousMode = parserService.mode
+            parserService.mode = ZigParserMode.BUILTIN_FN_PROTO
+            try {
+                cachedBuiltinFunctions = stream.use { parseBuiltinsFromLangref(project, it) }
+            } finally {
+                parserService.mode = previousMode
+            }
+            modificationTracker.incModificationCount()
+        }
+    }
+
+    companion object {
+        fun getBuiltinFnProto(project: Project, name: String): ZigBuiltinFnProto? {
+            return project.service<ZigBuiltinFunctionsService>().builtinFunctions[name]
+        }
+
+        fun getModificationTracker(project: Project): ModificationTracker {
+            return project.service<ZigBuiltinFunctionsService>().modificationTracker
         }
     }
 }
 
+/* TODO: delete
 data class ZigBuiltinFunction(
     val name: String,
     val parameters: List<Parameter>,
@@ -64,139 +91,27 @@ data class ZigBuiltinFunction(
         }
     }
 }
+ */
 
-private fun parseBuiltinsFromLangref(stream: InputStream): Map<String, ZigBuiltinFunction> {
+private fun parseBuiltinsFromLangref(project: Project, stream: InputStream): Map<String, ZigBuiltinFnProto> {
     val document = Jsoup.parse(stream, null, "")
 
     val builtinFunctionsElement = document.getElementById("Builtin-Functions")!!
     val builtinFunctionsTag = builtinFunctionsElement.tagName()
     check(builtinFunctionsTag == "h2")
 
-    val builtinMap = mutableMapOf<String, ZigBuiltinFunction>()
+    val builtinMap = mutableMapOf<String, ZigBuiltinFnProto>()
 
     var element = builtinFunctionsElement.nextElementSibling()
     while (element != null && element.tagName() != builtinFunctionsTag) {
         if (element.tagName() == "pre" && element.previousElementSibling()?.tagName() == "h3") {
-            val builtin = parseBuiltin(element.text())
-            builtinMap[builtin.name] = builtin
+            val text = element.text()
+            val file = createZigFile(project, text)
+            val element = file.firstChild as ZigBuiltinFnProto
+            builtinMap[element.builtinElement.text] = element
         }
         element = element.nextElementSibling()
     }
 
     return builtinMap
-}
-
-private fun parseBuiltin(originalText: String): ZigBuiltinFunction {
-    val text =
-        originalText
-            .replace("""\s*//.*""".toRegex(), "")
-            .replace("""\s+""".toRegex(), " ")
-            .replace("( ", "(")
-            .replace(", )", ")")
-
-    var index = text.indexOf('(')
-    check(index > 0)
-
-    val name = text.substring(0, index)
-
-    index += 1
-    var paramStart = index
-    val parameters = mutableListOf<ZigBuiltinFunction.Parameter>()
-
-    var parens = 1
-    var brackets = 0
-    var braces = 0
-
-    while (true) {
-        when (text[index]) {
-            '(' -> {
-                parens += 1
-                index += 1
-            }
-
-            ')' -> {
-                parens -= 1
-                if (parens == 0) {
-                    check(brackets == 0)
-                    check(braces == 0)
-                    if (index != paramStart) {
-                        val paramText = text.substring(paramStart, index)
-                        parameters.add(parseParameter(paramText))
-                    }
-                    break
-                }
-                index += 1
-            }
-
-            '[' -> {
-                brackets += 1
-                index += 1
-            }
-
-            ']' -> {
-                brackets -= 1
-                check(brackets >= 0)
-                index += 1
-            }
-
-            '{' -> {
-                braces += 1
-                index += 1
-            }
-
-            '}' -> {
-                braces -= 1
-                check(braces >= 0)
-                index += 1
-            }
-
-            ',' if parens == 1 && brackets == 0 && braces == 0 -> {
-                val paramText = text.substring(paramStart, index)
-                parameters.add(parseParameter(paramText))
-                index += 1
-                while (text[index].isWhitespace()) {
-                    index += 1
-                }
-                paramStart = index
-            }
-
-            else -> index += 1
-        }
-    }
-
-    check(text[index] == ')')
-    index += 1
-    while (text[index].isWhitespace()) {
-        index += 1
-    }
-
-    val returnType = text.substring(index)
-    return ZigBuiltinFunction(name, parameters, returnType)
-}
-
-private fun parseParameter(paramText: String): ZigBuiltinFunction.Parameter {
-    var index = 0
-
-    val comptime = paramText.startsWith("comptime ")
-    if (comptime) index += "comptime ".length
-
-    val noalias = paramText.startsWith("noalias ")
-    if (noalias) index += "noalias ".length
-
-    val name: String
-    val type: String?
-    val colon = paramText.indexOf(':', index)
-    if (colon >= 0) {
-        name = paramText.substring(index, colon)
-        index = colon + 1
-        while (paramText[index].isWhitespace()) {
-            index += 1
-        }
-        type = paramText.substring(index)
-    } else {
-        name = paramText.substring(index)
-        type = null
-    }
-
-    return ZigBuiltinFunction.Parameter(comptime, noalias, name, type)
 }
