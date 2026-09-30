@@ -30,7 +30,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
 
     fun resolveValue(text: String): ZigValue {
         val values = resolveValues(text)
-        assertEquals(1, values.size)
+        assertSize(1, values)
         return values.first()
     }
 
@@ -38,7 +38,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue("struct { foo: u42 }").requireIs<ZigContainerType>()
         assertEquals(ZigContainerKind.STRUCT, type.element.containerKind)
         val members = type.element.members.toList()
-        assertEquals(1, members.size)
+        assertSize(1, members)
         val field = members[0].requireIs<ZigContainerFieldImpl>()
         assertEquals("foo", field.name)
     }
@@ -83,7 +83,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
     fun testPointerType() {
         val type = resolveValue("*u42").requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.ONE, type.size)
-        assertEquals(null, type.sentinel)
+        assertNull(type.sentinel)
         assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), type.child)
     }
 
@@ -104,7 +104,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
     fun testCPointerType() {
         val type = resolveValue("[*c]u42").requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.C, type.size)
-        assertEquals(null, type.sentinel)
+        assertNull(type.sentinel)
         assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), type.child)
     }
 
@@ -301,7 +301,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigArrayType>()
         assertEquals(ZigIntValue(ZigComptimeIntType, 2), type.length)
-        assertEquals(null, type.sentinel)
+        assertNull(type.sentinel)
         assertEquals(ZigBoolType, type.child)
     }
 
@@ -664,7 +664,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             )
         """.trimIndent()
         val type = resolveValue(text).requireIs<ZigTupleType>()
-        assertEquals(2, type.fields.size)
+        assertSize(2, type.fields)
         assertEquals(ZigFixedIntType(ZigSignedness.SIGNED, 42), type.fields[0])
         assertEquals(ZigFixedFloatType(80), type.fields[1])
     }
@@ -683,5 +683,263 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigPointerSize.C, type.size)
         assertNull(type.sentinel)
         assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    // ptrSize = ZigPointerSize.ONE
+    // peerSize = ZigPointerSize.ONE
+    fun testPeerTypesArrayAndArrayPointers() {
+        val text = """
+            @TypeOf(
+                @as(*[2:0]u8, undefined),
+                @as(*[3:0]u8, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.SLICE, type.size)
+        assertEquals(ZigIntValue(ZigComptimeIntType, 0), type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    // ptrSize = ZigPointerSize.ONE
+    // peerSize = ZigPointerSize.ONE
+    fun testPeerTypesArrayAndTuplePointers() {
+        val text = """
+            @TypeOf(
+                @as(*[2:0]u8, undefined),
+                @as(*struct { u8, u8 }, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.ONE, type.size)
+        assertNull(type.sentinel)
+        val array = type.child.requireIs<ZigArrayType>()
+        assertEquals(ZigIntValue(ZigUsizeType, 2), array.length)
+        assertNull(array.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), array.child)
+    }
+
+    // ptrSize = ZigPointerSize.ONE
+    // peerSize = ZigPointerSize.ONE
+    fun testPeerTypesArrayAndEmptyTuplePointers() {
+        val text = """
+            @TypeOf(
+                @as(*[2:0]u8, undefined),
+                &.{},
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.SLICE, type.size)
+        assertNull(type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    // ptrSize = ZigPointerSize.ONE
+    // peerSize = ZigPointerSize.ONE
+    fun testPeerTypesEmptyTupleAndArrayPointers() {
+        val text = """
+            @TypeOf(
+                &.{},
+                @as(*[2:0]u8, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.SLICE, type.size)
+        assertNull(type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    // ptrSize = ZigPointerSize.MANY
+    // peerSize = ZigPointerSize.ONE
+    fun testPeerTypesManyItemAndArrayPointers() {
+        val text = """
+            @TypeOf(
+                @as([*:0]u8, undefined),
+                @as(*[2:0]u8, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.MANY, type.size)
+        assertEquals(ZigIntValue(ZigComptimeIntType, 0), type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    // ptrSize = ZigPointerSize.MANY
+    // peerSize = ZigPointerSize.ONE
+    fun testPeerTypesManyItemAndEmptyTuplePointers() {
+        val text = """
+            @TypeOf(
+                @as([*:0]u8, undefined),
+                &.{},
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.MANY, type.size)
+        assertNull(type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    // ptrSize = ZigPointerSize.SLICE
+    // peerSize = ZigPointerSize.ONE
+    fun testPeerTypesSliceAndArrayPointer() {
+        val text = """
+            @TypeOf(
+                @as([:0]u8, undefined),
+                @as(*[2:0]u8, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.SLICE, type.size)
+        assertEquals(ZigIntValue(ZigComptimeIntType, 0), type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    // ptrSize = ZigPointerSize.SLICE
+    // peerSize = ZigPointerSize.ONE
+    fun testPeerTypesSliceAndEmptyTuplePointer() {
+        val text = """
+            @TypeOf(
+                @as([:0]u8, undefined),
+                &.{},
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.SLICE, type.size)
+        assertNull(type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    // ptrSize = ZigPointerSize.ONE
+    // peerSize = ZigPointerSize.MANY
+    fun testPeerTypesArrayAndManyItemPointers() {
+        val text = """
+            @TypeOf(
+                @as(*[2:0]u8, undefined),
+                @as([*:0]u8, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.MANY, type.size)
+        assertEquals(ZigIntValue(ZigComptimeIntType, 0), type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    // ptrSize = ZigPointerSize.ONE
+    // peerSize = ZigPointerSize.MANY
+    fun testPeerTypesEmptyTupleAndManyItemPointers() {
+        val text = """
+            @TypeOf(
+                &.{},
+                @as([*:0]u8, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.MANY, type.size)
+        assertNull(type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    // ptrSize = ZigPointerSize.MANY
+    // peerSize = ZigPointerSize.MANY
+    fun testPeerTypesManyItemAndManyItemPointers() {
+        val text = """
+            @TypeOf(
+                @as([*:0]u8, undefined),
+                @as([*:1]u8, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.MANY, type.size)
+        assertNull(type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    // ptrSize = ZigPointerSize.SLICE
+    // peerSize = ZigPointerSize.MANY
+    fun testPeerTypesSliceAndManyItemPointer() {
+        val text = """
+            @TypeOf(
+                @as([:0]u8, undefined),
+                @as([*:0]u8, undefined),
+            )
+        """.trimIndent()
+        assertSize(2, resolveValues(text))
+    }
+
+    // ptrSize = ZigPointerSize.SLICE
+    // peerSize = ZigPointerSize.MANY
+    fun testPeerTypesArrayAndArrayAndManyItemPointers() {
+        val text = """
+            @TypeOf(
+                @as(*[2:0]u8, undefined),
+                @as(*[3:0]u8, undefined),
+                @as([*:0]u8, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.MANY, type.size)
+        assertEquals(ZigIntValue(ZigComptimeIntType, 0), type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    // ptrSize = ZigPointerSize.ONE
+    // peerSize = ZigPointerSize.SLICE
+    fun testPeerTypesArrayPointerAndSlice() {
+        val text = """
+            @TypeOf(
+                @as(*[2:0]u8, undefined),
+                @as([:0]u8, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.SLICE, type.size)
+        assertEquals(ZigIntValue(ZigComptimeIntType, 0), type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    // ptrSize = ZigPointerSize.ONE
+    // peerSize = ZigPointerSize.SLICE
+    fun testPeerTypesEmptyTuplePointerAndSlice() {
+        val text = """
+            @TypeOf(
+                &.{},
+                @as([:0]u8, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.SLICE, type.size)
+        assertNull(type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    // ptrSize = ZigPointerSize.MANY
+    // peerSize = ZigPointerSize.SLICE
+    fun testPeerTypesManyItemPointerAndSlice() {
+        val text = """
+            @TypeOf(
+                @as([*:0]u8, undefined),
+                @as([:0]u8, undefined),
+            )
+        """.trimIndent()
+        assertSize(2, resolveValues(text))
+    }
+
+    // ptrSize = ZigPointerSize.SLICE
+    // peerSize = ZigPointerSize.SLICE
+    fun testPeerTypesSliceAndSlice() {
+        val text = """
+            @TypeOf(
+                @as([:0]u8, undefined),
+                @as([:1]u8, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.SLICE, type.size)
+        assertNull(type.sentinel)
+        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+    }
+
+    fun testPeerTypesEmptyTupleAndNoreturnArrayPointers() {
+        val text = "@TypeOf(&.{}, @as(*[0]noreturn, undefined))"
+        assertSize(2, resolveValues(text))
     }
 }

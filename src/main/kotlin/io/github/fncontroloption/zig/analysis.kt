@@ -3205,7 +3205,203 @@ private fun resolvePeerTypesInner(
         }
 
         PeerResolveStrategy.PTR -> {
-            return null // TODO
+            var sliceIdx: Int? = null
+            var ptrTy: ZigPointerType? = null
+            for (idx in peerTys.indices) {
+                val ty = peerTys[idx] ?: continue
+                val peerTy = when (ty) {
+                    is ZigPointerType -> ty
+                    is ZigFunctionType -> ZigPointerType(ZigPointerSize.ONE, null, ty)
+                    else -> return null
+                }
+                when (peerTy.size) {
+                    ZigPointerSize.ONE, ZigPointerSize.MANY -> {}
+                    ZigPointerSize.SLICE -> sliceIdx = idx
+                    ZigPointerSize.C -> return null
+                }
+                if (ptrTy == null) {
+                    ptrTy = peerTy
+                    continue
+                }
+                var ptrSize = ptrTy.size
+                var ptrSentinel = ptrTy.sentinel
+                var ptrChild = ptrTy.child
+                check(ptrSize != ZigPointerSize.C)
+                // TODO: pointer modifiers
+                val peerSentinel = when (peerTy.size) {
+                    ZigPointerSize.ONE -> when (val pointee = peerTy.child) {
+                        is ZigArrayType -> pointee.sentinel
+                        else -> null
+                    }
+                    ZigPointerSize.MANY, ZigPointerSize.SLICE -> peerTy.sentinel
+                }
+                val curSentinel = when (ptrSize) {
+                    ZigPointerSize.ONE -> when (val pointee = ptrChild) {
+                        is ZigArrayType -> pointee.sentinel
+                        else -> null
+                    }
+                    ZigPointerSize.MANY, ZigPointerSize.SLICE -> ptrSentinel
+                }
+                val peerArr = typeIsArrayLike(peerTy.child)
+                val curArr = typeIsArrayLike(ptrChild)
+                run good@{
+                    when (peerTy.size) {
+                        ZigPointerSize.ONE -> when (ptrSize) {
+                            ZigPointerSize.ONE -> {
+                                // TODO: resolve pair in memory coercible
+                                if (ptrChild == peerTy.child) {
+                                    return@good
+                                }
+                                if (curArr == null) return null
+                                if (peerArr == null) return null
+                                // TODO: resolve pair in memory coercible
+                                if (curArr.child == peerArr.child) {
+                                    if (curArr.length == peerArr.length) {
+                                        ptrChild = ZigArrayType(
+                                            length = ZigIntValue(ZigUsizeType, curArr.length),
+                                            child = curArr.child,
+                                            sentinel = null,
+                                        )
+                                        return@good
+                                    }
+                                    ptrSize = ZigPointerSize.SLICE
+                                    ptrChild = curArr.child
+                                    return@good
+                                }
+                                if (peerArr.child == ZigNoreturnType) {
+                                    ptrSize = ZigPointerSize.SLICE
+                                    ptrChild = curArr.child
+                                    return@good
+                                }
+                                if (curArr.child == ZigNoreturnType) {
+                                    ptrSize = ZigPointerSize.SLICE
+                                    ptrChild = peerArr.child
+                                    return@good
+                                }
+                                return null
+                            }
+                            ZigPointerSize.MANY -> {
+                                if (peerArr == null) return null
+                                // TODO: resolve pair in memory coercible
+                                if (ptrChild == peerArr.child) {
+                                    return@good
+                                }
+                                if (peerArr.child == ZigNoreturnType) {
+                                    return@good
+                                }
+                                return null
+                            }
+                            ZigPointerSize.SLICE -> {
+                                if (peerArr == null) return null
+                                // TODO: resolve pair in memory coercible
+                                if (ptrChild == peerArr.child) {
+                                    return@good
+                                }
+                                if (peerArr.child == ZigNoreturnType) {
+                                    return@good
+                                }
+                                return null
+                            }
+                        }
+                        ZigPointerSize.MANY -> when (ptrSize) {
+                            ZigPointerSize.ONE -> {
+                                if (curArr == null) return null
+                                // TODO: resolve pair in memory coercible
+                                if (curArr.child == peerTy.child) {
+                                    ptrSize = ZigPointerSize.MANY
+                                    ptrChild = curArr.child
+                                    return@good
+                                }
+                                if (curArr.child == ZigNoreturnType) {
+                                    ptrSize = ZigPointerSize.MANY
+                                    ptrChild = peerTy.child
+                                    return@good
+                                }
+                                return null
+                            }
+                            ZigPointerSize.MANY -> {
+                                // TODO: resolve pair in memory coercible
+                                if (ptrChild == peerTy.child) {
+                                    return@good
+                                }
+                                return null
+                            }
+                            ZigPointerSize.SLICE -> {
+                                if (sliceIdx != null) return null
+                                // TODO: resolve pair in memory coercible
+                                if (ptrChild == peerTy.child) {
+                                    ptrSize = ZigPointerSize.MANY
+                                    return@good
+                                }
+                                return null
+                            }
+                        }
+                        ZigPointerSize.SLICE -> when (ptrSize) {
+                            ZigPointerSize.ONE -> {
+                                if (curArr == null) return null
+                                // TODO: resolve pair in memory coercible
+                                if (curArr.child == peerTy.child) {
+                                    ptrSize = ZigPointerSize.SLICE
+                                    ptrChild = curArr.child
+                                    return@good
+                                }
+                                if (curArr.child == ZigNoreturnType) {
+                                    ptrSize = ZigPointerSize.SLICE
+                                    ptrChild = peerTy.child
+                                    return@good
+                                }
+                                return null
+                            }
+                            ZigPointerSize.MANY -> {
+                                return null
+                            }
+                            ZigPointerSize.SLICE -> {
+                                // TODO: resolve pair in memory coercible
+                                if (ptrChild == peerTy.child) {
+                                    return@good
+                                }
+                                return null
+                            }
+                        }
+                    }
+                }
+                run sentinel@{
+                    run noSentinel@{
+                        if (peerSentinel == null) return@noSentinel
+                        if (curSentinel == null) return@noSentinel
+                        //  TODO: get coerced sentinels
+                        if (peerSentinel != curSentinel) return@noSentinel
+                        if (ptrSize == ZigPointerSize.ONE) when (val pointee = ptrChild) {
+                            is ZigArrayType -> ptrChild = ZigArrayType(
+                                length = pointee.length,
+                                child = pointee.child,
+                                sentinel = curSentinel,
+                            )
+                            else -> throw IllegalStateException()
+                        } else {
+                            ptrSentinel = curSentinel
+                        }
+                        return@sentinel
+                    }
+                    ptrSentinel = null
+                    if (ptrSize == ZigPointerSize.ONE) when (val pointee = ptrChild) {
+                        is ZigArrayType -> ptrChild = ZigArrayType(
+                            length = pointee.length,
+                            child = pointee.child,
+                            sentinel = null,
+                        )
+                        else -> {}
+                    }
+                }
+                ptrTy = ZigPointerType(ptrSize, ptrSentinel, ptrChild)
+            }
+            check(ptrTy != null)
+            when (val pointee = ptrTy.child) {
+                ZigNoreturnType -> return null
+                is ZigArrayType if pointee.child == ZigNoreturnType -> return null
+                else -> {}
+            }
+            return ptrTy
         }
 
         PeerResolveStrategy.FUNC -> {
@@ -3427,6 +3623,31 @@ private fun resolvePeerTypesInner(
             }
             return expectTy!!
         }
+    }
+}
+
+private class ArrayLike(val length: Int, val child: ZigValue)
+
+private fun typeIsArrayLike(ty: ZigValue): ArrayLike? {
+    return when (ty) {
+        is ZigArrayType -> when (val length = ty.length) {
+            is ZigIntValue -> ArrayLike(length.value, ty.child)
+            else -> null
+        }
+        is ZigTupleType -> {
+            val fieldCount = ty.fields.size
+            if (fieldCount == 0) {
+                return ArrayLike(0, ZigNoreturnType)
+            }
+            val child = ty.fields[0]
+            for (i in 1 until fieldCount) {
+                if (ty.fields[i] != child) {
+                    return null
+                }
+            }
+            ArrayLike(fieldCount, child)
+        }
+        else -> null
     }
 }
 
