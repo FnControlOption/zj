@@ -949,7 +949,7 @@ data class ZigLazyTagNameValue(val value: ZigValue) : ZigValue {
         ZigPointerSize.ONE,
         null,
         ZigArrayType(
-            ZigUnknown.ofUnknownType(),
+            ZigUnknown.of(ZigUsizeType),
             ZigIntValue(ZigComptimeIntType, 0),
             ZigFixedIntType(ZigSignedness.UNSIGNED, 8)
         )
@@ -970,7 +970,7 @@ data class ZigStringLiteralValue(val value: String) : ZigValue {
         ZigPointerSize.ONE,
         null,
         ZigArrayType(
-            ZigIntValue(ZigComptimeIntType, value.length),
+            ZigIntValue(ZigUsizeType, value.length),
             ZigIntValue(ZigComptimeIntType, 0),
             ZigFixedIntType(ZigSignedness.UNSIGNED, 8)
         )
@@ -1066,7 +1066,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigArrayTypeElement -> {
-            val length = resolveValues(element.lengthElement.innerElement).singleOrNull() ?: ZigUnknown.ofUnknownType()
+            val length = resolveValues(element.lengthElement.innerElement).singleOrNull() ?: ZigUnknown.of(ZigUsizeType)
             val sentinel = element.sentinelElement?.let { outerElement ->
                 outerElement.innerElement?.let { resolveValues(it) }?.singleOrNull() ?: ZigUnknown.ofUnknownType()
             }
@@ -1268,7 +1268,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
 
         is ZigSlice -> {
             // TODO: if the indexes are non-comptime, return a slice instead of an array of unknown length
-            val length = ZigUnknown.ofUnknownType()
+            val length = ZigUnknown.of(ZigUsizeType)
             var sentinel: ZigValue? = null
             val sentinelElement = element.sentinelElement?.innerElement
             if (sentinelElement != null) {
@@ -1472,7 +1472,7 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
             if (value != null) {
                 return sequenceOf(ZigStringLiteralValue(value))
             }
-            val length = ZigUnknown.ofUnknownType()
+            val length = ZigUnknown.of(ZigUsizeType)
             val u8 = ZigFixedIntType(ZigSignedness.UNSIGNED, 8)
             val array = ZigArrayType(length, ZigIntValue(ZigComptimeIntType, 0), u8)
             val pointer = ZigPointerType(ZigPointerSize.ONE, null, array)
@@ -1675,7 +1675,7 @@ private fun substituteTypeParams(
             }
             is ZigArrayType -> {
                 val lengthValues = substituteTypeParams(value.length, typeParams)
-                val length = lengthValues.singleOrNull() ?: ZigUnknown.ofUnknownType()
+                val length = lengthValues.singleOrNull() ?: ZigUnknown.of(ZigUsizeType)
                 val sentinelValues = value.sentinel?.let { substituteTypeParams(it, typeParams) }
                 val sentinel = sentinelValues?.singleOrNull()
                 val childTypes = substituteTypeParams(value.child, typeParams)
@@ -2268,7 +2268,7 @@ private fun inferResultTypes(childElement: ZigElement): Sequence<ZigValue> {
                         ZigPointerSize.ONE -> it.child
 
                         ZigPointerSize.SLICE -> {
-                            val length = ZigUnknown.ofUnknownType()
+                            val length = ZigUnknown.of(ZigUsizeType)
                             ZigArrayType(length, null, it.child)
                         }
 

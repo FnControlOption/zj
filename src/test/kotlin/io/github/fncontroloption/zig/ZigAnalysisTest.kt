@@ -377,7 +377,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val array = pointer.child.requireIs<ZigArrayType>()
         assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), array.child)
         val length = array.length.requireIs<ZigIntValue>()
-        assertEquals(ZigComptimeIntType, length.typeOf)
+        assertEquals(ZigUsizeType, length.typeOf)
         assertEquals(3, length.value)
         val sentinel = array.sentinel.requireIs<ZigIntValue>()
         assertEquals(ZigComptimeIntType, sentinel.typeOf)
