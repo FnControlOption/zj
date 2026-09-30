@@ -502,7 +502,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
     }
 
     fun testPeerTypesComptimeFloat() {
-        val text = "@TypeOf(42, @as(comptime_float, undefined))"
+        val text = "@TypeOf(42, 3.14)"
         assertEquals(ZigComptimeFloatType, resolveValue(text))
     }
 
@@ -652,7 +652,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
     }
 
     fun testPeerTypesFixedFloat() {
-        val text = "@TypeOf(1, @as(u8, 2), @as(f16, 3), @as(f80, 4), @as(comptime_float, 5))"
+        val text = "@TypeOf(1, @as(u8, 2), @as(f16, 3), @as(f80, 4), 5.0)"
         assertEquals(ZigFixedFloatType(80), resolveValue(text))
     }
 

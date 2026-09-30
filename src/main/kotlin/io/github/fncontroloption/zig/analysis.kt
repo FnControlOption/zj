@@ -1480,9 +1480,12 @@ private fun computeValuesUncached(element: ZigElement): Sequence<ZigValue> {
         }
 
         is ZigNumberLiteral -> {
-            // TODO: parse float
-            val value = element.text.toIntOrNull() ?: return sequenceOf(ZigUnknown.ofUnknownType())
-            sequenceOf(ZigIntValue(ZigComptimeIntType, value))
+            when (val result = ZigNumberLiteralParser.parse(element.text)) {
+                is ZigNumberLiteralParser.IntResult -> sequenceOf(ZigIntValue(ZigComptimeIntType, result.value))
+                is ZigNumberLiteralParser.BigIntResult -> sequenceOf(ZigUnknown.of(ZigComptimeIntType))
+                is ZigNumberLiteralParser.FloatResult -> sequenceOf(ZigUnknown.of(ZigComptimeFloatType))
+                ZigNumberLiteralParser.FailureResult -> sequenceOf(ZigUnknown.ofUnknownType())
+            }
         }
 
         is ZigCharLiteral -> sequenceOf(ZigUnknown.of(ZigComptimeIntType))
@@ -1520,7 +1523,14 @@ private fun toFixedIntType(text: String): ZigFixedIntType? {
         'u' -> ZigSignedness.UNSIGNED
         else -> return null
     }
-    val bits = text.substring(1).toIntOrNull() ?: return null
+    var bits = 0
+    for (c in text.substring(1)) {
+        bits *= 10
+        when (c) {
+            in '0'..'9' -> bits += c - '0'
+            else -> return null
+        }
+    }
     return ZigFixedIntType(signedness, bits)
 }
 
