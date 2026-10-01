@@ -6,7 +6,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.requireIs
 import io.github.fncontroloption.zig.psi2.ZigContainerFieldImpl
 import io.github.fncontroloption.zig.psi2.ZigContainerKind
-import io.github.fncontroloption.zig.psi2.ZigElement
+import io.github.fncontroloption.zig.psi2.ZigExpression
 import io.github.fncontroloption.zig.psi2.ZigFile
 import io.github.fncontroloption.zig.psi2.ZigPointerSize
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
@@ -25,7 +25,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         return file as ZigFile
     }
 
-    fun createExpression(text: String): ZigElement {
+    fun createExpression(text: String): ZigExpression {
         val file = createFile("const dummy = $text;")
         val varDecl = file.members.first() as ZigVarDecl
         return varDecl.initializer!!

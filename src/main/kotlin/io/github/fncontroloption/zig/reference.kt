@@ -563,7 +563,7 @@ internal fun getFunctionParamNamesAndTypes(
     typeParams: Map<ZigFnParam, Set<ZigValue>> = functionType.typeParams,
 ): Pair<List<String?>, List<ZigValue?>> {
     return functionType.element.parameters.map { param ->
-        param.name to param.typeElement?.innerElement?.let {
+        param.name to param.typeElement?.expression?.let {
             val initialValues = ZigAnalyzer.resolveValues(it)
             val values = ZigAnalyzer.substituteTypeParams(initialValues, typeParams)
             values.singleOrNull()
@@ -607,7 +607,7 @@ internal fun getParameterText(name: String?, type: ZigValue?): String {
 }
 
 private fun getFunctionTypeText(functionType: ZigFunctionType): String? {
-    val returnType = functionType.element.returnTypeElement?.innerElement?.let {
+    val returnType = functionType.element.returnTypeElement?.expression?.let {
         val initialValues = ZigAnalyzer.resolveValues(it)
         val values = ZigAnalyzer.substituteTypeParams(initialValues, functionType.typeParams)
         values.singleOrNull()

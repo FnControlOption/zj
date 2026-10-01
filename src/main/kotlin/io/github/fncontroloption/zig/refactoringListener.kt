@@ -56,7 +56,7 @@ private class ZigRefactoringFileListener(val oldDirPath: Path) : RefactoringElem
                 "@embedFile" -> {} // TODO
 
                 "@import" -> {
-                    val oldElement = element.argumentElements.firstOrNull()?.innerElement
+                    val oldElement = element.argumentElements.firstOrNull()?.expression
                     if (oldElement !is ZigStringLiteral) {
                         return
                     }

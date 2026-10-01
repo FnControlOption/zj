@@ -112,7 +112,7 @@ class ZigFormattingBlock(
                 }
             }
 
-            is ZigArrayAccess, is ZigArrayTypeElement -> {
+            is ZigArrayAccess, is ZigArrayTypeExpression -> {
                 var indent = Indent.getNoneIndent()
                 for (child in myNode.children()) {
                     when (child.elementType) {
@@ -225,11 +225,11 @@ class ZigFormattingBlock(
             }
 
             is ZigThenElement, is ZigElseElement -> {
-                val innerElement = when (element) {
-                    is ZigThenElement -> element.innerElement
-                    is ZigElseElement -> element.innerElement
+                val expression = when (element) {
+                    is ZigThenElement -> element.expression
+                    is ZigElseElement -> element.expression
                 }
-                val indent = when (innerElement) {
+                val indent = when (expression) {
                     is ZigBlock -> Indent.getNoneIndent()
                     else -> Indent.getNormalIndent()
                 }
@@ -239,8 +239,8 @@ class ZigFormattingBlock(
             }
 
             is ZigIf -> {
-                val shouldIndentThenComments = element.thenElement.innerElement !is ZigBlock
-                val shouldIndentElseComments = element.elseElement?.innerElement !is ZigBlock
+                val shouldIndentThenComments = element.thenElement.expression !is ZigBlock
+                val shouldIndentElseComments = element.elseElement?.expression !is ZigBlock
                 val thenBodyStart = (element.thenPayload ?: element.conditionElement).node.treeNext
                 val elseBodyStart = (element.elsePayload ?: element.elseTokenElement)?.node?.treeNext
                 var commentIndent = Indent.getNoneIndent()
@@ -295,7 +295,7 @@ class ZigFormattingBlock(
             is ZigAssignElement,
             is ZigCatch,
             is ZigBinaryExpression, is ZigFieldAccess,
-            is ZigArrayAccess, is ZigArrayTypeElement -> indent = Indent.getNormalIndent()
+            is ZigArrayAccess, is ZigArrayTypeExpression -> indent = Indent.getNormalIndent()
 
             is ZigBlock,
             is ZigContainerExpression,
