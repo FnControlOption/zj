@@ -4,9 +4,12 @@ import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.IFileElementType
+import io.github.fncontroloption.zig.ZigBuiltinFnProtoLanguage
 import io.github.fncontroloption.zig.ZigLanguage
 
 object ZigFileElementType : IFileElementType(ZigLanguage)
+
+object ZigBuiltinFnProtoFileElementType : IFileElementType(ZigBuiltinFnProtoLanguage)
 
 class ZigElementType(debugName: String) : IElementType(debugName, ZigLanguage) {
     companion object {

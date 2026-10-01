@@ -8,12 +8,6 @@ public class ZigParsingTest extends ParsingTestCase {
     super("", "zig", new ZigParserDefinition());
   }
 
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
-    project.registerService(ZigParserService.class);
-  }
-
   public void testAllKt() {
     doTest(true);
   }

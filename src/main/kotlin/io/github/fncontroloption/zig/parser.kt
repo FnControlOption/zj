@@ -1,11 +1,10 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.lang.ASTNode
+import com.intellij.lang.Language
 import com.intellij.lang.ParserDefinition
 import com.intellij.lang.PsiBuilder
 import com.intellij.lang.PsiParser
-import com.intellij.openapi.components.Service
-import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.psi.FileViewProvider
 import com.intellij.psi.TokenType
@@ -18,46 +17,49 @@ enum class ZigParserMode {
     BUILTIN_FN_PROTO,
 }
 
-@Service(Service.Level.PROJECT)
-class ZigParserService {
-    var mode = ZigParserMode.DEFAULT
-}
-
-class ZigParserDefinition : ParserDefinition {
+sealed class AbstractZigParserDefinition : ParserDefinition {
+    abstract val mode: ZigParserMode
+    abstract val language: Language
     override fun createLexer(project: Project?) = ZigLexerAdapter()
     override fun getCommentTokens() = ZigTokenSets.COMMENTS
     override fun getStringLiteralElements() = ZigTokenSets.STRINGS
-    override fun createParser(project: Project?): ZigParser {
-        val mode = project?.service<ZigParserService>()?.mode ?: ZigParserMode.DEFAULT
-        return ZigParser(mode)
-    }
-    override fun getFileNodeType() = ZigFileElementType
-    override fun createFile(viewProvider: FileViewProvider) = ZigFile(viewProvider)
+    override fun createParser(project: Project?) = ZigParser(mode)
+    override fun createFile(viewProvider: FileViewProvider) = ZigFile(viewProvider, language)
     override fun createElement(node: ASTNode) = ZigElementType.createPsiElement(node)
+}
+
+class ZigParserDefinition : AbstractZigParserDefinition() {
+    override val mode get() = ZigParserMode.DEFAULT
+    override val language get() = ZigLanguage
+    override fun getFileNodeType() = ZigFileElementType
+}
+
+class ZigBuiltinFnProtoParserDefinition : AbstractZigParserDefinition() {
+    override val mode get() = ZigParserMode.BUILTIN_FN_PROTO
+    override val language get() = ZigBuiltinFnProtoLanguage
+    override fun getFileNodeType() = ZigBuiltinFnProtoFileElementType
 }
 
 // Based on https://codeberg.org/ziglang/zig/src/commit/69a2697/lib/std/zig/Parse.zig
 /** @see com.intellij.java.syntax.parser.JavaParser */
 class ZigParser(private val mode: ZigParserMode) : PsiParser {
     private val enclosureStack = ArrayDeque<IElementType?>()
-    private val containerStack = ArrayDeque<IElementType>()
+    private val containerStack = ArrayDeque<IElementType?>()
 
     override fun parse(root: IElementType, builder: PsiBuilder): ASTNode {
         enclosureStack.clear()
         containerStack.clear()
-        when (mode) {
-            ZigParserMode.DEFAULT -> {}
-            ZigParserMode.BUILTIN_FN_PROTO -> {
-                val rootMarker = builder.mark()
-                assertBuiltinFnProto(builder)
-                rootMarker.done(root)
-                return builder.treeBuilt
-            }
-        }
-        containerStack.addLast(ZigFileElementType)
+        containerStack.addLast(null)
         val rootMarker = builder.mark()
-        parseEnclosed(builder, null) {
-            parseContainerMember(builder)
+        when (mode) {
+            ZigParserMode.DEFAULT -> {
+                parseEnclosed(builder, null) {
+                    parseContainerMember(builder)
+                }
+            }
+            ZigParserMode.BUILTIN_FN_PROTO -> {
+                assertBuiltinFnProto(builder)
+            }
         }
         rootMarker.done(root)
         containerStack.removeLast()
@@ -492,7 +494,7 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
         field.done(ZigElementType.CONTAINER_FIELD)
         if (!eatToken(builder, ZigTokenType.COMMA)) {
             val terminator = when (containerType) {
-                ZigFileElementType -> null
+                null -> null
                 else -> ZigTokenType.R_BRACE
             }
             if (builder.tokenType !== terminator) {

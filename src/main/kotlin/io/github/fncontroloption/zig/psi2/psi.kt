@@ -6,6 +6,7 @@ import com.intellij.extapi.psi.StubBasedPsiElementBase
 import com.intellij.icons.AllIcons
 import com.intellij.ide.projectView.PresentationData
 import com.intellij.lang.ASTNode
+import com.intellij.lang.Language
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Iconable
@@ -141,7 +142,10 @@ sealed interface ZigContainer : ZigElement {
     val members: Sequence<ZigContainerMember>
 }
 
-class ZigFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZigLanguage), ZigContainer, ZigReferenceable {
+class ZigFile(
+    viewProvider: FileViewProvider,
+    language: Language,
+) : PsiFileBase(viewProvider, language), ZigContainer, ZigReferenceable {
     override val containerKind: ZigContainerKind
         get() = ZigContainerKind.STRUCT
 

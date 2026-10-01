@@ -39,6 +39,8 @@
     <fileType name="Zig" implementationClass="io.github.fncontroloption.zig.ZigFileType" fieldName="INSTANCE"
               language="Zig" extensions="zig"/>
     <lang.parserDefinition language="Zig" implementationClass="io.github.fncontroloption.zig.ZigParserDefinition"/>
+    <lang.parserDefinition language="ZigBuiltinFnProto"
+                           implementationClass="io.github.fncontroloption.zig.ZigBuiltinFnProtoParserDefinition"/>
     <lang.syntaxHighlighterFactory language="Zig"
                                    implementationClass="io.github.fncontroloption.zig.syntaxHighlighter.ZigSyntaxHighlighterFactory"/>
     <highlightVisitor implementation="io.github.fncontroloption.zig.syntaxHighlighter.ZigHighlightVisitor"/>
