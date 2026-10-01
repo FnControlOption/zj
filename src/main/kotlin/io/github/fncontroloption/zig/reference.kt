@@ -595,7 +595,7 @@ internal fun getFunctionParamTypes(
     return getFunctionParamTypes(functionType.element, typeParams)
 }
 
-private fun getFunctionParamTypes(
+internal fun getFunctionParamTypes(
     functionElement: ZigFnOrBuiltinFnDeclOrProto,
     typeParams: Map<ZigFnParam, Set<ZigValue>>,
 ): Pair<List<ZigFnParam>, List<ZigValue?>> {

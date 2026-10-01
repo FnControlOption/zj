@@ -8,10 +8,12 @@ import com.intellij.psi.util.elementType
 import com.intellij.psi.util.endOffset
 import com.intellij.psi.util.siblings
 import com.intellij.psi.util.startOffset
+import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
 import io.github.fncontroloption.zig.psi2.ZigCall
+import io.github.fncontroloption.zig.psi2.ZigCallOrBuiltinCall
 import io.github.fncontroloption.zig.psi2.ZigTokenType
 
-private fun isInsideCallArgs(call: ZigCall, offset: Int): Boolean {
+private fun isInsideCallArgs(call: ZigCallOrBuiltinCall, offset: Int): Boolean {
     return call.leftParenElement.startOffset < offset && offset < call.endOffset
 }
 
@@ -21,12 +23,12 @@ data class ZigParameterInfoItem(
     val varargsRange: Pair<Int, Int>?,
 )
 
-class ZigParameterInfoHandler : ParameterInfoHandler<ZigCall, ZigParameterInfoItem> {
-    override fun findElementForParameterInfo(context: CreateParameterInfoContext): ZigCall? {
+class ZigParameterInfoHandler : ParameterInfoHandler<ZigCallOrBuiltinCall, ZigParameterInfoItem> {
+    override fun findElementForParameterInfo(context: CreateParameterInfoContext): ZigCallOrBuiltinCall? {
         var element = context.file.findElementAt(context.offset)
-        var call: ZigCall? = null
+        var call: ZigCallOrBuiltinCall? = null
         while (element != null) {
-            if (element is ZigCall && isInsideCallArgs(element, context.offset)) {
+            if (element is ZigCallOrBuiltinCall && isInsideCallArgs(element, context.offset)) {
                 call = element
                 break
             }
@@ -35,16 +37,28 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCall, ZigParameterInfoIt
         if (call == null) {
             return null
         }
-        val infoItems = computeCalledFuncAndSelfArg(call).mapNotNull { (function, selfArg) ->
-            val functionType = function.typeOf as? ZigFunctionType ?: return@mapNotNull null
-            var (params, paramTypes) = getFunctionParamTypes(functionType)
-            val hasVarargs = functionType.element.hasVarargs
-            if (selfArg != null) {
-                params = params.subList(1, params.size)
-                paramTypes = paramTypes.subList(1, paramTypes.size)
+        val candidates = when (call) {
+            is ZigCall -> computeCalledFuncAndSelfArg(call).mapNotNull { (function, selfArg) ->
+                val functionType = function.typeOf as? ZigFunctionType ?: return@mapNotNull null
+                var (params, paramTypes) = getFunctionParamTypes(functionType)
+                val hasVarargs = functionType.element.hasVarargs
+                if (selfArg != null) {
+                    params = params.subList(1, params.size)
+                    paramTypes = paramTypes.subList(1, paramTypes.size)
+                }
+                Triple(params, paramTypes, hasVarargs)
             }
+            is ZigBuiltinCall -> {
+                val name = call.builtinElement.text
+                val builtin = ZigBuiltinFunctionsService.getBuiltinFnProto(call.project, name) ?: return null
+                val (params, paramTypes) = getFunctionParamTypes(builtin, emptyMap())
+                val hasVarargs = builtin.hasVarargs
+                sequenceOf(Triple(params, paramTypes, hasVarargs))
+            }
+        }
+        val infoItems = candidates.map { (params, paramTypes, hasVarargs) ->
             if (params.isEmpty() && !hasVarargs) {
-                return@mapNotNull ZigParameterInfoItem("<no parameters>", emptyList(), null)
+                return@map ZigParameterInfoItem("<no parameters>", emptyList(), null)
             }
             val paramRanges = mutableListOf<Pair<Int, Int>>()
             var varargsRange: Pair<Int, Int>? = null
@@ -74,16 +88,16 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCall, ZigParameterInfoIt
         return call
     }
 
-    override fun showParameterInfo(element: ZigCall, context: CreateParameterInfoContext) {
+    override fun showParameterInfo(element: ZigCallOrBuiltinCall, context: CreateParameterInfoContext) {
         context.showHint(element, element.startOffset, this)
     }
 
-    override fun findElementForUpdatingParameterInfo(context: UpdateParameterInfoContext): ZigCall? {
-        val call = context.parameterOwner as? ZigCall ?: return null
+    override fun findElementForUpdatingParameterInfo(context: UpdateParameterInfoContext): ZigCallOrBuiltinCall? {
+        val call = context.parameterOwner as? ZigCallOrBuiltinCall ?: return null
         return if (isInsideCallArgs(call, context.offset)) call else null
     }
 
-    override fun updateParameterInfo(parameterOwner: ZigCall, context: UpdateParameterInfoContext) {
+    override fun updateParameterInfo(parameterOwner: ZigCallOrBuiltinCall, context: UpdateParameterInfoContext) {
         var currentParam = -1
         for (child in parameterOwner.firstChild.siblings()) {
             if (context.offset <= child.startOffset) {

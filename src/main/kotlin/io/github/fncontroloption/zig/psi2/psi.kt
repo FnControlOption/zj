@@ -400,34 +400,9 @@ class ZigBreak(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
                 .firstNotNullOfOrNull { it as? ZigExpression }
 }
 
-class ZigBuiltinCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
-    val builtinElement: PsiElement
-        get() = findNotNullChildByType(ZigTokenType.BUILTIN)
-
-    val argumentElements: Sequence<ZigCallArg>
-        get() = firstChild.siblings().filterIsInstance<ZigCallArg>()
-
-    val hasTrailingComma: Boolean
-        get() =
-            lastChild
-                .siblings(forward = false)
-                .firstOrNull { it is ZigCallArg || it.elementType === ZigTokenType.COMMA }
-                ?.elementType === ZigTokenType.COMMA
-
-    override fun getReferences(): Array<out PsiReference> {
-        return arrayOf(ZigBuiltinCallReference(this))
-    }
-}
-
-class ZigCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
-    val functionExpression: ZigExpression
-        get() =
-            firstChild
-                .siblings()
-                .firstNotNullOf { it as? ZigExpression }
-
+sealed interface ZigCallOrBuiltinCall : ZigExpression {
     val leftParenElement: PsiElement
-        get() = findNotNullChildByType(ZigTokenType.L_PAREN)
+        get() = firstChild.siblings().first { it.elementType == ZigTokenType.L_PAREN }
 
     val argumentElements: Sequence<ZigCallArg>
         get() = firstChild.siblings().filterIsInstance<ZigCallArg>()
@@ -441,6 +416,23 @@ class ZigCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
                 .siblings(forward = false)
                 .firstOrNull { it is ZigCallArg || it.elementType === ZigTokenType.COMMA }
                 ?.elementType === ZigTokenType.COMMA
+}
+
+class ZigBuiltinCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigCallOrBuiltinCall {
+    val builtinElement: PsiElement
+        get() = findNotNullChildByType(ZigTokenType.BUILTIN)
+
+    override fun getReferences(): Array<out PsiReference> {
+        return arrayOf(ZigBuiltinCallReference(this))
+    }
+}
+
+class ZigCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigCallOrBuiltinCall {
+    val functionExpression: ZigExpression
+        get() =
+            firstChild
+                .siblings()
+                .firstNotNullOf { it as? ZigExpression }
 }
 
 class ZigCallArg(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
