@@ -413,6 +413,10 @@ class ZigBuiltinCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression 
                 .siblings(forward = false)
                 .firstOrNull { it is ZigCallArg || it.elementType === ZigTokenType.COMMA }
                 ?.elementType === ZigTokenType.COMMA
+
+    override fun getReferences(): Array<out PsiReference> {
+        return arrayOf(ZigBuiltinCallReference(this))
+    }
 }
 
 class ZigCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
@@ -663,12 +667,15 @@ class ZigFieldAccess(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression 
     }
 }
 
-sealed interface ZigFnDeclOrProto : ZigElement {
+sealed interface ZigFnOrBuiltinFnDeclOrProto : ZigElement {
     val parameters: Sequence<ZigFnParam>
         get() = firstChild.siblings().filterIsInstance<ZigFnParam>()
 
     val ellipsisTokenElement: PsiElement?
         get() = firstChild.siblings().firstOrNull { it.elementType === ZigTokenType.ELLIPSIS3 }
+
+    val hasVarargs: Boolean
+        get() = ellipsisTokenElement != null
 
     val bangTokenElement: PsiElement?
         get() = lastChild.siblings(forward = false).firstOrNull { it.elementType === ZigTokenType.BANG }
@@ -676,6 +683,8 @@ sealed interface ZigFnDeclOrProto : ZigElement {
     val returnTypeElement: ZigTypeElement?
         get() = lastChild.siblings(forward = false).firstNotNullOfOrNull { it as? ZigTypeElement }
 }
+
+sealed interface ZigFnDeclOrProto : ZigFnOrBuiltinFnDeclOrProto
 
 class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigFnDeclOrProto, ZigNamedContainerDecl {
     constructor(stub: ZigFnDeclStub) : super(stub, ZigElementType.FN_DECL)
@@ -713,9 +722,15 @@ class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigFnDeclOrProto, ZigNamedCo
 
 class ZigFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnDeclOrProto, ZigExpression
 
-class ZigBuiltinFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnDeclOrProto {
+class ZigBuiltinFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnOrBuiltinFnDeclOrProto {
     val builtinElement: PsiElement
         get() = findNotNullChildByType(ZigTokenType.BUILTIN)
+
+    val anytypeTokenElement: PsiElement?
+        get() = findChildByType(ZigTokenType.KEYWORD_ANYTYPE)
+
+    val returnsAnytype: Boolean
+        get() = anytypeTokenElement != null
 }
 
 class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop {

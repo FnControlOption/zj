@@ -114,6 +114,7 @@ private fun getDefinition(element: PsiElement): String? {
     return when (element) {
         is ZigFile -> element.name.substringBeforeLast('.')
         is ZigContainerFieldImpl -> element.text
+        is ZigBuiltinFnProto -> element.text
         is ZigFnDecl -> {
             val text = element.text
             val body = element.body ?: return text

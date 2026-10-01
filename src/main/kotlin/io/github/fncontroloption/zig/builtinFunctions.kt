@@ -40,6 +40,10 @@ class ZigBuiltinFunctionsService(private val project: Project) {
     }
 
     companion object {
+        fun getAll(project: Project): Collection<ZigBuiltinFnProto> {
+            return project.service<ZigBuiltinFunctionsService>().builtinFunctions.values
+        }
+
         fun getBuiltinFnProto(project: Project, name: String): ZigBuiltinFnProto? {
             return project.service<ZigBuiltinFunctionsService>().builtinFunctions[name]
         }
@@ -49,6 +53,14 @@ class ZigBuiltinFunctionsService(private val project: Project) {
         }
     }
 }
+
+private const val BUILTIN_FN_PROTO_FILE_HEADER =
+    """const std = @import("std");
+const AtomicOrder = std.lang.AtomicOrder;
+const AtomicRmwOp = std.lang.AtomicRmwOp;
+const BranchHint = std.lang.BranchHint;
+const FloatMode = std.lang.FloatMode;
+const PrefetchOptions = std.lang.PrefetchOptions;"""
 
 private fun parseBuiltinsFromLangref(project: Project, stream: InputStream): Map<String, ZigBuiltinFnProto> {
     val document = Jsoup.parse(stream, null, "")
@@ -62,10 +74,13 @@ private fun parseBuiltinsFromLangref(project: Project, stream: InputStream): Map
 
     var element = builtinFunctionsElement.nextElementSibling()
     while (element != null && element.tagName() != builtinFunctionsTag) {
-        if (element.tagName() == "pre" && element.previousElementSibling()?.tagName() == "h3") {
-            val text = element.text()
-            val file = fileFactory.createFileFromText("dummy.zig", ZigBuiltinFnProtoLanguage, text)
-            val element = file.firstChild as ZigBuiltinFnProto
+        val previousElement = element.previousElementSibling()
+        if (element.tagName() == "pre" && previousElement?.tagName() == "h3") {
+            val fileName = "@${previousElement.id()}.zig"
+            val fileText = "${BUILTIN_FN_PROTO_FILE_HEADER}\n${element.text()}"
+            val file = fileFactory.createFileFromText(fileName, ZigBuiltinFnProtoLanguage, fileText)
+            file.viewProvider.virtualFile.isWritable = false
+            val element = file.lastChild as ZigBuiltinFnProto
             builtinMap[element.builtinElement.text] = element
         }
         element = element.nextElementSibling()

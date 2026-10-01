@@ -58,6 +58,9 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
                 }
             }
             ZigParserMode.BUILTIN_FN_PROTO -> {
+                while (parseContainerMember(builder) != null) {
+                    // no-op
+                }
                 assertBuiltinFnProto(builder)
             }
         }

@@ -33,22 +33,22 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCall, ZigParameterInfoIt
         }
         val infoItems = computeCalledFuncAndSelfArg(call).mapNotNull { (function, selfArg) ->
             val functionType = function.typeOf as? ZigFunctionType ?: return@mapNotNull null
-            var (paramNames, paramTypes) = getFunctionParamNamesAndTypes(functionType)
+            var (params, paramTypes) = getFunctionParamTypes(functionType)
             if (selfArg != null) {
-                paramNames = paramNames.subList(1, paramNames.size)
+                params = params.subList(1, params.size)
                 paramTypes = paramTypes.subList(1, paramTypes.size)
             }
-            if (paramNames.isEmpty()) {
+            if (params.isEmpty()) {
                 return@mapNotNull ZigParameterInfoItem("<no parameters>", emptyList())
             }
             val paramRanges = mutableListOf<Pair<Int, Int>>()
             val text = buildString {
-                for (i in paramNames.indices) {
+                for (i in params.indices) {
                     if (i > 0) {
                         append(", ")
                     }
                     val start = length
-                    append(getParameterText(paramNames[i], paramTypes[i]))
+                    append(getParameterText(params[i], paramTypes[i]))
                     val end = length
                     paramRanges.add(start to end)
                 }
