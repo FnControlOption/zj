@@ -15,7 +15,11 @@ private fun isInsideCallArgs(call: ZigCall, offset: Int): Boolean {
     return call.leftParenElement.startOffset < offset && offset < call.endOffset
 }
 
-data class ZigParameterInfoItem(val text: String, val paramRanges: List<Pair<Int, Int>>)
+data class ZigParameterInfoItem(
+    val text: String,
+    val paramRanges: List<Pair<Int, Int>>,
+    val varargsRange: Pair<Int, Int>?,
+)
 
 class ZigParameterInfoHandler : ParameterInfoHandler<ZigCall, ZigParameterInfoItem> {
     override fun findElementForParameterInfo(context: CreateParameterInfoContext): ZigCall? {
@@ -34,14 +38,16 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCall, ZigParameterInfoIt
         val infoItems = computeCalledFuncAndSelfArg(call).mapNotNull { (function, selfArg) ->
             val functionType = function.typeOf as? ZigFunctionType ?: return@mapNotNull null
             var (params, paramTypes) = getFunctionParamTypes(functionType)
+            val hasVarargs = functionType.element.hasVarargs
             if (selfArg != null) {
                 params = params.subList(1, params.size)
                 paramTypes = paramTypes.subList(1, paramTypes.size)
             }
-            if (params.isEmpty()) {
-                return@mapNotNull ZigParameterInfoItem("<no parameters>", emptyList())
+            if (params.isEmpty() && !hasVarargs) {
+                return@mapNotNull ZigParameterInfoItem("<no parameters>", emptyList(), null)
             }
             val paramRanges = mutableListOf<Pair<Int, Int>>()
+            var varargsRange: Pair<Int, Int>? = null
             val text = buildString {
                 for (i in params.indices) {
                     if (i > 0) {
@@ -52,8 +58,17 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCall, ZigParameterInfoIt
                     val end = length
                     paramRanges.add(start to end)
                 }
+                if (hasVarargs) {
+                    if (params.isNotEmpty()) {
+                        append(", ")
+                    }
+                    val start = length
+                    append("...")
+                    val end = length
+                    varargsRange = start to end
+                }
             }
-            ZigParameterInfoItem(text, paramRanges)
+            ZigParameterInfoItem(text, paramRanges, varargsRange)
         }
         context.itemsToShow = infoItems.toSet().toTypedArray()
         return call
@@ -87,7 +102,12 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCall, ZigParameterInfoIt
         if (p == null) {
             return
         }
-        val (highlightStart, highlightEnd) = p.paramRanges.getOrNull(context.currentParameterIndex) ?: (-1 to -1)
+        val paramIndex = context.currentParameterIndex
+        val (highlightStart, highlightEnd) = when {
+            paramIndex in p.paramRanges.indices -> p.paramRanges[paramIndex]
+            paramIndex >= p.paramRanges.size -> p.varargsRange ?: (-1 to -1)
+            else -> -1 to -1
+        }
         context.setupUIComponentPresentation(
             p.text, highlightStart, highlightEnd, false,
             false, false, context.defaultParameterColor
