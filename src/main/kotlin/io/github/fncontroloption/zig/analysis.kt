@@ -2979,6 +2979,9 @@ private fun resolvePeerValues(values: List<ZigValue>): List<ZigValue> {
 
     var sameType = true
     val firstType = values[0].typeOf
+    if (firstType == ZigTypeType) {
+        return values
+    }
     for (i in 1 until values.size) {
         if (values[i].typeOf != firstType) {
             sameType = false
