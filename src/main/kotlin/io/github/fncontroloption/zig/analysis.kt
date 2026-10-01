@@ -1411,7 +1411,7 @@ private fun computeValuesUncached(element: ZigExpression): Sequence<ZigValue> {
                 prongElement.expression?.let { resolveValues(it).asSequence() }
                     ?: sequenceOf(ZigUnknown.ofUnknownType())
             }
-            resolvePeerValues(values.toList()).asSequence().ifEmpty {sequenceOf(ZigUnknown.ofUnknownType()) }
+            resolvePeerValues(values.toList()).asSequence().ifEmpty { sequenceOf(ZigUnknown.ofUnknownType()) }
         }
 
         is ZigFor,
@@ -2972,7 +2972,7 @@ private fun getUnwrapUnionTagTypeArgument(element: ZigUnwrapOptional): ZigExpres
 // https://codeberg.org/ziglang/zig/src/branch/master/src/Sema.zig#L32687
 private fun resolvePeerValues(values: List<ZigValue>): List<ZigValue> {
     when (values.size) {
-        0 -> return listOf(ZigUnknown.of(ZigNoreturnType))
+        0 -> return emptyList()
         1 -> return values
         else -> {}
     }
