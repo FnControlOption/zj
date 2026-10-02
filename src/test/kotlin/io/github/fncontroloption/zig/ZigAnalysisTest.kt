@@ -8,6 +8,7 @@ import io.github.fncontroloption.zig.psi2.ZigContainerFieldImpl
 import io.github.fncontroloption.zig.psi2.ZigContainerKind
 import io.github.fncontroloption.zig.psi2.ZigExpression
 import io.github.fncontroloption.zig.psi2.ZigFile
+import io.github.fncontroloption.zig.psi2.ZigMutability
 import io.github.fncontroloption.zig.psi2.ZigPointerSize
 import io.github.fncontroloption.zig.psi2.ZigVarDecl
 
@@ -949,5 +950,359 @@ class ZigAnalysisTest : BasePlatformTestCase() {
     fun testPeerTypesEmptyTupleAndNoreturnArrayPointers() {
         val text = "@TypeOf(&.{}, @as(*[0]noreturn, undefined))"
         assertSize(2, resolveValues(text))
+    }
+
+    fun testPeerTypesConstPointer() {
+        val text = """
+            @TypeOf(
+                @as(*usize, undefined),
+                @as(*const usize, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.ONE, type.size)
+        assertNull(type.sentinel)
+        assertEquals(ZigMutability.CONST, type.mutability)
+        assertEquals(ZigUsizeType, type.child)
+    }
+
+    fun testPeerTypesConstCPointer() {
+        val text = """
+            @TypeOf(
+                @as([*c]usize, undefined),
+                @as([*c]const usize, undefined),
+            )
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.C, type.size)
+        assertNull(type.sentinel)
+        assertEquals(ZigMutability.CONST, type.mutability)
+        assertEquals(ZigUsizeType, type.child)
+    }
+
+    fun testMutabilityOfIdentifierVarReference() {
+        val text = """
+            blk: {
+                var foo: usize = 42;
+                break :blk &foo;
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testMutabilityOfIdentifierConstReference() {
+        val text = """
+            blk: {
+                const foo: usize = 42;
+                break :blk &foo;
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testMutabilityOfIdentifierFnReference() {
+        val text = """
+            struct {
+                fn foo() void {}
+                const bar = &foo;
+            }.bar;
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testMutabilityOfGroupedExpressionVar() {
+        val text = """
+            blk: {
+                var foo: usize = 42;
+                break :blk &(foo);
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testMutabilityOfGroupedExpressionConst() {
+        val text = """
+            blk: {
+                const foo: usize = 42;
+                break :blk &(foo);
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testMutabilityOfVarDeclAccess() {
+        val text = """
+            blk: {
+                const foo = struct {
+                    var bar: usize = 42;
+                };
+                break :blk &foo.bar;
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testMutabilityOfConstDeclAccess() {
+        val text = """
+            blk: {
+                const foo = struct {
+                    const bar: usize = 42;
+                };
+                break :blk &foo.bar;
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testMutabilityOfFnDeclAccess() {
+        val text = """
+            blk: {
+                const foo = struct {
+                    fn bar() void {}
+                };
+                break :blk &foo.bar;
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testMutabilityOfVarFieldAccess() {
+        val text = """
+            blk: {
+                const Foo = struct {
+                    bar: usize = 42,
+                };
+                var foo: Foo = .{};
+                break :blk &foo.bar;
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testMutabilityOfConstFieldAccess() {
+        val text = """
+            blk: {
+                const Foo = struct {
+                    bar: usize = 42,
+                };
+                const foo: Foo = .{};
+                break :blk &foo.bar;
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testMutabilityOfVarFieldViaBuiltin() {
+        val text = """
+            blk: {
+                const Foo = struct {
+                    bar: usize = 42,
+                };
+                var foo: Foo = .{};
+                break :blk &@field(foo, "bar");
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testMutabilityOfConstFieldViaBuiltin() {
+        val text = """
+            blk: {
+                const Foo = struct {
+                    bar: usize = 42,
+                };
+                const foo: Foo = .{};
+                break :blk &@field(foo, "bar");
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testMutabilityOfVarArrayAccess() {
+        val text = """
+            blk: {
+                var foo: [2]usize = .{ 6, 7 };
+                break :blk &foo[1];
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testMutabilityOfConstArrayAccess() {
+        val text = """
+            blk: {
+                const foo: [2]usize = .{ 6, 7 };
+                break :blk &foo[1];
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testMutabilityOfVarTupleAccess() {
+        val text = """
+            blk: {
+                var foo: struct { isize, usize } = .{ 6, 7 };
+                break :blk &foo[1];
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testMutabilityOfConstTupleAccess() {
+        val text = """
+            blk: {
+                const foo: struct { isize, usize } = .{ 6, 7 };
+                break :blk &foo[1];
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testMutabilityOfVarPointerArrayAccess() {
+        val text = """
+            blk: {
+                const foo: *[2]usize = undefined;
+                break :blk &foo[1];
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testMutabilityOfConstPointerArrayAccess() {
+        val text = """
+            blk: {
+                const foo: *const [2]usize = undefined;
+                break :blk &foo[1];
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testMutabilityOfVarPointerTupleAccess() {
+        val text = """
+            blk: {
+                const foo: *struct { isize, usize } = undefined;
+                break :blk &foo[1];
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testMutabilityOfConstPointerTupleAccess() {
+        val text = """
+            blk: {
+                const foo: *const struct { isize, usize } = undefined;
+                break :blk &foo[1];
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testMutabilityOfVarSliceAccess() {
+        val text = """
+            blk: {
+                const foo: []usize = undefined;
+                break :blk &foo[1];
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testMutabilityOfConstSliceAccess() {
+        val text = """
+            blk: {
+                const foo: []const usize = undefined;
+                break :blk &foo[1];
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testMutabilityOfUnwrapOptionalVar() {
+        val text = """
+            blk: {
+                var foo: ?usize = 42;
+                break :blk &foo.?;
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testMutabilityOfUnwrapOptionalConst() {
+        val text = """
+            blk: {
+                const foo: ?usize = 42;
+                break :blk &foo.?;
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testMutabilityOfTryVar() {
+        val text = """
+            blk: {
+                var foo: error{Foo}!usize = 42;
+                break :blk &(try foo);
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testMutabilityOfTryConst() {
+        val text = """
+            blk: {
+                const foo: error{Foo}!usize = 42;
+                break :blk &(try foo);
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testMutabilityOfVarPointerDeref() {
+        val text = """
+            blk: {
+                const foo: *usize = undefined;
+                break :blk &foo.*;
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testMutabilityOfConstPointerDeref() {
+        val text = """
+            blk: {
+                const foo: *const usize = undefined;
+                break :blk &foo.*;
+            };
+        """.trimIndent()
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.CONST, type.mutability)
     }
 }

@@ -1028,6 +1028,15 @@ class ZigPointerTypeExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigE
     val sentinelElement: ZigTypeSentinel?
         get() = findChildByClass(ZigTypeSentinel::class.java)
 
+    val constTokenElement: PsiElement?
+        get() = findChildByType(ZigTokenType.KEYWORD_CONST)
+
+    val isConst: Boolean
+        get() = constTokenElement != null
+
+    val mutability: ZigMutability
+        get() = if (isConst) ZigMutability.CONST else ZigMutability.VAR
+
     val childExpression: ZigExpression?
         get() =
             lastChild
