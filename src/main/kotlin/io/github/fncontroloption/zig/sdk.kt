@@ -12,6 +12,7 @@ import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.roots.ui.configuration.SdkPopupFactory
 import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.findDirectory
 import org.jdom.Element
 import java.io.IOException
 import java.nio.file.Path
@@ -48,7 +49,7 @@ class ZigSdkType : SdkType("ZigSdk") {
     }
 
     override fun setupSdkPaths(sdk: Sdk) {
-        val std = sdk.homeDirectory?.findFileByRelativePath("lib/std")
+        val std = sdk.homeDirectory?.findDirectory("lib/std")
         if (std == null) {
             log.error("Cannot find std directory")
             return
@@ -119,11 +120,19 @@ internal fun getZigExeOutput(sdkHome: String, vararg args: String): String? {
             log.error(zigExe.toString(), e)
             return null
         }
+        val exitCode: Int
         try {
-            process.waitFor()
+            exitCode = process.waitFor()
         } catch (e: InterruptedException) {
-            log.error(e)
+            log.error(zigExe.toString(), e)
             process.destroy()
+            return null
+        }
+        val errorOutput = process.errorStream.bufferedReader().readText()
+        if (errorOutput.isNotEmpty()) {
+            log.error(zigExe.toString(), errorOutput)
+        }
+        if (exitCode != 0) {
             return null
         }
         return process.inputStream.bufferedReader().readText()
