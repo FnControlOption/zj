@@ -674,6 +674,8 @@ sealed interface ZigFnOrBuiltinFnDeclOrProto : ZigElement {
 
     val returnTypeElement: ZigTypeElement?
         get() = lastChild.siblings(forward = false).firstNotNullOfOrNull { it as? ZigTypeElement }
+
+    val body: ZigBlock?
 }
 
 sealed interface ZigFnDeclOrProto : ZigFnOrBuiltinFnDeclOrProto
@@ -691,7 +693,7 @@ class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigFnDeclOrProto, ZigNamedCo
     val isPub: Boolean
         get() = pubTokenElement != null
 
-    val body: ZigBlock?
+    override val body: ZigBlock?
         get() = findChildByClass(ZigBlock::class.java)
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
@@ -712,7 +714,10 @@ class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigFnDeclOrProto, ZigNamedCo
     }
 }
 
-class ZigFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnDeclOrProto, ZigExpression
+class ZigFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnDeclOrProto, ZigExpression {
+    override val body: ZigBlock?
+        get() = null
+}
 
 class ZigBuiltinFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnOrBuiltinFnDeclOrProto {
     val builtinElement: PsiElement
@@ -723,6 +728,9 @@ class ZigBuiltinFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnOrBuil
 
     val returnsAnytype: Boolean
         get() = anytypeTokenElement != null
+
+    override val body: ZigBlock?
+        get() = null
 }
 
 class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop {
@@ -949,6 +957,9 @@ class ZigOrelse(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
 }
 
 class ZigFnParam(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedReferenceable {
+    val containingFunction: ZigFnOrBuiltinFnDeclOrProto
+        get() = parent as ZigFnOrBuiltinFnDeclOrProto
+
     val comptimeTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.KEYWORD_COMPTIME)
 

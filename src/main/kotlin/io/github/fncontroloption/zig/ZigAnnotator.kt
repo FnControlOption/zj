@@ -22,7 +22,7 @@ private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
         is ZigLabelDecl ->
             "label"
 
-        is ZigFnParam if !nameIdentifier.textMatches("_") ->
+        is ZigFnParam if !nameIdentifier.textMatches("_") && namedElement.containingFunction.body != null ->
             "function parameter"
 
         is ZigPayloadItem if !nameIdentifier.textMatches("_") ->
