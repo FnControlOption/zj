@@ -678,6 +678,22 @@ data class ZigArrayType(val length: ZigValue, val sentinel: ZigValue?, val child
     }
 }
 
+data class ZigVectorType(val length: ZigValue, val child: ZigValue) : ZigValue {
+    override val typeOf: ZigTypeType
+        get() = ZigTypeType
+
+    override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
+        val builder = HtmlBuilder()
+        builder.append(createStyledHtmlChunk(ZigHighlightingColors.BUILTIN, "@Vector"))
+        builder.append("(")
+        builder.append(length.toHtmlChunk(truncate))
+        builder.append(", ")
+        builder.append(child.toHtmlChunk(truncate))
+        builder.append(")")
+        return builder.toFragment()
+    }
+}
+
 data class ZigTupleType(val element: LightZigTuple) : IZigContainerType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
@@ -1021,10 +1037,12 @@ private fun computePlacesUncached(element: ZigExpression): Sequence<ZigPlace> {
             resolvePlaces(element.leftOperand).asSequence().flatMap { left ->
                 when (val typeOfLeft = left.value.typeOf) {
                     is ZigArrayType -> sequenceOf(ZigPlace(left.mutability, ZigUnknown.of(typeOfLeft.child)))
+                    is ZigVectorType -> sequenceOf(ZigPlace(left.mutability, ZigUnknown.of(typeOfLeft.child)))
                     is ZigTupleType -> computeArrayAccessOnTuple(typeOfLeft, indexElement).map { ZigPlace(left.mutability, it) }
                     is ZigPointerType -> when (typeOfLeft.size) {
                         ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
                             is ZigArrayType -> sequenceOf(ZigPlace(typeOfLeft.mutability, ZigUnknown.of(pointerChild.child)))
+                            is ZigVectorType -> sequenceOf(ZigPlace(typeOfLeft.mutability, ZigUnknown.of(pointerChild.child)))
                             is ZigTupleType -> computeArrayAccessOnTuple(pointerChild, indexElement).map { ZigPlace(typeOfLeft.mutability, it) }
                             else -> emptySequence()
                         }
@@ -1084,9 +1102,11 @@ private fun computePlacesUncached(element: ZigExpression): Sequence<ZigPlace> {
         }
 
         is ZigBuiltinCall if element.builtinElement.text == "@field" -> {
-            val argElements = element.argumentElements.toList()
-            val leftElement = argElements.getOrNull(0)?.expression ?: return emptySequence()
-            val fieldNameElement = argElements.getOrNull(1)?.expression ?: return emptySequence()
+            val arguments = element.arguments.toList()
+            if (arguments.size < 2) {
+                return emptySequence()
+            }
+            val (leftElement, fieldNameElement) = arguments
             val leftPlaces = resolvePlaces(leftElement).asSequence()
             val fieldNameValues = resolveValues(fieldNameElement).asSequence()
             computeFieldPlaces(leftPlaces, fieldNameValues)
@@ -1386,11 +1406,11 @@ private fun computeValuesUncached(element: ZigExpression): Sequence<ZigValue> {
             "@EnumLiteral" -> sequenceOf(ZigEnumLiteralType)
 
             "@FieldType" -> {
-                val argElements = element.argumentElements.toList()
-                val containerElement = argElements.getOrNull(0)?.expression
-                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
-                val fieldNameElement = argElements.getOrNull(1)?.expression
-                    ?: return sequenceOf(ZigUnknown.ofUnknownType())
+                val arguments = element.arguments.toList()
+                if (arguments.size < 2) {
+                    return sequenceOf(ZigUnknown.ofUnknownType())
+                }
+                val (containerElement, fieldNameElement) = arguments
                 val containerTypes = resolveValues(containerElement).asSequence()
                 val fieldNameValues = resolveValues(fieldNameElement).asSequence()
                 computeFieldTypeValues(containerTypes, fieldNameValues)
@@ -1431,6 +1451,17 @@ private fun computeValuesUncached(element: ZigExpression): Sequence<ZigValue> {
                     val values = argElements.flatMap { resolveValues(it) }
                     resolvePeerValues(values.toList()).asSequence().map { it.typeOf }
                 }
+            }
+
+            "@Vector" -> {
+                val arguments = element.arguments.toList()
+                if (arguments.size < 2) {
+                    return sequenceOf(ZigUnknown.ofUnknownType())
+                }
+                val (lengthExpression, childExpression) = arguments
+                val length = resolveValues(lengthExpression).singleOrNull()
+                    ?: ZigUnknown.of(ZigComptimeIntType)
+                resolveValues(childExpression).asSequence().map { ZigVectorType(length, it) }
             }
 
             else -> {
@@ -1721,6 +1752,12 @@ private fun substituteTypeParams(
                 val childTypes = substituteTypeParams(value.child, typeParams)
                 childTypes.map { ZigArrayType(length, sentinel, it) }
             }
+            is ZigVectorType -> {
+                val lengthValues = substituteTypeParams(value.length, typeParams)
+                val length = lengthValues.singleOrNull() ?: ZigUnknown.of(ZigComptimeIntType)
+                val childTypes = substituteTypeParams(value.child, typeParams)
+                childTypes.map { ZigVectorType(length, it) }
+            }
             is ZigPointerType -> {
                 val sentinelValues = value.sentinel?.let { substituteTypeParams(it, typeParams) }
                 val sentinel = sentinelValues?.singleOrNull()
@@ -1887,7 +1924,7 @@ private fun computeValuesFromReferenceUncached(target: ZigReferenceable): Sequen
 
                     is ZigArrayType -> ZigUnknown.of(typeOfInit.child)
 
-                    // TODO: destructure vector
+                    is ZigVectorType -> ZigUnknown.of(typeOfInit.child)
 
                     else -> ZigUnknown.ofUnknownType()
                 }
@@ -3096,7 +3133,7 @@ private enum class PeerResolveStrategy {
                 is ZigPointerType if ty.size == ZigPointerSize.C -> C_PTR
                 is ZigPointerType -> PTR
                 is ZigArrayType -> ARRAY
-                // TODO: vector
+                is ZigVectorType -> VECTOR
                 is ZigOptionalType -> OPTIONAL
                 is ZigErrorSetType -> ERROR_SET
                 is ZigErrorUnionType -> ERROR_UNION
