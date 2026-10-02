@@ -2905,7 +2905,7 @@ private fun computeFieldTypeValues(
     containerTypes: Sequence<ZigValue>,
     fieldNameValues: Sequence<ZigValue>,
 ): Sequence<ZigValue> {
-    return containerTypes.zip(fieldNameValues).flatMap { (container, fieldName) ->
+    return containerTypes.flatMap { container -> fieldNameValues.flatMap { fieldName ->
         if (container is IZigContainerType
             && (container.containerKind == ZigContainerKind.STRUCT
                     || container.containerKind == ZigContainerKind.UNION)
@@ -2922,20 +2922,20 @@ private fun computeFieldTypeValues(
         } else {
             sequenceOf(ZigLazyFieldType(container, fieldName))
         }
-    }
+    } }
 }
 
 private fun computeFieldPlaces(
     leftPlaces: Sequence<ZigPlace>,
     fieldNameValues: Sequence<ZigValue>,
 ): Sequence<ZigPlace> {
-    return leftPlaces.zip(fieldNameValues).flatMap { (left, fieldName) ->
+    return leftPlaces.flatMap { left -> fieldNameValues.flatMap { fieldName ->
         if (fieldName is ZigStringLiteralValue) {
             computeFieldAccess(left, fieldName)
         } else {
             sequenceOf(ZigPlace(null, ZigLazyFieldValue(left, fieldName)))
         }
-    }
+    } }
 }
 
 fun computeTagNameValues(values: Sequence<ZigValue>): Sequence<ZigValue> {
