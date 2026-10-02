@@ -26,16 +26,14 @@ class ZigFindUsagesProvider : FindUsagesProvider {
     }
 
     override fun getType(element: PsiElement): String {
-        if (element !is ZigNamedElement) {
-            return ""
-        }
-        return when (element) {
+        val namedElement = element as? ZigNamedElement ?: return ""
+        return when (namedElement) {
             is ZigContainerField -> "field"
             is ZigFnDecl -> "function"
             is ZigLabelDecl -> "label"
-            is ZigFnParam -> "parameter"
-            is ZigPayloadItem -> "payload capture"
-            is ZigVarDecl, is ZigVarProto -> when (element.mutability) {
+            is ZigFnParam -> "function parameter"
+            is ZigPayloadItem -> "capture"
+            is ZigVarDeclOrProto -> when (namedElement.mutability) {
                 ZigMutability.CONST -> "constant"
                 ZigMutability.VAR -> "variable"
             }

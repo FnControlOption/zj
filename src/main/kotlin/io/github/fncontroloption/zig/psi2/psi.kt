@@ -1242,6 +1242,8 @@ class ZigUnwrapOptional(node: ASTNode) : ASTWrapperPsiElement(node), ZigPostfixE
 enum class ZigMutability { CONST, VAR }
 
 sealed interface ZigVarDeclOrProto : ZigNamedReferenceable {
+    val isLocal: Boolean
+
     val mutabilityElement: PsiElement
         get() = firstChild.siblings().first { it.elementType in ZigTokenSets.MUT_TOKENS }
 
@@ -1263,7 +1265,7 @@ class ZigVarDecl : ZigStubPsiElement<ZigVarDeclStub>, ZigVarDeclOrProto, ZigName
     override val container: ZigContainer?
         get() = parent as? ZigContainer
 
-    val isLocal: Boolean
+    override val isLocal: Boolean
         get() = findParentInFile { it is ZigBlock || it is ZigContainer } is ZigBlock
 
     val pubTokenElement: PsiElement?
@@ -1304,6 +1306,9 @@ class ZigVarDecl : ZigStubPsiElement<ZigVarDeclStub>, ZigVarDeclOrProto, ZigName
 class ZigVarProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto {
     val containingAssignDestructure: ZigAssignDestructure
         get() = parent as ZigAssignDestructure
+
+    override val isLocal: Boolean
+        get() = true
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = parseZigIdentifier(nameIdentifier)
