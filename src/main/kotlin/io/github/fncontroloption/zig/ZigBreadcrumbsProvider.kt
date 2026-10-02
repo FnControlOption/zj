@@ -20,7 +20,7 @@ class ZigBreadcrumbsProvider : BreadcrumbsProvider {
             val varDecl = element.parent as? ZigVarDecl
             varDecl?.name ?: buildString {
                 append(element.containerKindElement.text)
-                if (element.containerTagElement != null) {
+                if (element.containerArgElement != null) {
                     append("(...)")
                 }
                 append(" {}")

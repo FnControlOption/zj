@@ -134,10 +134,10 @@ sealed interface ZigContainerField : ZigNamedContainerMember
 sealed interface ZigContainer : ZigElement {
     val containerKind: ZigContainerKind
 
-    val containerTagElement: ZigContainerTag?
+    val containerArgElement: ZigContainerArg?
 
     val isTaggedUnion: Boolean
-        get() = containerKind == ZigContainerKind.UNION && containerTagElement != null
+        get() = containerKind == ZigContainerKind.UNION && containerArgElement != null
 
     val members: Sequence<ZigContainerMember>
 }
@@ -149,7 +149,7 @@ class ZigFile(
     override val containerKind: ZigContainerKind
         get() = ZigContainerKind.STRUCT
 
-    override val containerTagElement: ZigContainerTag?
+    override val containerArgElement: ZigContainerArg?
         get() = null
 
     override val members: Sequence<ZigContainerMember>
@@ -477,6 +477,17 @@ class ZigConditionElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElemen
         get() = findChildByClass(ZigExpression::class.java)
 }
 
+class ZigContainerArg(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val enumTokenElement: PsiElement?
+        get() = findChildByType(ZigTokenType.KEYWORD_ENUM)
+
+    val isInferredEnum: Boolean
+        get() = enumTokenElement != null
+
+    val expression: ZigExpression?
+        get() = findChildByClass(ZigExpression::class.java)
+}
+
 class ZigContainerExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainer, ZigExpression {
     val containerKindElement: PsiElement
         get() = findNotNullChildByType(ZigTokenSets.CONTAINERS)
@@ -490,8 +501,8 @@ class ZigContainerExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigCon
             else -> throw IllegalStateException()
         }
 
-    override val containerTagElement: ZigContainerTag?
-        get() = findChildByClass(ZigContainerTag::class.java)
+    override val containerArgElement: ZigContainerArg?
+        get() = findChildByClass(ZigContainerArg::class.java)
 
     override val members: Sequence<ZigContainerMember>
         get() = firstChild.siblings().filterIsInstance<ZigContainerMember>()
@@ -540,16 +551,6 @@ class ZigContainerFieldImpl : ZigStubPsiElement<ZigContainerFieldStub>, ZigConta
         val location = "in ${containingFile.name}"
         return PresentationData(name, location, baseIcon, null)
     }
-}
-
-class ZigContainerTag(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-    val innerElement: ZigElement?
-        get() = findChildByClass(ZigElement::class.java)
-}
-
-class ZigContainerTagEnum(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
-    val expression: ZigExpression?
-        get() = findChildByClass(ZigExpression::class.java)
 }
 
 class ZigContinue(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
@@ -1366,7 +1367,7 @@ class LightZigTuple(
     override val containerKind: ZigContainerKind
         get() = ZigContainerKind.STRUCT
 
-    override val containerTagElement: ZigContainerTag?
+    override val containerArgElement: ZigContainerArg?
         get() = null
 
     override val members: Sequence<LightZigTupleField>

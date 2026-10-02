@@ -191,18 +191,18 @@ object ZigAnalyzer {
             return emptySequence()
         }
         return when (type) {
-            is ZigContainerType -> when (val tagElement = type.element.containerTagElement?.innerElement) {
-                is ZigExpression -> resolveValues(tagElement).asSequence()
-                is ZigContainerTagEnum -> emptySequence()
-                else -> emptySequence()
+            is ZigContainerType -> {
+                val tagElement = type.element.containerArgElement ?: return emptySequence()
+                val tagExpression = tagElement.expression ?: return emptySequence()
+                resolveValues(tagExpression).asSequence()
             }
-            is ZigInferredUnionTagType -> when (val tagElement = type.union.element.containerTagElement?.innerElement) {
-                null -> emptySequence()
-                is ZigContainerTagEnum -> when (val enumTagElement = tagElement.expression) {
-                    null -> emptySequence()
-                    else -> resolveValues(enumTagElement).asSequence()
+            is ZigInferredUnionTagType -> {
+                val tagElement = type.union.element.containerArgElement ?: return emptySequence()
+                if (tagElement.isInferredEnum) {
+                    val tagExpression = tagElement.expression ?: return emptySequence()
+                    return resolveValues(tagExpression).asSequence()
                 }
-                else -> emptySequence()
+                emptySequence()
             }
             is ZigFieldEnumType -> emptySequence()
             is ZigTupleType -> emptySequence()
@@ -216,11 +216,12 @@ object ZigAnalyzer {
         if (type.element.containerKind != ZigContainerKind.UNION) {
             return emptySequence()
         }
-        return when (val tagElement = type.element.containerTagElement?.innerElement) {
-            is ZigExpression -> resolveValues(tagElement).asSequence()
-            is ZigContainerTagEnum -> sequenceOf(ZigInferredUnionTagType(type))
-            else -> emptySequence()
+        val tagElement = type.element.containerArgElement ?: return emptySequence()
+        if (tagElement.isInferredEnum) {
+            return sequenceOf(ZigInferredUnionTagType(type))
         }
+        val tagExpression = tagElement.expression ?: return emptySequence()
+        return resolveValues(tagExpression).asSequence()
     }
 
     fun createGenericParameterValues(param: ZigFnParam): Sequence<ZigGenericParameterValue> {
@@ -1911,7 +1912,7 @@ private fun computeValuesFromReferenceUncached(target: ZigReferenceable): Sequen
                         val typeParams = findUnboundTypeParams(target.container)
                         sequenceOf(ZigUnknown.of(ZigContainerType(target.container, typeParams)))
                     }
-                    ZigContainerKind.UNION -> when ((target.container as ZigContainerExpression).containerTagElement) {
+                    ZigContainerKind.UNION -> when (target.container.containerArgElement) {
                         null -> sequenceOf(ZigUnknown.ofUnknownType())
                         else -> sequenceOf(ZigVoidValue)
                     }

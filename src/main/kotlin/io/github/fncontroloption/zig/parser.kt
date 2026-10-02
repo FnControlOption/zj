@@ -86,7 +86,7 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
             return null
         }
         containerStack.addLast(containerToken!!)
-        parseContainerDeclTag(builder)
+        parseContainerArg(builder, containerToken)
         if (expectToken(builder, ZigTokenType.L_BRACE)) {
             parseEnclosed(builder, ZigTokenType.R_BRACE) {
                 parseContainerMember(builder)
@@ -98,58 +98,38 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
         return container
     }
 
-    private fun parseContainerDeclTag(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parseContainerArg(builder: PsiBuilder, containerToken: IElementType): PsiBuilder.Marker? {
         if (builder.tokenType !== ZigTokenType.L_PAREN) {
             return null
         }
         val marker = builder.mark()
         builder.advanceLexer()
+        val isInferredEnum =
+            containerToken === ZigTokenType.KEYWORD_UNION
+                    && builder.tokenType === ZigTokenType.KEYWORD_ENUM
+        if (isInferredEnum) {
+            builder.advanceLexer()
+            if (!eatToken(builder, ZigTokenType.L_PAREN)) {
+                expectToken(builder, ZigTokenType.R_PAREN)
+                marker.done(ZigElementType.CONTAINER_ARG)
+                return marker
+            }
+        }
         var expr: PsiBuilder.Marker? = null
         parseEnclosed(builder, ZigTokenType.R_PAREN) {
             if (expr == null) {
-                when (builder.tokenType) {
-                    ZigTokenType.KEYWORD_ENUM -> {
-                        when (builder.lookAhead(1)) {
-                            ZigTokenType.L_PAREN -> {
-                                val enum = builder.mark()
-                                builder.advanceLexer()
-                                builder.advanceLexer()
-                                var enumExpr: PsiBuilder.Marker? = null
-                                parseEnclosed(builder, ZigTokenType.R_PAREN) {
-                                    if (enumExpr == null) {
-                                        enumExpr = parseExpr(builder)
-                                        enumExpr
-                                    } else {
-                                        null
-                                    }
-                                }
-                                checkExpectedExpr(builder, enumExpr)
-                                expectToken(builder, ZigTokenType.R_PAREN)
-                                enum.done(ZigElementType.CONTAINER_TAG_ENUM)
-                                expr = enum
-                            }
-
-                            ZigTokenType.R_PAREN -> {
-                                val enum = builder.mark()
-                                builder.advanceLexer()
-                                enum.done(ZigElementType.CONTAINER_TAG_ENUM)
-                                expr = enum
-                            }
-
-                            else -> expr = parseExpr(builder)
-                        }
-                    }
-
-                    else -> expr = parseExpr(builder)
-                }
+                expr = parseExpr(builder)
                 expr
             } else {
                 null
             }
         }
         checkExpectedExpr(builder, expr)
+        if (isInferredEnum) {
+            expectToken(builder, ZigTokenType.R_PAREN)
+        }
         expectToken(builder, ZigTokenType.R_PAREN)
-        marker.done(ZigElementType.CONTAINER_TAG)
+        marker.done(ZigElementType.CONTAINER_ARG)
         return marker
     }
 
