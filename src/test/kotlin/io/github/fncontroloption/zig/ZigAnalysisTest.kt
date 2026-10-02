@@ -16,7 +16,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         super.setUp()
 
         // Load builtin function prototypes
-        project.service<ZigBuiltinFunctionsService>().builtinFunctions
+        project.service<ZigBuiltinFunctionsService>().loadBuiltinFunctions()
     }
 
     fun createFile(text: String): ZigFile {

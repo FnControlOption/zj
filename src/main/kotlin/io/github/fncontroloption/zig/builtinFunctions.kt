@@ -31,7 +31,7 @@ class ZigBuiltinFunctionsService(private val project: Project) {
 
     val modificationTracker = SimpleModificationTracker()
 
-    private fun loadBuiltinFunctions() {
+    fun loadBuiltinFunctions() {
         if (cachedBuiltinFunctions == null) {
             val stream = javaClass.classLoader.getResourceAsStream("langref.html")!!
             cachedBuiltinFunctions = stream.use { parseBuiltinsFromLangref(project, it) }
