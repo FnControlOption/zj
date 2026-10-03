@@ -1,7 +1,6 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.codeInsight.documentation.DocumentationManagerProtocol
-import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.richcopy.HtmlSyntaxInfoUtil
 import com.intellij.openapi.module.ModuleUtilCore
@@ -1139,7 +1138,7 @@ private fun computeValuesUncached(element: ZigExpression): Sequence<ZigValue> {
         is ZigUnwrapOptional,
         is ZigTry,
         is ZigDeref,
-             -> resolvePlaces(element).asSequence().map { it.value }
+            -> resolvePlaces(element).asSequence().map { it.value }
 
         is ZigBuiltinCall if element.builtinElement.text == "@field"
             -> resolvePlaces(element).asSequence().map { it.value }

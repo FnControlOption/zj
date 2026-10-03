@@ -1,10 +1,6 @@
 package io.github.fncontroloption.zig
 
-import com.intellij.lang.ASTNode
-import com.intellij.lang.Language
-import com.intellij.lang.ParserDefinition
-import com.intellij.lang.PsiBuilder
-import com.intellij.lang.PsiParser
+import com.intellij.lang.*
 import com.intellij.openapi.project.Project
 import com.intellij.psi.FileViewProvider
 import com.intellij.psi.TokenType

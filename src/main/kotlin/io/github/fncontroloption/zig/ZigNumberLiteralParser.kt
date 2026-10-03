@@ -5,6 +5,7 @@ object ZigNumberLiteralParser {
     enum class Base(val radix: Int) {
         DECIMAL(10), HEX(16), BINARY(2), OCTAL(8)
     }
+
     enum class FloatBase(val radix: Int) {
         DECIMAL(10), HEX(16)
     }
