@@ -1394,8 +1394,7 @@ private fun computeValuesUncached(element: ZigExpression): Sequence<ZigValue> {
                 resolveValues(argElement).asSequence().map { value ->
                     when (val type = value.typeOf) {
                         is ZigPointerType -> {
-                            // TODO: remove const qualifier
-                            val type = ZigPointerType(type.size, type.sentinel, type.mutability, type.child)
+                            val type = ZigPointerType(type.size, type.sentinel, ZigMutability.VAR, type.child)
                             ZigUnknown.of(type)
                         }
                         else -> ZigUnknown.ofUnknownType()
