@@ -10,6 +10,7 @@ import io.github.fncontroloption.zig.psi2.*
 
 enum class ZigParserMode {
     ZIG,
+    ZON,
     BUILTIN_FN_PROTO,
 }
 
@@ -28,6 +29,12 @@ class ZigParserDefinition : AbstractZigParserDefinition() {
     override val mode get() = ZigParserMode.ZIG
     override val language get() = ZigLanguage
     override fun getFileNodeType() = ZigFileElementType
+}
+
+class ZonParserDefinition : AbstractZigParserDefinition() {
+    override val mode get() = ZigParserMode.ZON
+    override val language get() = ZonLanguage
+    override fun getFileNodeType() = ZonFileElementType
 }
 
 class ZigBuiltinFnProtoParserDefinition : AbstractZigParserDefinition() {
@@ -53,11 +60,21 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
                     parseContainerMember(builder)
                 }
             }
+            ZigParserMode.ZON -> {
+                tryExpr(builder)
+                if (!builder.eof()) {
+                    builder.mark().error("Expected EOF")
+                    while (!builder.eof()) {
+                        builder.advanceLexer()
+                    }
+                }
+            }
             ZigParserMode.BUILTIN_FN_PROTO -> {
                 while (parseContainerMember(builder) != null) {
                     // no-op
                 }
                 assertBuiltinFnProto(builder)
+                check(builder.eof())
             }
         }
         rootMarker.done(root)

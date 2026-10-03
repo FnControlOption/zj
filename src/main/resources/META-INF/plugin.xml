@@ -38,7 +38,10 @@
   <extensions defaultExtensionNs="com.intellij">
     <fileType name="ZIG" implementationClass="io.github.fncontroloption.zig.ZigFileType" fieldName="INSTANCE"
               language="ZIG" extensions="zig"/>
+    <fileType name="ZON" implementationClass="io.github.fncontroloption.zig.ZonFileType" fieldName="INSTANCE"
+              language="ZON" extensions="zon"/>
     <lang.parserDefinition language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigParserDefinition"/>
+    <lang.parserDefinition language="ZON" implementationClass="io.github.fncontroloption.zig.ZonParserDefinition"/>
     <lang.parserDefinition language="ZIG_BUILTIN_FN_PROTO"
                            implementationClass="io.github.fncontroloption.zig.ZigBuiltinFnProtoParserDefinition"/>
     <lang.syntaxHighlighterFactory language="ZIG"

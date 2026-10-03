@@ -8,3 +8,10 @@ object ZigFileType : LanguageFileType(ZigLanguage) {
     override fun getDefaultExtension() = "zig"
     override fun getIcon() = ZigIcons.ZIG
 }
+
+object ZonFileType : LanguageFileType(ZonLanguage) {
+    override fun getName() = "ZON"
+    override fun getDescription() = "ZON"
+    override fun getDefaultExtension() = "zon"
+    override fun getIcon() = ZigIcons.ZIG
+}

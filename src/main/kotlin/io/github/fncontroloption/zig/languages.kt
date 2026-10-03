@@ -10,6 +10,11 @@ object ZigLanguage : Language("ZIG") {
     private fun readResolve(): Any = this
 }
 
+object ZonLanguage : Language(ZigLanguage, "ZON") {
+    @Suppress("unused")
+    private fun readResolve(): Any = this
+}
+
 object ZigBuiltinFnProtoLanguage : Language(ZigLanguage, "ZIG_BUILTIN_FN_PROTO") {
     override fun getDisplayName() = "Zig builtin function prototype"
 
