@@ -31,7 +31,9 @@ class ZigBuiltinService(private val project: Project) {
                     getZigExeOutput(it, "build-exe", "--show-builtin")
                 }
                 if (builtinText != null) {
-                    cachedBuiltinFile = LightVirtualFile("builtin.zig", ZigLanguage, builtinText)
+                    val virtualFile = LightVirtualFile("builtin.zig", ZigLanguage, builtinText)
+                    virtualFile.isWritable = false
+                    cachedBuiltinFile = virtualFile
                 }
                 modificationTracker.incModificationCount()
             }

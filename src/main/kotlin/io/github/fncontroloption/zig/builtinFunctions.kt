@@ -1,12 +1,12 @@
 package io.github.fncontroloption.zig
 
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.util.SimpleModificationTracker
-import com.intellij.psi.PsiFileFactory
+import com.intellij.openapi.vfs.findPsiFile
+import com.intellij.testFramework.LightVirtualFile
 import io.github.fncontroloption.zig.psi2.ZigBuiltinFnProto
 import org.jsoup.Jsoup
 import java.io.InputStream
@@ -59,7 +59,6 @@ private fun parseBuiltinsFromLangref(project: Project, stream: InputStream): Map
     check(builtinFunctionsTag == "h2")
 
     val builtinMap = mutableMapOf<String, ZigBuiltinFnProto>()
-    val fileFactory = PsiFileFactory.getInstance(project)
 
     var element = builtinFunctionsElement.nextElementSibling()
     while (element != null && element.tagName() != builtinFunctionsTag) {
@@ -67,9 +66,10 @@ private fun parseBuiltinsFromLangref(project: Project, stream: InputStream): Map
         if (element.tagName() == "pre" && previousElement?.tagName() == "h3") {
             val fileName = "@${previousElement.id()}.zig"
             val fileText = "${BUILTIN_FN_PROTO_FILE_HEADER}\n${element.text()}"
-            val file = fileFactory.createFileFromText(fileName, ZigBuiltinFnProtoLanguage, fileText)
-            file.viewProvider.virtualFile.isWritable = false
-            val element = file.lastChild as ZigBuiltinFnProto
+            val virtualFile = LightVirtualFile(fileName, ZigBuiltinFnProtoLanguage, fileText)
+            virtualFile.isWritable = false
+            val psiFile = virtualFile.findPsiFile(project)!!
+            val element = psiFile.lastChild as ZigBuiltinFnProto
             builtinMap[element.builtinElement.text] = element
         }
         element = element.nextElementSibling()
