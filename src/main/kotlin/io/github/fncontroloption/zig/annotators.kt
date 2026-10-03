@@ -4,6 +4,7 @@ import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.psi.PsiElement
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import io.github.fncontroloption.zig.psi2.*
@@ -35,7 +36,10 @@ private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
 
         else -> return
     }
-    val searchScope = LocalSearchScope(namedElement.containingFile)
+    val containingFile = namedElement.containingFile
+    val localScope = LocalSearchScope(containingFile)
+    val globalScope = GlobalSearchScope.fileScope(containingFile)
+    val searchScope = localScope.union(globalScope)
     val query = ReferencesSearch.search(namedElement, searchScope)
     if (query.findFirst() == null) {
         holder.newAnnotation(HighlightSeverity.ERROR, "Unused $kind")
