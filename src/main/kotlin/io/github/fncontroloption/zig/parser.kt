@@ -9,7 +9,7 @@ import com.intellij.psi.tree.TokenSet
 import io.github.fncontroloption.zig.psi2.*
 
 enum class ZigParserMode {
-    DEFAULT,
+    ZIG,
     BUILTIN_FN_PROTO,
 }
 
@@ -25,7 +25,7 @@ sealed class AbstractZigParserDefinition : ParserDefinition {
 }
 
 class ZigParserDefinition : AbstractZigParserDefinition() {
-    override val mode get() = ZigParserMode.DEFAULT
+    override val mode get() = ZigParserMode.ZIG
     override val language get() = ZigLanguage
     override fun getFileNodeType() = ZigFileElementType
 }
@@ -48,7 +48,7 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
         containerStack.addLast(null)
         val rootMarker = builder.mark()
         when (mode) {
-            ZigParserMode.DEFAULT -> {
+            ZigParserMode.ZIG -> {
                 parseEnclosed(builder, null) {
                     parseContainerMember(builder)
                 }
