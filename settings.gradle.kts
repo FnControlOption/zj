@@ -4,13 +4,13 @@ rootProject.name = "intellij-zig"
 
 pluginManagement {
     plugins {
-        kotlin("jvm") version "2.3.21"
+        kotlin("jvm") version "2.4.20"
     }
 }
 
 plugins {
   id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
-  id("org.jetbrains.intellij.platform.settings") version "2.16.0"
+  id("org.jetbrains.intellij.platform.settings") version "2.19.0"
 }
 
 dependencyResolutionManagement {
