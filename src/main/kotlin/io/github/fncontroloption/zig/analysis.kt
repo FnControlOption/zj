@@ -264,8 +264,7 @@ object ZigAnalyzer {
 
     fun findBuiltinFile(originalElement: PsiElement): ZigFile? {
         val project = originalElement.project
-        val service = project.service<ZigBuiltinService>()
-        val virtualFile = service.builtinFile ?: return null
+        val virtualFile = ZigBuiltinService.getBuiltinFile(project) ?: return null
         val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
         return psiFile as? ZigFile
     }
@@ -1000,7 +999,8 @@ private fun resolvePlaces(element: ZigExpression): Set<ZigPlace> {
             CachedValueProvider.Result.create(
                 places,
                 PsiModificationTracker.MODIFICATION_COUNT,
-                ZigBuiltinFunctionsService.getModificationTracker(element.project)
+                ZigBuiltinService.getModificationTracker(element.project),
+                ZigBuiltinFunctionsService.getModificationTracker(element.project),
             )
         }
     } ?: emptySet()
@@ -1123,7 +1123,8 @@ private fun resolveValues(element: ZigExpression): Set<ZigValue> {
             CachedValueProvider.Result.create(
                 values,
                 PsiModificationTracker.MODIFICATION_COUNT,
-                ZigBuiltinFunctionsService.getModificationTracker(element.project)
+                ZigBuiltinService.getModificationTracker(element.project),
+                ZigBuiltinFunctionsService.getModificationTracker(element.project),
             )
         }
     } ?: emptySet()
@@ -1877,7 +1878,8 @@ private fun resolveValuesFromReferenceTo(target: ZigReferenceable): Set<ZigValue
             CachedValueProvider.Result.create(
                 values,
                 PsiModificationTracker.MODIFICATION_COUNT,
-                ZigBuiltinFunctionsService.getModificationTracker(target.project)
+                ZigBuiltinService.getModificationTracker(target.project),
+                ZigBuiltinFunctionsService.getModificationTracker(target.project),
             )
         }
     } ?: emptySet()

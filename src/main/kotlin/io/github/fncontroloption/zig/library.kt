@@ -2,7 +2,6 @@ package io.github.fncontroloption.zig
 
 import com.intellij.icons.AllIcons
 import com.intellij.navigation.ItemPresentation
-import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.AdditionalLibraryRootsProvider
 import com.intellij.openapi.roots.SyntheticLibrary
@@ -11,7 +10,7 @@ import com.intellij.openapi.vfs.VirtualFile
 class ZigLibraryRootsProvider : AdditionalLibraryRootsProvider() {
     override fun getAdditionalProjectLibraries(project: Project): Collection<SyntheticLibrary> {
         val libraries = mutableListOf<SyntheticLibrary>()
-        val builtinFile = project.service<ZigBuiltinService>().builtinFile
+        val builtinFile = ZigBuiltinService.getBuiltinFile(project)
         if (builtinFile != null) {
             libraries.add(ZigSyntheticLibrary("builtin", listOf(builtinFile), emptyList(), emptySet()))
         }

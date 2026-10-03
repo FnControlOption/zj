@@ -16,18 +16,7 @@ class ZigBuiltinFunctionsService(private val project: Project) {
     private var cachedBuiltinFunctions: Map<String, ZigBuiltinFnProto>? = null
 
     val builtinFunctions: Map<String, ZigBuiltinFnProto>
-        get() {
-            // We do an initial null check here to avoid unnecessary
-            // acquisitions of the write lock.
-            if (cachedBuiltinFunctions == null) {
-                ApplicationManager.getApplication().invokeLater {
-                    ApplicationManager.getApplication().runWriteAction {
-                        loadBuiltinFunctions()
-                    }
-                }
-            }
-            return cachedBuiltinFunctions ?: emptyMap()
-        }
+        get() = cachedBuiltinFunctions ?: emptyMap()
 
     val modificationTracker = SimpleModificationTracker()
 

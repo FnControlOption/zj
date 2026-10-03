@@ -31,6 +31,7 @@ fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
         CachedValueProvider.Result.create(
             targets.toSet(),
             PsiModificationTracker.MODIFICATION_COUNT,
+            ZigBuiltinService.getModificationTracker(element.project),
             ZigBuiltinFunctionsService.getModificationTracker(element.project),
         )
     }
