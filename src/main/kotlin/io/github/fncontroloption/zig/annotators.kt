@@ -8,11 +8,9 @@ import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import io.github.fncontroloption.zig.psi2.*
 
-class ZigAnnotator : Annotator {
+class ZigUnusedAnnotator : Annotator {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         annotateUnused(element, holder)
-        annotateInvalidUnderscoreIdentifier(element, holder)
-        annotateUndeclaredIdentifier(element, holder)
     }
 }
 
@@ -48,6 +46,12 @@ private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
     }
 }
 
+class ZigUnderscoreIdentifierAnnotator : Annotator {
+    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+        annotateInvalidUnderscoreIdentifier(element, holder)
+    }
+}
+
 private const val UNDERSCORE_IDENTIFIER_MESSAGE = """'_' used as an identifier without @"_" syntax"""
 
 private fun annotateInvalidUnderscoreIdentifier(element: PsiElement, holder: AnnotationHolder) {
@@ -60,6 +64,12 @@ private fun annotateInvalidUnderscoreIdentifier(element: PsiElement, holder: Ann
                 // TODO: .newFix().registerFix()
                 .create()
         }
+    }
+}
+
+class ZigUndeclaredIdentifierAnnotator : Annotator {
+    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+        annotateUndeclaredIdentifier(element, holder)
     }
 }
 
