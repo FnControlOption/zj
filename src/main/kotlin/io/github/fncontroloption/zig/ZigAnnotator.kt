@@ -42,7 +42,6 @@ private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
         holder.newAnnotation(HighlightSeverity.ERROR, "Unused $kind")
             .problemGroup { "UNUSED" }
             .range(nameIdentifier)
-            .needsUpdateOnTyping()
             // TODO: .newFix().registerFix()
             .create()
     }
@@ -57,7 +56,6 @@ private fun annotateInvalidUnderscoreIdentifier(element: PsiElement, holder: Ann
             holder.newAnnotation(HighlightSeverity.ERROR, UNDERSCORE_IDENTIFIER_MESSAGE)
                 // TODO: .problemGroup {}
                 .range(nameIdentifier)
-                .needsUpdateOnTyping()
                 // TODO: .newFix().registerFix()
                 .create()
         }

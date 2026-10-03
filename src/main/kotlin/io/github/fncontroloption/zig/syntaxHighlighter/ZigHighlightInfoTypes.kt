@@ -5,7 +5,7 @@ import com.intellij.codeInsight.daemon.impl.HighlightInfoType.HighlightInfoTypeI
 import com.intellij.openapi.editor.colors.TextAttributesKey
 
 private fun createSymbolTypeInfo(attributesKey: TextAttributesKey): HighlightInfoType {
-    return HighlightInfoTypeImpl(HighlightInfoType.SYMBOL_TYPE_SEVERITY, attributesKey, false)
+    return HighlightInfoTypeImpl(HighlightInfoType.SYMBOL_TYPE_SEVERITY, attributesKey)
 }
 
 object ZigHighlightInfoTypes {
