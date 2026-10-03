@@ -83,9 +83,47 @@ private fun annotateUndeclaredIdentifier(element: PsiElement, holder: Annotation
     if (isZigPrimitiveText(element.text)) return
     if (resolveReferences(element).any()) return
     val name = parseZigIdentifier(element) ?: return
-    val message = "Use of undeclared identifier '$name'"
+    val message = buildString {
+        append("Use of undeclared identifier ")
+        escapeZigString(name, this)
+    }
     holder.newAnnotation(HighlightSeverity.ERROR, message)
         // TODO: .problemGroup {}
         .range(element)
         .create()
+}
+
+class ZigDuplicateMembersAnnotator : Annotator {
+    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+        annotateDuplicateMembers(element, holder)
+    }
+}
+
+private fun annotateDuplicateMembers(element: PsiElement, holder: AnnotationHolder) {
+    if (element !is ZigContainer) return
+    val kind = when (element.containerKind) {
+        ZigContainerKind.STRUCT -> "struct"
+        ZigContainerKind.OPAQUE -> "opaque"
+        ZigContainerKind.ENUM -> "enum"
+        ZigContainerKind.UNION -> "union"
+    }
+    val namedMembers = element.members.filterIsInstance<ZigNamedContainerMember>()
+    val nameIdentifierMap = namedMembers.groupBy { it.name }
+    for ((name, identifiers) in nameIdentifierMap) {
+        assert(identifiers.isNotEmpty())
+        if (name == null) continue
+        if (identifiers.size == 1) continue
+        val message = buildString {
+            append("Duplicate ")
+            append(kind)
+            append(" member name ")
+            escapeZigString(name, this)
+        }
+        for (identifier in identifiers) {
+            holder.newAnnotation(HighlightSeverity.ERROR, message)
+                // TODO: .problemGroup {}
+                .range(identifier)
+                .create()
+        }
+    }
 }
