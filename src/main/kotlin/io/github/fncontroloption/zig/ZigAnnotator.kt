@@ -12,6 +12,7 @@ class ZigAnnotator : Annotator {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         annotateUnused(element, holder)
         annotateInvalidUnderscoreIdentifier(element, holder)
+        annotateUndeclaredIdentifier(element, holder)
     }
 }
 
@@ -60,4 +61,17 @@ private fun annotateInvalidUnderscoreIdentifier(element: PsiElement, holder: Ann
                 .create()
         }
     }
+}
+
+private fun annotateUndeclaredIdentifier(element: PsiElement, holder: AnnotationHolder) {
+    if (element !is ZigIdentifier) return
+    if (element.textMatches("_")) return
+    if (isZigPrimitiveText(element.text)) return
+    if (resolveReferences(element).any()) return
+    val name = parseZigIdentifier(element) ?: return
+    val message = "Use of undeclared identifier '$name'"
+    holder.newAnnotation(HighlightSeverity.ERROR, message)
+        // TODO: .problemGroup {}
+        .range(element)
+        .create()
 }

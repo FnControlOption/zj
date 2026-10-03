@@ -551,6 +551,9 @@ private fun identifierReferenceCandidates(element: PsiElement): Sequence<ZigName
                 }
                 return@generateSequence candidate
             }
+            if (element is PsiFile) {
+                break
+            }
             val child = element!!
             val parent = child.parent
             if (parent == null) {
