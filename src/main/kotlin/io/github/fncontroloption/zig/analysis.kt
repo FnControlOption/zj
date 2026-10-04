@@ -166,7 +166,7 @@ object ZigAnalyzer {
 
                 ZigPointerSize.SLICE -> when (name) {
                     "len" -> ZigPlace(mutability, ZigUnknown.of(ZigUsizeType))
-                    "ptr" -> ZigPlace(mutability, ZigUnknown.of(ZigPointerType(ZigPointerSize.MANY, type.sentinel, type.mutability, type.child)))
+                    "ptr" -> ZigPlace(mutability, ZigUnknown.of(type.with(size = ZigPointerSize.MANY)))
                     else -> null
                 }
             }
@@ -628,6 +628,13 @@ data class ZigPointerType(
     val mutability: ZigMutability?,
     val child: ZigValue,
 ) : ZigValue {
+    fun with(
+        size: ZigPointerSize = this.size,
+        sentinel: ZigValue? = this.sentinel,
+        mutability: ZigMutability? = this.mutability,
+        child: ZigValue = this.child,
+    ) = ZigPointerType(size, sentinel, mutability, child)
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
@@ -1377,10 +1384,7 @@ private fun computeValuesUncached(element: ZigExpression): Sequence<ZigValue> {
                     ?: return sequenceOf(ZigUnknown.ofUnknownType())
                 resolveValues(argElement).asSequence().map { value ->
                     when (val type = value.typeOf) {
-                        is ZigPointerType -> {
-                            val type = ZigPointerType(type.size, type.sentinel, ZigMutability.VAR, type.child)
-                            ZigUnknown.of(type)
-                        }
+                        is ZigPointerType -> ZigUnknown.of(type.with(mutability = ZigMutability.VAR))
                         else -> ZigUnknown.ofUnknownType()
                     }
                 }
@@ -1749,7 +1753,7 @@ private fun substituteTypeParams(
                 val sentinelValues = value.sentinel?.let { substituteTypeParams(it, typeParams) }
                 val sentinel = sentinelValues?.singleOrNull()
                 val childTypes = substituteTypeParams(value.child, typeParams)
-                childTypes.map { ZigPointerType(value.size, sentinel, value.mutability, it) }
+                childTypes.map { value.with(sentinel = sentinel, child = it) }
             }
             is ZigTupleType -> {
                 val fields = value.fields.map { field ->
@@ -3284,7 +3288,7 @@ private fun resolvePeerTypesInner(
                     else -> return null
                 }
                 if (ptrTy == null) {
-                    ptrTy = ZigPointerType(ZigPointerSize.C, null, peerTy.mutability, peerTy.child)
+                    ptrTy = peerTy.with(size = ZigPointerSize.C, sentinel = null)
                     continue
                 }
                 val ptrChild = ptrTy.child
