@@ -108,8 +108,11 @@ private fun annotateDuplicateMembers(element: PsiElement, holder: AnnotationHold
         ZigContainerKind.ENUM -> "enum"
         ZigContainerKind.UNION -> "union"
     }
-    val namedMembers = element.members.filterIsInstance<ZigNamedContainerMember>()
-    val nameIdentifierMap = namedMembers.groupBy { it.name }
+    val nameIdentifierMap =
+        element.members
+            .filterIsInstance<ZigNamedContainerMember>()
+            .mapNotNull { it.nameIdentifier }
+            .groupBy { parseZigIdentifier(it) }
     for ((name, identifiers) in nameIdentifierMap) {
         assert(identifiers.isNotEmpty())
         if (name == null) continue
