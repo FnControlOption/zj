@@ -1032,24 +1032,8 @@ private fun computePlacesUncached(element: ZigExpression): Sequence<ZigPlace> {
         }
 
         is ZigArrayAccess -> {
-            val indexElement = element.indexElement?.expression
-            resolvePlaces(element.leftOperand).asSequence().flatMap { left ->
-                when (val typeOfLeft = left.value.typeOf) {
-                    is ZigArrayType -> sequenceOf(ZigPlace(left.mutability, ZigUnknown.of(typeOfLeft.child)))
-                    is ZigVectorType -> sequenceOf(ZigPlace(left.mutability, ZigUnknown.of(typeOfLeft.child)))
-                    is ZigTupleType -> computeArrayAccessOnTuple(typeOfLeft, indexElement).map { ZigPlace(left.mutability, it) }
-                    is ZigPointerType -> when (typeOfLeft.size) {
-                        ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
-                            is ZigArrayType -> sequenceOf(ZigPlace(typeOfLeft.mutability, ZigUnknown.of(pointerChild.child)))
-                            is ZigVectorType -> sequenceOf(ZigPlace(typeOfLeft.mutability, ZigUnknown.of(pointerChild.child)))
-                            is ZigTupleType -> computeArrayAccessOnTuple(pointerChild, indexElement).map { ZigPlace(typeOfLeft.mutability, it) }
-                            else -> emptySequence()
-                        }
-                        else -> sequenceOf(ZigPlace(typeOfLeft.mutability, ZigUnknown.of(typeOfLeft.child)))
-                    }
-                    else -> emptySequence()
-                }
-            }
+            val indexExpression = element.indexElement?.expression
+            resolvePlaces(element.leftOperand).asSequence().flatMap { computeArrayAccess(it, indexExpression) }
         }
 
         is ZigGroupedExpression -> {
@@ -1625,15 +1609,19 @@ private fun computeFieldAccess(
     }
 }
 
-private fun computeArrayAccessOnTuple(type: ZigTupleType, indexElement: ZigExpression?): Sequence<ZigValue> {
-    if (indexElement == null) {
+private fun computeArrayAccessOnTuple(
+    mutability: ZigMutability?,
+    type: ZigTupleType,
+    indexExpression: ZigExpression?,
+): Sequence<ZigPlace> {
+    if (indexExpression == null) {
         return emptySequence()
     }
-    return resolveValues(indexElement)
+    return resolveValues(indexExpression)
         .asSequence()
         .filterIsInstance<ZigIntValue>()
         .mapNotNull { type.fields.getOrNull(it.value) }
-        .map { ZigUnknown.of(it) }
+        .map { ZigPlace(mutability, ZigUnknown.of(it)) }
 }
 
 private fun findUnboundTypeParams(element: ZigElement): Map<ZigFnParam, Set<ZigValue>> {
@@ -2996,6 +2984,24 @@ private fun getUnwrapUnionTagTypeArgument(element: ZigUnwrapOptional): ZigExpres
     if (child !is ZigBuiltinCall) return null
     if (!child.builtinElement.textMatches("@typeInfo")) return null
     return child.argumentElements.firstOrNull()?.expression
+}
+
+private fun computeArrayAccess(left: ZigPlace, indexExpression: ZigExpression?): Sequence<ZigPlace> {
+    return when (val typeOfLeft = left.value.typeOf) {
+        is ZigArrayType -> sequenceOf(ZigPlace(left.mutability, ZigUnknown.of(typeOfLeft.child)))
+        is ZigVectorType -> sequenceOf(ZigPlace(left.mutability, ZigUnknown.of(typeOfLeft.child)))
+        is ZigTupleType -> computeArrayAccessOnTuple(left.mutability, typeOfLeft, indexExpression)
+        is ZigPointerType -> when (typeOfLeft.size) {
+            ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
+                is ZigArrayType -> sequenceOf(ZigPlace(typeOfLeft.mutability, ZigUnknown.of(pointerChild.child)))
+                is ZigVectorType -> sequenceOf(ZigPlace(typeOfLeft.mutability, ZigUnknown.of(pointerChild.child)))
+                is ZigTupleType -> computeArrayAccessOnTuple(typeOfLeft.mutability, pointerChild, indexExpression)
+                else -> emptySequence()
+            }
+            else -> sequenceOf(ZigPlace(typeOfLeft.mutability, ZigUnknown.of(typeOfLeft.child)))
+        }
+        else -> emptySequence()
+    }
 }
 
 // Based on Sema.resolvePeerTypes
