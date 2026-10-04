@@ -1600,15 +1600,16 @@ private fun computeFieldAccess(
         }
         is IZigContainerType -> computeContainerTypeDeclAccess(leftValue, fieldName)
         else -> when (val typeOfLeft = leftValue.typeOf) {
-            is IZigContainerType ->  computeContainerInstanceFieldAccess(left.mutability, typeOfLeft, fieldName)
+            is IZigContainerType -> computeContainerInstanceFieldAccess(left.mutability, typeOfLeft, fieldName)
             is ZigPointerType -> when (typeOfLeft.size) {
                 ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
-                    is IZigContainerType ->  computeContainerInstanceFieldAccess(typeOfLeft.mutability, pointerChild, fieldName)
-                    else ->  sequenceOf(ZigPlace(null, ZigLazyFieldValue(left, fieldName)))
+                    is IZigContainerType ->
+                        computeContainerInstanceFieldAccess(typeOfLeft.mutability, pointerChild, fieldName)
+                    else -> sequenceOf(ZigPlace(null, ZigLazyFieldValue(left, fieldName)))
                 }
-                else ->  emptySequence()
+                else -> emptySequence()
             }
-            else ->  sequenceOf(ZigPlace(null, ZigLazyFieldValue(left, fieldName)))
+            else -> sequenceOf(ZigPlace(null, ZigLazyFieldValue(left, fieldName)))
         }
     }
 }
@@ -1680,7 +1681,21 @@ private fun substituteContainerTypeParams(
     return if (type.typeParams.isEmpty()) {
         type
     } else {
-        // TODO: should we only update already-existing parameters?
+        // NOTE:
+        //
+        // We must also include generic parameters from earlier function calls.
+        //
+        // For example, suppose `Foo(comptime X: type)` calls `Bar(comptime Y: type)`
+        // like so: `Bar(X)`.
+        //
+        // Given `Foo(u8)`, the process of resolving `Y` is as follows:
+        //
+        // 1. Since `Y` is a comptime param, we use `ZigContainerType.typeParams`
+        //    to get its value, which is `X`.
+        // 2. Since `X` is a comptime param, we use `ZigContainerType.typeParams`
+        //    to get its value, which is `u8`.
+        // 3. Since `u8` is a primitive type, we are done.
+        //
         ZigContainerType(type.element, type.typeParams + typeParams)
     }
 }
@@ -1692,7 +1707,6 @@ private fun substituteFunctionTypeParams(
     return if (type.typeParams.isEmpty()) {
         type
     } else {
-        // TODO: should we only update already-existing parameters?
         ZigFunctionType(type.element, type.typeParams + typeParams)
     }
 }
@@ -2933,8 +2947,8 @@ private fun computePayloadItemPlaces(payloadItem: ZigPayloadItem): Sequence<ZigP
 private fun computeFieldTypeValues(
     containerTypes: Sequence<ZigValue>,
     fieldNameValues: Sequence<ZigValue>,
-): Sequence<ZigValue> {
-    return containerTypes.flatMap { container -> fieldNameValues.flatMap { fieldName ->
+): Sequence<ZigValue> = containerTypes.flatMap { container ->
+    fieldNameValues.flatMap { fieldName ->
         if (container is IZigContainerType
             && (container.containerKind == ZigContainerKind.STRUCT
                     || container.containerKind == ZigContainerKind.UNION)
@@ -2951,20 +2965,20 @@ private fun computeFieldTypeValues(
         } else {
             sequenceOf(ZigLazyFieldType(container, fieldName))
         }
-    } }
+    }
 }
 
 private fun computeFieldPlaces(
     leftPlaces: Sequence<ZigPlace>,
     fieldNameValues: Sequence<ZigValue>,
-): Sequence<ZigPlace> {
-    return leftPlaces.flatMap { left -> fieldNameValues.flatMap { fieldName ->
+): Sequence<ZigPlace> = leftPlaces.flatMap { left ->
+    fieldNameValues.flatMap { fieldName ->
         if (fieldName is ZigStringLiteralValue) {
             computeFieldAccess(left, fieldName)
         } else {
             sequenceOf(ZigPlace(null, ZigLazyFieldValue(left, fieldName)))
         }
-    } }
+    }
 }
 
 fun computeTagNameValues(values: Sequence<ZigValue>): Sequence<ZigValue> {
@@ -3009,7 +3023,7 @@ private fun computeArrayAccess(left: ZigPlace, indexExpression: ZigExpression?):
 }
 
 // Based on Sema.resolvePeerTypes
-// https://codeberg.org/ziglang/zig/src/branch/master/src/Sema.zig#L32687
+// https://codeberg.org/ziglang/zig/src/commit/00b59eb/src/Sema.zig#L32687
 private fun resolvePeerValues(values: List<ZigValue>): List<ZigValue> {
     when (values.size) {
         0 -> return emptyList()

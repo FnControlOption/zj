@@ -9,12 +9,7 @@ import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.elementType
 import com.intellij.util.Processor
-import com.intellij.util.indexing.DataIndexer
-import com.intellij.util.indexing.DefaultFileTypeSpecificInputFilter
-import com.intellij.util.indexing.FileBasedIndex
-import com.intellij.util.indexing.FileContent
-import com.intellij.util.indexing.ID
-import com.intellij.util.indexing.ScalarIndexExtension
+import com.intellij.util.indexing.*
 import com.intellij.util.io.EnumeratorStringDescriptor
 import io.github.fncontroloption.zig.psi2.ZigNamedElement
 import io.github.fncontroloption.zig.psi2.ZigTokenType
