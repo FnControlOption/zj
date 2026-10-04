@@ -7,6 +7,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.psi.util.siblings
 import io.github.fncontroloption.zig.psi2.*
 
 class ZigUnusedAnnotator : Annotator {
@@ -125,5 +126,56 @@ private fun annotateDuplicateMembers(element: PsiElement, holder: AnnotationHold
                 .range(identifier)
                 .create()
         }
+    }
+}
+
+class ZigRedeclarationsAnnotator : Annotator {
+    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+        annotateRedeclarations(element, holder)
+    }
+}
+
+private fun annotateRedeclarations(element: PsiElement, holder: AnnotationHolder) {
+    val decls = when (element) {
+        is ZigFnOrBuiltinFnDeclOrProto -> element.parameters
+        is ZigBlock -> element.firstChild.siblings().flatMap { statement ->
+            when (statement) {
+                is ZigVarDecl -> sequenceOf(statement)
+                is ZigAssignDestructure -> statement.variables.filterIsInstance<ZigVarProto>()
+                else -> emptySequence()
+            }
+        }
+        is ZigFor -> element.payload?.items ?: return
+        is ZigSwitchProng -> element.payload?.items ?: return
+        else -> return
+    }
+    val nameToKind = mutableMapOf<String, String>()
+    for (decl in decls) {
+        val nameIdentifier = decl.nameIdentifier ?: continue
+        if (nameIdentifier.textMatches("_")) continue
+        val name = parseZigIdentifier(nameIdentifier) ?: continue
+        val kind = nameToKind[name]
+        if (kind == null) {
+            nameToKind[name] = when (decl) {
+                is ZigFnParam -> "function parameter"
+                is ZigVarDeclOrProto -> when (decl.mutability) {
+                    ZigMutability.CONST -> "local constant"
+                    ZigMutability.VAR -> "local variable"
+                }
+                is ZigPayloadItem -> "capture"
+                else -> throw IllegalStateException()
+            }
+            continue
+        }
+        val message = buildString {
+            append("Redeclaration of ")
+            append(kind)
+            append(" ")
+            escapeZigString(name, this)
+        }
+        holder.newAnnotation(HighlightSeverity.ERROR, message)
+            // TODO: .problemGroup {}
+            .range(nameIdentifier)
+            .create()
     }
 }
