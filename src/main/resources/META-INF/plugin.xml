@@ -89,6 +89,8 @@
     <additionalLibraryRootsProvider implementation="io.github.fncontroloption.zig.ZigLibraryRootsProvider"/>
     <postStartupActivity implementation="io.github.fncontroloption.zig.ZigProjectActivity"/>
     <lang.namesValidator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigNamesValidator"/>
+    <fileBasedIndex implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierIndex"/>
+    <referencesSearch implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierReferencesSearch"/>
     <!--
     <fileType name="Simple File" implementationClass="org.intellij.sdk.language.SimpleFileType" fieldName="INSTANCE"
               language="Simple" extensions="simple"/>
