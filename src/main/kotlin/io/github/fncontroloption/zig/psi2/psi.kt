@@ -539,7 +539,10 @@ class ZigContainerFieldImpl : ZigStubPsiElement<ZigContainerFieldStub>, ZigConta
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = parseZigIdentifier(nameIdentifier)
-    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
+    override fun setName(name: String) = when (container.containerKind) {
+        ZigContainerKind.ENUM -> replaceZigIdentifierElement(this, nameIdentifier, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE_EXCEPT_UNDERSCORE)
+        else -> replaceZigIdentifierElement(this, nameIdentifier, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
+    }
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
     override fun isVisibilitySupported() = false
@@ -699,7 +702,7 @@ class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigFnDeclOrProto, ZigNamedCo
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = parseZigIdentifier(nameIdentifier)
-    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
+    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
     override fun isVisibilitySupported() = true
@@ -855,7 +858,7 @@ class ZigLabelDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedElement 
 
     override fun getNameIdentifier() = identifierElement
     override fun getName() = parseZigIdentifier(identifierElement)
-    override fun setName(name: String) = replaceZigIdentifierElement(this, identifierElement, name)
+    override fun setName(name: String) = replaceZigIdentifierElement(this, identifierElement, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
     override fun getTextOffset() = identifierElement.textOffset
 }
 
@@ -978,7 +981,7 @@ class ZigFnParam(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedReferencea
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = parseZigIdentifier(nameIdentifier)
-    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
+    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
     override fun isVisibilitySupported() = false
@@ -998,7 +1001,7 @@ class ZigPayloadItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigNamedRefere
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = parseZigIdentifier(nameIdentifier)
-    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
+    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
@@ -1306,7 +1309,7 @@ class ZigVarDecl : ZigStubPsiElement<ZigVarDeclStub>, ZigVarDeclOrProto, ZigName
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = parseZigIdentifier(nameIdentifier)
-    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
+    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
     override fun isVisibilitySupported() = true
@@ -1333,7 +1336,7 @@ class ZigVarProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto
 
     override fun getNameIdentifier() = findChildByType<PsiElement?>(ZigTokenType.IDENTIFIER)
     override fun getName() = parseZigIdentifier(nameIdentifier)
-    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name)
+    override fun setName(name: String) = replaceZigIdentifierElement(this, nameIdentifier, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 }
 
@@ -1396,25 +1399,29 @@ fun createZigFile(project: Project, text: String): ZigFile {
     return file as ZigFile
 }
 
-fun createZigIdentifier(project: Project, name: String): ZigIdentifier {
-    val text = "const dummy = $name;" // TODO: escape identifier
+fun createZigIdentifier(project: Project, name: String, quote: ZigIdQuoteBehavior): ZigIdentifier {
+    val text = buildString {
+        append("const dummy = ")
+        renderZigIdentifier(name, quote, this)
+        append(';')
+    }
     val file = createZigFile(project, text)
     val varDecl = file.members.first() as ZigVarDecl
     return varDecl.initializer as ZigIdentifier
 }
 
-fun createZigIdentifierElement(project: Project, name: String): PsiElement {
-    val identifier = createZigIdentifier(project, name)
+fun createZigIdentifierElement(project: Project, name: String, quote: ZigIdQuoteBehavior): PsiElement {
+    val identifier = createZigIdentifier(project, name, quote)
     val element = identifier.identifierElement
     assert(element.elementType == ZigTokenType.IDENTIFIER)
     return element
 }
 
-fun replaceZigIdentifierElement(parent: PsiElement, oldElement: PsiElement?, newName: String): PsiElement {
+fun replaceZigIdentifierElement(parent: PsiElement, oldElement: PsiElement?, newName: String, quote: ZigIdQuoteBehavior): PsiElement {
     if (oldElement == null) {
         throw IncorrectOperationException()
     }
-    val newElement = createZigIdentifierElement(parent.project, newName)
+    val newElement = createZigIdentifierElement(parent.project, newName, quote)
     oldElement.replace(newElement)
     return parent
 }
@@ -1487,6 +1494,7 @@ fun escapeZigIdentifier(chars: CharSequence, builder: StringBuilder) {
 
 enum class ZigIdQuoteBehavior {
     EAGERLY_UNQUOTE,
+    EAGERLY_UNQUOTE_EXCEPT_UNDERSCORE,
     PRESERVE_WHEN_SHADOWING,
 }
 
@@ -1509,6 +1517,7 @@ fun renderZigIdentifier(chars: CharSequence, quote: ZigIdQuoteBehavior, builder:
                 builder.append(chars)
                 return
             }
+            ZigIdQuoteBehavior.EAGERLY_UNQUOTE_EXCEPT_UNDERSCORE,
             ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING -> {
                 escapeZigIdentifier(chars, builder)
                 return
@@ -1521,7 +1530,8 @@ fun renderZigIdentifier(chars: CharSequence, quote: ZigIdQuoteBehavior, builder:
     }
     if (isZigPrimitiveText(chars)) {
         when (quote) {
-            ZigIdQuoteBehavior.EAGERLY_UNQUOTE -> {
+            ZigIdQuoteBehavior.EAGERLY_UNQUOTE,
+            ZigIdQuoteBehavior.EAGERLY_UNQUOTE_EXCEPT_UNDERSCORE -> {
                 builder.append(chars)
                 return
             }
@@ -1534,7 +1544,7 @@ fun renderZigIdentifier(chars: CharSequence, quote: ZigIdQuoteBehavior, builder:
     builder.append(chars)
 }
 
-private val KEYWORDS = setOf(
+internal val KEYWORDS = setOf(
     "addrspace",
     "align",
     "allowzero",

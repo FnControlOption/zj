@@ -88,6 +88,7 @@
     <codeInsight.typeInfo language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigExpressionTypeProvider"/>
     <additionalLibraryRootsProvider implementation="io.github.fncontroloption.zig.ZigLibraryRootsProvider"/>
     <postStartupActivity implementation="io.github.fncontroloption.zig.ZigProjectActivity"/>
+    <lang.namesValidator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigNamesValidator"/>
     <!--
     <fileType name="Simple File" implementationClass="org.intellij.sdk.language.SimpleFileType" fieldName="INSTANCE"
               language="Simple" extensions="simple"/>

@@ -48,7 +48,7 @@ class ZigIdentifierReference(element: ZigIdentifier) :
     }
 
     override fun handleElementRename(newElementName: String) =
-        replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
+        replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
 
     override fun getVariants(): Array<out LookupElement> {
         val variants = mutableSetOf<LookupElement>()
@@ -99,7 +99,7 @@ class ZigTestReference(element: ZigTestDecl, val nameElement: PsiElement) :
     }
 
     override fun handleElementRename(newElementName: String) =
-        replaceZigIdentifierElement(myElement, myElement.nameElement, newElementName)
+        replaceZigIdentifierElement(myElement, myElement.nameElement, newElementName, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
 
     override fun getVariants(): Array<out LookupElement> {
         val variants = mutableSetOf<LookupElement>()
@@ -149,7 +149,7 @@ class ZigLabelReference(element: ZigLabelRef) :
     }
 
     override fun handleElementRename(newElementName: String) =
-        replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
+        replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
 
     override fun getVariants(): Array<out LookupElement> {
         val variants = mutableSetOf<LookupElement>()
@@ -240,7 +240,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
     }
 
     override fun handleElementRename(newElementName: String) =
-        replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
+        replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
 
     override fun getVariants(): Array<out LookupElement> {
         val leftValues = ZigAnalyzer.resolveValues(myElement.leftOperand)
@@ -392,7 +392,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
     }
 
     override fun handleElementRename(newElementName: String) =
-        replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
+        replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
 
     override fun getVariants(): Array<out LookupElement> {
         val parentElement = myElement.parent
@@ -500,7 +500,7 @@ class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElem
     }
 
     override fun handleElementRename(newElementName: String) =
-        replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName)
+        replaceZigIdentifierElement(myElement, myElement.identifierElement, newElementName, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
 
     override fun getVariants(): Array<out LookupElement> {
         val types = ZigAnalyzer.resolveOrInferStructInitTypes(myElement.containingListInit)
