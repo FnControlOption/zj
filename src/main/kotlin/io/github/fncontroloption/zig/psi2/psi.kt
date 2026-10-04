@@ -1115,7 +1115,7 @@ class ZigStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpressio
         val callArg = parent as? ZigCallArg ?: return emptyArray()
         val builtinCall = callArg.containingBuiltinCall ?: return emptyArray()
         return when (builtinCall.builtinElement.text) {
-            "@embedFile" -> emptyArray() // TODO
+            "@embedFile" -> arrayOf(ZigEmbedFileReference(this))
             "@import" -> arrayOf(ZigImportReference(this))
             else -> emptyArray()
         }

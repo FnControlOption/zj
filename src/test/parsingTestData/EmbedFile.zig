@@ -1,0 +1,1 @@
+const bytes = @embedFile("EmbedFile");

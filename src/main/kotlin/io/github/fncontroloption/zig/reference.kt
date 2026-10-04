@@ -168,18 +168,15 @@ class ZigLabelReference(element: ZigLabelRef) :
     }
 }
 
-class ZigImportReference(element: ZigStringLiteral) :
+sealed class ZigFileReference(element: ZigStringLiteral) :
     PsiReferenceBase<ZigStringLiteral>(element, TextRange(1, element.textLength - 1), true) {
 
     override fun resolve(): PsiElement? {
         val text = myElement?.value ?: return null
-        if (!text.endsWith(".zig") && !text.endsWith(".zon")) {
-            return when (text) {
-                "std" -> ZigAnalyzer.findStdFile(myElement, "std.zig")
-                "builtin" -> ZigAnalyzer.findBuiltinFile(myElement)
-                else -> null // TODO: resolve imported modules
-            }
-        }
+        return resolve(text)
+    }
+
+    protected open fun resolve(text: String): PsiElement? {
         val parts = text.split("/")
         val fileName = parts.lastOrNull() ?: return null
         var directory = myElement.containingFile?.originalFile?.containingDirectory ?: return null
@@ -218,6 +215,23 @@ class ZigImportReference(element: ZigStringLiteral) :
         val newValue = nioPathToUnixString(relativePath)
         myElement.replace(createZigStringLiteral(myElement.project, newValue))
         return element
+    }
+
+
+}
+
+class ZigEmbedFileReference(element: ZigStringLiteral) : ZigFileReference(element)
+
+class ZigImportReference(element: ZigStringLiteral) : ZigFileReference(element) {
+    override fun resolve(text: String): PsiElement? {
+        if (text.endsWith(".zig") || text.endsWith(".zon")) {
+            return super.resolve(text)
+        }
+        return when (text) {
+            "std" -> ZigAnalyzer.findStdFile(myElement, "std.zig")
+            "builtin" -> ZigAnalyzer.findBuiltinFile(myElement)
+            else -> null // TODO: resolve imported modules
+        }
     }
 }
 

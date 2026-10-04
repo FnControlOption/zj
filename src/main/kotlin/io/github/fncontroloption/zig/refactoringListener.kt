@@ -52,16 +52,20 @@ private class ZigRefactoringFileListener(val oldDirPath: Path) : RefactoringElem
         }
 
         fun process(element: ZigBuiltinCall) {
-            when (element.builtinElement.text) {
-                "@embedFile" -> {} // TODO
-
+            when (val builtinName = element.builtinElement.text) {
+                "@embedFile",
                 "@import" -> {
                     val oldElement = element.argumentElements.firstOrNull()?.expression
                     if (oldElement !is ZigStringLiteral) {
                         return
                     }
                     val oldValue = oldElement.value ?: return
-                    if (!oldValue.endsWith(".zig") && !oldValue.endsWith(".zon")) {
+                    val isRelativePath = when (builtinName) {
+                        "@embedFile" -> true // TODO: according to langref, this can be an absolute path
+                        "@import" -> oldValue.endsWith(".zig") || oldValue.endsWith(".zon")
+                        else -> throw IllegalStateException()
+                    }
+                    if (!isRelativePath) {
                         return
                     }
                     val importedPath = oldDirPath.resolve(oldValue)
