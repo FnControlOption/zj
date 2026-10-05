@@ -12,12 +12,26 @@ class ZigAutoPopupHandler : TypedHandlerDelegate() {
         if (file !is ZigFile) {
             return Result.CONTINUE
         }
-        if (charTyped == ':') {
-            val offset = editor.caretModel.offset
-            val charSeq = editor.document.immutableCharSequence.subSequence(0, offset).trimEnd()
-            if (charSeq.endsWith("break") || charSeq.endsWith("continue")) {
-                AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+        val popupController = AutoPopupController.getInstance(project)
+        val offset = editor.caretModel.offset
+        val text = editor.document.immutableCharSequence
+        when (charTyped) {
+            '@' -> {
+                popupController.scheduleAutoPopup(editor)
                 return Result.STOP
+            }
+            '"' -> {
+                if (text.getOrNull(offset - 1) == '@') {
+                    popupController.scheduleAutoPopup(editor)
+                    return Result.STOP
+                }
+            }
+            ':' -> {
+                val charSeq = text.subSequence(0, offset).trimEnd()
+                if (charSeq.endsWith("break") || charSeq.endsWith("continue")) {
+                    popupController.scheduleAutoPopup(editor)
+                    return Result.STOP
+                }
             }
         }
         return Result.CONTINUE
