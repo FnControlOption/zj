@@ -66,16 +66,31 @@ class ZigUnderscoreIdentifierAnnotator : Annotator, DumbAware {
 private const val UNDERSCORE_IDENTIFIER_MESSAGE = """'_' used as an identifier without @"_" syntax"""
 
 private fun annotateInvalidUnderscoreIdentifier(element: PsiElement, holder: AnnotationHolder) {
-    if (element is ZigVarDeclOrProto) {
-        val nameIdentifier = element.nameIdentifier ?: return
-        if (nameIdentifier.textMatches("_")) {
-            holder.newAnnotation(HighlightSeverity.ERROR, UNDERSCORE_IDENTIFIER_MESSAGE)
-                // TODO: .problemGroup {}
-                .range(nameIdentifier)
-                // TODO: .newFix().registerFix()
-                .create()
+    val nameElement = when (element) {
+        is ZigIdentifier -> {
+            val isValid = when (val parent = element.parent) {
+                is ZigAssign -> parent.leftExpression == element
+                is ZigAssignDestructure -> parent.variables.contains(element)
+                is ZigTypeLength -> parent.expression == element
+                is ZigSwitchItem -> parent.expression == element
+                else -> false
+            }
+            if (isValid) {
+                return
+            }
+            element.identifierElement
         }
+        is ZigTestDecl -> element.nameElement ?: return
+        is ZigVarDeclOrProto -> element.nameIdentifier ?: return
+        else -> return
     }
+    if (nameElement.elementType !== ZigTokenType.IDENTIFIER) return
+    if (!nameElement.textMatches("_")) return
+    holder.newAnnotation(HighlightSeverity.ERROR, UNDERSCORE_IDENTIFIER_MESSAGE)
+        // TODO: .problemGroup {}
+        .range(nameElement)
+        // TODO: .newFix().registerFix()
+        .create()
 }
 
 class ZigUndeclaredIdentifierAnnotator : Annotator, DumbAware {
