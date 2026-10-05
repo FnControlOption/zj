@@ -11,6 +11,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.SearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.psi.util.elementType
 import com.intellij.psi.util.siblings
 import io.github.fncontroloption.zig.psi2.*
 
@@ -251,4 +252,35 @@ private fun annotateShadow(element: PsiElement, holder: AnnotationHolder) {
         // TODO: .problemGroup {}
         .range(nameIdentifier)
         .create()
+}
+
+class ZigAmbiguousReferenceAnnotator : Annotator, DumbAware {
+    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+        annotateAmbiguousReference(element, holder)
+    }
+}
+
+private fun annotateAmbiguousReference(element: PsiElement, holder: AnnotationHolder) {
+    val nameElement = when (element) {
+        is ZigIdentifier -> element.identifierElement
+        is ZigTestDecl -> element.nameElement ?: return
+        else -> return
+    }
+    if (nameElement.elementType !== ZigTokenType.IDENTIFIER) return
+    if (nameElement.textMatches("_")) return
+    if (isZigPrimitiveText(nameElement.text)) return
+    val name = parseZigIdentifier(nameElement) ?: return
+    val decls = identifierReferenceCandidates(nameElement).filter {
+        when (it) {
+            is ZigFnDecl -> it.name == name
+            is ZigVarDecl -> it.name == name && !it.isLocal
+            else -> false
+        }
+    }
+    if (decls.take(2).count() > 1) {
+        holder.newAnnotation(HighlightSeverity.ERROR, "Ambiguous reference")
+            // TODO: .problemGroup {}
+            .range(nameElement)
+            .create()
+    }
 }
