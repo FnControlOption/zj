@@ -39,12 +39,16 @@ fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
 }
 
 class ZigIdentifierReference(element: ZigIdentifier) :
-    PsiReferenceBase<ZigIdentifier>(element, TextRange(0, element.textLength), true) {
+    PsiPolyVariantReferenceBase<ZigIdentifier>(element, TextRange(0, element.textLength), true) {
 
-    override fun resolve(): PsiElement? {
-        if (myElement.textMatches("_")) return null
-        val name = parseZigIdentifier(myElement) ?: return null
-        return identifierReferenceCandidates(myElement).firstOrNull { it.name == name }
+    override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
+        if (myElement.textMatches("_")) return emptyArray()
+        val name = parseZigIdentifier(myElement) ?: return emptyArray()
+        return identifierReferenceCandidates(myElement)
+            .filter { it.name == name }
+            .map { PsiElementResolveResult(it) }
+            .toList()
+            .toTypedArray()
     }
 
     override fun handleElementRename(newElementName: String) =
@@ -95,11 +99,15 @@ class ZigIdentifierReference(element: ZigIdentifier) :
 }
 
 class ZigTestReference(element: ZigTestDecl, val nameElement: PsiElement) :
-    PsiReferenceBase<ZigTestDecl>(element, nameElement.textRangeInParent, true) {
+    PsiPolyVariantReferenceBase<ZigTestDecl>(element, nameElement.textRangeInParent, true) {
 
-    override fun resolve(): PsiElement? {
-        val name = parseZigIdentifier(nameElement) ?: return null
-        return identifierReferenceCandidates(nameElement).firstOrNull { it.name == name }
+    override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
+        val name = parseZigIdentifier(nameElement) ?: return emptyArray()
+        return identifierReferenceCandidates(nameElement)
+            .filter { it.name == name }
+            .map { PsiElementResolveResult(it) }
+            .toList()
+            .toTypedArray()
     }
 
     override fun handleElementRename(newElementName: String) =
