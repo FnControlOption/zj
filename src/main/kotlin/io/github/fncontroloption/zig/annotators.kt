@@ -3,14 +3,17 @@ package io.github.fncontroloption.zig
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.project.DumbService
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.LocalSearchScope
+import com.intellij.psi.search.SearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.siblings
 import io.github.fncontroloption.zig.psi2.*
 
-class ZigUnusedAnnotator : Annotator {
+class ZigUnusedAnnotator : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         annotateUnused(element, holder)
     }
@@ -38,11 +41,12 @@ private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
         else -> return
     }
     val containingFile = namedElement.containingFile
-    val localScope = LocalSearchScope(containingFile)
-    val globalScope = GlobalSearchScope.fileScope(containingFile)
-    val searchScope = localScope.union(globalScope)
-    val query = ReferencesSearch.search(namedElement, searchScope)
-    if (query.findFirst() == null) {
+    val searchScopes = mutableListOf<SearchScope>()
+    searchScopes.add(LocalSearchScope(containingFile))
+    if (!DumbService.isDumb(element.project)) {
+        searchScopes.add(GlobalSearchScope.fileScope(containingFile))
+    }
+    if (searchScopes.all { ReferencesSearch.search(namedElement, it).findFirst() == null }) {
         holder.newAnnotation(HighlightSeverity.ERROR, "Unused $kind")
             .problemGroup { "UNUSED" }
             .range(nameIdentifier)
@@ -51,7 +55,7 @@ private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
     }
 }
 
-class ZigUnderscoreIdentifierAnnotator : Annotator {
+class ZigUnderscoreIdentifierAnnotator : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         annotateInvalidUnderscoreIdentifier(element, holder)
     }
@@ -72,7 +76,7 @@ private fun annotateInvalidUnderscoreIdentifier(element: PsiElement, holder: Ann
     }
 }
 
-class ZigUndeclaredIdentifierAnnotator : Annotator {
+class ZigUndeclaredIdentifierAnnotator : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         annotateUndeclaredIdentifier(element, holder)
     }
@@ -94,7 +98,7 @@ private fun annotateUndeclaredIdentifier(element: PsiElement, holder: Annotation
         .create()
 }
 
-class ZigDuplicateMembersAnnotator : Annotator {
+class ZigDuplicateMembersAnnotator : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         annotateDuplicateMembers(element, holder)
     }
@@ -132,7 +136,7 @@ private fun annotateDuplicateMembers(element: PsiElement, holder: AnnotationHold
     }
 }
 
-class ZigRedeclarationsAnnotator : Annotator {
+class ZigRedeclarationsAnnotator : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         annotateRedeclarations(element, holder)
     }
