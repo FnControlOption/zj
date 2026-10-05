@@ -5,9 +5,11 @@ import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.richcopy.HtmlSyntaxInfoUtil
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.roots.OrderEnumerator
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.RecursionManager
 import com.intellij.openapi.util.text.HtmlBuilder
 import com.intellij.openapi.util.text.HtmlChunk
+import com.intellij.openapi.vfs.findDirectory
 import com.intellij.openapi.vfs.findFile
 import com.intellij.psi.*
 import com.intellij.psi.util.*
@@ -238,6 +240,9 @@ object ZigAnalyzer {
 
     fun findStdFile(originalElement: PsiElement, path: String): ZigFile? {
         val project = originalElement.project
+        val projectRoots = ProjectRootManager.getInstance(project).contentRoots.asSequence()
+        val projectLibStds = projectRoots.mapNotNull { it.findDirectory("lib/std") }
+
         val originalFile = originalElement.containingFile?.originalFile?.virtualFile
         val enumerator = run {
             if (originalFile != null) {
@@ -248,8 +253,10 @@ object ZigAnalyzer {
             }
             OrderEnumerator.orderEntries(project)
         }
+        val sdkRoots = enumerator.sdkOnly().sourceRoots.asSequence()
+
         val psiManager = PsiManager.getInstance(project)
-        for (root in enumerator.sdkOnly().sourceRoots) {
+        for (root in projectLibStds + sdkRoots) {
             val virtualFile = root.findFile(path)
             if (virtualFile != null) {
                 val psiFile = psiManager.findFile(virtualFile)
