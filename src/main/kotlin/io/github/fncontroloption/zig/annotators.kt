@@ -91,8 +91,9 @@ private fun annotateUndeclaredIdentifier(element: PsiElement, holder: Annotation
     if (resolveReferences(element).any()) return
     val name = parseZigIdentifier(element) ?: return
     val message = buildString {
-        append("Use of undeclared identifier ")
-        escapeZigString(name, this)
+        append("Use of undeclared identifier '")
+        append(name)
+        append("'")
     }
     holder.newAnnotation(HighlightSeverity.ERROR, message)
         // TODO: .problemGroup {}
@@ -126,8 +127,9 @@ private fun annotateDuplicateMembers(element: PsiElement, holder: AnnotationHold
         val message = buildString {
             append("Duplicate ")
             append(kind)
-            append(" member name ")
-            escapeZigString(name, this)
+            append(" member name '")
+            append(name)
+            append("'")
         }
         for (identifier in identifiers) {
             holder.newAnnotation(HighlightSeverity.ERROR, message)
@@ -158,33 +160,47 @@ private fun annotateRedeclarations(element: PsiElement, holder: AnnotationHolder
         is ZigSwitchProng -> element.payload?.items ?: return
         else -> return
     }
-    val nameToKind = mutableMapOf<String, String>()
+    val nameToFirstDecl = mutableMapOf<String, ZigNamedReferenceable>()
     for (decl in decls) {
         val nameIdentifier = decl.nameIdentifier ?: continue
         if (nameIdentifier.textMatches("_")) continue
         val name = parseZigIdentifier(nameIdentifier) ?: continue
-        val kind = nameToKind[name]
-        if (kind == null) {
-            nameToKind[name] = when (decl) {
-                is ZigFnParam -> "function parameter"
-                is ZigVarDeclOrProto -> when (decl.mutability) {
-                    ZigMutability.CONST -> "local constant"
-                    ZigMutability.VAR -> "local variable"
-                }
-                is ZigPayloadItem -> "capture"
-                else -> throw IllegalStateException()
-            }
+        val firstDecl = nameToFirstDecl[name]
+        if (firstDecl == null) {
+            nameToFirstDecl[name] = decl
             continue
+        }
+        val kind = when (firstDecl) {
+            is ZigFnParam -> "function parameter"
+            is ZigVarDeclOrProto -> when (firstDecl.mutability) {
+                ZigMutability.CONST -> "local constant"
+                ZigMutability.VAR -> "local variable"
+            }
+            is ZigPayloadItem -> "capture"
+            else -> throw IllegalStateException()
         }
         val message = buildString {
             append("Redeclaration of ")
             append(kind)
-            append(' ')
-            escapeZigString(name, this)
+            append(" '")
+            append(name)
+            append("'")
+        }
+        val tooltip = buildString {
+            append("<html>Redeclaration of ")
+            append(kind)
+            append(" '<a href='#navigation/")
+            append(firstDecl.containingFile.viewProvider.virtualFile.path)
+            append(':')
+            append(firstDecl.textOffset)
+            append("'>")
+            append(Strings.escapeXmlEntities(name))
+            append("</a>'</html>")
         }
         holder.newAnnotation(HighlightSeverity.ERROR, message)
             // TODO: .problemGroup {}
             .range(nameIdentifier)
+            .tooltip(tooltip)
             .create()
     }
 }
@@ -222,7 +238,7 @@ private fun annotateShadow(element: PsiElement, holder: AnnotationHolder) {
     }
     val candidates = identifierReferenceCandidates(containingScope)
     val shadowed = candidates.firstOrNull { it.name == name } ?: return
-    val message = run {
+    val (message, tooltip) = run {
         val shadowedKind = when (shadowed) {
             is ZigFnParam -> "function parameter"
             is ZigPayloadItem -> "capture"
@@ -231,26 +247,54 @@ private fun annotateShadow(element: PsiElement, holder: AnnotationHolder) {
                 ZigMutability.VAR -> "local variable"
             }
             is ZigVarDecl, is ZigFnDecl -> {
-                return@run buildString {
+                val message = buildString {
                     append(Strings.capitalize(kind))
-                    append(" shadows declaration of ")
-                    escapeZigString(name, this)
+                    append(" shadows declaration of '")
+                    append(name)
+                    append("'")
                 }
+                val tooltip = buildString {
+                    append("<html>")
+                    append(Strings.capitalize(kind))
+                    append(" shadows declaration of '<a href='#navigation/")
+                    append(shadowed.containingFile.viewProvider.virtualFile.path)
+                    append(':')
+                    append(shadowed.textOffset)
+                    append("'>")
+                    append(Strings.escapeXmlEntities(name))
+                    append("</a>'</html>")
+                }
+                return@run Pair(message, tooltip)
             }
             else -> return
         }
-        buildString {
+        val message = buildString {
             append(Strings.capitalize(kind))
-            append(' ')
-            escapeZigString(name, this)
             append(" shadows ")
             append(shadowedKind)
-            append(" from outer scope")
+            append(" '")
+            append(name)
+            append("' from outer scope")
         }
+        val tooltip = buildString {
+            append("<html>")
+            append(Strings.capitalize(kind))
+            append(" shadows ")
+            append(shadowedKind)
+            append(" '<a href='#navigation/")
+            append(shadowed.containingFile.viewProvider.virtualFile.path)
+            append(':')
+            append(shadowed.textOffset)
+            append("'>")
+            append(Strings.escapeXmlEntities(name))
+            append("</a>' from outer scope</html>")
+        }
+        Pair(message, tooltip)
     }
     holder.newAnnotation(HighlightSeverity.ERROR, message)
         // TODO: .problemGroup {}
         .range(nameIdentifier)
+        .tooltip(tooltip)
         .create()
 }
 
