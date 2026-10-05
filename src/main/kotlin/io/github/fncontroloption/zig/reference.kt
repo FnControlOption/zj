@@ -580,7 +580,7 @@ class ZigBuiltinCallReference(element: ZigBuiltinCall) :
     }
 }
 
-private fun identifierReferenceCandidates(element: PsiElement): Sequence<ZigNamedReferenceable> {
+internal fun identifierReferenceCandidates(element: PsiElement): Sequence<ZigNamedReferenceable> {
     var it: Iterator<ZigNamedReferenceable>? = null
     var element: PsiElement? = element
     return generateSequence {

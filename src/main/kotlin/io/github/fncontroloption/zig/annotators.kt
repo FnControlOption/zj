@@ -5,6 +5,7 @@ import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.util.text.Strings
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.LocalSearchScope
@@ -43,7 +44,7 @@ private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
     val containingFile = namedElement.containingFile
     val searchScopes = mutableListOf<SearchScope>()
     searchScopes.add(LocalSearchScope(containingFile))
-    if (!DumbService.isDumb(element.project)) {
+    if (!DumbService.isDumb(namedElement.project)) {
         searchScopes.add(GlobalSearchScope.fileScope(containingFile))
     }
     if (searchScopes.all { ReferencesSearch.search(namedElement, it).findFirst() == null }) {
@@ -177,7 +178,7 @@ private fun annotateRedeclarations(element: PsiElement, holder: AnnotationHolder
         val message = buildString {
             append("Redeclaration of ")
             append(kind)
-            append(" ")
+            append(' ')
             escapeZigString(name, this)
         }
         holder.newAnnotation(HighlightSeverity.ERROR, message)
@@ -185,4 +186,69 @@ private fun annotateRedeclarations(element: PsiElement, holder: AnnotationHolder
             .range(nameIdentifier)
             .create()
     }
+}
+
+class ZigShadowAnnotator : Annotator, DumbAware {
+    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+        annotateShadow(element, holder)
+    }
+}
+
+private fun annotateShadow(element: PsiElement, holder: AnnotationHolder) {
+    val namedElement = element as? ZigNamedElement ?: return
+    val nameIdentifier = namedElement.nameIdentifier ?: return
+    val name = parseZigIdentifier(nameIdentifier) ?: return
+    val kind = when (namedElement) {
+        is ZigFnParam if !nameIdentifier.textMatches("_") && namedElement.containingFunction.body != null ->
+            "function parameter"
+
+        is ZigPayloadItem if !nameIdentifier.textMatches("_") ->
+            "capture"
+
+        is ZigVarDeclOrProto if !nameIdentifier.textMatches("_") && namedElement.isLocal ->
+            when (namedElement.mutability) {
+                ZigMutability.CONST -> "local constant"
+                ZigMutability.VAR -> "local variable"
+            }
+
+        else -> return
+    }
+    val containingScope = when (namedElement) {
+        is ZigFnParam -> namedElement.containingFunction
+        is ZigPayloadItem -> namedElement.containingPayload.parent
+        is ZigVarProto -> namedElement.containingAssignDestructure.parent
+        is ZigVarDecl -> namedElement.parent
+    }
+    val candidates = identifierReferenceCandidates(containingScope)
+    val shadowed = candidates.firstOrNull { it.name == name } ?: return
+    val message = run {
+        val shadowedKind = when (shadowed) {
+            is ZigFnParam -> "function parameter"
+            is ZigPayloadItem -> "capture"
+            is ZigVarDeclOrProto if shadowed.isLocal -> when (shadowed.mutability) {
+                ZigMutability.CONST -> "local constant"
+                ZigMutability.VAR -> "local variable"
+            }
+            is ZigVarDecl, is ZigFnDecl -> {
+                return@run buildString {
+                    append(Strings.capitalize(kind))
+                    append(" shadows declaration of ")
+                    escapeZigString(name, this)
+                }
+            }
+            else -> return
+        }
+        buildString {
+            append(Strings.capitalize(kind))
+            append(' ')
+            escapeZigString(name, this)
+            append(" shadows ")
+            append(shadowedKind)
+            append(" from outer scope")
+        }
+    }
+    holder.newAnnotation(HighlightSeverity.ERROR, message)
+        // TODO: .problemGroup {}
+        .range(nameIdentifier)
+        .create()
 }
