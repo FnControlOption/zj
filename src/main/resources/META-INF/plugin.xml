@@ -55,6 +55,7 @@
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigRedeclarationsAnnotator"/>
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigShadowAnnotator"/>
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigAmbiguousReferenceAnnotator"/>
+    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigLabelRedefinitionAnnotator"/>
     <lang.findUsagesProvider language="ZIG"
                              implementationClass="io.github.fncontroloption.zig.ZigFindUsagesProvider"/>
     <lang.foldingBuilder language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigFoldingBuilder"/>

@@ -12,6 +12,7 @@ import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.SearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.elementType
+import com.intellij.psi.util.parents
 import com.intellij.psi.util.siblings
 import io.github.fncontroloption.zig.psi2.*
 
@@ -341,5 +342,44 @@ private fun annotateAmbiguousReference(element: PsiElement, holder: AnnotationHo
             // TODO: .problemGroup {}
             .range(nameElement)
             .create()
+    }
+}
+
+class ZigLabelRedefinitionAnnotator : Annotator, DumbAware {
+    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+        annotateLabelRedefinition(element, holder)
+    }
+}
+
+private fun annotateLabelRedefinition(element: PsiElement, holder: AnnotationHolder) {
+    if (element !is ZigLabelable) return
+    val nameIdentifier = element.labelDecl?.nameIdentifier ?: return
+    val name = parseZigIdentifier(nameIdentifier) ?: return
+    for (parent in element.parents(withSelf = false)) {
+        if (parent is ZigContainer) return
+        if (parent !is ZigLabelable) continue
+        val parentIdentifier = parent.labelDecl?.nameIdentifier ?: continue
+        val parentName = parseZigIdentifier(parentIdentifier) ?: continue
+        if (parentName != name) continue
+        val message = buildString {
+            append("Redefinition of label '")
+            append(name)
+            append("'")
+        }
+        val tooltip = buildString {
+            append("<html>Redefinition of label '<a href='#navigation/")
+            append(parentIdentifier.containingFile.viewProvider.virtualFile.path)
+            append(':')
+            append(parentIdentifier.textOffset)
+            append("'>")
+            append(Strings.escapeXmlEntities(name))
+            append("</a>'</html>")
+        }
+        holder.newAnnotation(HighlightSeverity.ERROR, message)
+            // TODO: .problemGroup {}
+            .range(nameIdentifier)
+            .tooltip(tooltip)
+            .create()
+        return
     }
 }
