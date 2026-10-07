@@ -55,7 +55,7 @@ object ZigAnalyzer {
         return io.github.fncontroloption.zig.resolveValues(element)
     }
 
-    fun resolveValuesFromReferenceTo(target: ZigReferenceable): Set<ZigValue> {
+    fun resolveValuesFromReferenceTo(target: ZigNamedElement): Set<ZigValue> {
         return io.github.fncontroloption.zig.resolveValuesFromReferenceTo(target)
     }
 
@@ -1030,7 +1030,7 @@ private fun computePlacesUncached(element: ZigExpression): Sequence<ZigPlace> {
             }
             resolveReferences(element).flatMap { target ->
                 val values = when (target) {
-                    is ZigReferenceable -> resolveValuesFromReferenceTo(target).asSequence()
+                    is ZigNamedElement -> resolveValuesFromReferenceTo(target).asSequence()
                     else -> emptySequence()
                 }
                 when (target) {
@@ -1884,7 +1884,7 @@ private fun computeContainerTypeDeclAccess(
     }
 }
 
-private fun resolveValuesFromReferenceTo(target: ZigReferenceable): Set<ZigValue> {
+private fun resolveValuesFromReferenceTo(target: ZigNamedElement): Set<ZigValue> {
     return CachedValuesManager.getCachedValue(target) {
         RecursionManager.doPreventingRecursion(target, true) {
             val values = computeValuesFromReferenceUncached(target).toSet()
@@ -1899,7 +1899,7 @@ private fun resolveValuesFromReferenceTo(target: ZigReferenceable): Set<ZigValue
     } ?: emptySet()
 }
 
-private fun computeValuesFromReferenceUncached(target: ZigReferenceable): Sequence<ZigValue> {
+private fun computeValuesFromReferenceUncached(target: ZigNamedElement): Sequence<ZigValue> {
     return when (target) {
         is ZigFile -> sequenceOf(ZigContainerType(target, emptyMap()))
 
@@ -1984,6 +1984,8 @@ private fun computeValuesFromReferenceUncached(target: ZigReferenceable): Sequen
         }
 
         is LightZigTupleField -> sequenceOf(ZigUnknown.of(target.container.fieldTypes[target.fieldIndex]))
+
+        is ZigLabelDecl -> emptySequence()
     }
 }
 

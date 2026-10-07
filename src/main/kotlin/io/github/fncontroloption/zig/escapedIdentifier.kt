@@ -11,7 +11,7 @@ import com.intellij.psi.util.elementType
 import com.intellij.util.Processor
 import com.intellij.util.indexing.*
 import com.intellij.util.io.EnumeratorStringDescriptor
-import io.github.fncontroloption.zig.psi2.ZigNamedElement
+import io.github.fncontroloption.zig.psi2.ZigNameIdentifierOwner
 import io.github.fncontroloption.zig.psi2.ZigTokenType
 
 val ZIG_ESCAPED_IDENTIFIER_INDEX_NAME =
@@ -49,7 +49,7 @@ class ZigEscapedIdentifierReferencesSearch : QueryExecutorBase<PsiReference, Ref
         queryParameters: ReferencesSearch.SearchParameters,
         consumer: Processor<in PsiReference>
     ) {
-        val target = queryParameters.elementToSearch as? ZigNamedElement ?: return
+        val target = queryParameters.elementToSearch as? ZigNameIdentifierOwner ?: return
         val name = target.name ?: return
         val rootElements = when (val scope = queryParameters.effectiveSearchScope) {
             is GlobalSearchScope -> {

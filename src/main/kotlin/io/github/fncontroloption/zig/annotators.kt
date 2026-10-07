@@ -23,7 +23,7 @@ class ZigUnusedAnnotator : Annotator, DumbAware {
 }
 
 private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
-    val namedElement = element as? ZigNamedElement ?: return
+    val namedElement = element as? ZigNameIdentifierOwner ?: return
     val nameIdentifier = namedElement.nameIdentifier ?: return
     val kind = when (namedElement) {
         is ZigLabelDecl ->
@@ -176,7 +176,7 @@ private fun annotateRedeclarations(element: PsiElement, holder: AnnotationHolder
         is ZigSwitchProng -> element.payload?.items ?: return
         else -> return
     }
-    val nameToFirstDecl = mutableMapOf<String, ZigNamedReferenceable>()
+    val nameToFirstDecl = mutableMapOf<String, ZigNameIdentifierOwner>()
     for (decl in decls) {
         val nameIdentifier = decl.nameIdentifier ?: continue
         if (nameIdentifier.textMatches("_")) continue
@@ -228,7 +228,7 @@ class ZigShadowAnnotator : Annotator, DumbAware {
 }
 
 private fun annotateShadow(element: PsiElement, holder: AnnotationHolder) {
-    val namedElement = element as? ZigNamedElement ?: return
+    val namedElement = element as? ZigNameIdentifierOwner ?: return
     val nameIdentifier = namedElement.nameIdentifier ?: return
     val name = parseZigIdentifier(nameIdentifier) ?: return
     val kind = when (namedElement) {

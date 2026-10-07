@@ -18,7 +18,7 @@ class ZigFindUsagesProvider : FindUsagesProvider {
     }
 
     override fun canFindUsagesFor(psiElement: PsiElement): Boolean {
-        return psiElement is ZigNamedElement
+        return psiElement is ZigNameIdentifierOwner
     }
 
     override fun getHelpId(psiElement: PsiElement): String? {
@@ -26,7 +26,7 @@ class ZigFindUsagesProvider : FindUsagesProvider {
     }
 
     override fun getType(element: PsiElement): String {
-        val namedElement = element as? ZigNamedElement ?: return ""
+        val namedElement = element as? ZigNameIdentifierOwner ?: return ""
         return when (namedElement) {
             is ZigContainerField -> "field"
             is ZigFnDecl -> "function"
@@ -41,10 +41,10 @@ class ZigFindUsagesProvider : FindUsagesProvider {
     }
 
     override fun getDescriptiveName(element: PsiElement): String {
-        return (element as? ZigNamedElement)?.name ?: "" // TODO
+        return (element as? ZigNameIdentifierOwner)?.name ?: "" // TODO
     }
 
     override fun getNodeText(element: PsiElement, useFullName: Boolean): String {
-        return (element as? ZigNamedElement)?.name ?: "" // TODO
+        return (element as? ZigNameIdentifierOwner)?.name ?: "" // TODO
     }
 }

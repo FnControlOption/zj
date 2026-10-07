@@ -41,7 +41,7 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
             .wrapWith(DocumentationMarkup.DEFINITION_ELEMENT)
             .appendTo(sb)
 
-        if (element is ZigReferenceable) {
+        if (element is ZigNamedElement) {
             val typeParams = getOriginalContainerType(originalElement)?.typeParams ?: emptyMap()
             val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(element)
             val substitutedValues = ZigAnalyzer.substituteTypeParams(initialValues, typeParams)
