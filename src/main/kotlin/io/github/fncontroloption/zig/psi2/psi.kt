@@ -1478,7 +1478,7 @@ fun parseZigIdentifier(element: PsiElement?): String? {
     if (element == null) return null
     return CachedValuesManager.getCachedValue(element) {
         val value = parseZigIdentifierUncached(element)
-        CachedValueProvider.Result.create(value, PsiModificationTracker.MODIFICATION_COUNT)
+        CachedValueProvider.Result.create(value, element)
     }
 }
 
