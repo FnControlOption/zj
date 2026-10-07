@@ -8,14 +8,17 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.projectRoots.Sdk
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.util.SimpleModificationTracker
+import com.intellij.openapi.vfs.AsyncFileListener
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.vfs.VirtualFileWithId
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.findFile
+import com.intellij.openapi.vfs.newvfs.events.*
 import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.psi.PsiManager
@@ -38,12 +41,14 @@ class ZigModulesProjectActivity : ProjectActivity {
 
         project.workspaceModel.eventLog.collect {
             val projectService = project.service<ZigModulesProjectService>()
-            withBackgroundProgress(project, "Fetching Zig modules\u2026") {
+            val changed = withBackgroundProgress(project, "Fetching Zig modules\u2026") {
                 projectService.fetchModules()
             }
-            withBackgroundProgress(project, "Loading Zig modules\u2026") {
-                smartReadAction(project) {
-                    projectService.loadFileToModulesMap()
+            if (changed) {
+                withBackgroundProgress(project, "Loading Zig modules\u2026") {
+                    smartReadAction(project) {
+                        projectService.loadModules()
+                    }
                 }
             }
         }
@@ -89,7 +94,8 @@ class ZigModulesProjectService(private val project: Project) {
     private var cachedSdk: Sdk? = null
     private var cachedBuildFile: VirtualFile? = null
     private var cachedModules: Map<Int, ZigModule>? = null
-    private var fileToModules = mutableMapOf<Int, MutableSet<Int>>()
+    private var rootFileToModule = mutableMapOf<String, Int>()
+    private var fileImports = mutableMapOf<String, MutableSet<String>>()
     private val psiManager = PsiManager.getInstance(project)
 
     val modules: Map<Int, ZigModule>
@@ -97,7 +103,7 @@ class ZigModulesProjectService(private val project: Project) {
 
     val modificationTracker = SimpleModificationTracker()
 
-    fun fetchModules() {
+    fun fetchModules(): Boolean {
         val currentSdk = ProjectRootManager.getInstance(project).projectSdk
         if (cachedSdk == null || cachedSdk != currentSdk) {
             cachedSdk = null
@@ -106,10 +112,12 @@ class ZigModulesProjectService(private val project: Project) {
             if (currentSdk != null) {
                 cachedSdk = currentSdk
                 fetchModulesWithSdk(currentSdk)
-                fileToModules.clear()
-                modificationTracker.incModificationCount()
+                rootFileToModule.clear()
+                fileImports.clear()
+                return true
             }
         }
+        return false
     }
 
     private fun fetchModulesWithSdk(sdk: Sdk) {
@@ -143,23 +151,24 @@ class ZigModulesProjectService(private val project: Project) {
     }
 
     @RequiresReadLock
-    fun loadFileToModulesMap() {
-        fileToModules.clear()
+    fun loadModules() {
+        rootFileToModule.clear()
+        fileImports.clear()
         for (module in modules.values) {
-            getRootSourceVirtualFile(module)?.let { setFileModule(module.index, it) }
+            val rootFile = getRootSourceVirtualFile(module) ?: continue
+            rootFileToModule[rootFile.url] = module.index
+            followImports(rootFile)
         }
         modificationTracker.incModificationCount()
-        DaemonCodeAnalyzer.getInstance(project).restart("Zig modules loaded")
+        DaemonCodeAnalyzer.getInstance(project).restart("ZigModulesProjectService.loadModules")
     }
 
     @RequiresReadLock
-    private fun setFileModule(moduleIndex: Int, virtualFile: VirtualFile) {
-        if (virtualFile !is VirtualFileWithId) return
-        val modules = fileToModules.getOrPut(virtualFile.id) { mutableSetOf() }
-        if (moduleIndex in modules) {
-            return
-        }
-        modules.add(moduleIndex)
+    private fun followImports(virtualFile: VirtualFile) {
+        val url = virtualFile.url
+        if (fileImports.containsKey(url)) return
+        val imports = mutableSetOf<String>()
+        fileImports[url] = imports
         val psiFile = psiManager.findFile(virtualFile) ?: return
         for (element in SyntaxTraverser.psiTraverser(psiFile)) {
             if (element !is ZigBuiltinCall) continue
@@ -168,18 +177,89 @@ class ZigModulesProjectService(private val project: Project) {
             if (arg !is ZigStringLiteral) continue
             val value = arg.value ?: continue
             if (!value.endsWith(".zig")) continue
-            virtualFile.parent.findFile(value)?.let { setFileModule(moduleIndex, it) }
+            val otherUrl = "${virtualFile.parent.url}/$value"
+            imports.add(otherUrl)
+            val otherFile = virtualFile.parent.findFile(value) ?: continue
+            followImports(otherFile)
         }
     }
 
     fun getFileModules(virtualFile: VirtualFile): Set<Int> {
-        if (virtualFile !is VirtualFileWithId) return emptySet()
-        return fileToModules[virtualFile.id] ?: emptySet()
+        val modules = mutableSetOf<Int>()
+        findFileModules(virtualFile.url, mutableSetOf(), modules)
+        return modules
+    }
+
+    private fun findFileModules(url: String, visited: MutableSet<String>, modules: MutableSet<Int>) {
+        if (url in visited) return
+        visited.add(url)
+        val module = rootFileToModule[url]
+        if (module != null) {
+            modules.add(module)
+            return
+        }
+        for ((otherUrl, otherImports) in fileImports) {
+            if (url in otherImports) {
+                findFileModules(otherUrl, visited, modules)
+            }
+        }
+    }
+
+    fun processVfsChange(fileActions: MutableMap<String, ZigModulesAsyncFileListener.Action>) {
+        for ((url, action) in fileActions) {
+            when (action) {
+                ZigModulesAsyncFileListener.Action.CREATE,
+                ZigModulesAsyncFileListener.Action.CHANGE -> {
+                    fileImports.remove(url)
+                    val virtualFile = VirtualFileManager.getInstance().findFileByUrl(url) ?: continue
+                    followImports(virtualFile)
+                }
+                ZigModulesAsyncFileListener.Action.DELETE -> {
+                    fileImports.remove(url)
+                }
+            }
+        }
+        modificationTracker.incModificationCount()
+        DaemonCodeAnalyzer.getInstance(project).restart("ZigModulesProjectService.processVfsChange")
     }
 
     companion object {
         fun getModificationTracker(project: Project): ModificationTracker {
             return project.service<ZigModulesProjectService>().modificationTracker
+        }
+    }
+}
+
+class ZigModulesAsyncFileListener : AsyncFileListener {
+    enum class Action { CREATE, CHANGE, DELETE }
+
+    override fun prepareChange(events: List<VFileEvent>): AsyncFileListener.ChangeApplier {
+        return object : AsyncFileListener.ChangeApplier {
+            override fun afterVfsChange() {
+                val fileActions = mutableMapOf<String, Action>()
+                for (evt in events) {
+                    val file = evt.file ?: continue
+                    when (evt) {
+                        is VFileCreateEvent -> fileActions[file.url] = Action.CREATE
+                        is VFileContentChangeEvent -> fileActions[file.url] = Action.CHANGE
+                        is VFileDeleteEvent -> fileActions[file.url] = Action.DELETE
+                        is VFileCopyEvent -> {
+                            val created = evt.findCreatedFile() ?: continue
+                            fileActions[created.url] = Action.CREATE
+                        }
+                    }
+                }
+                if (fileActions.isEmpty()) {
+                    return
+                }
+                ApplicationManager.getApplication().invokeLater {
+                    ApplicationManager.getApplication().runWriteAction {
+                        for (project in ProjectManager.getInstance().openProjects) {
+                            project.service<ZigModulesProjectService>().processVfsChange(fileActions)
+                        }
+                    }
+                }
+            }
         }
     }
 }

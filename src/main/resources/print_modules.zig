@@ -104,7 +104,9 @@ pub fn main(init: std.process.Init) !void {
         .module_set = .empty,
         .configuration = &configuration,
     };
-    try self.loadStep(configuration.default_step.ptr(&configuration));
+    for (configuration.steps) |*step| {
+        try self.loadStep(step);
+    }
     self.sortModules();
     const modules = try self.modulesAsJsonValue();
 
