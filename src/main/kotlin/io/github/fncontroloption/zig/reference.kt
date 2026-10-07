@@ -441,7 +441,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
 
     override fun getVariants(): Array<out LookupElement> {
         val parentElement = myElement.parent
-        if (parentElement is ZigListInitItem) {
+        if (parentElement is ZigListInitItem && !parentElement.isStructField) {
             val types = ZigAnalyzer.resolveOrInferStructInitTypes(parentElement.containingListInit).toList()
             if (types.isNotEmpty()) {
                 val variants = mutableSetOf<LookupElement>()
