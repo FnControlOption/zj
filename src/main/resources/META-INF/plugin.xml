@@ -91,6 +91,7 @@
     <codeInsight.typeInfo language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigExpressionTypeProvider"/>
     <additionalLibraryRootsProvider implementation="io.github.fncontroloption.zig.ZigLibraryRootsProvider"/>
     <postStartupActivity implementation="io.github.fncontroloption.zig.ZigProjectActivity"/>
+    <postStartupActivity implementation="io.github.fncontroloption.zig.ZigModulesProjectActivity"/>
     <lang.namesValidator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigNamesValidator"/>
     <fileBasedIndex implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierIndex"/>
     <referencesSearch implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierReferencesSearch"/>

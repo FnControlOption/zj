@@ -11,6 +11,7 @@ import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.roots.ui.configuration.SdkPopupFactory
 import com.intellij.openapi.util.SystemInfoRt
+import com.intellij.openapi.util.io.FileUtilRt
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.findDirectory
 import org.jdom.Element
@@ -118,10 +119,16 @@ private fun getZigExeOutput(sdkHome: String, vararg args: String): String? {
         if (!zigExe.isExecutable()) {
             continue
         }
+
+        // Redirect output to temporary files so that we don't have to worry
+        // about stdout/stderr buffers becoming full.
+        val stdout = FileUtilRt.createTempFile("zig.", ".stdout", true)
+        val stderr = FileUtilRt.createTempFile("zig.", ".stderr", true)
+
         val process = try {
             with(ProcessBuilder(zigExe.toString(), *args)) {
-                redirectOutput(ProcessBuilder.Redirect.PIPE)
-                redirectError(ProcessBuilder.Redirect.PIPE)
+                redirectOutput(stdout)
+                redirectError(stderr)
                 start()
             }
         } catch (e: IOException) {
@@ -136,14 +143,13 @@ private fun getZigExeOutput(sdkHome: String, vararg args: String): String? {
             process.destroy()
             return null
         }
-        val errorOutput = process.errorStream.bufferedReader().readText()
-        if (errorOutput.isNotEmpty()) {
-            log.error(zigExe.toString(), errorOutput)
+        if (stderr.length() > 0) {
+            log.error(zigExe.toString(), stderr.readText())
         }
         if (exitCode != 0) {
             return null
         }
-        return process.inputStream.bufferedReader().readText()
+        return stdout.readText()
     }
     return null
 }

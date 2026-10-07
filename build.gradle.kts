@@ -4,6 +4,7 @@ plugins {
   id("java")
   id("org.jetbrains.intellij.platform")
   kotlin("jvm")
+  kotlin("plugin.serialization")
 }
 
 // Include the generated files in the source set

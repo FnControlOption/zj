@@ -1014,6 +1014,7 @@ private fun resolvePlaces(element: ZigExpression): Set<ZigPlace> {
                 PsiModificationTracker.MODIFICATION_COUNT,
                 ZigBuiltinService.getModificationTracker(element.project),
                 ZigBuiltinFunctionsService.getModificationTracker(element.project),
+                ZigModulesProjectService.getModificationTracker(element.project),
             )
         }
     } ?: emptySet()
@@ -1122,6 +1123,7 @@ private fun resolveValues(element: ZigExpression): Set<ZigValue> {
                 PsiModificationTracker.MODIFICATION_COUNT,
                 ZigBuiltinService.getModificationTracker(element.project),
                 ZigBuiltinFunctionsService.getModificationTracker(element.project),
+                ZigModulesProjectService.getModificationTracker(element.project),
             )
         }
     } ?: emptySet()
@@ -1891,6 +1893,7 @@ private fun resolveValuesFromReferenceTo(target: ZigReferenceable): Set<ZigValue
                 PsiModificationTracker.MODIFICATION_COUNT,
                 ZigBuiltinService.getModificationTracker(target.project),
                 ZigBuiltinFunctionsService.getModificationTracker(target.project),
+                ZigModulesProjectService.getModificationTracker(target.project),
             )
         }
     } ?: emptySet()

@@ -7,6 +7,7 @@ import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.components.service
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
 import com.intellij.psi.util.CachedValueProvider
@@ -33,6 +34,7 @@ fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
             PsiModificationTracker.MODIFICATION_COUNT,
             ZigBuiltinService.getModificationTracker(element.project),
             ZigBuiltinFunctionsService.getModificationTracker(element.project),
+            ZigModulesProjectService.getModificationTracker(element.project),
         )
     }
     return cached.asSequence()
@@ -191,25 +193,26 @@ class ZigLabelReference(element: ZigLabelRef) :
 }
 
 sealed class ZigFileReference(element: ZigStringLiteral) :
-    PsiReferenceBase<ZigStringLiteral>(element, TextRange(1, element.textLength - 1), true) {
+    PsiPolyVariantReferenceBase<ZigStringLiteral>(element, TextRange(1, element.textLength - 1), true) {
 
-    override fun resolve(): PsiElement? {
-        val text = myElement?.value ?: return null
-        return resolve(text)
+    override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
+        val text = myElement?.value ?: return emptyArray()
+        return multiResolve(text)
     }
 
-    protected open fun resolve(text: String): PsiElement? {
+    protected open fun multiResolve(text: String): Array<out ResolveResult> {
         val parts = text.split("/")
-        val fileName = parts.lastOrNull() ?: return null
-        var directory = myElement.containingFile?.originalFile?.containingDirectory ?: return null
+        val fileName = parts.lastOrNull() ?: return emptyArray()
+        var directory = myElement.containingFile?.originalFile?.containingDirectory ?: return emptyArray()
         parts.subList(0, parts.size - 1).forEach { dirName ->
             if (dirName == "..") {
-                directory = directory.parentDirectory ?: return null
+                directory = directory.parentDirectory ?: return emptyArray()
             } else if (dirName != ".") {
-                directory = directory.findSubdirectory(dirName) ?: return null
+                directory = directory.findSubdirectory(dirName) ?: return emptyArray()
             }
         }
-        return directory.findFile(fileName)
+        val file = directory.findFile(fileName) ?: return emptyArray()
+        return arrayOf(PsiElementResolveResult(file))
     }
 
     override fun handleElementRename(newElementName: String): PsiElement {
@@ -245,14 +248,35 @@ sealed class ZigFileReference(element: ZigStringLiteral) :
 class ZigEmbedFileReference(element: ZigStringLiteral) : ZigFileReference(element)
 
 class ZigImportReference(element: ZigStringLiteral) : ZigFileReference(element) {
-    override fun resolve(text: String): PsiElement? {
+    override fun multiResolve(text: String): Array<out ResolveResult> {
         if (text.endsWith(".zig") || text.endsWith(".zon")) {
-            return super.resolve(text)
+            return super.multiResolve(text)
         }
         return when (text) {
-            "std" -> ZigAnalyzer.findStdFile(myElement, "std.zig")
-            "builtin" -> ZigAnalyzer.findBuiltinFile(myElement)
-            else -> null // TODO: resolve imported modules
+            "std" -> {
+                val file = ZigAnalyzer.findStdFile(myElement, "std.zig") ?: return emptyArray()
+                arrayOf(PsiElementResolveResult(file))
+            }
+            "builtin" -> {
+                val file = ZigAnalyzer.findBuiltinFile(myElement) ?: return emptyArray()
+                arrayOf(PsiElementResolveResult(file))
+            }
+            else -> {
+                val project = myElement.project
+                val virtualFile = myElement.containingFile?.originalFile?.virtualFile ?: return emptyArray()
+                val psiManager = PsiManager.getInstance(project)
+                val modulesService = project.service<ZigModulesProjectService>()
+                val results = mutableSetOf<ResolveResult>()
+                for (moduleIndex in modulesService.getFileModules(virtualFile)) {
+                    val module = modulesService.modules[moduleIndex] ?: continue
+                    val importIndex = module.importTable[text] ?: continue
+                    val importModule = modulesService.modules[importIndex] ?: continue
+                    val importFile = modulesService.getRootSourceVirtualFile(importModule) ?: continue
+                    val psiFile = psiManager.findFile(importFile) ?: continue
+                    results.add(PsiElementResolveResult(psiFile))
+                }
+                results.toTypedArray()
+            }
         }
     }
 }
