@@ -104,8 +104,16 @@ private fun getPossibleZigExePaths(sdkHome: String): Array<Path> {
     )
 }
 
+internal fun getZigExeOutput(sdk: Sdk, vararg args: String): String? {
+    if (sdk.sdkType is ZigSdkType) {
+        val sdkHome = sdk.homePath ?: return null
+        return getZigExeOutput(sdkHome, *args)
+    }
+    return null
+}
+
 /** @see org.jetbrains.jps.model.java.impl.JdkVersionDetectorImpl.detectFromOutput */
-internal fun getZigExeOutput(sdkHome: String, vararg args: String): String? {
+private fun getZigExeOutput(sdkHome: String, vararg args: String): String? {
     for (zigExe in getPossibleZigExePaths(sdkHome)) {
         if (!zigExe.isExecutable()) {
             continue

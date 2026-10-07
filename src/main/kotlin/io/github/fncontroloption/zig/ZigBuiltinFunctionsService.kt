@@ -7,25 +7,23 @@ import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.vfs.findPsiFile
 import com.intellij.testFramework.LightVirtualFile
+import com.intellij.util.concurrency.annotations.RequiresReadLock
 import io.github.fncontroloption.zig.psi2.ZigBuiltinFnProto
 import org.jsoup.Jsoup
 import java.io.InputStream
 
 @Service(Service.Level.PROJECT)
 class ZigBuiltinFunctionsService(private val project: Project) {
-    private var cachedBuiltinFunctions: Map<String, ZigBuiltinFnProto>? = null
-
-    val builtinFunctions: Map<String, ZigBuiltinFnProto>
-        get() = cachedBuiltinFunctions ?: emptyMap()
+    var builtinFunctions: Map<String, ZigBuiltinFnProto> = emptyMap()
+        private set
 
     val modificationTracker = SimpleModificationTracker()
 
+    @RequiresReadLock
     fun loadBuiltinFunctions() {
-        if (cachedBuiltinFunctions == null) {
-            val stream = javaClass.classLoader.getResourceAsStream("langref.html")!!
-            cachedBuiltinFunctions = stream.use { parseBuiltinsFromLangref(project, it) }
-            modificationTracker.incModificationCount()
-        }
+        val stream = javaClass.classLoader.getResourceAsStream("langref.html")!!
+        builtinFunctions = stream.use { parseBuiltinsFromLangref(project, it) }
+        modificationTracker.incModificationCount()
     }
 
     companion object {
@@ -51,6 +49,7 @@ const BranchHint = std.lang.BranchHint;
 const FloatMode = std.lang.FloatMode;
 const PrefetchOptions = std.lang.PrefetchOptions;"""
 
+@RequiresReadLock
 private fun parseBuiltinsFromLangref(project: Project, stream: InputStream): Map<String, ZigBuiltinFnProto> {
     val document = Jsoup.parse(stream, null, "")
 
