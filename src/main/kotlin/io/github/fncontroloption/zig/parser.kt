@@ -21,7 +21,6 @@ sealed class AbstractZigParserDefinition : ParserDefinition {
     override fun getCommentTokens() = ZigTokenSets.COMMENTS
     override fun getStringLiteralElements() = ZigTokenSets.STRINGS
     override fun createParser(project: Project?) = ZigParser(mode)
-    override fun createFile(viewProvider: FileViewProvider) = ZigFile(viewProvider, language)
     override fun createElement(node: ASTNode) = ZigElementType.createPsiElement(node)
 }
 
@@ -29,18 +28,21 @@ class ZigParserDefinition : AbstractZigParserDefinition() {
     override val mode get() = ZigParserMode.ZIG
     override val language get() = ZigLanguage
     override fun getFileNodeType() = ZigFileElementType
+    override fun createFile(viewProvider: FileViewProvider) = ZigFile(viewProvider, ZigLanguage)
 }
 
 class ZonParserDefinition : AbstractZigParserDefinition() {
     override val mode get() = ZigParserMode.ZON
     override val language get() = ZonLanguage
     override fun getFileNodeType() = ZonFileElementType
+    override fun createFile(viewProvider: FileViewProvider) = ZonFile(viewProvider)
 }
 
 class ZigBuiltinFnProtoParserDefinition : AbstractZigParserDefinition() {
     override val mode get() = ZigParserMode.BUILTIN_FN_PROTO
     override val language get() = ZigBuiltinFnProtoLanguage
     override fun getFileNodeType() = ZigBuiltinFnProtoFileElementType
+    override fun createFile(viewProvider: FileViewProvider) = ZigFile(viewProvider, ZigBuiltinFnProtoLanguage)
 }
 
 // Based on https://codeberg.org/ziglang/zig/src/commit/69a2697/lib/std/zig/Parse.zig

@@ -159,6 +159,14 @@ class ZigFile(
     override fun toString() = "ZigFile:$name"
 }
 
+class ZonFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZonLanguage) {
+    val expression: ZigExpression?
+        get() = findChildByClass(ZigExpression::class.java)
+
+    override fun getFileType() = ZonFileType
+    override fun toString() = "ZonFile:$name"
+}
+
 class ZigAdd(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
     override val mainTokenType: ZigTokenType
         get() = ZigTokenType.PLUS
