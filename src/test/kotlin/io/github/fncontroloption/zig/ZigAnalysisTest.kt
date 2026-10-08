@@ -977,7 +977,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 var foo: usize = 42;
                 break :blk &foo;
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.VAR, type.mutability)
@@ -988,7 +988,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 const foo: usize = 42;
                 break :blk &foo;
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
@@ -1010,7 +1010,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 var foo: usize = 42;
                 break :blk &(foo);
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.VAR, type.mutability)
@@ -1021,7 +1021,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 const foo: usize = 42;
                 break :blk &(foo);
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
@@ -1034,7 +1034,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                     var bar: usize = 42;
                 };
                 break :blk &foo.bar;
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.VAR, type.mutability)
@@ -1047,7 +1047,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                     const bar: usize = 42;
                 };
                 break :blk &foo.bar;
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
@@ -1060,7 +1060,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                     fn bar() void {}
                 };
                 break :blk &foo.bar;
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
@@ -1074,7 +1074,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 };
                 var foo: Foo = .{};
                 break :blk &foo.bar;
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.VAR, type.mutability)
@@ -1088,7 +1088,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 };
                 const foo: Foo = .{};
                 break :blk &foo.bar;
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
@@ -1102,7 +1102,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 };
                 var foo: Foo = .{};
                 break :blk &@field(foo, "bar");
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.VAR, type.mutability)
@@ -1116,7 +1116,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 };
                 const foo: Foo = .{};
                 break :blk &@field(foo, "bar");
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
@@ -1127,7 +1127,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 var foo: [2]usize = .{ 6, 7 };
                 break :blk &foo[1];
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.VAR, type.mutability)
@@ -1138,7 +1138,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 const foo: [2]usize = .{ 6, 7 };
                 break :blk &foo[1];
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
@@ -1149,7 +1149,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 var foo: struct { isize, usize } = .{ 6, 7 };
                 break :blk &foo[1];
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.VAR, type.mutability)
@@ -1160,7 +1160,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 const foo: struct { isize, usize } = .{ 6, 7 };
                 break :blk &foo[1];
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
@@ -1171,7 +1171,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 const foo: *[2]usize = undefined;
                 break :blk &foo[1];
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.VAR, type.mutability)
@@ -1182,7 +1182,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 const foo: *const [2]usize = undefined;
                 break :blk &foo[1];
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
@@ -1193,7 +1193,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 const foo: *struct { isize, usize } = undefined;
                 break :blk &foo[1];
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.VAR, type.mutability)
@@ -1204,7 +1204,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 const foo: *const struct { isize, usize } = undefined;
                 break :blk &foo[1];
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
@@ -1215,7 +1215,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 const foo: []usize = undefined;
                 break :blk &foo[1];
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.VAR, type.mutability)
@@ -1226,7 +1226,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 const foo: []const usize = undefined;
                 break :blk &foo[1];
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
@@ -1237,7 +1237,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 var foo: ?usize = 42;
                 break :blk &foo.?;
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.VAR, type.mutability)
@@ -1248,7 +1248,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 const foo: ?usize = 42;
                 break :blk &foo.?;
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
@@ -1259,7 +1259,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 var foo: error{Foo}!usize = 42;
                 break :blk &(try foo);
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.VAR, type.mutability)
@@ -1270,7 +1270,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 const foo: error{Foo}!usize = 42;
                 break :blk &(try foo);
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
@@ -1281,7 +1281,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 const foo: *usize = undefined;
                 break :blk &foo.*;
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.VAR, type.mutability)
@@ -1292,7 +1292,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             blk: {
                 const foo: *const usize = undefined;
                 break :blk &foo.*;
-            };
+            }
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
