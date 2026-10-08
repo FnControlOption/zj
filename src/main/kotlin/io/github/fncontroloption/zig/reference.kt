@@ -362,12 +362,12 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                             )
                         )
                     } else if (containerType.isTaggedUnion) {
-                        val types = ZigAnalyzer.resolveUnionTagTypes(containerType)
+                        val type = ZigAnalyzer.resolveUnionTagType(containerType)
                         variants.add(
                             createLookupElementWithType(
                                 member,
                                 name,
-                                types.singleOrNull(),
+                                type,
                                 ZigIdQuoteBehavior.EAGERLY_UNQUOTE,
                             )
                         )

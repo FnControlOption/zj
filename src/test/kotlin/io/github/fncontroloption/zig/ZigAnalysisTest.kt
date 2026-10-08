@@ -255,6 +255,29 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigBoolType, value.typeOf)
     }
 
+    fun testUnwrapUnionTagType() {
+        val text = """
+            blk: {
+                const E = enum { foo };
+                const U = union(E) { foo: usize };
+                break :blk @typeInfo(U).@"union".tag_type.?;
+            }
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigContainerType>()
+        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+    }
+
+    fun testUnwrapUnionInferredTagType() {
+        val text = """
+            blk: {
+                const U = union(enum) { foo: usize };
+                break :blk @typeInfo(U).@"union".tag_type.?;
+            }
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigInferredUnionTagType>()
+        assertEquals(ZigContainerKind.UNION, type.union.containerKind)
+    }
+
     fun testTry() {
         val text = "try @as(error{Foo}!bool, true)"
         val value = resolveValue(text).requireIs<ZigUnknown>()
@@ -863,7 +886,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 @as([*:0]u8, undefined),
             )
         """.trimIndent()
-        assertSize(2, resolveValues(text))
+        val value = resolveValue(text).requireIs<ZigMultiValue>()
+        assertSize(2, value.values)
     }
 
     // ptrSize = ZigPointerSize.SLICE
@@ -921,7 +945,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 @as([:0]u8, undefined),
             )
         """.trimIndent()
-        assertSize(2, resolveValues(text))
+        val value = resolveValue(text).requireIs<ZigMultiValue>()
+        assertSize(2, value.values)
     }
 
     // ptrSize = ZigPointerSize.SLICE
@@ -941,7 +966,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
 
     fun testPeerTypesEmptyTupleAndNoreturnArrayPointers() {
         val text = "@TypeOf(&.{}, @as(*[0]noreturn, undefined))"
-        assertSize(2, resolveValues(text))
+        val value = resolveValue(text).requireIs<ZigMultiValue>()
+        assertSize(2, value.values)
     }
 
     fun testPeerTypesConstPointer() {
@@ -1296,5 +1322,40 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testConstCastBuiltin() {
+        val text = "@constCast(@as(*const usize, undefined))"
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testFieldBuiltin() {
+        val text = """@field(@as(struct { foo: usize }, undefined), "foo")"""
+        assertEquals(ZigUsizeType, resolveValue(text).typeOf)
+    }
+
+    fun testFieldTypeBuiltin() {
+        val text = """@FieldType(struct { foo: usize }, "foo")"""
+        assertEquals(ZigUsizeType, resolveValue(text))
+    }
+
+    fun testTagNameBuiltin() {
+        val text = "@tagName(.foo)"
+        val value = resolveValue(text).requireIs<ZigStringLiteralValue>()
+        assertEquals("foo", value.value)
+    }
+
+    fun testTypeOfBuiltin() {
+        val text = "@TypeOf(@as(usize, 42))"
+        assertEquals(ZigUsizeType, resolveValue(text))
+    }
+
+    fun testVectorBuiltin() {
+        val text = "@Vector(42, usize)"
+        val type = resolveValue(text).requireIs<ZigVectorType>()
+        val length = type.length.requireIs<ZigIntValue>()
+        assertEquals(42, length.value)
+        assertEquals(ZigUsizeType, type.child)
     }
 }
