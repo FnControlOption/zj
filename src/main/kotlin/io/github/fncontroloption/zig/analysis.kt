@@ -1584,11 +1584,11 @@ private fun resolveValuesFromReferenceTo(target: ZigNamedElement): Set<ZigValue>
 private fun computeValuesFromReferenceUncached(target: ZigNamedElement): Sequence<ZigValue> {
     return when (target) {
         is ZigFile -> sequenceOf(ZigContainerType(target, emptyMap()))
-        is ZigFnDecl -> computeFnDecl(target)
-        is ZigVarDecl -> computeVarDecl(target)
-        is ZigVarProto -> computeVarProto(target)
+        is ZigFnDecl -> sequenceOf(computeFnDecl(target))
+        is ZigVarDecl -> sequenceOf(computeVarDecl(target))
+        is ZigVarProto -> sequenceOf(computeVarProto(target))
         is ZigFnParam -> sequenceOf(computeFnParam(target))
-        is ZigContainerFieldImpl -> computeContainerField(target)
+        is ZigContainerFieldImpl -> sequenceOf(computeContainerField(target))
         is ZigPayloadItem -> sequenceOf(computePayloadItem(target).value)
         is LightZigTupleField -> sequenceOf(ZigUnknown.of(target.container.fieldTypes[target.fieldIndex]))
         is ZigLabelDecl -> emptySequence()
@@ -2454,33 +2454,32 @@ private fun computeEnumLiteral(element: ZigEnumLiteral): ZigValue {
     }
 }
 
-private fun computeFnDecl(target: ZigFnDecl): Sequence<ZigValue> {
-    val typeParams = findUnboundTypeParams(target)
-    return sequenceOf(ZigUnknown.of(ZigFunctionType(target, typeParams)))
+private fun computeFnDecl(target: ZigFnDecl): ZigValue {
+    return ZigUnknown.of(ZigFunctionType(target, findUnboundTypeParams(target)))
 }
 
-private fun computeVarDecl(target: ZigVarDecl): Sequence<ZigValue> {
+private fun computeVarDecl(target: ZigVarDecl): ZigValue {
     val typeElement = target.typeElement?.expression
     if (typeElement != null) {
-        return resolveValues(typeElement).asSequence().map { ZigUnknown.of(it) }
+        return ZigUnknown.of(resolveValue(typeElement, ZigTypeType))
     }
-    val initElement = target.initializer ?: return sequenceOf(ZigUnknown.ofUnknownType())
+    val initElement = target.initializer ?: return ZigUnknown.ofUnknownType()
     return when (target.mutability) {
-        ZigMutability.CONST -> resolveValues(initElement).asSequence()
-        ZigMutability.VAR -> resolveValues(initElement).asSequence().map { ZigUnknown.of(it.typeOf) }
+        ZigMutability.CONST -> resolveValue(initElement)
+        ZigMutability.VAR -> ZigUnknown.of(resolveValue(initElement).typeOf)
     }
 }
 
-private fun computeVarProto(target: ZigVarProto): Sequence<ZigValue> {
+private fun computeVarProto(target: ZigVarProto): ZigValue {
     val typeElement = target.typeElement?.expression
     if (typeElement != null) {
-        return resolveValues(typeElement).asSequence().map { ZigUnknown.of(it) }
+        return ZigUnknown.of(resolveValue(typeElement, ZigTypeType))
     }
     val destructure = target.containingAssignDestructure
-    val initElement = destructure.initializer ?: return sequenceOf(ZigUnknown.ofUnknownType())
+    val initElement = destructure.initializer ?: return ZigUnknown.ofUnknownType()
     val destructureIndex = destructure.variables.indexOf(target)
     assert(destructureIndex >= 0)
-    return resolveValues(initElement).asSequence().map { init ->
+    return resolveValue(initElement).map { init ->
         when (val typeOfInit = init.typeOf) {
             is ZigTupleType -> {
                 when (val fieldType = typeOfInit.fields.getOrNull(destructureIndex)) {
@@ -2503,21 +2502,21 @@ private fun computeFnParam(target: ZigFnParam): ZigValue {
     return genericParam ?: ZigUnknown.of(resolveValue(target.typeElement?.expression, ZigTypeType))
 }
 
-private fun computeContainerField(target: ZigContainerFieldImpl): Sequence<ZigValue> {
+private fun computeContainerField(target: ZigContainerFieldImpl): ZigValue {
     return when (val typeElement = target.typeElement?.expression) {
         null -> when (target.container.containerKind) {
             ZigContainerKind.STRUCT,
-            ZigContainerKind.OPAQUE -> sequenceOf(ZigUnknown.ofUnknownType())
+            ZigContainerKind.OPAQUE -> ZigUnknown.ofUnknownType()
             ZigContainerKind.ENUM -> {
                 val typeParams = findUnboundTypeParams(target.container)
-                sequenceOf(ZigUnknown.of(ZigContainerType(target.container, typeParams)))
+                ZigUnknown.of(ZigContainerType(target.container, typeParams))
             }
             ZigContainerKind.UNION -> when (target.container.containerArgElement) {
-                null -> sequenceOf(ZigUnknown.ofUnknownType())
-                else -> sequenceOf(ZigVoidValue)
+                null -> ZigUnknown.ofUnknownType()
+                else -> ZigVoidValue
             }
         }
-        else -> resolveValues(typeElement).asSequence().map { ZigUnknown.of(it) }
+        else -> ZigUnknown.of(resolveValue(typeElement, ZigTypeType))
     }
 }
 
@@ -2747,7 +2746,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                             })
                         }
                     } else {
-                        sequenceOf(tagType.map { ZigUnknown.of(it) })
+                        sequenceOf(ZigUnknown.of(tagType))
                     }
                 } else {
                     emptySequence()
