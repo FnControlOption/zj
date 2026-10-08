@@ -346,7 +346,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                         )
                     } else if (isInstance) {
                         val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
-                        val value = ZigAnalyzer.substituteTypeParams1(initialValue, containerType.typeParams)
+                        val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
                         variants.add(
                             createLookupElementWithType(
                                 member,
@@ -369,7 +369,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                     continue
                 }
                 val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
-                val value = ZigAnalyzer.substituteTypeParams1(initialValue, containerType.typeParams)
+                val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
                 when (val type = value.typeOf) {
                     is ZigFunctionType -> {
                         var (params, paramTypes) = getFunctionParamTypes(type, containerType.typeParams)
@@ -494,7 +494,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
                         )
                     } else if (containerType.isTaggedUnion) {
                         val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
-                        val value = ZigAnalyzer.substituteTypeParams1(initialValue, containerType.typeParams)
+                        val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
                         val type = value.typeOf
                         if (type == ZigVoidType) {
                             variants.add(
@@ -512,7 +512,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
                     continue
                 }
                 val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
-                val value = ZigAnalyzer.substituteTypeParams1(initialValue, containerType.typeParams)
+                val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
                 when (val type = value.typeOf) {
                     is ZigFunctionType -> {
                         // TODO: check if return type can coerce to original type
@@ -676,7 +676,7 @@ internal fun getFunctionParamTypes(
     return functionElement.parameters.map { param ->
         param to param.typeElement?.expression?.let {
             val initialValue = ZigAnalyzer.resolveValue(it)
-            ZigAnalyzer.substituteTypeParams1(initialValue, typeParams)
+            ZigAnalyzer.substituteTypeParams(initialValue, typeParams)
         }
     }.unzip()
 }
@@ -743,7 +743,7 @@ private fun getFunctionTypeText(
     }
     val returnType = functionElement.returnTypeElement?.expression?.let {
         val initialValue = ZigAnalyzer.resolveValue(it)
-        ZigAnalyzer.substituteTypeParams1(initialValue, typeParams)
+        ZigAnalyzer.substituteTypeParams(initialValue, typeParams)
     }
     if (returnType == null) {
         return "_"
@@ -835,7 +835,7 @@ private fun getFieldInitVariants(containerType: IZigContainerType): Sequence<Loo
     return containerType.members.filterIsInstance<ZigContainerField>().mapNotNull { member ->
         val name = member.name ?: return@mapNotNull null
         val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
-        val value = ZigAnalyzer.substituteTypeParams1(initialValue, containerType.typeParams)
+        val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
         buildLookupElement(member, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
             .withIcon(AllIcons.Nodes.Field)
             .withTailText(" =")
