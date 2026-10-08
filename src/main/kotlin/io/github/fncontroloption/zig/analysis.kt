@@ -1782,26 +1782,30 @@ private fun resolveBreakValue(element: ZigBreak): ZigValue {
     }
 }
 
+private fun inferResultType(childElement: ZigExpression): ZigValue {
+    return ZigMultiValue.from(inferResultTypes(childElement).toSet())
+}
+
 private fun inferResultTypes(childElement: ZigExpression): Sequence<ZigValue> {
     return when (val parentElement = childElement.parent) {
-        is ZigVarDecl -> inferVarDecl(parentElement, childElement)
-        is ZigContainerFieldImpl -> inferContainerField(parentElement, childElement)
-        is ZigAssign -> inferAssign(parentElement, childElement)
-        is ZigAssignDestructure -> inferAssignDestructure(parentElement, childElement)
+        is ZigVarDecl -> sequenceOf(inferVarDecl(parentElement, childElement))
+        is ZigContainerFieldImpl -> sequenceOf(inferContainerField(parentElement, childElement))
+        is ZigAssign -> sequenceOf(inferAssign(parentElement, childElement))
+        is ZigAssignDestructure -> sequenceOf(inferAssignDestructure(parentElement, childElement))
         is ZigListInitItem -> inferListInitItem(parentElement, childElement)
-        is ZigEqualEqual, is ZigBangEqual -> inferEqual(parentElement, childElement)
-        is ZigSwitchItem -> inferSwitchItem(parentElement, childElement)
-        is ZigSwitchProng -> inferSwitchProng(parentElement, childElement)
-        is ZigThenElement -> inferThen(parentElement, childElement)
-        is ZigElseElement -> inferElse(parentElement, childElement)
-        is ZigOrelse -> inferOrelse(parentElement, childElement)
-        is ZigCatch -> inferCatch(parentElement, childElement)
-        is ZigAddressOf -> inferAddressOf(parentElement, childElement)
-        is ZigReturn -> inferReturn(parentElement, childElement)
-        is ZigBreak -> inferBreak(parentElement, childElement)
-        is ZigContinue -> inferContinue(parentElement, childElement)
-        is ZigComptime -> inferComptime(parentElement, childElement)
-        is ZigCall -> inferCall(parentElement, childElement)
+        is ZigEqualEqual, is ZigBangEqual -> sequenceOf(inferEqual(parentElement, childElement))
+        is ZigSwitchItem -> sequenceOf(inferSwitchItem(parentElement, childElement))
+        is ZigSwitchProng -> sequenceOf(inferSwitchProng(parentElement, childElement))
+        is ZigThenElement -> sequenceOf(inferThen(parentElement, childElement))
+        is ZigElseElement -> sequenceOf(inferElse(parentElement, childElement))
+        is ZigOrelse -> sequenceOf(inferOrelse(parentElement, childElement))
+        is ZigCatch -> sequenceOf(inferCatch(parentElement, childElement))
+        is ZigAddressOf -> sequenceOf(inferAddressOf(parentElement, childElement))
+        is ZigReturn -> sequenceOf(inferReturn(parentElement, childElement))
+        is ZigBreak -> sequenceOf(inferBreak(parentElement, childElement))
+        is ZigContinue -> sequenceOf(inferContinue(parentElement, childElement))
+        is ZigComptime -> sequenceOf(inferComptime(parentElement, childElement))
+        is ZigCall -> sequenceOf(inferCall(parentElement, childElement))
         is ZigCallArg -> inferCallArg(parentElement, childElement)
         else -> sequenceOf(ZigUnknown.of(ZigTypeType))
     }
@@ -2795,43 +2799,39 @@ private fun computeForPayload(payloadElement: ZigForPayload, payloadItem: ZigPay
 private fun inferVarDecl(
     parentElement: ZigVarDecl,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.initializer !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
-    val typeElement = parentElement.typeElement?.expression
-        ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
-    return resolveValues(typeElement).asSequence()
+    return resolveValue(parentElement.typeElement?.expression, ZigTypeType)
 }
 
 private fun inferContainerField(
     parentElement: ZigContainerFieldImpl,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.initializer !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
-    val typeElement = parentElement.typeElement?.expression
-        ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
-    return resolveValues(typeElement).asSequence()
+    return resolveValue(parentElement.typeElement?.expression, ZigTypeType)
 }
 
 private fun inferAssign(
     parentElement: ZigAssign,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.rightExpression !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
-    return resolveValues(parentElement.leftExpression).asSequence().map { it.typeOf }
+    return resolveValue(parentElement.leftExpression).typeOf
 }
 
 private fun inferAssignDestructure(
     parentElement: ZigAssignDestructure,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.initializer !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
     val fields = parentElement.variables.map { variable ->
         val types = when (variable) {
@@ -2846,7 +2846,7 @@ private fun inferAssignDestructure(
         // For efficiency, limit each field to a single possible type.
         types.singleOrNull() ?: ZigUnknown.of(ZigTypeType)
     }
-    return sequenceOf(ZigTupleType(LightZigTuple(childElement.manager, fields.toList())))
+    return ZigTupleType(LightZigTuple(childElement.manager, fields.toList()))
 }
 
 private fun inferListInitItem(
@@ -2890,35 +2890,35 @@ private fun inferListInitItem(
 private fun inferEqual(
     parentElement: ZigBinaryExpression,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     val otherElement = when (childElement) {
         parentElement.leftOperand -> parentElement.rightOperand
         parentElement.rightOperand -> parentElement.leftOperand
         else -> null
     }
     if (otherElement == null) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
-    return resolveValues(otherElement).asSequence().map { it.typeOf }
+    return resolveValue(otherElement).typeOf
 }
 
 private fun inferSwitchItem(
     parentElement: ZigSwitchItem,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.expression !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
     val switchElement = parentElement.containingSwitchProng.containingSwitch
     val conditionElement = switchElement.conditionElement.expression
-        ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
-    return resolveValues(conditionElement).asSequence().flatMap {
+        ?: return ZigUnknown.of(ZigTypeType)
+    return resolveValue(conditionElement).map {
         val type = it.typeOf
         if (type is IZigContainerType && type.isTaggedUnion) {
-            val tagType = ZigAnalyzer.resolveUnionTagType(type) ?: return@flatMap sequenceOf(ZigUnknown.of(ZigTypeType))
-            sequenceOf(tagType)
+            val tagType = ZigAnalyzer.resolveUnionTagType(type) ?: return@map ZigUnknown.of(ZigTypeType)
+            tagType
         } else {
-            sequenceOf(type)
+            type
         }
     }
 }
@@ -2926,103 +2926,103 @@ private fun inferSwitchItem(
 private fun inferSwitchProng(
     parentElement: ZigSwitchProng,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.expression !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
-    val parentTypes = inferResultTypes(parentElement.containingSwitch)
-    val otherTypes =
-        parentElement.containingSwitch.prongs
-            .filter { it !== parentElement }
-            .mapNotNull { it.expression }
-            .flatMap { resolveValues(it) }
-            .map { it.typeOf }
-    return parentTypes + otherTypes
+    val types = mutableSetOf<ZigValue>()
+    types += inferResultType(parentElement.containingSwitch)
+    for (prong in parentElement.containingSwitch.prongs) {
+        if (prong === parentElement) continue
+        types += resolveValue(prong.expression).typeOf
+    }
+    return ZigMultiValue.from(types, ZigTypeType)
 }
 
 private fun inferThen(
     parentElement: ZigThenElement,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.expression !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
-    val parentTypes = inferResultTypes(parentElement.parent as ZigExpression)
     val grandparentElement = parentElement.parent
-    if (grandparentElement is ZigIf) {
-        val elseElement = grandparentElement.elseElement?.expression
-        if (elseElement != null) {
-            val elseTypes = resolveValues(elseElement).asSequence().map { it.typeOf }
-            return parentTypes + elseTypes
-        }
+    if (grandparentElement !is ZigExpression) {
+        return ZigUnknown.of(ZigTypeType)
     }
-    return parentTypes
+    val types = mutableSetOf<ZigValue>()
+    types += inferResultType(grandparentElement)
+    if (grandparentElement is ZigIf) {
+        types += resolveValue(grandparentElement.elseElement?.expression).typeOf
+    }
+    return ZigMultiValue.from(types, ZigTypeType)
 }
 
 private fun inferElse(
     parentElement: ZigElseElement,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.expression !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
-    val parentTypes = inferResultTypes(parentElement.parent as ZigExpression)
     val grandparentElement = parentElement.parent
-    if (grandparentElement is ZigIf) {
-        val thenElement = grandparentElement.thenElement.expression
-        if (thenElement != null) {
-            val thenTypes = resolveValues(thenElement).asSequence().map { it.typeOf }
-            return parentTypes + thenTypes
-        }
+    if (grandparentElement !is ZigExpression) {
+        return ZigUnknown.of(ZigTypeType)
     }
-    return parentTypes
+    val types = mutableSetOf<ZigValue>()
+    types += inferResultType(grandparentElement)
+    if (grandparentElement is ZigIf) {
+        types += resolveValue(grandparentElement.thenElement.expression).typeOf
+    }
+    return ZigMultiValue.from(types, ZigTypeType)
 }
 
 private fun inferOrelse(
     parentElement: ZigOrelse,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.rightOperand !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
-    val parentTypes = inferResultTypes(parentElement)
-    val leftTypes = resolveValues(parentElement.leftOperand).asSequence().map { left ->
+    val types = mutableSetOf<ZigValue>()
+    types += inferResultType(parentElement)
+    types += resolveValue(parentElement.leftOperand).map { left ->
         when (val typeOfLeft = left.typeOf) {
             is ZigOptionalType -> typeOfLeft.child
-            else -> ZigUnknown.ofUnknownType()
+            else -> ZigUnknown.of(ZigTypeType)
         }
     }
-    return parentTypes + leftTypes
+    return ZigMultiValue.from(types, ZigTypeType)
 }
 
 private fun inferCatch(
     parentElement: ZigCatch,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.rightOperand !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
-    val parentTypes = inferResultTypes(parentElement)
-    val leftTypes = resolveValues(parentElement.leftOperand).asSequence().map { left ->
+    val types = mutableSetOf<ZigValue>()
+    types += inferResultType(parentElement)
+    types += resolveValue(parentElement.leftOperand).map { left ->
         when (val typeOfLeft = left.typeOf) {
             is ZigErrorUnionType -> typeOfLeft.payload
-            else -> ZigUnknown.ofUnknownType()
+            else -> ZigUnknown.of(ZigTypeType)
         }
     }
-    return parentTypes + leftTypes
+    return ZigMultiValue.from(types, ZigTypeType)
 }
 
 private fun inferAddressOf(
     parentElement: ZigAddressOf,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.operand !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
-    return inferResultTypes(parentElement)
-        .filterIsInstance<ZigPointerType>()
-        .map {
-            when (it.size) {
+    return inferResultType(parentElement).map {
+        when (it) {
+            is ZigPointerType -> when (it.size) {
                 ZigPointerSize.ONE -> it.child
 
                 ZigPointerSize.SLICE -> {
@@ -3033,40 +3033,41 @@ private fun inferAddressOf(
                 ZigPointerSize.MANY,
                 ZigPointerSize.C -> ZigUnknown.of(ZigTypeType)
             }
+            else -> ZigUnknown.of(ZigTypeType)
         }
-        .ifEmpty { sequenceOf(ZigUnknown.of(ZigTypeType)) }
+    }
 }
 
 private fun inferReturn(
     parentElement: ZigReturn,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.returnOperand !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
     val fnDecl = childElement.findParentOfType<ZigFnDecl>()
-        ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+        ?: return ZigUnknown.of(ZigTypeType)
     val typeElement = fnDecl.returnTypeElement?.expression
-        ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+        ?: return ZigUnknown.of(ZigTypeType)
     return if (fnDecl.bangTokenElement != null) {
-        val errorSet = ZigUnknown.ofUnknownType()
-        resolveValues(typeElement).asSequence().map { ZigErrorUnionType(errorSet, it) }
+        val errorSet = ZigUnknown.of(ZigTypeType)
+        resolveValue(typeElement).map { ZigErrorUnionType(errorSet, it) }
     } else {
-        resolveValues(typeElement).asSequence()
+        resolveValue(typeElement)
     }
 }
 
 private fun inferBreak(
     parentElement: ZigBreak,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.breakOperand !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
     val labelElement = parentElement.labelRef?.identifierElement
     val breakable = if (labelElement != null) {
         val label = parseZigIdentifier(labelElement)
-            ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+            ?: return ZigUnknown.of(ZigTypeType)
         parentElement.parents(withSelf = false).firstNotNullOfOrNull {
             when (it) {
                 is ZigLabelable if label == parseZigIdentifier(it.labelDecl?.identifierElement) -> it
@@ -3085,64 +3086,64 @@ private fun inferBreak(
         }
     }
     if (breakable == null) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
-    val parentTypes = inferResultTypes(breakable)
+    val types = mutableSetOf<ZigValue>()
+    types += inferResultTypes(breakable)
     var breakElements = getLabeledBreaksFor(breakable)
     if (breakable is ZigLoop) {
         breakElements += getUnlabeledBreaksFor(breakable)
     }
-    val otherTypes =
-        breakElements
-            .filter { it !== parentElement }
-            .map { resolveBreakValue(it) }
-            .map { it.typeOf }
-    return parentTypes + otherTypes
+    for (b in breakElements) {
+        if (b === parentElement) continue
+        types += resolveBreakValue(b).typeOf
+    }
+    return ZigMultiValue.from(types, ZigTypeType)
 }
 
 private fun inferContinue(
     parentElement: ZigContinue,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.continueOperand !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
     val label = parseZigIdentifier(parentElement.labelRef?.identifierElement)
-        ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+        ?: return ZigUnknown.of(ZigTypeType)
     val labelable = parentElement.findParentInFile {
         it is ZigLabelable && label == parseZigIdentifier(it.labelDecl?.identifierElement)
     }
     if (labelable !is ZigSwitch) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
     val conditionElement = labelable.conditionElement.expression
-        ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
-    return resolveValues(conditionElement).asSequence().map { it.typeOf }
+        ?: return ZigUnknown.of(ZigTypeType)
+    return resolveValue(conditionElement).typeOf
 }
 
 private fun inferComptime(
     parentElement: ZigComptime,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.innerExpression !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
-    return inferResultTypes(parentElement)
+    return inferResultType(parentElement)
 }
 
 private fun inferCall(
     parentElement: ZigCall,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.functionExpression !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
     val grandparentElement = parentElement.parent
     if (grandparentElement is ZigTry) {
-        val errorSet = ZigUnknown.ofUnknownType()
-        return inferResultTypes(grandparentElement).map { ZigErrorUnionType(errorSet, it) }
+        val errorSet = ZigUnknown.of(ZigTypeType)
+        return inferResultType(grandparentElement).map { ZigErrorUnionType(errorSet, it) }
     }
-    return inferResultTypes(parentElement)
+    return inferResultType(parentElement)
 }
 
 private fun inferCallArg(
@@ -3180,8 +3181,8 @@ private fun inferCallArg(
     val argIndex = builtinCallElement.argumentElements.indexOf(parentElement)
     assert(argIndex >= 0)
     return when (builtinName) {
-        "@as" -> inferAsBuiltinCallArg(builtinCallElement, argIndex)
-        "@memset" -> inferMemsetBuiltinCallArg(builtinCallElement, argIndex)
+        "@as" -> sequenceOf(inferAsBuiltinCallArg(builtinCallElement, argIndex))
+        "@memset" -> sequenceOf(inferMemsetBuiltinCallArg(builtinCallElement, argIndex))
         else -> {
             val builtin = ZigBuiltinFunctionsService.getBuiltinFnProto(parentElement.project, builtinName)
                 ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
@@ -3199,36 +3200,36 @@ private fun inferCallArg(
 private fun inferAsBuiltinCallArg(
     builtinCallElement: ZigBuiltinCall,
     argIndex: Int,
-): Sequence<ZigValue> {
+): ZigValue {
     if (argIndex != 1) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
     val firstArgElement = builtinCallElement.argumentElements.firstOrNull()?.expression
-        ?: return sequenceOf(ZigUnknown.ofUnknownType())
-    return resolveValues(firstArgElement).asSequence()
+        ?: return ZigUnknown.of(ZigTypeType)
+    return resolveValue(firstArgElement)
 }
 
 private fun inferMemsetBuiltinCallArg(
     builtinCallElement: ZigBuiltinCall,
     argIndex: Int,
-): Sequence<ZigValue> {
+): ZigValue {
     if (argIndex != 1) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
     val firstArgElement = builtinCallElement.argumentElements.firstOrNull()?.expression
-        ?: return sequenceOf(ZigUnknown.ofUnknownType())
-    return resolveValues(firstArgElement).asSequence().mapNotNull {
+        ?: return ZigUnknown.of(ZigTypeType)
+    return resolveValue(firstArgElement).map {
         when (val type = it.typeOf) {
             is ZigPointerType -> when (type.size) {
                 ZigPointerSize.SLICE -> type.child
                 ZigPointerSize.ONE -> when (val child = type.child) {
                     is ZigArrayType -> child.child
-                    else -> null
+                    else -> ZigUnknown.of(ZigTypeType)
                 }
                 ZigPointerSize.MANY,
-                ZigPointerSize.C -> null
+                ZigPointerSize.C -> ZigUnknown.of(ZigTypeType)
             }
-            else -> null
+            else -> ZigUnknown.of(ZigTypeType)
         }
     }
 }
