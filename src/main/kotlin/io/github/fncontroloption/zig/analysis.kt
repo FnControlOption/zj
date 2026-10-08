@@ -2133,7 +2133,7 @@ private fun computeIf(element: ZigIf): Sequence<ZigValue> {
         }
     }
     val values = thenValues + elseValues
-    return resolvePeerValues(values.toList()).asSequence()
+    return resolvePeerValues(values.toSet()).asSequence()
 }
 
 private fun computeCatch(element: ZigCatch): Sequence<ZigValue> {
@@ -2148,7 +2148,7 @@ private fun computeCatch(element: ZigCatch): Sequence<ZigValue> {
         else -> resolveValues(rightElement).asSequence()
     }
     val values = leftValues + rightValues
-    return resolvePeerValues(values.toList()).asSequence()
+    return resolvePeerValues(values.toSet()).asSequence()
 }
 
 private fun computeOrelse(element: ZigOrelse): Sequence<ZigValue> {
@@ -2163,7 +2163,7 @@ private fun computeOrelse(element: ZigOrelse): Sequence<ZigValue> {
         else -> resolveValues(rightElement).asSequence()
     }
     val values = leftValues + rightValues
-    return resolvePeerValues(values.toList()).asSequence()
+    return resolvePeerValues(values.toSet()).asSequence()
 }
 
 private fun computeMergeErrorSets(element: ZigMergeErrorSets): Sequence<ZigValue> {
@@ -2309,7 +2309,7 @@ private fun computeTypeOfBuiltinCall(element: ZigBuiltinCall): Sequence<ZigValue
         resolveValues(argElements[0]).asSequence().map { it.typeOf }
     } else {
         val values = argElements.flatMap { resolveValues(it) }
-        resolvePeerValues(values.toList()).asSequence().map { it.typeOf }
+        resolvePeerValues(values.toSet()).asSequence().map { it.typeOf }
     }
 }
 
@@ -2334,8 +2334,8 @@ private fun computeCall(element: ZigCall): Sequence<ZigValue> {
 }
 
 private fun computeBlock(element: ZigBlock): Sequence<ZigValue> {
-    val values = computeValuesFromLabeledBreaks(element).toList()
-    return resolvePeerValues(values).asSequence().ifEmpty { sequenceOf(ZigVoidValue) }
+    val values = computeValuesFromLabeledBreaks(element)
+    return resolvePeerValues(values.toSet()).asSequence().ifEmpty { sequenceOf(ZigVoidValue) }
 }
 
 private fun computeSwitch(element: ZigSwitch): Sequence<ZigValue> {
@@ -2344,7 +2344,7 @@ private fun computeSwitch(element: ZigSwitch): Sequence<ZigValue> {
         prongElement.expression?.let { resolveValues(it).asSequence() }
             ?: sequenceOf(ZigUnknown.ofUnknownType())
     }
-    return resolvePeerValues(values.toList()).asSequence().ifEmpty { sequenceOf(ZigUnknown.ofUnknownType()) }
+    return resolvePeerValues(values.toSet()).asSequence().ifEmpty { sequenceOf(ZigUnknown.ofUnknownType()) }
 }
 
 private fun computeLoop(element: ZigLoop): Sequence<ZigValue> {
@@ -2356,7 +2356,7 @@ private fun computeLoop(element: ZigLoop): Sequence<ZigValue> {
     } else {
         values += sequenceOf(ZigVoidValue)
     }
-    return resolvePeerValues(values.toList()).asSequence()
+    return resolvePeerValues(values.toSet()).asSequence()
 }
 
 private fun computeStringExpression(element: ZigStringExpression): Sequence<ZigValue> {
@@ -2602,7 +2602,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                                 fieldValues
                             } else {
                                 // TODO: handle pointer capture of tagged union variants with incompatible types
-                                resolvePeerValues(fieldValues.toList()).asSequence()
+                                resolvePeerValues(fieldValues.toSet()).asSequence()
                             }
                         }
                     }
@@ -3169,17 +3169,20 @@ private fun inferMemsetBuiltinCallArg(
 
 // Based on Sema.resolvePeerTypes
 // https://codeberg.org/ziglang/zig/src/commit/00b59eb/src/Sema.zig#L32687
-private fun resolvePeerValues(values: List<ZigValue>): List<ZigValue> {
+private fun resolvePeerValues(values: Set<ZigValue>): Set<ZigValue> {
     when (values.size) {
-        0 -> return emptyList()
+        0 -> return emptySet()
         1 -> return values
         else -> {}
     }
 
+    val vals = values.toList()
+    val tys = vals.map { it.typeOf }
+
     var sameType = true
-    val firstType = values[0].typeOf
-    for (i in 1 until values.size) {
-        if (values[i].typeOf != firstType) {
+    val firstType = tys[0]
+    for (i in 1 until vals.size) {
+        if (tys[i] != firstType) {
             sameType = false
             break
         }
@@ -3188,13 +3191,11 @@ private fun resolvePeerValues(values: List<ZigValue>): List<ZigValue> {
         if (firstType == ZigTypeType) {
             return values
         }
-        return listOf(ZigUnknown.of(firstType))
+        return setOf(ZigUnknown.of(firstType))
     }
 
-    val peerTys: MutableList<ZigValue?> = values.map { it.typeOf }.toMutableList()
-    val peerVals: MutableList<ZigValue?> = values.toMutableList()
-    val type = resolvePeerTypesInner(peerTys, peerVals)
-    return if (type != null) listOf(ZigUnknown.of(type)) else values
+    val type = resolvePeerTypesInner(tys.toMutableList(), vals.toMutableList())
+    return if (type != null) setOf(ZigUnknown.of(type)) else values
 }
 
 private enum class PeerResolveStrategy {
