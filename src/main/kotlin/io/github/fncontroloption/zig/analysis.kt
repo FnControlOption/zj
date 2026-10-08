@@ -1162,13 +1162,13 @@ private fun computeValuesUncached(element: ZigExpression): Sequence<ZigValue> {
 
         is ZigBuiltinCall -> sequenceOf(computeBuiltinCall(element))
         is ZigCall -> computeCall(element)
-        is ZigBlock -> computeBlock(element)
-        is ZigSwitch -> computeSwitch(element)
-        is ZigLoop -> computeLoop(element)
-        is ZigStringExpression -> computeStringExpression(element)
-        is ZigNumberLiteral -> computeNumberLiteral(element)
+        is ZigBlock -> sequenceOf(computeBlock(element))
+        is ZigSwitch -> sequenceOf(computeSwitch(element))
+        is ZigLoop -> sequenceOf(computeLoop(element))
+        is ZigStringExpression -> sequenceOf(computeStringExpression(element))
+        is ZigNumberLiteral -> sequenceOf(computeNumberLiteral(element))
         is ZigCharLiteral -> sequenceOf(ZigUnknown.of(ZigComptimeIntType))
-        is ZigEnumLiteral -> computeEnumLiteral(element)
+        is ZigEnumLiteral -> sequenceOf(computeEnumLiteral(element))
 
         is ZigBreak,
         is ZigContinue,
@@ -1738,7 +1738,7 @@ internal fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<Zi
 }
 
 private fun computeValuesFromLabeledBreaks(element: ZigLabelable): Sequence<ZigValue> {
-    return getLabeledBreaksFor(element).flatMap { resolveBreakValue(it) }
+    return getLabeledBreaksFor(element).map { resolveBreakValue(it) }
 }
 
 private fun getLabeledBreaksFor(element: ZigLabelable): Sequence<ZigBreak> {
@@ -1755,7 +1755,7 @@ private fun getLabeledBreaksFor(element: ZigLabelable): Sequence<ZigBreak> {
 }
 
 private fun computeValuesFromUnlabeledBreaks(loop: ZigLoop): Sequence<ZigValue> {
-    return getUnlabeledBreaksFor(loop).flatMap { resolveBreakValue(it) }
+    return getUnlabeledBreaksFor(loop).map { resolveBreakValue(it) }
 }
 
 private fun getUnlabeledBreaksFor(loop: ZigLoop): Sequence<ZigBreak> {
@@ -1775,10 +1775,10 @@ private fun getUnlabeledBreaksFor(loop: ZigLoop): Sequence<ZigBreak> {
     }
 }
 
-private fun resolveBreakValue(element: ZigBreak): Set<ZigValue> {
+private fun resolveBreakValue(element: ZigBreak): ZigValue {
     return when (val breakValue = element.breakOperand) {
-        null -> setOf(ZigVoidValue)
-        else -> resolveValues(breakValue)
+        null -> ZigVoidValue
+        else -> resolveValue(breakValue)
     }
 }
 
@@ -2393,59 +2393,56 @@ private fun computeCall(element: ZigCall): Sequence<ZigValue> {
     }
 }
 
-private fun computeBlock(element: ZigBlock): Sequence<ZigValue> {
-    val values = computeValuesFromLabeledBreaks(element)
-    return resolvePeerValues(values.toSet()).asSequence().ifEmpty { sequenceOf(ZigVoidValue) }
+private fun computeBlock(element: ZigBlock): ZigValue {
+    val values = computeValuesFromLabeledBreaks(element).toSet()
+    if (values.isEmpty()) return ZigVoidValue
+    return ZigMultiValue.from(resolvePeerValues(values))
 }
 
-private fun computeSwitch(element: ZigSwitch): Sequence<ZigValue> {
-    var values = computeValuesFromLabeledBreaks(element)
-    values += element.prongs.flatMap { prongElement ->
-        prongElement.expression?.let { resolveValues(it).asSequence() }
-            ?: sequenceOf(ZigUnknown.ofUnknownType())
+private fun computeSwitch(element: ZigSwitch): ZigValue {
+    val values = buildSet {
+        addAll(computeValuesFromLabeledBreaks(element))
+        addAll(element.prongs.map { resolveValue(it.expression) })
     }
-    return resolvePeerValues(values.toSet()).asSequence().ifEmpty { sequenceOf(ZigUnknown.ofUnknownType()) }
+    return ZigMultiValue.from(resolvePeerValues(values))
 }
 
-private fun computeLoop(element: ZigLoop): Sequence<ZigValue> {
-    var values = computeValuesFromLabeledBreaks(element)
-    values += computeValuesFromUnlabeledBreaks(element)
-    val elseElement = element.elseElement?.expression
-    if (elseElement != null) {
-        values += resolveValues(elseElement).asSequence()
-    } else {
-        values += sequenceOf(ZigVoidValue)
+private fun computeLoop(element: ZigLoop): ZigValue {
+    val values = buildSet {
+        addAll(computeValuesFromLabeledBreaks(element))
+        addAll(computeValuesFromUnlabeledBreaks(element))
+        add(element.elseElement?.let { resolveValue(it.expression) } ?: ZigVoidValue)
     }
-    return resolvePeerValues(values.toSet()).asSequence()
+    return ZigMultiValue.from(resolvePeerValues(values))
 }
 
-private fun computeStringExpression(element: ZigStringExpression): Sequence<ZigValue> {
+private fun computeStringExpression(element: ZigStringExpression): ZigValue {
     val value = element.value
     if (value != null) {
-        return sequenceOf(ZigStringLiteralValue(value))
+        return ZigStringLiteralValue(value)
     }
     val length = ZigUnknown.of(ZigUsizeType)
     val u8 = ZigFixedIntType(ZigSignedness.UNSIGNED, 8)
     val array = ZigArrayType(length, ZigIntValue(ZigComptimeIntType, 0), u8)
     val pointer = ZigPointerType(ZigPointerSize.ONE, null, ZigMutability.CONST, array)
-    return sequenceOf(ZigUnknown.of(pointer))
+    return ZigUnknown.of(pointer)
 }
 
-private fun computeNumberLiteral(element: ZigNumberLiteral): Sequence<ZigValue> {
+private fun computeNumberLiteral(element: ZigNumberLiteral): ZigValue {
     return when (val result = ZigNumberLiteralParser.parse(element.text)) {
-        is ZigNumberLiteralParser.IntResult -> sequenceOf(ZigIntValue(ZigComptimeIntType, result.value))
-        is ZigNumberLiteralParser.BigIntResult -> sequenceOf(ZigUnknown.of(ZigComptimeIntType))
-        is ZigNumberLiteralParser.FloatResult -> sequenceOf(ZigUnknown.of(ZigComptimeFloatType))
-        ZigNumberLiteralParser.FailureResult -> sequenceOf(ZigUnknown.ofUnknownType())
+        is ZigNumberLiteralParser.IntResult -> ZigIntValue(ZigComptimeIntType, result.value)
+        is ZigNumberLiteralParser.BigIntResult -> ZigUnknown.of(ZigComptimeIntType)
+        is ZigNumberLiteralParser.FloatResult -> ZigUnknown.of(ZigComptimeFloatType)
+        ZigNumberLiteralParser.FailureResult -> ZigUnknown.ofUnknownType()
     }
 }
 
-private fun computeEnumLiteral(element: ZigEnumLiteral): Sequence<ZigValue> {
+private fun computeEnumLiteral(element: ZigEnumLiteral): ZigValue {
     val name = parseZigIdentifier(element.identifierElement)
     return if (name != null) {
-        sequenceOf(ZigEnumLiteralValue(ZigEnumLiteralType, name))
+        ZigEnumLiteralValue(ZigEnumLiteralType, name)
     } else {
-        sequenceOf(ZigUnknown.of(ZigEnumLiteralType))
+        ZigUnknown.of(ZigEnumLiteralType)
     }
 }
 
@@ -3098,7 +3095,7 @@ private fun inferBreak(
     val otherTypes =
         breakElements
             .filter { it !== parentElement }
-            .flatMap { resolveBreakValue(it) }
+            .map { resolveBreakValue(it) }
             .map { it.typeOf }
     return parentTypes + otherTypes
 }
