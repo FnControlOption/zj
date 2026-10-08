@@ -204,7 +204,7 @@ sealed class ZigFileReference(element: ZigStringLiteral) :
         val parts = text.split("/")
         val fileName = parts.lastOrNull() ?: return emptyArray()
         var directory = myElement.containingFile?.originalFile?.containingDirectory ?: return emptyArray()
-        parts.subList(0, parts.size - 1).forEach { dirName ->
+        for (dirName in parts.subList(0, parts.size - 1)) {
             if (dirName == "..") {
                 directory = directory.parentDirectory ?: return emptyArray()
             } else if (dirName != ".") {
@@ -441,11 +441,10 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
     PsiPolyVariantReferenceBase<ZigEnumLiteral>(element, identifier.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
-        val types = ZigAnalyzer.inferResultTypes(myElement)
         val name = parseZigIdentifier(identifier) ?: return emptyArray()
         val results = mutableSetOf<ResolveResult>()
-        for (originalType in types) {
-            val containerType = ZigAnalyzer.findEnumLiteralContainerType(originalType) ?: continue
+        ZigAnalyzer.inferResultType(myElement).forEach { originalType ->
+            val containerType = ZigAnalyzer.findEnumLiteralContainerType(originalType) ?: return@forEach
             val member = containerType.members.firstOrNull {
                 it is PsiNameIdentifierOwner && it.name == name
             }
@@ -467,19 +466,22 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
     override fun getVariants(): Array<out LookupElement> {
         val parentElement = myElement.parent
         if (parentElement is ZigListInitItem && !parentElement.isStructField) {
-            val types = ZigAnalyzer.resolveOrInferStructInitTypes(parentElement.containingListInit).toList()
-            if (types.isNotEmpty()) {
-                val variants = mutableSetOf<LookupElement>()
-                for (containerType in types) {
+            var foundContainer = false
+            val variants = mutableSetOf<LookupElement>()
+            ZigAnalyzer.resolveOrInferListInitType(parentElement.containingListInit).forEach { containerType ->
+                if (containerType is IZigContainerType) {
+                    foundContainer = true
                     variants.addAll(getFieldInitVariants(containerType))
                 }
+            }
+            if (foundContainer) {
                 return variants.toTypedArray()
             }
         }
         val originalFile = myElement.containingFile
         val variants = mutableSetOf<LookupElement>()
-        for (originalType in ZigAnalyzer.inferResultTypes(myElement)) {
-            val containerType = ZigAnalyzer.findEnumLiteralContainerType(originalType) ?: continue
+        ZigAnalyzer.inferResultType(myElement).forEach { originalType ->
+            val containerType = ZigAnalyzer.findEnumLiteralContainerType(originalType) ?: return@forEach
             for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
                 val name = member.name ?: continue
                 if (member is ZigContainerField) {
@@ -555,10 +557,10 @@ class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElem
     PsiPolyVariantReferenceBase<ZigListInitItem>(element, identifier.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
-        val types = ZigAnalyzer.resolveOrInferStructInitTypes(myElement.containingListInit)
         val name = parseZigIdentifier(identifier) ?: return emptyArray()
         val results = mutableSetOf<ResolveResult>()
-        for (containerType in types) {
+        ZigAnalyzer.resolveOrInferListInitType(myElement.containingListInit).forEach { containerType ->
+            if (containerType !is IZigContainerType) return@forEach
             val member = containerType.members.firstOrNull {
                 it is ZigContainerField && it.name == name
             }
@@ -578,9 +580,9 @@ class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElem
         )
 
     override fun getVariants(): Array<out LookupElement> {
-        val types = ZigAnalyzer.resolveOrInferStructInitTypes(myElement.containingListInit)
         val variants = mutableSetOf<LookupElement>()
-        for (containerType in types) {
+        ZigAnalyzer.resolveOrInferListInitType(myElement.containingListInit).forEach { containerType ->
+            if (containerType !is IZigContainerType) return@forEach
             variants.addAll(getFieldInitVariants(containerType))
         }
         return variants.toTypedArray()

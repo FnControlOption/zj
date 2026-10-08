@@ -80,30 +80,34 @@ object ZigAnalyzer {
         return substituteTypeParams(values.asSequence(), typeParams)
     }
 
-    fun inferResultTypes(childElement: ZigExpression): Sequence<ZigValue> {
-        return io.github.fncontroloption.zig.inferResultTypes(childElement)
+    fun inferResultType(childElement: ZigExpression): ZigValue {
+        return io.github.fncontroloption.zig.inferResultType(childElement)
     }
 
+    /* TODO: delete
     fun resolveOrInferStructInitTypes(element: ZigListInit): Sequence<IZigContainerType> {
         return resolveOrInferListInitTypes(element).filterIsInstance<IZigContainerType>()
     }
+     */
 
-    fun resolveOrInferListInitTypes(element: ZigListInit): Sequence<ZigValue> {
+    fun resolveOrInferListInitType(element: ZigListInit): ZigValue {
         val typeExpression = element.typeExpression
         if (typeExpression != null) {
-            return resolveValues(typeExpression).asSequence()
+            return resolveValue(typeExpression, ZigTypeType)
         }
-        return inferResultTypes(element).map { originalType ->
-            var type = originalType
-            while (true) {
-                type = when (type) {
-                    is ZigErrorUnionType -> type.payload
-                    is ZigOptionalType -> type.child
-                    else -> break
-                }
+        return inferResultType(element).map { findListInitType(it) }
+    }
+
+    fun findListInitType(originalType: ZigValue): ZigValue {
+        var type = originalType
+        while (true) {
+            type = when (type) {
+                is ZigErrorUnionType -> type.payload
+                is ZigOptionalType -> type.child
+                else -> break
             }
-            type
         }
+        return type
     }
 
     fun findEnumLiteralContainerType(originalType: ZigValue): IZigContainerType? {
@@ -283,6 +287,7 @@ sealed interface ZigValue {
     fun toHtmlChunk(truncate: Boolean = false): HtmlChunk
     fun toPlainText() = Jsoup.parse(toHtmlChunk(truncate = true).toString()).text()
     fun map(transform: (ZigValue) -> ZigValue): ZigValue = transform(this)
+    fun forEach(action: (ZigValue) -> Unit): Unit = action(this)
 
     override fun equals(other: Any?): Boolean
     override fun hashCode(): Int
@@ -339,6 +344,10 @@ data class ZigMultiValue private constructor(val values: Set<ZigValue>) : ZigVal
 
     override fun map(transform: (ZigValue) -> ZigValue): ZigValue {
         return from(values.map(transform).toSet())
+    }
+
+    override fun forEach(action: (ZigValue) -> Unit) {
+        values.forEach(action)
     }
 
     companion object {
@@ -1783,31 +1792,27 @@ private fun resolveBreakValue(element: ZigBreak): ZigValue {
 }
 
 private fun inferResultType(childElement: ZigExpression): ZigValue {
-    return ZigMultiValue.from(inferResultTypes(childElement).toSet())
-}
-
-private fun inferResultTypes(childElement: ZigExpression): Sequence<ZigValue> {
     return when (val parentElement = childElement.parent) {
-        is ZigVarDecl -> sequenceOf(inferVarDecl(parentElement, childElement))
-        is ZigContainerFieldImpl -> sequenceOf(inferContainerField(parentElement, childElement))
-        is ZigAssign -> sequenceOf(inferAssign(parentElement, childElement))
-        is ZigAssignDestructure -> sequenceOf(inferAssignDestructure(parentElement, childElement))
+        is ZigVarDecl -> inferVarDecl(parentElement, childElement)
+        is ZigContainerFieldImpl -> inferContainerField(parentElement, childElement)
+        is ZigAssign -> inferAssign(parentElement, childElement)
+        is ZigAssignDestructure -> inferAssignDestructure(parentElement, childElement)
         is ZigListInitItem -> inferListInitItem(parentElement, childElement)
-        is ZigEqualEqual, is ZigBangEqual -> sequenceOf(inferEqual(parentElement, childElement))
-        is ZigSwitchItem -> sequenceOf(inferSwitchItem(parentElement, childElement))
-        is ZigSwitchProng -> sequenceOf(inferSwitchProng(parentElement, childElement))
-        is ZigThenElement -> sequenceOf(inferThen(parentElement, childElement))
-        is ZigElseElement -> sequenceOf(inferElse(parentElement, childElement))
-        is ZigOrelse -> sequenceOf(inferOrelse(parentElement, childElement))
-        is ZigCatch -> sequenceOf(inferCatch(parentElement, childElement))
-        is ZigAddressOf -> sequenceOf(inferAddressOf(parentElement, childElement))
-        is ZigReturn -> sequenceOf(inferReturn(parentElement, childElement))
-        is ZigBreak -> sequenceOf(inferBreak(parentElement, childElement))
-        is ZigContinue -> sequenceOf(inferContinue(parentElement, childElement))
-        is ZigComptime -> sequenceOf(inferComptime(parentElement, childElement))
-        is ZigCall -> sequenceOf(inferCall(parentElement, childElement))
-        is ZigCallArg -> sequenceOf(inferCallArg(parentElement, childElement))
-        else -> sequenceOf(ZigUnknown.of(ZigTypeType))
+        is ZigEqualEqual, is ZigBangEqual -> inferEqual(parentElement, childElement)
+        is ZigSwitchItem -> inferSwitchItem(parentElement, childElement)
+        is ZigSwitchProng -> inferSwitchProng(parentElement, childElement)
+        is ZigThenElement -> inferThen(parentElement, childElement)
+        is ZigElseElement -> inferElse(parentElement, childElement)
+        is ZigOrelse -> inferOrelse(parentElement, childElement)
+        is ZigCatch -> inferCatch(parentElement, childElement)
+        is ZigAddressOf -> inferAddressOf(parentElement, childElement)
+        is ZigReturn -> inferReturn(parentElement, childElement)
+        is ZigBreak -> inferBreak(parentElement, childElement)
+        is ZigContinue -> inferContinue(parentElement, childElement)
+        is ZigComptime -> inferComptime(parentElement, childElement)
+        is ZigCall -> inferCall(parentElement, childElement)
+        is ZigCallArg -> inferCallArg(parentElement, childElement)
+        else -> ZigUnknown.of(ZigTypeType)
     }
 }
 
@@ -2852,28 +2857,31 @@ private fun inferAssignDestructure(
 private fun inferListInitItem(
     parentElement: ZigListInitItem,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.expression !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
     val initElement = parentElement.containingListInit
     return if (parentElement.isStructField) {
         val name = parseZigIdentifier(parentElement.identifierElement)
-            ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
-        ZigAnalyzer.resolveOrInferStructInitTypes(initElement).flatMap { type ->
+            ?: return ZigUnknown.of(ZigTypeType)
+        ZigAnalyzer.resolveOrInferListInitType(initElement).map { type ->
+            if (type !is IZigContainerType) {
+                return@map ZigUnknown.of(ZigTypeType)
+            }
             val member = type.members.firstNotNullOfOrNull {
                 if (it is ZigContainerField && it.name == name) it else null
             }
             if (member != null) {
-                resolveValuesFromReferenceTo(member)
-                    .asSequence()
-                    .flatMap { substituteTypeParams(it.typeOf, type.typeParams) }
+                var value = resolveValueFromReferenceTo(member).typeOf
+                value = substituteTypeParams1(value, type.typeParams)
+                value
             } else {
-                sequenceOf(ZigUnknown.of(ZigTypeType))
+                ZigUnknown.of(ZigTypeType)
             }
         }
     } else {
-        ZigAnalyzer.resolveOrInferListInitTypes(initElement).map { type ->
+        ZigAnalyzer.resolveOrInferListInitType(initElement).map { type ->
             when (type) {
                 is ZigArrayType -> type.child
                 is ZigTupleType -> {
@@ -3089,7 +3097,7 @@ private fun inferBreak(
         return ZigUnknown.of(ZigTypeType)
     }
     val types = mutableSetOf<ZigValue>()
-    types += inferResultTypes(breakable)
+    types += inferResultType(breakable)
     var breakElements = getLabeledBreaksFor(breakable)
     if (breakable is ZigLoop) {
         breakElements += getUnlabeledBreaksFor(breakable)

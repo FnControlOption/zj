@@ -205,17 +205,15 @@ private fun getOriginalContainerType(originalElement: PsiElement?): IZigContaine
 
         is ZigListInitItem -> {
             if (zigElement.identifierElement == originalElement) {
-                val types = ZigAnalyzer.resolveOrInferStructInitTypes(zigElement.containingListInit)
-                return types.singleOrNull()
+                val type = ZigAnalyzer.resolveOrInferListInitType(zigElement.containingListInit)
+                return type as? IZigContainerType
             }
         }
 
         is ZigEnumLiteral -> {
             if (zigElement.identifierElement == originalElement) {
-                val types = ZigAnalyzer.inferResultTypes(zigElement).mapNotNull {
-                    ZigAnalyzer.findEnumLiteralContainerType(it)
-                }
-                return types.singleOrNull()
+                val type = ZigAnalyzer.inferResultType(zigElement)
+                return ZigAnalyzer.findEnumLiteralContainerType(type)
             }
         }
 
