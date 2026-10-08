@@ -1155,7 +1155,7 @@ private fun computeValuesUncached(element: ZigExpression): Sequence<ZigValue> {
         is ZigNegationWrap -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
 
         is ZigBuiltinCall -> sequenceOf(computeBuiltinCall(element))
-        is ZigCall -> computeCall(element)
+        is ZigCall -> sequenceOf(computeCall(element))
         is ZigBlock -> sequenceOf(computeBlock(element))
         is ZigSwitch -> sequenceOf(computeSwitch(element))
         is ZigLoop -> sequenceOf(computeLoop(element))
@@ -1586,10 +1586,10 @@ private fun computeValuesFromReferenceUncached(target: ZigNamedElement): Sequenc
     }
 }
 
-private fun computeFunctionReturnValues(
+private fun computeFunctionReturnValue(
     type: ZigFunctionType,
     arguments: Sequence<ZigValue?>,
-): Sequence<ZigValue> {
+): ZigValue {
     val functionElement = type.element
     if (functionElement is ZigFnDecl
         && functionElement.containingFile.name == "meta.zig"
@@ -1598,54 +1598,54 @@ private fun computeFunctionReturnValues(
         when (functionElement.name) {
             "Tag" -> {
                 val value = arguments.firstOrNull()
-                    ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
-                return sequenceOf(computeTagType(value) ?: ZigUnknown.of(ZigTypeType))
+                    ?: return ZigUnknown.of(ZigTypeType)
+                return computeTagType(value) ?: ZigUnknown.of(ZigTypeType)
             }
             "FieldEnum" -> {
                 val value = arguments.firstOrNull()
-                    ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
-                return sequenceOf(ZigFieldEnumType(value))
+                    ?: return ZigUnknown.of(ZigTypeType)
+                return ZigFieldEnumType(value)
             }
             else -> {}
         }
     }
     val returnTypeElement = functionElement.returnTypeElement?.expression
-        ?: return sequenceOf(ZigUnknown.ofUnknownType())
-    val returnTypes = if (functionElement.bangTokenElement != null) {
+        ?: return ZigUnknown.ofUnknownType()
+    val returnType = if (functionElement.bangTokenElement != null) {
         val errorSet = ZigUnknown.ofUnknownType() // TODO: infer error set
-        resolveValues(returnTypeElement).map { ZigErrorUnionType(errorSet, it) }
+        resolveValue(returnTypeElement).map { ZigErrorUnionType(errorSet, it) }
     } else {
-        resolveValues(returnTypeElement)
+        resolveValue(returnTypeElement)
     }
-    if (returnTypes.singleOrNull() == ZigTypeType) {
+    if (returnType == ZigTypeType) {
         val functionBodyElement = (functionElement as? ZigFnDecl)?.body
         if (functionBodyElement != null) {
             val typeParams = computeTypeParams(type, arguments)
             val traverser = SyntaxTraverser.psiTraverser(functionBodyElement).expand { it !is ZigContainerExpression }
-            return traverser.asSequence().flatMap { descendant ->
-                if (descendant is ZigReturn) {
+            val values = traverser
+                .asSequence()
+                .filterIsInstance<ZigReturn>()
+                .map { descendant ->
                     when (val returnValue = descendant.returnOperand) {
-                        null -> sequenceOf(ZigVoidValue)
+                        null -> ZigVoidValue
                         else -> {
-                            var values = resolveValues(returnValue).asSequence()
+                            var value = resolveValue(returnValue)
                             if (typeParams.isNotEmpty()) {
-                                values = values.flatMap { substituteTypeParams(it, typeParams) }
+                                value = substituteTypeParams1(value, typeParams)
                             }
-                            values
+                            value
                         }
                     }
-                } else {
-                    emptySequence()
                 }
-            }.ifEmpty { sequenceOf(ZigUnknown.of(ZigTypeType)) }
+            return ZigMultiValue.from(values.toSet())
         }
     }
-    var values = returnTypes.asSequence()
+    var value = returnType
     val typeParams = computeTypeParams(type, arguments)
     if (typeParams.isNotEmpty()) {
-        values = values.flatMap { substituteTypeParams(it, typeParams) }
+        value = substituteTypeParams1(value, typeParams)
     }
-    return values.map { ZigUnknown.of(it) }
+    return ZigUnknown.of(value)
 }
 
 private fun computeTagType(type: ZigValue): ZigValue? {
@@ -1663,47 +1663,52 @@ private fun computeTagType(type: ZigValue): ZigValue? {
     }
 }
 
-private fun computeCalledFuncAndArgs(callElement: ZigCall): Sequence<Triple<ZigValue, Boolean, Sequence<ZigValue?>>> {
+private fun mapCalledFuncAndArgs(
+    callElement: ZigCall,
+    transform: (ZigValue, Boolean, Sequence<ZigValue?>) -> ZigValue,
+): ZigValue {
     val initialArgs = callElement.arguments.map { resolveValue(it) }.toList()
-    return computeCalledFuncAndSelfArg(callElement).map { (function, selfArg) ->
+    return mapCalledFuncAndSelfArg(callElement) { function, selfArg ->
         if (selfArg != null) {
             val actualArgs = sequenceOf(selfArg) + initialArgs.asSequence()
-            Triple(function, true, actualArgs)
+            transform(function, true, actualArgs)
         } else {
-            Triple(function, false, initialArgs.asSequence())
+            transform(function, false, initialArgs.asSequence())
         }
     }
 }
 
-// TODO: can this return `emptySequence()` instead of `sequenceOf(ZigUnknown.ofUnknownType() to null)`?
-internal fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<ZigValue, ZigValue?>> {
+internal fun mapCalledFuncAndSelfArg(
+    callElement: ZigCall,
+    transform: (ZigValue, ZigValue?) -> ZigValue,
+): ZigValue {
     return when (val functionElement = callElement.functionExpression) {
         is ZigFieldAccess -> {
             val name = parseZigIdentifier(functionElement.identifierElement)
-                ?: return sequenceOf(ZigUnknown.ofUnknownType() to null)
+                ?: return ZigUnknown.ofUnknownType()
             val fieldName = ZigStringLiteralValue(name)
-            resolveValues(functionElement.leftOperand).asSequence().flatMap { left ->
+            resolveValue(functionElement.leftOperand).map { left ->
                 when (left) {
                     is IZigContainerType -> {
                         val place = computeContainerTypeDeclAccess(left, fieldName)
-                        sequenceOf(place.value to null)
+                        transform(place.value, null)
                     }
                     else -> when (val typeOfLeft = left.typeOf) {
                         is IZigContainerType -> {
                             val place = computeContainerTypeDeclAccess(typeOfLeft, fieldName)
-                            sequenceOf(place.value to left)
+                            transform(place.value, left)
                         }
                         is ZigPointerType -> when (typeOfLeft.size) {
                             ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
                                 is IZigContainerType -> {
                                     val place = computeContainerTypeDeclAccess(pointerChild, fieldName)
-                                    sequenceOf(place.value to left)
+                                    transform(place.value, left)
                                 }
-                                else -> sequenceOf(ZigUnknown.ofUnknownType() to null)
+                                else -> ZigUnknown.ofUnknownType()
                             }
-                            else -> sequenceOf(ZigUnknown.ofUnknownType() to null)
+                            else -> ZigUnknown.ofUnknownType()
                         }
-                        else -> sequenceOf(ZigUnknown.ofUnknownType() to null)
+                        else -> ZigUnknown.ofUnknownType()
                     }
                 }
             }
@@ -1711,26 +1716,24 @@ internal fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<Zi
 
         is ZigEnumLiteral -> {
             val name = parseZigIdentifier(functionElement.identifierElement)
-                ?: return sequenceOf(ZigUnknown.ofUnknownType() to null)
-            val containerTypes = ZigAnalyzer.inferResultTypes(functionElement).mapNotNull {
-                ZigAnalyzer.findEnumLiteralContainerType(it)
-            }
-            containerTypes.flatMap { type ->
+                ?: return ZigUnknown.ofUnknownType()
+            inferResultType(functionElement).map { originalType ->
+                val type = ZigAnalyzer.findEnumLiteralContainerType(originalType)
+                    ?: return@map ZigUnknown.ofUnknownType()
                 val member = type.members.firstNotNullOfOrNull {
                     if (it is ZigNamedContainerDecl && it.name == name) it else null
                 }
                 if (member != null) {
-                    resolveValuesFromReferenceTo(member)
-                        .asSequence()
-                        .flatMap { substituteTypeParams(it, type.typeParams) }
-                        .map { it to null }
+                    var value = resolveValueFromReferenceTo(member)
+                    value = substituteTypeParams1(value, type.typeParams)
+                    transform(value, null)
                 } else {
-                    sequenceOf(ZigUnknown.ofUnknownType() to null)
+                    ZigUnknown.ofUnknownType()
                 }
             }
         }
 
-        else -> resolveValues(functionElement).asSequence().map { it to null }
+        else -> resolveValue(functionElement).map { transform(it, null) }
     }
 }
 
@@ -1803,7 +1806,7 @@ private fun inferResultTypes(childElement: ZigExpression): Sequence<ZigValue> {
         is ZigContinue -> sequenceOf(inferContinue(parentElement, childElement))
         is ZigComptime -> sequenceOf(inferComptime(parentElement, childElement))
         is ZigCall -> sequenceOf(inferCall(parentElement, childElement))
-        is ZigCallArg -> inferCallArg(parentElement, childElement)
+        is ZigCallArg -> sequenceOf(inferCallArg(parentElement, childElement))
         else -> sequenceOf(ZigUnknown.of(ZigTypeType))
     }
 }
@@ -2385,11 +2388,11 @@ private fun computeVectorBuiltinCall(element: ZigBuiltinCall): ZigValue {
     return ZigVectorType(length, child)
 }
 
-private fun computeCall(element: ZigCall): Sequence<ZigValue> {
-    return computeCalledFuncAndArgs(element).flatMap { (function, _, arguments) ->
+private fun computeCall(element: ZigCall): ZigValue {
+    return mapCalledFuncAndArgs(element) { function, _, arguments ->
         when (val typeOfFunction = function.typeOf) {
-            is ZigFunctionType -> computeFunctionReturnValues(typeOfFunction, arguments)
-            else -> sequenceOf(ZigUnknown.ofUnknownType())
+            is ZigFunctionType -> computeFunctionReturnValue(typeOfFunction, arguments)
+            else -> ZigUnknown.ofUnknownType()
         }
     }
 }
@@ -3146,50 +3149,46 @@ private fun inferCall(
 private fun inferCallArg(
     parentElement: ZigCallArg,
     childElement: ZigExpression,
-): Sequence<ZigValue> {
+): ZigValue {
     if (parentElement.expression !== childElement) {
-        return sequenceOf(ZigUnknown.of(ZigTypeType))
+        return ZigUnknown.of(ZigTypeType)
     }
     val callElement = parentElement.containingCall
     if (callElement != null) {
         val argIndex = callElement.argumentElements.indexOf(parentElement)
         assert(argIndex >= 0)
-        return computeCalledFuncAndArgs(callElement).flatMap { (function, isMethod, arguments) ->
+        return mapCalledFuncAndArgs(callElement) blk@{ function, isMethod, arguments ->
             val functionType = function.typeOf
             if (functionType !is ZigFunctionType) {
-                return@flatMap sequenceOf(ZigUnknown.of(ZigTypeType))
+                return@blk ZigUnknown.of(ZigTypeType)
             }
             val paramIndex = if (isMethod) argIndex + 1 else argIndex
             val paramElement = functionType.element.parameters.elementAtOrNull(paramIndex)
-                ?: return@flatMap sequenceOf(ZigUnknown.of(ZigTypeType))
-            val typeElement = paramElement.typeElement?.expression
-                ?: return@flatMap sequenceOf(ZigUnknown.of(ZigTypeType))
-            var values = resolveValues(typeElement).asSequence()
+                ?: return@blk ZigUnknown.of(ZigTypeType)
+            var value = resolveValue(paramElement.typeElement?.expression, ZigTypeType)
             val typeParams = computeTypeParams(functionType, arguments)
             if (typeParams.isNotEmpty()) {
-                values = values.flatMap { substituteTypeParams(it, typeParams) }
+                value = substituteTypeParams1(value, typeParams)
             }
-            values
+            value
         }
     }
     val builtinCallElement = parentElement.containingBuiltinCall
-        ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+        ?: return ZigUnknown.of(ZigTypeType)
     val builtinName = builtinCallElement.builtinElement.text
     val argIndex = builtinCallElement.argumentElements.indexOf(parentElement)
     assert(argIndex >= 0)
     return when (builtinName) {
-        "@as" -> sequenceOf(inferAsBuiltinCallArg(builtinCallElement, argIndex))
-        "@memset" -> sequenceOf(inferMemsetBuiltinCallArg(builtinCallElement, argIndex))
+        "@as" -> inferAsBuiltinCallArg(builtinCallElement, argIndex)
+        "@memset" -> inferMemsetBuiltinCallArg(builtinCallElement, argIndex)
         else -> {
             val builtin = ZigBuiltinFunctionsService.getBuiltinFnProto(parentElement.project, builtinName)
-                ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+                ?: return ZigUnknown.of(ZigTypeType)
             val typeElement = builtin.parameters.elementAtOrNull(argIndex)?.typeElement?.expression
-                ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
+                ?: return ZigUnknown.of(ZigTypeType)
             val arguments = builtinCallElement.arguments.map { resolveValue(it) }
             val typeParams = computeBuiltinFnGenericParams(builtin, arguments)
-            resolveValues(typeElement)
-                .asSequence()
-                .flatMap { substituteTypeParams(it, typeParams) }
+            substituteTypeParams1(resolveValue(typeElement), typeParams)
         }
     }
 }

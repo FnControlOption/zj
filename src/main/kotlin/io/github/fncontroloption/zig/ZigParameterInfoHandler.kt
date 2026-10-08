@@ -8,10 +8,7 @@ import com.intellij.psi.util.elementType
 import com.intellij.psi.util.endOffset
 import com.intellij.psi.util.siblings
 import com.intellij.psi.util.startOffset
-import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
-import io.github.fncontroloption.zig.psi2.ZigCall
-import io.github.fncontroloption.zig.psi2.ZigCallOrBuiltinCall
-import io.github.fncontroloption.zig.psi2.ZigTokenType
+import io.github.fncontroloption.zig.psi2.*
 
 private fun isInsideCallArgs(call: ZigCallOrBuiltinCall, offset: Int): Boolean {
     return call.leftParenElement.startOffset < offset && offset < call.endOffset
@@ -37,23 +34,25 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCallOrBuiltinCall, ZigPa
         if (call == null) {
             return null
         }
-        val candidates = when (call) {
-            is ZigCall -> computeCalledFuncAndSelfArg(call).mapNotNull { (function, selfArg) ->
-                val functionType = function.typeOf as? ZigFunctionType ?: return@mapNotNull null
+        val candidates = mutableSetOf<Triple<List<ZigFnParam>, List<ZigValue?>, Boolean>>()
+        when (call) {
+            is ZigCall -> mapCalledFuncAndSelfArg(call) blk@{ function, selfArg ->
+                val functionType = function.typeOf as? ZigFunctionType ?: return@blk ZigVoidValue
                 var (params, paramTypes) = getFunctionParamTypes(functionType)
                 val hasVarargs = functionType.element.hasVarargs
                 if (selfArg != null) {
                     params = params.subList(1, params.size)
                     paramTypes = paramTypes.subList(1, paramTypes.size)
                 }
-                Triple(params, paramTypes, hasVarargs)
+                candidates.add(Triple(params, paramTypes, hasVarargs))
+                ZigVoidValue
             }
             is ZigBuiltinCall -> {
                 val name = call.builtinElement.text
                 val builtin = ZigBuiltinFunctionsService.getBuiltinFnProto(call.project, name) ?: return null
                 val (params, paramTypes) = getFunctionParamTypes(builtin, emptyMap())
                 val hasVarargs = builtin.hasVarargs
-                sequenceOf(Triple(params, paramTypes, hasVarargs))
+                candidates.add(Triple(params, paramTypes, hasVarargs))
             }
         }
         val infoItems = candidates.map { (params, paramTypes, hasVarargs) ->
