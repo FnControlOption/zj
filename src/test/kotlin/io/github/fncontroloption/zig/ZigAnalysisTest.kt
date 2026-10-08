@@ -1357,8 +1357,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "if (@as(?isize, 42)) |foo| {}"
         val expr = createExpression(text).requireIs<ZigIf>()
         val capture = expr.thenPayload!!.items.single()
-        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
-        val type = values.single().typeOf
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf
         assertEquals(ZigIsizeType, type)
     }
 
@@ -1366,8 +1366,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "if (@as(error{Foo}!isize, 42)) |foo| {}"
         val expr = createExpression(text).requireIs<ZigIf>()
         val capture = expr.thenPayload!!.items.single()
-        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
-        val type = values.single().typeOf
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf
         assertEquals(ZigIsizeType, type)
     }
 
@@ -1375,8 +1375,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "if (@as(error{Foo}!isize, 42)) {} else |foo| {}"
         val expr = createExpression(text).requireIs<ZigIf>()
         val capture = expr.elsePayload!!.items.single()
-        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
-        val type = values.single().typeOf.requireIs<ZigErrorSetType>()
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf.requireIs<ZigErrorSetType>()
         assertEquals(setOf("Foo"), type.names)
     }
 
@@ -1384,8 +1384,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "@as(error{Foo}!isize, 42) catch |foo| {}"
         val expr = createExpression(text).requireIs<ZigCatch>()
         val capture = expr.payload!!.items.single()
-        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
-        val type = values.single().typeOf.requireIs<ZigErrorSetType>()
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf.requireIs<ZigErrorSetType>()
         assertEquals(setOf("Foo"), type.names)
     }
 
@@ -1393,8 +1393,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "for (0..42) |foo| {}"
         val expr = createExpression(text).requireIs<ZigFor>()
         val capture = expr.payload!!.items.single()
-        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
-        val type = values.single().typeOf
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf
         assertEquals(ZigUsizeType, type)
     }
 
@@ -1402,8 +1402,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "for (@as([42]isize, undefined)) |foo| {}"
         val expr = createExpression(text).requireIs<ZigFor>()
         val capture = expr.payload!!.items.single()
-        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
-        val type = values.single().typeOf
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf
         assertEquals(ZigIsizeType, type)
     }
 
@@ -1411,8 +1411,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "for (@as(*[42]isize, undefined)) |foo| {}"
         val expr = createExpression(text).requireIs<ZigFor>()
         val capture = expr.payload!!.items.single()
-        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
-        val type = values.single().typeOf
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf
         assertEquals(ZigIsizeType, type)
     }
 
@@ -1420,8 +1420,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "for (@as([]isize, undefined)) |foo| {}"
         val expr = createExpression(text).requireIs<ZigFor>()
         val capture = expr.payload!!.items.single()
-        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
-        val type = values.single().typeOf
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf
         assertEquals(ZigIsizeType, type)
     }
 
@@ -1429,8 +1429,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "for (@as([]isize, undefined)) |*foo| {}"
         val expr = createExpression(text).requireIs<ZigFor>()
         val capture = expr.payload!!.items.single()
-        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
-        val type = values.single().typeOf.requireIs<ZigPointerType>()
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.ONE, type.size)
         assertEquals(ZigMutability.VAR, type.mutability)
         assertEquals(ZigIsizeType, type.child)
@@ -1440,8 +1440,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "for (@as([]const isize, undefined)) |*foo| {}"
         val expr = createExpression(text).requireIs<ZigFor>()
         val capture = expr.payload!!.items.single()
-        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
-        val type = values.single().typeOf.requireIs<ZigPointerType>()
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.ONE, type.size)
         assertEquals(ZigMutability.CONST, type.mutability)
         assertEquals(ZigIsizeType, type.child)

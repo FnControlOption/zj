@@ -47,10 +47,8 @@ class ZigHighlightVisitor : HighlightVisitor {
             is ZigVarDeclOrProto -> {
                 val identifier = element.nameIdentifier ?: return null
 
-                for (value in ZigAnalyzer.resolveValuesFromReferenceTo(element)) {
-                    if (value.typeOf is ZigFunctionType) {
-                        return createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD)
-                    }
+                if (ZigAnalyzer.resolveValueFromReferenceTo(element).any { it.typeOf is ZigFunctionType }) {
+                    return createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD)
                 }
 
                 val type = if (element is ZigVarDecl && !element.isLocal) {

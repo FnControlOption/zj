@@ -43,9 +43,8 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
 
         if (element is ZigNamedElement) {
             val typeParams = getOriginalContainerType(originalElement)?.typeParams ?: emptyMap()
-            val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(element)
-            val substitutedValues = ZigAnalyzer.substituteTypeParams(initialValues, typeParams)
-            for (value in substitutedValues) {
+            val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(element)
+            ZigAnalyzer.substituteTypeParams1(initialValue, typeParams).forEach { value ->
                 val chunk = when (value) {
                     is ZigAnytypeParameterValue if value.element == element -> {
                         createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "anytype")

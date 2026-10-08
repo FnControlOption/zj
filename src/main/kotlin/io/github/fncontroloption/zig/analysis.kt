@@ -55,8 +55,15 @@ object ZigAnalyzer {
         return io.github.fncontroloption.zig.resolveValues(element)
     }
 
-    fun resolveValuesFromReferenceTo(target: ZigNamedElement): Set<ZigValue> {
-        return io.github.fncontroloption.zig.resolveValuesFromReferenceTo(target)
+    fun resolveValueFromReferenceTo(target: ZigNamedElement): ZigValue {
+        return io.github.fncontroloption.zig.resolveValueFromReferenceTo(target)
+    }
+
+    fun substituteTypeParams1(
+        value: ZigValue,
+        typeParams: Map<ZigFnParam, ZigValue?>,
+    ): ZigValue {
+        return io.github.fncontroloption.zig.substituteTypeParams1(value, typeParams)
     }
 
     fun substituteTypeParams(
@@ -288,6 +295,7 @@ sealed interface ZigValue {
     fun toPlainText() = Jsoup.parse(toHtmlChunk(truncate = true).toString()).text()
     fun map(transform: (ZigValue) -> ZigValue): ZigValue = transform(this)
     fun forEach(action: (ZigValue) -> Unit): Unit = action(this)
+    fun any(predicate: (ZigValue) -> Boolean): Boolean = predicate(this)
 
     override fun equals(other: Any?): Boolean
     override fun hashCode(): Int
@@ -348,6 +356,10 @@ data class ZigMultiValue private constructor(val values: Set<ZigValue>) : ZigVal
 
     override fun forEach(action: (ZigValue) -> Unit) {
         values.forEach(action)
+    }
+
+    override fun any(predicate: (ZigValue) -> Boolean): Boolean {
+        return values.any(predicate)
     }
 
     companion object {
@@ -1563,35 +1575,30 @@ private fun computeContainerTypeDeclAccess(
 }
 
 private fun resolveValueFromReferenceTo(target: ZigNamedElement): ZigValue {
-    return ZigMultiValue.from(resolveValuesFromReferenceTo(target))
-}
-
-private fun resolveValuesFromReferenceTo(target: ZigNamedElement): Set<ZigValue> {
     return CachedValuesManager.getCachedValue(target) {
         RecursionManager.doPreventingRecursion(target, true) {
-            val values = computeValuesFromReferenceUncached(target).toSet()
             CachedValueProvider.Result.create(
-                values,
+                computeValueFromReferenceUncached(target),
                 PsiModificationTracker.MODIFICATION_COUNT,
                 ZigBuiltinService.getModificationTracker(target.project),
                 ZigBuiltinFunctionsService.getModificationTracker(target.project),
                 ZigModulesProjectService.getModificationTracker(target.project),
             )
         }
-    } ?: emptySet()
+    } ?: ZigUnknown.ofUnknownType()
 }
 
-private fun computeValuesFromReferenceUncached(target: ZigNamedElement): Sequence<ZigValue> {
+private fun computeValueFromReferenceUncached(target: ZigNamedElement): ZigValue {
     return when (target) {
-        is ZigFile -> sequenceOf(ZigContainerType(target, emptyMap()))
-        is ZigFnDecl -> sequenceOf(computeFnDecl(target))
-        is ZigVarDecl -> sequenceOf(computeVarDecl(target))
-        is ZigVarProto -> sequenceOf(computeVarProto(target))
-        is ZigFnParam -> sequenceOf(computeFnParam(target))
-        is ZigContainerFieldImpl -> sequenceOf(computeContainerField(target))
-        is ZigPayloadItem -> sequenceOf(computePayloadItem(target).value)
-        is LightZigTupleField -> sequenceOf(ZigUnknown.of(target.container.fieldTypes[target.fieldIndex]))
-        is ZigLabelDecl -> emptySequence()
+        is ZigFile -> ZigContainerType(target, emptyMap())
+        is ZigFnDecl -> computeFnDecl(target)
+        is ZigVarDecl -> computeVarDecl(target)
+        is ZigVarProto -> computeVarProto(target)
+        is ZigFnParam -> computeFnParam(target)
+        is ZigContainerFieldImpl -> computeContainerField(target)
+        is ZigPayloadItem -> computePayloadItem(target).value
+        is LightZigTupleField -> ZigUnknown.of(target.container.fieldTypes[target.fieldIndex])
+        is ZigLabelDecl -> ZigUnknown.ofUnknownType()
     }
 }
 
@@ -2146,9 +2153,7 @@ private fun computeContainerExpression(element: ZigContainerExpression): ZigValu
             if (member.nameIdentifier != null) {
                 return@tuple
             }
-            val types = resolveValuesFromReferenceTo(member).asSequence().map { it.typeOf }.toSet()
-            // For efficiency, limit each field to a single possible type.
-            fields.add(types.singleOrNull() ?: ZigUnknown.of(ZigTypeType))
+            fields.add(resolveValueFromReferenceTo(member).typeOf)
         }
         if (fields.isEmpty()) {
             return@tuple
@@ -2648,8 +2653,8 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                                 conditionType.members
                                     .filterIsInstance<ZigContainerField>()
                                     .filter { it.name !in otherEnumLiterals }
-                                    .flatMap { resolveValuesFromReferenceTo(it) }
-                                    .flatMap { substituteTypeParams(it, conditionType.typeParams) }
+                                    .map { resolveValueFromReferenceTo(it) }
+                                    .map { substituteTypeParams1(it, conditionType.typeParams) }
                             } else {
                                 sequenceOf(ZigUnknown.of(conditionType))
                             }
@@ -2659,8 +2664,8 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                                     .filterIsInstance<ZigContainerField>()
                                     .filter { it.name in prongEnumLiterals }
                                     .sortedBy { prongEnumLiterals.indexOf(it.name) }
-                                    .flatMap { resolveValuesFromReferenceTo(it) }
-                                    .flatMap { substituteTypeParams(it, conditionType.typeParams) }
+                                    .map { resolveValueFromReferenceTo(it) }
+                                    .map { substituteTypeParams1(it, conditionType.typeParams) }
                             if (isInlineProng) {
                                 fieldValues
                             } else {
