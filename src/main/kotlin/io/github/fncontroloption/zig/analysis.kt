@@ -61,21 +61,21 @@ object ZigAnalyzer {
 
     fun substituteTypeParams(
         value: ZigValue,
-        typeParams: Map<ZigFnParam, Set<ZigValue>>,
+        typeParams: Map<ZigFnParam, ZigValue?>,
     ): Sequence<ZigValue> {
         return io.github.fncontroloption.zig.substituteTypeParams(value, typeParams)
     }
 
     fun substituteTypeParams(
         values: Sequence<ZigValue>,
-        typeParams: Map<ZigFnParam, Set<ZigValue>>,
+        typeParams: Map<ZigFnParam, ZigValue?>,
     ): Sequence<ZigValue> {
         return values.flatMap { substituteTypeParams(it, typeParams) }
     }
 
     fun substituteTypeParams(
         values: Iterable<ZigValue>,
-        typeParams: Map<ZigFnParam, Set<ZigValue>>,
+        typeParams: Map<ZigFnParam, ZigValue?>,
     ): Sequence<ZigValue> {
         return substituteTypeParams(values.asSequence(), typeParams)
     }
@@ -494,7 +494,7 @@ data class ZigEnumLiteralValue(override val typeOf: ZigValue, val name: String) 
 
 sealed interface IZigContainerType : ZigValue {
     override val typeOf: ZigTypeType
-    val typeParams: Map<ZigFnParam, Set<ZigValue>>
+    val typeParams: Map<ZigFnParam, ZigValue?>
     val containerKind: ZigContainerKind
     val isTaggedUnion: Boolean
     val members: Sequence<ZigContainerMember>
@@ -503,7 +503,7 @@ sealed interface IZigContainerType : ZigValue {
 
 data class ZigContainerType(
     val element: ZigContainer,
-    override val typeParams: Map<ZigFnParam, Set<ZigValue>>,
+    override val typeParams: Map<ZigFnParam, ZigValue?>,
 ) : IZigContainerType {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
@@ -533,7 +533,7 @@ data class ZigContainerType(
 
 data class ZigFunctionType(
     val element: ZigFnDeclOrProto,
-    val typeParams: Map<ZigFnParam, Set<ZigValue>>,
+    val typeParams: Map<ZigFnParam, ZigValue?>,
 ) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
@@ -772,7 +772,7 @@ data class ZigTupleType(val element: LightZigTuple) : IZigContainerType {
         return builder.toFragment()
     }
 
-    override val typeParams: Map<ZigFnParam, Set<ZigValue>>
+    override val typeParams: Map<ZigFnParam, ZigValue?>
         get() = emptyMap()
 
     override val containerKind: ZigContainerKind
@@ -915,7 +915,7 @@ data class ZigInferredUnionTagType(val union: ZigContainerType) : IZigContainerT
         return builder.toFragment()
     }
 
-    override val typeParams: Map<ZigFnParam, Set<ZigValue>>
+    override val typeParams: Map<ZigFnParam, ZigValue?>
         get() = emptyMap()
 
     override val containerKind: ZigContainerKind
@@ -945,7 +945,7 @@ data class ZigFieldEnumType(val container: ZigValue) : IZigContainerType {
         return builder.toFragment()
     }
 
-    override val typeParams: Map<ZigFnParam, Set<ZigValue>>
+    override val typeParams: Map<ZigFnParam, ZigValue?>
         get() = emptyMap()
 
     override val containerKind: ZigContainerKind
@@ -1302,14 +1302,14 @@ private fun computeArrayAccessOnTuple(
     return ZigPlace.Single(mutability, ZigUnknown.of(fieldType))
 }
 
-private fun findUnboundTypeParams(element: ZigElement): Map<ZigFnParam, Set<ZigValue>> {
+private fun findUnboundTypeParams(element: ZigElement): Map<ZigFnParam, ZigValue?> {
     return buildMap {
         var element: PsiElement? = element
         while (element != null) {
             if (element is ZigFnDeclOrProto) {
                 for (paramDecl in element.parameters) {
                     if (ZigAnalyzer.createGenericParameterValues(paramDecl).any()) {
-                        this[paramDecl] = emptySet()
+                        this[paramDecl] = null
                     }
                 }
             }
@@ -1320,8 +1320,8 @@ private fun findUnboundTypeParams(element: ZigElement): Map<ZigFnParam, Set<ZigV
 
 private fun computeTypeParams(
     function: ZigFunctionType,
-    arguments: Sequence<Set<ZigValue>>,
-): Map<ZigFnParam, Set<ZigValue>> {
+    arguments: Sequence<ZigValue?>,
+): Map<ZigFnParam, ZigValue?> {
     if (function.typeParams.isEmpty()) {
         return emptyMap()
     }
@@ -1337,11 +1337,11 @@ private fun computeTypeParams(
 private fun computeBuiltinFnGenericParams(
     element: ZigBuiltinFnProto,
     arguments: Sequence<ZigValue>,
-): Map<ZigFnParam, Set<ZigValue>> {
+): Map<ZigFnParam, ZigValue?> {
     return buildMap {
         for ((paramDecl, argValue) in element.parameters.zip(arguments)) {
             if (ZigAnalyzer.createGenericParameterValues(paramDecl).any()) {
-                this[paramDecl] = setOf(argValue)
+                this[paramDecl] = argValue
             }
         }
     }
@@ -1349,7 +1349,7 @@ private fun computeBuiltinFnGenericParams(
 
 private fun substituteContainerTypeParams(
     type: ZigContainerType,
-    typeParams: Map<ZigFnParam, Set<ZigValue>>,
+    typeParams: Map<ZigFnParam, ZigValue?>,
 ): ZigContainerType {
     return if (type.typeParams.isEmpty()) {
         type
@@ -1375,7 +1375,7 @@ private fun substituteContainerTypeParams(
 
 private fun substituteFunctionTypeParams(
     type: ZigFunctionType,
-    typeParams: Map<ZigFnParam, Set<ZigValue>>,
+    typeParams: Map<ZigFnParam, ZigValue?>,
 ): ZigFunctionType {
     return if (type.typeParams.isEmpty()) {
         type
@@ -1386,14 +1386,14 @@ private fun substituteFunctionTypeParams(
 
 private fun substituteTypeParams1(
     value: ZigValue,
-    typeParams: Map<ZigFnParam, Set<ZigValue>>,
+    typeParams: Map<ZigFnParam, ZigValue?>,
 ): ZigValue {
     return ZigMultiValue.from(substituteTypeParams(value, typeParams).toSet())
 }
 
 private fun substituteTypeParams(
     value: ZigValue,
-    typeParams: Map<ZigFnParam, Set<ZigValue>>,
+    typeParams: Map<ZigFnParam, ZigValue?>,
 ): Sequence<ZigValue> {
     return RecursionManager.doPreventingRecursion(value, true) {
         when (value) {
@@ -1413,11 +1413,11 @@ private fun substituteTypeParams(
                 sequenceOf(substituteFunctionTypeParams(value, typeParams))
             }
             is ZigGenericParameterValue -> {
-                val values = typeParams[value.element]
-                if (values.isNullOrEmpty()) {
+                val arg = typeParams[value.element]
+                if (arg == null) {
                     sequenceOf(value)
                 } else {
-                    values.asSequence().flatMap { substituteTypeParams(it, typeParams) }
+                    sequenceOf(substituteTypeParams1(arg, typeParams))
                 }
             }
             is ZigAnytypeParameterType -> {
@@ -1594,7 +1594,7 @@ private fun computeValuesFromReferenceUncached(target: ZigNamedElement): Sequenc
 
 private fun computeFunctionReturnValues(
     type: ZigFunctionType,
-    arguments: Sequence<Set<ZigValue>>,
+    arguments: Sequence<ZigValue?>,
 ): Sequence<ZigValue> {
     val functionElement = type.element
     if (functionElement is ZigFnDecl
@@ -1603,14 +1603,14 @@ private fun computeFunctionReturnValues(
     ) {
         when (functionElement.name) {
             "Tag" -> {
-                val values = arguments.firstOrNull()
+                val value = arguments.firstOrNull()
                     ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
-                return values.asSequence().map { computeTagType(it) ?: ZigUnknown.of(ZigTypeType) }
+                return sequenceOf(computeTagType(value) ?: ZigUnknown.of(ZigTypeType))
             }
             "FieldEnum" -> {
-                val values = arguments.firstOrNull()
+                val value = arguments.firstOrNull()
                     ?: return sequenceOf(ZigUnknown.of(ZigTypeType))
-                return values.asSequence().map { ZigFieldEnumType(it) }
+                return sequenceOf(ZigFieldEnumType(value))
             }
             else -> {}
         }
@@ -1669,11 +1669,11 @@ private fun computeTagType(type: ZigValue): ZigValue? {
     }
 }
 
-private fun computeCalledFuncAndArgs(callElement: ZigCall): Sequence<Triple<ZigValue, Boolean, Sequence<Set<ZigValue>>>> {
-    val initialArgs = callElement.arguments.map { resolveValues(it) }.toList()
+private fun computeCalledFuncAndArgs(callElement: ZigCall): Sequence<Triple<ZigValue, Boolean, Sequence<ZigValue?>>> {
+    val initialArgs = callElement.arguments.map { resolveValue(it) }.toList()
     return computeCalledFuncAndSelfArg(callElement).map { (function, selfArg) ->
         if (selfArg != null) {
-            val actualArgs = sequenceOf(setOf(selfArg)) + initialArgs.asSequence()
+            val actualArgs = sequenceOf(selfArg) + initialArgs.asSequence()
             Triple(function, true, actualArgs)
         } else {
             Triple(function, false, initialArgs.asSequence())
@@ -1838,7 +1838,7 @@ private fun createNamedHtmlChunk(
 
 private fun createTypeElementHtmlChunk(
     typeElement: ZigTypeElement?,
-    typeParams: Map<ZigFnParam, Set<ZigValue>>,
+    typeParams: Map<ZigFnParam, ZigValue?>,
     truncate: Boolean,
 ): HtmlChunk {
     val value = typeElement?.expression?.let {
@@ -1851,7 +1851,7 @@ private fun createTypeElementHtmlChunk(
 
 private fun createContainerHtmlChunkStartingFrom(
     element: PsiElement,
-    typeParams: Map<ZigFnParam, Set<ZigValue>>,
+    typeParams: Map<ZigFnParam, ZigValue?>,
     truncate: Boolean,
 ): HtmlChunk {
     val quote = when (truncate) {
@@ -1943,7 +1943,7 @@ private fun createContainerHtmlChunkStartingFrom(
 
 private fun createParameterHtmlChunk(
     param: ZigFnParam,
-    typeParams: Map<ZigFnParam, Set<ZigValue>>,
+    typeParams: Map<ZigFnParam, ZigValue?>,
     truncate: Boolean,
 ): HtmlChunk {
     for (comptimeParam in ZigAnalyzer.createGenericParameterValues(param)) {

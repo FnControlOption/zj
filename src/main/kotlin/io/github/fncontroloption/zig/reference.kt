@@ -667,14 +667,14 @@ internal fun identifierReferenceCandidates(element: PsiElement): Sequence<ZigNam
 
 internal fun getFunctionParamTypes(
     functionType: ZigFunctionType,
-    typeParams: Map<ZigFnParam, Set<ZigValue>> = functionType.typeParams,
+    typeParams: Map<ZigFnParam, ZigValue?> = functionType.typeParams,
 ): Pair<List<ZigFnParam>, List<ZigValue?>> {
     return getFunctionParamTypes(functionType.element, typeParams)
 }
 
 internal fun getFunctionParamTypes(
     functionElement: ZigFnOrBuiltinFnDeclOrProto,
-    typeParams: Map<ZigFnParam, Set<ZigValue>>,
+    typeParams: Map<ZigFnParam, ZigValue?>,
 ): Pair<List<ZigFnParam>, List<ZigValue?>> {
     return functionElement.parameters.map { param ->
         param to param.typeElement?.expression?.let {
@@ -740,7 +740,7 @@ private fun getFunctionTypeText(functionType: ZigFunctionType): String {
 
 private fun getFunctionTypeText(
     functionElement: ZigFnOrBuiltinFnDeclOrProto,
-    typeParams: Map<ZigFnParam, Set<ZigValue>>,
+    typeParams: Map<ZigFnParam, ZigValue?>,
 ): String {
     if (functionElement is ZigBuiltinFnProto && functionElement.returnsAnytype) {
         return "anytype"
