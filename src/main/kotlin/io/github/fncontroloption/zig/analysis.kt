@@ -106,23 +106,17 @@ object ZigAnalyzer {
         }
     }
 
-    fun inferEnumLiteralTypes(element: ZigEnumLiteral): Sequence<Pair<ZigValue, IZigContainerType>> {
-        return inferResultTypes(element).mapNotNull { originalType ->
-            var type = originalType
-            while (true) {
-                type = when (type) {
-                    is ZigErrorUnionType -> type.payload
-                    is ZigOptionalType -> type.child
-                    is ZigPointerType if type.size == ZigPointerSize.ONE -> type.child
-                    else -> break
-                }
-            }
-            if (type is IZigContainerType) {
-                originalType to type
-            } else {
-                null
+    fun findEnumLiteralContainerType(originalType: ZigValue): IZigContainerType? {
+        var type = originalType
+        while (true) {
+            type = when (type) {
+                is ZigErrorUnionType -> type.payload
+                is ZigOptionalType -> type.child
+                is ZigPointerType if type.size == ZigPointerSize.ONE -> type.child
+                else -> break
             }
         }
+        return type as? IZigContainerType
     }
 
     fun getBuiltinFields(type: ZigValue): Array<String> {
@@ -1718,7 +1712,10 @@ internal fun computeCalledFuncAndSelfArg(callElement: ZigCall): Sequence<Pair<Zi
         is ZigEnumLiteral -> {
             val name = parseZigIdentifier(functionElement.identifierElement)
                 ?: return sequenceOf(ZigUnknown.ofUnknownType() to null)
-            ZigAnalyzer.inferEnumLiteralTypes(functionElement).flatMap { (_, type) ->
+            val containerTypes = ZigAnalyzer.inferResultTypes(functionElement).mapNotNull {
+                ZigAnalyzer.findEnumLiteralContainerType(it)
+            }
+            containerTypes.flatMap { type ->
                 val member = type.members.firstNotNullOfOrNull {
                     if (it is ZigNamedContainerDecl && it.name == name) it else null
                 }

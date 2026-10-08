@@ -441,10 +441,11 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
     PsiPolyVariantReferenceBase<ZigEnumLiteral>(element, identifier.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
-        val types = ZigAnalyzer.inferEnumLiteralTypes(myElement)
+        val types = ZigAnalyzer.inferResultTypes(myElement)
         val name = parseZigIdentifier(identifier) ?: return emptyArray()
         val results = mutableSetOf<ResolveResult>()
-        for ((_, containerType) in types) {
+        for (originalType in types) {
+            val containerType = ZigAnalyzer.findEnumLiteralContainerType(originalType) ?: continue
             val member = containerType.members.firstOrNull {
                 it is PsiNameIdentifierOwner && it.name == name
             }
@@ -477,7 +478,8 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
         }
         val originalFile = myElement.containingFile
         val variants = mutableSetOf<LookupElement>()
-        for ((originalType, containerType) in ZigAnalyzer.inferEnumLiteralTypes(myElement)) {
+        for (originalType in ZigAnalyzer.inferResultTypes(myElement)) {
+            val containerType = ZigAnalyzer.findEnumLiteralContainerType(originalType) ?: continue
             for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
                 val name = member.name ?: continue
                 if (member is ZigContainerField) {
