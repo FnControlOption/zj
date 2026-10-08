@@ -1739,12 +1739,8 @@ private fun getLabeledBreaksFor(element: ZigLabelable): Sequence<ZigBreak> {
     val labelDecl = element.labelDecl ?: return emptySequence()
     val labelName = parseZigIdentifier(labelDecl.identifierElement) ?: return emptySequence()
     val traverser = SyntaxTraverser.psiTraverser(element).expand { it !is ZigContainerExpression }
-    return traverser.asSequence().mapNotNull { descendant ->
-        if (descendant is ZigBreak && labelName == parseZigIdentifier(descendant.labelRef?.identifierElement)) {
-            descendant
-        } else {
-            null
-        }
+    return traverser.asSequence().filterIsInstance<ZigBreak>().filter {
+        labelName == parseZigIdentifier(it.labelRef?.identifierElement)
     }
 }
 
@@ -1760,13 +1756,7 @@ private fun getUnlabeledBreaksFor(loop: ZigLoop): Sequence<ZigBreak> {
             else -> true
         }
     }
-    return traverser.asSequence().mapNotNull { descendant ->
-        if (descendant is ZigBreak && descendant.labelRef == null) {
-            descendant
-        } else {
-            null
-        }
-    }
+    return traverser.asSequence().filterIsInstance<ZigBreak>().filter { it.labelRef == null }
 }
 
 private fun resolveBreakValue(element: ZigBreak): ZigValue {
