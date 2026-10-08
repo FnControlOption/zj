@@ -80,7 +80,7 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
             return null
         }
         val name = parseZigIdentifier(originalElement) ?: return null
-        val left = ZigAnalyzer.resolveValues(element.leftOperand).singleOrNull() ?: return null
+        val left = ZigAnalyzer.resolveValue(element.leftOperand)
         val type = ZigAnalyzer.getBuiltinFieldType(left.typeOf, name) ?: return null
         val sb = StringBuilder()
         HtmlChunk.text(name)
@@ -197,8 +197,8 @@ private fun getOriginalContainerType(originalElement: PsiElement?): IZigContaine
     when (val zigElement = originalElement?.findParentOfType<ZigElement>(strict = false)) {
         is ZigFieldAccess -> {
             if (zigElement.identifierElement == originalElement) {
-                val leftValues = ZigAnalyzer.resolveValues(zigElement.leftOperand)
-                return leftValues.singleOrNull()?.typeOf as? IZigContainerType
+                val leftValue = ZigAnalyzer.resolveValue(zigElement.leftOperand)
+                return leftValue.typeOf as? IZigContainerType
             }
         }
 

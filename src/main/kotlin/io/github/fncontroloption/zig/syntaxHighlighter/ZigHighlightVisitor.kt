@@ -106,10 +106,11 @@ class ZigHighlightVisitor : HighlightVisitor {
             is ZigFieldAccess -> {
                 val name = element.identifierElement ?: return null
                 val text = parseZigIdentifier(name) ?: return null
-                for (value in ZigAnalyzer.resolveValues(element.leftOperand)) {
-                    if (ZigAnalyzer.getBuiltinFieldType(value.typeOf, text) != null) {
-                        return createHighlightInfo(name, ZigHighlightInfoTypes.INSTANCE_FIELD)
-                    }
+                val isBuiltin = ZigAnalyzer.resolveValue(element.leftOperand).any {
+                    ZigAnalyzer.getBuiltinFieldType(it.typeOf, text) != null
+                }
+                if (isBuiltin) {
+                    return createHighlightInfo(name, ZigHighlightInfoTypes.INSTANCE_FIELD)
                 }
                 createHighlightInfoFromReference(element, name)
             }

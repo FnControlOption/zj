@@ -51,8 +51,8 @@ private val PRIMITIVE_VALUES = mapOf(
 )
 
 object ZigAnalyzer {
-    fun resolveValues(element: ZigExpression): Set<ZigValue> {
-        return io.github.fncontroloption.zig.resolveValues(element)
+    fun resolveValue(element: ZigExpression): ZigValue {
+        return io.github.fncontroloption.zig.resolveValue(element)
     }
 
     fun resolveValueFromReferenceTo(target: ZigNamedElement): ZigValue {
@@ -310,11 +310,11 @@ class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigValue {
                 HtmlChunk.text("("),
                 typeOf.toHtmlChunk(truncate),
                 HtmlChunk.text(", "),
-                createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_"),
+                createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "<unknown>"),
                 HtmlChunk.text(")")
             )
         }
-        return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
+        return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "<unknown>")
     }
 
     override fun equals(other: Any?) = this === other
@@ -1088,31 +1088,23 @@ private fun computePlaceUncached(element: ZigExpression): ZigPlace {
 }
 
 private fun resolveValue(element: ZigExpression?, expectedType: ZigValue? = null): ZigValue {
-    if (element != null) {
-        return ZigMultiValue.from(resolveValues(element), expectedType)
+    if (element == null) {
+        return if (expectedType != null) ZigUnknown.of(expectedType) else ZigUnknown.ofUnknownType()
     }
-    if (expectedType != null) {
-        return ZigUnknown.of(expectedType)
-    }
-    return ZigUnknown.ofUnknownType()
-}
-
-private fun resolveValues(element: ZigExpression): Set<ZigValue> {
     return CachedValuesManager.getCachedValue(element) {
         RecursionManager.doPreventingRecursion(element, true) {
-            val values = computeValuesUncached(element).toSet()
             CachedValueProvider.Result.create(
-                values,
+                computeValueUncached(element),
                 PsiModificationTracker.MODIFICATION_COUNT,
                 ZigBuiltinService.getModificationTracker(element.project),
                 ZigBuiltinFunctionsService.getModificationTracker(element.project),
                 ZigModulesProjectService.getModificationTracker(element.project),
             )
         }
-    } ?: emptySet()
+    } ?: if (expectedType != null) ZigUnknown.of(expectedType) else ZigUnknown.ofUnknownType()
 }
 
-private fun computeValuesUncached(element: ZigExpression): Sequence<ZigValue> {
+private fun computeValueUncached(element: ZigExpression): ZigValue {
     return when (element) {
         is ZigIdentifier,
         is ZigFieldAccess,
@@ -1123,78 +1115,78 @@ private fun computeValuesUncached(element: ZigExpression): Sequence<ZigValue> {
         is ZigDeref,
         is ZigAddressOf,
         is ZigSlice,
-            -> sequenceOf(resolvePlace(element).value)
+            -> resolvePlace(element).value
 
         is ZigBuiltinCall if element.builtinElement.text == "@field"
-            -> sequenceOf(resolvePlace(element).value)
+            -> resolvePlace(element).value
 
-        is ZigContainerExpression -> sequenceOf(computeContainerExpression(element))
-        is ZigFnProto -> sequenceOf(ZigFunctionType(element, findUnboundTypeParams(element)))
-        is ZigOptionalTypeExpression -> sequenceOf(computeOptionalTypeExpression(element))
-        is ZigErrorSet -> sequenceOf(computeErrorSet(element))
-        is ZigErrorValueExpression -> sequenceOf(computeErrorValueExpression(element))
-        is ZigErrorUnion -> sequenceOf(computeErrorUnion(element))
-        is ZigArrayTypeExpression -> sequenceOf(computeArrayTypeExpression(element))
-        is ZigPointerTypeExpression -> sequenceOf(computePointerTypeExpression(element))
-        is ZigComptime -> sequenceOf(computeComptime(element))
-        is ZigIf -> sequenceOf(computeIf(element))
-        is ZigCatch -> sequenceOf(computeCatch(element))
-        is ZigOrelse -> sequenceOf(computeOrelse(element))
-        is ZigMergeErrorSets -> sequenceOf(computeMergeErrorSets(element))
-        is ZigListInit -> sequenceOf(computeListInit(element))
+        is ZigContainerExpression -> computeContainerExpression(element)
+        is ZigFnProto -> ZigFunctionType(element, findUnboundTypeParams(element))
+        is ZigOptionalTypeExpression -> computeOptionalTypeExpression(element)
+        is ZigErrorSet -> computeErrorSet(element)
+        is ZigErrorValueExpression -> computeErrorValueExpression(element)
+        is ZigErrorUnion -> computeErrorUnion(element)
+        is ZigArrayTypeExpression -> computeArrayTypeExpression(element)
+        is ZigPointerTypeExpression -> computePointerTypeExpression(element)
+        is ZigComptime -> computeComptime(element)
+        is ZigIf -> computeIf(element)
+        is ZigCatch -> computeCatch(element)
+        is ZigOrelse -> computeOrelse(element)
+        is ZigMergeErrorSets -> computeMergeErrorSets(element)
+        is ZigListInit -> computeListInit(element)
 
-        is ZigAdd -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigAddSat -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigAddWrap -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigArrayCat -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigBangEqual -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigBitAnd -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigBitOr -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigBitXor -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigBoolAnd -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigBoolOr -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigDiv -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigEqualEqual -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigGreaterOrEqual -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigGreaterThan -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigLessOrEqual -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigLessThan -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigMod -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigMul -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigMulSat -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigMulWrap -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigShl -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigShlSat -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigShr -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigSub -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigSubSat -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigSubWrap -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
+        is ZigAdd -> ZigUnknown.ofUnknownType() // TODO
+        is ZigAddSat -> ZigUnknown.ofUnknownType() // TODO
+        is ZigAddWrap -> ZigUnknown.ofUnknownType() // TODO
+        is ZigArrayCat -> ZigUnknown.ofUnknownType() // TODO
+        is ZigBangEqual -> ZigUnknown.ofUnknownType() // TODO
+        is ZigBitAnd -> ZigUnknown.ofUnknownType() // TODO
+        is ZigBitOr -> ZigUnknown.ofUnknownType() // TODO
+        is ZigBitXor -> ZigUnknown.ofUnknownType() // TODO
+        is ZigBoolAnd -> ZigUnknown.ofUnknownType() // TODO
+        is ZigBoolOr -> ZigUnknown.ofUnknownType() // TODO
+        is ZigDiv -> ZigUnknown.ofUnknownType() // TODO
+        is ZigEqualEqual -> ZigUnknown.ofUnknownType() // TODO
+        is ZigGreaterOrEqual -> ZigUnknown.ofUnknownType() // TODO
+        is ZigGreaterThan -> ZigUnknown.ofUnknownType() // TODO
+        is ZigLessOrEqual -> ZigUnknown.ofUnknownType() // TODO
+        is ZigLessThan -> ZigUnknown.ofUnknownType() // TODO
+        is ZigMod -> ZigUnknown.ofUnknownType() // TODO
+        is ZigMul -> ZigUnknown.ofUnknownType() // TODO
+        is ZigMulSat -> ZigUnknown.ofUnknownType() // TODO
+        is ZigMulWrap -> ZigUnknown.ofUnknownType() // TODO
+        is ZigShl -> ZigUnknown.ofUnknownType() // TODO
+        is ZigShlSat -> ZigUnknown.ofUnknownType() // TODO
+        is ZigShr -> ZigUnknown.ofUnknownType() // TODO
+        is ZigSub -> ZigUnknown.ofUnknownType() // TODO
+        is ZigSubSat -> ZigUnknown.ofUnknownType() // TODO
+        is ZigSubWrap -> ZigUnknown.ofUnknownType() // TODO
 
-        is ZigBitNot -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigBoolNot -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigNegation -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
-        is ZigNegationWrap -> sequenceOf(ZigUnknown.ofUnknownType()) // TODO
+        is ZigBitNot -> ZigUnknown.ofUnknownType() // TODO
+        is ZigBoolNot -> ZigUnknown.ofUnknownType() // TODO
+        is ZigNegation -> ZigUnknown.ofUnknownType() // TODO
+        is ZigNegationWrap -> ZigUnknown.ofUnknownType() // TODO
 
-        is ZigBuiltinCall -> sequenceOf(computeBuiltinCall(element))
-        is ZigCall -> sequenceOf(computeCall(element))
-        is ZigBlock -> sequenceOf(computeBlock(element))
-        is ZigSwitch -> sequenceOf(computeSwitch(element))
-        is ZigLoop -> sequenceOf(computeLoop(element))
-        is ZigStringExpression -> sequenceOf(computeStringExpression(element))
-        is ZigNumberLiteral -> sequenceOf(computeNumberLiteral(element))
-        is ZigCharLiteral -> sequenceOf(ZigUnknown.of(ZigComptimeIntType))
-        is ZigEnumLiteral -> sequenceOf(computeEnumLiteral(element))
+        is ZigBuiltinCall -> computeBuiltinCall(element)
+        is ZigCall -> computeCall(element)
+        is ZigBlock -> computeBlock(element)
+        is ZigSwitch -> computeSwitch(element)
+        is ZigLoop -> computeLoop(element)
+        is ZigStringExpression -> computeStringExpression(element)
+        is ZigNumberLiteral -> computeNumberLiteral(element)
+        is ZigCharLiteral -> ZigUnknown.of(ZigComptimeIntType)
+        is ZigEnumLiteral -> computeEnumLiteral(element)
 
         is ZigBreak,
         is ZigContinue,
         is ZigReturn,
-        is ZigUnreachableLiteral -> sequenceOf(ZigUnknown.of(ZigNoreturnType))
+        is ZigUnreachableLiteral -> ZigUnknown.of(ZigNoreturnType)
 
         is ZigAnyframeLiteral,
         is ZigAnyframeType,
         is ZigAsm,
         is ZigNosuspend,
-        is ZigResume -> sequenceOf(ZigUnknown.ofUnknownType())
+        is ZigResume -> ZigUnknown.ofUnknownType()
     }
 }
 
@@ -1854,9 +1846,8 @@ private fun createTypeElementHtmlChunk(
     truncate: Boolean,
 ): HtmlChunk {
     val value = typeElement?.expression?.let {
-        val initialValues = resolveValues(it)
-        val values = ZigAnalyzer.substituteTypeParams(initialValues, typeParams)
-        values.singleOrNull()
+        val initialValue = resolveValue(it)
+        substituteTypeParams1(initialValue, typeParams)
     }
     return value?.toHtmlChunk(truncate) ?: createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
 }
@@ -2588,11 +2579,11 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                 switchElement.prongs
                     .filter { it !== switchProng }
                     .flatMap { it.items }
-                    .flatMap { resolveValues(it.expression) }
+                    .map { resolveValue(it.expression) }
                     .toSet()
             val prongSwitchItems =
                 switchProng.items
-                    .flatMap { resolveValues(it.expression) }
+                    .map { resolveValue(it.expression) }
                     .toSet()
 
             // Helper variables for error sets:
@@ -2714,13 +2705,13 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                 switchElement.prongs
                     .filter { it !== switchProng }
                     .flatMap { it.items }
-                    .flatMap { resolveValues(it.expression) }
+                    .map { resolveValue(it.expression) }
                     .filterIsInstance<ZigEnumLiteralValue>()
                     .map { it.name }
                     .toSet()
             val prongEnumLiterals =
                 switchProng.items
-                    .flatMap { resolveValues(it.expression) }
+                    .map { resolveValue(it.expression) }
                     .filterIsInstance<ZigEnumLiteralValue>()
                     .map { it.name }
                     .toSet()
@@ -2838,17 +2829,11 @@ private fun inferAssignDestructure(
         return ZigUnknown.of(ZigTypeType)
     }
     val fields = parentElement.variables.map { variable ->
-        val types = when (variable) {
-            is ZigVarProto -> {
-                val typeElement = variable.typeElement?.expression
-                    ?: return@map ZigUnknown.of(ZigTypeType)
-                resolveValues(typeElement)
-            }
-            is ZigExpression -> resolveValues(variable).asSequence().map { it.typeOf }.toSet()
-            else -> emptySet()
+        when (variable) {
+            is ZigVarProto -> resolveValue(variable.typeElement?.expression, ZigTypeType)
+            is ZigExpression -> resolveValue(variable).typeOf
+            else -> ZigUnknown.of(ZigTypeType)
         }
-        // For efficiency, limit each field to a single possible type.
-        types.singleOrNull() ?: ZigUnknown.of(ZigTypeType)
     }
     return ZigTupleType(LightZigTuple(childElement.manager, fields.toList()))
 }

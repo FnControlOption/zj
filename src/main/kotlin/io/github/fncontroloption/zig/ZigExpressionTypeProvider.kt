@@ -8,7 +8,7 @@ import io.github.fncontroloption.zig.psi2.ZigExpression
 
 class ZigExpressionTypeProvider : ExpressionTypeProvider<ZigExpression>() {
     override fun getInformationHint(element: ZigExpression): String {
-        val value = ZigAnalyzer.resolveValues(element).singleOrNull() ?: return "<unknown>"
+        val value = ZigAnalyzer.resolveValue(element)
         return StringUtil.escapeXmlEntities(value.typeOf.toPlainText())
     }
 

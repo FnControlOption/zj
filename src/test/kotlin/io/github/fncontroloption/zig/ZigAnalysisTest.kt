@@ -18,15 +18,9 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         return varDecl.initializer!!
     }
 
-    fun resolveValues(text: String): Set<ZigValue> {
-        val expr = createExpression(text)
-        return ZigAnalyzer.resolveValues(expr)
-    }
-
     fun resolveValue(text: String): ZigValue {
-        val values = resolveValues(text)
-        assertSize(1, values)
-        return values.first()
+        val expr = createExpression(text)
+        return ZigAnalyzer.resolveValue(expr)
     }
 
     fun testContainer() {

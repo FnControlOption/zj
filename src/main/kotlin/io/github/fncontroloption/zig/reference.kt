@@ -280,10 +280,10 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
     PsiPolyVariantReferenceBase<ZigFieldAccess>(element, identifier.textRangeInParent, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
-        val leftValues = ZigAnalyzer.resolveValues(myElement.leftOperand)
+        val leftValue = ZigAnalyzer.resolveValue(myElement.leftOperand)
         val name = parseZigIdentifier(identifier) ?: return emptyArray()
         val results = mutableSetOf<ResolveResult>()
-        for ((containerType, _) in getContainers(leftValues)) {
+        for ((containerType, _) in getContainers(leftValue)) {
             val member = containerType.members.firstOrNull {
                 it is PsiNameIdentifierOwner && it.name == name
             }
@@ -303,10 +303,10 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
         )
 
     override fun getVariants(): Array<out LookupElement> {
-        val leftValues = ZigAnalyzer.resolveValues(myElement.leftOperand)
+        val leftValue = ZigAnalyzer.resolveValue(myElement.leftOperand)
         val originalFile = myElement.containingFile
         val variants = mutableSetOf<LookupElement>()
-        for (left in leftValues) {
+        leftValue.forEach { left ->
             val typeOfLeft = left.typeOf
             when (typeOfLeft) {
                 is ZigOptionalType -> {
@@ -328,7 +328,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
                 )
             }
         }
-        for ((containerType, isInstance) in getContainers(leftValues)) {
+        for ((containerType, isInstance) in getContainers(leftValue)) {
             for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
                 val name = member.name ?: continue
                 if (member is ZigContainerField) {
@@ -410,23 +410,25 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
         return variants.toTypedArray()
     }
 
-    private fun getContainers(leftValues: Set<ZigValue>): Sequence<Pair<IZigContainerType, Boolean>> {
-        return leftValues.asSequence().mapNotNull { left ->
+    private fun getContainers(leftValue: ZigValue): Set<Pair<IZigContainerType, Boolean>> {
+        val result = mutableSetOf<Pair<IZigContainerType, Boolean>>()
+        leftValue.forEach { left ->
             when (left) {
-                is IZigContainerType -> Pair(left, false)
+                is IZigContainerType -> result += Pair(left, false)
                 else -> when (val typeOfLeft = left.typeOf) {
-                    is IZigContainerType -> Pair(typeOfLeft, true)
+                    is IZigContainerType -> result += Pair(typeOfLeft, true)
                     is ZigPointerType -> when (typeOfLeft.size) {
                         ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
-                            is IZigContainerType -> Pair(pointerChild, true)
-                            else -> null
+                            is IZigContainerType -> result += Pair(pointerChild, true)
+                            else -> {}
                         }
-                        else -> null
+                        else -> {}
                     }
-                    else -> null
+                    else -> {}
                 }
             }
         }
+        return result
     }
 }
 
@@ -673,9 +675,8 @@ internal fun getFunctionParamTypes(
 ): Pair<List<ZigFnParam>, List<ZigValue?>> {
     return functionElement.parameters.map { param ->
         param to param.typeElement?.expression?.let {
-            val initialValues = ZigAnalyzer.resolveValues(it)
-            val values = ZigAnalyzer.substituteTypeParams(initialValues, typeParams)
-            values.singleOrNull()
+            val initialValue = ZigAnalyzer.resolveValue(it)
+            ZigAnalyzer.substituteTypeParams1(initialValue, typeParams)
         }
     }.unzip()
 }
@@ -741,9 +742,8 @@ private fun getFunctionTypeText(
         return "anytype"
     }
     val returnType = functionElement.returnTypeElement?.expression?.let {
-        val initialValues = ZigAnalyzer.resolveValues(it)
-        val values = ZigAnalyzer.substituteTypeParams(initialValues, typeParams)
-        values.singleOrNull()
+        val initialValue = ZigAnalyzer.resolveValue(it)
+        ZigAnalyzer.substituteTypeParams1(initialValue, typeParams)
     }
     if (returnType == null) {
         return "_"
