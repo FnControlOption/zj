@@ -37,7 +37,7 @@ class ZigHighlightVisitor : HighlightVisitor {
 
             is ZigFnParam -> {
                 val identifier = element.nameIdentifier ?: return null
-                if (ZigAnalyzer.createGenericParameterValues(element).any { it is ZigComptimeParameterValue }) {
+                if (ZigAnalyzer.createGenericParameterValue(element) is ZigComptimeParameterValue) {
                     return createHighlightInfo(identifier, ZigHighlightInfoTypes.COMPTIME_PARAMETER)
                 }
 

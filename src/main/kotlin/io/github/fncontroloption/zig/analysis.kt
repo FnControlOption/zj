@@ -185,17 +185,17 @@ object ZigAnalyzer {
         return resolveValue(tagElement.expression, ZigTypeType)
     }
 
-    fun createGenericParameterValues(param: ZigFnParam): Sequence<ZigGenericParameterValue> {
+    fun createGenericParameterValue(param: ZigFnParam): ZigGenericParameterValue? {
         if (param.isAnytype) {
-            return sequenceOf(ZigAnytypeParameterValue(param))
+            return ZigAnytypeParameterValue(param)
         }
-        val typeElement = param.typeElement?.expression ?: return emptySequence()
-        val types = resolveValues(typeElement)
-        val isComptime = param.isComptime || types.singleOrNull() == ZigTypeType
+        val typeElement = param.typeElement?.expression ?: return null
+        val type = resolveValue(typeElement, ZigTypeType)
+        val isComptime = param.isComptime || type == ZigTypeType
         if (isComptime) {
-            return types.asSequence().map { ZigComptimeParameterValue(it, param) }
+            return ZigComptimeParameterValue(type, param)
         }
-        return emptySequence()
+        return null
     }
 
     fun findStdFile(originalElement: PsiElement, path: String): ZigFile? {
@@ -1311,7 +1311,7 @@ private fun findUnboundTypeParams(element: ZigElement): Map<ZigFnParam, ZigValue
         while (element != null) {
             if (element is ZigFnDeclOrProto) {
                 for (paramDecl in element.parameters) {
-                    if (ZigAnalyzer.createGenericParameterValues(paramDecl).any()) {
+                    if (ZigAnalyzer.createGenericParameterValue(paramDecl) != null) {
                         this[paramDecl] = null
                     }
                 }
@@ -1330,7 +1330,7 @@ private fun computeTypeParams(
     }
     return function.typeParams.toMutableMap().apply {
         for ((paramDecl, argValues) in function.element.parameters.zip(arguments)) {
-            if (ZigAnalyzer.createGenericParameterValues(paramDecl).any()) {
+            if (ZigAnalyzer.createGenericParameterValue(paramDecl) != null) {
                 this[paramDecl] = argValues
             }
         }
@@ -1343,7 +1343,7 @@ private fun computeBuiltinFnGenericParams(
 ): Map<ZigFnParam, ZigValue?> {
     return buildMap {
         for ((paramDecl, argValue) in element.parameters.zip(arguments)) {
-            if (ZigAnalyzer.createGenericParameterValues(paramDecl).any()) {
+            if (ZigAnalyzer.createGenericParameterValue(paramDecl) != null) {
                 this[paramDecl] = argValue
             }
         }
@@ -1587,7 +1587,7 @@ private fun computeValuesFromReferenceUncached(target: ZigNamedElement): Sequenc
         is ZigFnDecl -> computeFnDecl(target)
         is ZigVarDecl -> computeVarDecl(target)
         is ZigVarProto -> computeVarProto(target)
-        is ZigFnParam -> computeFnParam(target)
+        is ZigFnParam -> sequenceOf(computeFnParam(target))
         is ZigContainerFieldImpl -> computeContainerField(target)
         is ZigPayloadItem -> sequenceOf(computePayloadItem(target).value)
         is LightZigTupleField -> sequenceOf(ZigUnknown.of(target.container.fieldTypes[target.fieldIndex]))
@@ -1951,11 +1951,10 @@ private fun createParameterHtmlChunk(
     typeParams: Map<ZigFnParam, ZigValue?>,
     truncate: Boolean,
 ): HtmlChunk {
-    for (comptimeParam in ZigAnalyzer.createGenericParameterValues(param)) {
-        val comptimeArg = substituteTypeParams(comptimeParam, typeParams).singleOrNull()
-        if (comptimeArg != null) {
-            return comptimeArg.toHtmlChunk(truncate)
-        }
+    val genericParam = ZigAnalyzer.createGenericParameterValue(param)
+    if (genericParam != null) {
+        val genericArg = substituteTypeParams1(genericParam, typeParams)
+        return genericArg.toHtmlChunk(truncate)
     }
     return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
 }
@@ -2499,13 +2498,9 @@ private fun computeVarProto(target: ZigVarProto): Sequence<ZigValue> {
     }
 }
 
-private fun computeFnParam(target: ZigFnParam): Sequence<ZigValue> {
-    return ZigAnalyzer.createGenericParameterValues(target).ifEmpty {
-        val typeElement = target.typeElement?.expression
-            ?: return@ifEmpty sequenceOf(ZigUnknown.ofUnknownType())
-        val types = resolveValues(typeElement)
-        types.asSequence().map { ZigUnknown.of(it) }
-    }
+private fun computeFnParam(target: ZigFnParam): ZigValue {
+    val genericParam = ZigAnalyzer.createGenericParameterValue(target)
+    return genericParam ?: ZigUnknown.of(resolveValue(target.typeElement?.expression, ZigTypeType))
 }
 
 private fun computeContainerField(target: ZigContainerFieldImpl): Sequence<ZigValue> {
