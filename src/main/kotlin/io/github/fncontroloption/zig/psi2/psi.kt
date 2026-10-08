@@ -947,7 +947,9 @@ class ZigMulWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpressio
         get() = ZigTokenType.ASTERISK_PERCENT
 }
 
-class ZigMultilineStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
+class ZigMultilineStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigStringExpression {
+    override val value: String?
+        get() = null // TODO
 }
 
 class ZigNegation(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpression
@@ -1119,8 +1121,12 @@ class ZigSliceSentinel(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
         get() = findChildByClass(ZigExpression::class.java)
 }
 
-class ZigStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
+sealed interface ZigStringExpression : ZigExpression {
     val value: String?
+}
+
+class ZigStringLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigStringExpression {
+    override val value: String?
         get() = ZigStringLiteralParser.parse(text)
 
     override fun getReferences(): Array<out PsiReference> {

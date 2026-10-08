@@ -1511,10 +1511,7 @@ private fun computeValuesUncached(element: ZigExpression): Sequence<ZigValue> {
         }
 
         is ZigStringLiteral, is ZigMultilineStringLiteral -> {
-            val value = when (element) {
-                is ZigStringLiteral -> ZigStringLiteralParser.parse(element.text)
-                is ZigMultilineStringLiteral -> null
-            }
+            val value = element.value
             if (value != null) {
                 return sequenceOf(ZigStringLiteralValue(value))
             }
