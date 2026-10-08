@@ -3,13 +3,7 @@ package io.github.fncontroloption.zig
 import com.intellij.psi.PsiFileFactory
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.requireIs
-import io.github.fncontroloption.zig.psi2.ZigContainerFieldImpl
-import io.github.fncontroloption.zig.psi2.ZigContainerKind
-import io.github.fncontroloption.zig.psi2.ZigExpression
-import io.github.fncontroloption.zig.psi2.ZigFile
-import io.github.fncontroloption.zig.psi2.ZigMutability
-import io.github.fncontroloption.zig.psi2.ZigPointerSize
-import io.github.fncontroloption.zig.psi2.ZigVarDecl
+import io.github.fncontroloption.zig.psi2.*
 
 class ZigAnalysisTest : BasePlatformTestCase() {
     fun createFile(text: String): ZigFile {
@@ -1357,5 +1351,99 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val length = type.length.requireIs<ZigIntValue>()
         assertEquals(42, length.value)
         assertEquals(ZigUsizeType, type.child)
+    }
+
+    fun testOptionalThenCapture() {
+        val text = "if (@as(?isize, 42)) |foo| {}"
+        val expr = createExpression(text).requireIs<ZigIf>()
+        val capture = expr.thenPayload!!.items.single()
+        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
+        val type = values.single().typeOf
+        assertEquals(ZigIsizeType, type)
+    }
+
+    fun testErrorUnionThenCapture() {
+        val text = "if (@as(error{Foo}!isize, 42)) |foo| {}"
+        val expr = createExpression(text).requireIs<ZigIf>()
+        val capture = expr.thenPayload!!.items.single()
+        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
+        val type = values.single().typeOf
+        assertEquals(ZigIsizeType, type)
+    }
+
+    fun testErrorUnionElseCapture() {
+        val text = "if (@as(error{Foo}!isize, 42)) {} else |foo| {}"
+        val expr = createExpression(text).requireIs<ZigIf>()
+        val capture = expr.elsePayload!!.items.single()
+        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
+        val type = values.single().typeOf.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo"), type.names)
+    }
+
+    fun testCatchCapture() {
+        val text = "@as(error{Foo}!isize, 42) catch |foo| {}"
+        val expr = createExpression(text).requireIs<ZigCatch>()
+        val capture = expr.payload!!.items.single()
+        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
+        val type = values.single().typeOf.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo"), type.names)
+    }
+
+    fun testForRangeCapture() {
+        val text = "for (0..42) |foo| {}"
+        val expr = createExpression(text).requireIs<ZigFor>()
+        val capture = expr.payload!!.items.single()
+        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
+        val type = values.single().typeOf
+        assertEquals(ZigUsizeType, type)
+    }
+
+    fun testForArrayCapture() {
+        val text = "for (@as([42]isize, undefined)) |foo| {}"
+        val expr = createExpression(text).requireIs<ZigFor>()
+        val capture = expr.payload!!.items.single()
+        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
+        val type = values.single().typeOf
+        assertEquals(ZigIsizeType, type)
+    }
+
+    fun testForArrayPointerCapture() {
+        val text = "for (@as(*[42]isize, undefined)) |foo| {}"
+        val expr = createExpression(text).requireIs<ZigFor>()
+        val capture = expr.payload!!.items.single()
+        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
+        val type = values.single().typeOf
+        assertEquals(ZigIsizeType, type)
+    }
+
+    fun testForSliceCapture() {
+        val text = "for (@as([]isize, undefined)) |foo| {}"
+        val expr = createExpression(text).requireIs<ZigFor>()
+        val capture = expr.payload!!.items.single()
+        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
+        val type = values.single().typeOf
+        assertEquals(ZigIsizeType, type)
+    }
+
+    fun testForSlicePointerCapture() {
+        val text = "for (@as([]isize, undefined)) |*foo| {}"
+        val expr = createExpression(text).requireIs<ZigFor>()
+        val capture = expr.payload!!.items.single()
+        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
+        val type = values.single().typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.ONE, type.size)
+        assertEquals(ZigMutability.VAR, type.mutability)
+        assertEquals(ZigIsizeType, type.child)
+    }
+
+    fun testForConstSlicePointerCapture() {
+        val text = "for (@as([]const isize, undefined)) |*foo| {}"
+        val expr = createExpression(text).requireIs<ZigFor>()
+        val capture = expr.payload!!.items.single()
+        val values = ZigAnalyzer.resolveValuesFromReferenceTo(capture)
+        val type = values.single().typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.ONE, type.size)
+        assertEquals(ZigMutability.CONST, type.mutability)
+        assertEquals(ZigIsizeType, type.child)
     }
 }
