@@ -5,7 +5,10 @@ import com.intellij.lang.documentation.DocumentationMarkup
 import com.intellij.markdown.utils.convertMarkdownToHtml
 import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.vfs.VirtualFileManager
-import com.intellij.psi.*
+import com.intellij.psi.PsiComment
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.util.findParentInFile
 import com.intellij.psi.util.findParentOfType
 import io.github.fncontroloption.zig.psi2.*
@@ -105,13 +108,16 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
         val file = psiManager.findFile(virtualFile) ?: return null
         if (offsetIdx < 0) return file
         val offset = link.substring(offsetIdx + ZIG_DOCUMENTATION_OFFSET_SEPARATOR.length).toInt()
-        return file.findElementAt(offset)?.findParentInFile { it is PsiNamedElement }
+        val target = file.findElementAt(offset)?.findParentInFile { it is ZigNavigatableElement }
+        if (target == null || target == context) return null
+        return target
     }
 }
 
 private fun getDefinition(element: PsiElement): String? {
     return when (element) {
         is ZigFile -> element.name.substringBeforeLast('.')
+        is ZigContainerExpression -> element.text
         is ZigContainerFieldImpl -> element.text
         is ZigBuiltinFnProto -> element.text
         is ZigFnDecl -> {

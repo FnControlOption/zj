@@ -34,7 +34,9 @@ sealed class ZigStubPsiElement<T : StubElement<*>> : StubBasedPsiElementBase<T>,
     override fun toString() = "${javaClass.simpleName}(${elementTypeImpl})"
 }
 
-sealed interface ZigNamedElement : ZigElement, PsiNamedElement, NavigatablePsiElement
+sealed interface ZigNavigatableElement : ZigElement, NavigatablePsiElement
+
+sealed interface ZigNamedElement : ZigNavigatableElement, PsiNamedElement
 
 sealed interface ZigNameIdentifierOwner : ZigNamedElement, PsiNameIdentifierOwner
 
@@ -493,7 +495,9 @@ class ZigContainerArg(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
         get() = findChildByClass(ZigExpression::class.java)
 }
 
-class ZigContainerExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainer, ZigExpression {
+class ZigContainerExpression(node: ASTNode) :
+    ASTWrapperPsiElement(node), ZigContainer, ZigExpression, ZigNavigatableElement {
+
     val containerKindElement: PsiElement
         get() = findNotNullChildByType(ZigTokenSets.CONTAINERS)
 

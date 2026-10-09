@@ -12,7 +12,10 @@ import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.util.text.Strings
 import com.intellij.openapi.vfs.findDirectory
 import com.intellij.openapi.vfs.findFile
-import com.intellij.psi.*
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
+import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.util.*
 import io.github.fncontroloption.zig.psi2.*
 import io.github.fncontroloption.zig.syntaxHighlighter.ZigHighlightingColors
@@ -1805,22 +1808,30 @@ internal fun createStyledHtmlChunk(attributesKey: TextAttributesKey, text: Strin
     return HtmlChunk.raw(sb.toString())
 }
 
+private fun createLinkedHtmlChunk(
+    element: ZigNavigatableElement,
+    attributesKey: TextAttributesKey,
+    text: String,
+): HtmlChunk {
+    val target = buildString {
+        append(DocumentationManagerProtocol.PSI_ELEMENT_PROTOCOL)
+        append(element.containingFile.viewProvider.virtualFile.url)
+        append(ZIG_DOCUMENTATION_OFFSET_SEPARATOR)
+        append(element.textOffset)
+    }
+    return HtmlChunk.link(target, createStyledHtmlChunk(attributesKey, text))
+}
+
 private fun createNamedHtmlChunk(
-    element: PsiNamedElement,
+    element: ZigNamedElement,
     attributesKey: TextAttributesKey,
     quote: ZigIdQuoteBehavior,
 ): HtmlChunk {
     val name = element.name
-    if (name != null) {
-        val target = buildString {
-            append(DocumentationManagerProtocol.PSI_ELEMENT_PROTOCOL)
-            append(element.containingFile.viewProvider.virtualFile.url)
-            append(ZIG_DOCUMENTATION_OFFSET_SEPARATOR)
-            append(element.textOffset)
-        }
-        return HtmlChunk.link(target, createStyledHtmlChunk(attributesKey, renderZigIdentifier(name, quote)))
+    return if (name != null) {
+        createLinkedHtmlChunk(element, attributesKey, renderZigIdentifier(name, quote))
     } else {
-        return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
+        createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
     }
 }
 
@@ -1888,13 +1899,17 @@ private fun createContainerHtmlChunkStartingFrom(
 
                 else -> {
                     val parentChunk = createContainerHtmlChunkStartingFrom(parent, typeParams, truncate)
-                    val suffix = when (element.containerKind) {
-                        ZigContainerKind.STRUCT -> "__struct"
-                        ZigContainerKind.OPAQUE -> "__opaque"
-                        ZigContainerKind.ENUM -> "__enum"
-                        ZigContainerKind.UNION -> "__union"
+                    val kind = when (element.containerKind) {
+                        ZigContainerKind.STRUCT -> "struct"
+                        ZigContainerKind.OPAQUE -> "opaque"
+                        ZigContainerKind.ENUM -> "enum"
+                        ZigContainerKind.UNION -> "union"
                     }
-                    HtmlChunk.fragment(parentChunk, HtmlChunk.text(suffix))
+                    HtmlChunk.fragment(
+                        parentChunk,
+                        HtmlChunk.text("__"),
+                        createLinkedHtmlChunk(element, ZigHighlightingColors.KEYWORD, kind)
+                    )
                 }
             }
         }
