@@ -285,7 +285,7 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
         val results = mutableSetOf<ResolveResult>()
         for ((containerType, _) in getContainers(leftValue)) {
             val member = containerType.members.firstOrNull {
-                it is PsiNameIdentifierOwner && it.name == name
+                it is ZigNamedContainerMember && it.name == name
             }
             if (member != null) {
                 results.add(PsiElementResolveResult(member))
@@ -442,7 +442,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
         resultType.forEachValue { originalType ->
             val containerType = ZigAnalyzer.findEnumLiteralContainerType(originalType) ?: return@forEachValue
             val member = containerType.members.firstOrNull {
-                it is PsiNameIdentifierOwner && it.name == name
+                it is ZigNamedContainerMember && it.name == name
             }
             if (member != null) {
                 results.add(PsiElementResolveResult(member))

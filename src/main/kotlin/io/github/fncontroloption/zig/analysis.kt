@@ -70,31 +70,9 @@ object ZigAnalyzer {
         return io.github.fncontroloption.zig.substituteTypeParams(value, typeParams)
     }
 
-    /* TODO: delete
-    fun substituteTypeParams(
-        values: Sequence<ZigValue>,
-        typeParams: Map<ZigFnParam, ZigValue?>,
-    ): Sequence<ZigValue> {
-        return values.flatMap { substituteTypeParams(it, typeParams) }
-    }
-
-    fun substituteTypeParams(
-        values: Iterable<ZigValue>,
-        typeParams: Map<ZigFnParam, ZigValue?>,
-    ): Sequence<ZigValue> {
-        return substituteTypeParams(values.asSequence(), typeParams)
-    }
-     */
-
     fun inferResultType(childElement: ZigExpression): ZigValue {
         return io.github.fncontroloption.zig.inferResultType(childElement)
     }
-
-    /* TODO: delete
-    fun resolveOrInferStructInitTypes(element: ZigListInit): Sequence<IZigContainerType> {
-        return resolveOrInferListInitTypes(element).filterIsInstance<IZigContainerType>()
-    }
-     */
 
     fun resolveOrInferListInitType(element: ZigListInit): ZigValue {
         val typeExpression = element.typeExpression
@@ -1989,14 +1967,6 @@ private fun computeFieldType(
         }
     }
 }
-
-/* TODO: delete
-private fun computeFieldPlace(
-    leftPlace: ZigPlace,
-    fieldName: ZigValue,
-): ZigPlace =
-    leftPlace.map { computeFieldAccess(it, fieldName) }
- */
 
 fun computeTagNameValue(value: ZigValue): ZigValue {
     return value.mapValue {
