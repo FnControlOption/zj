@@ -169,6 +169,11 @@ private fun annotateRedeclarations(element: PsiElement, holder: AnnotationHolder
             when (statement) {
                 is ZigVarDecl -> sequenceOf(statement)
                 is ZigAssignDestructure -> statement.variables.filterIsInstance<ZigVarProto>()
+                is ZigComptime -> when (val inner = statement.innerElement) {
+                    is ZigVarDecl -> sequenceOf(inner)
+                    is ZigAssignDestructure -> inner.variables.filterIsInstance<ZigVarProto>()
+                    else -> emptySequence()
+                }
                 else -> emptySequence()
             }
         }

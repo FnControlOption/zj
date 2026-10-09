@@ -473,8 +473,8 @@ class ZigComptime(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainerDecl,
     override val container: ZigContainer?
         get() = parent as? ZigContainer
 
-    val innerExpression: ZigExpression?
-        get() = findChildByClass(ZigExpression::class.java)
+    val innerElement: ZigElement?
+        get() = findChildByClass(ZigElement::class.java)
 }
 
 class ZigConditionElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
