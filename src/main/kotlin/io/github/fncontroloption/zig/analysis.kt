@@ -244,6 +244,18 @@ sealed interface ZigPlace {
 
     fun map(transform: (ZigPlace) -> ZigPlace): ZigPlace
 
+    fun mapType(transform: (ZigMutability?, type: ZigValue) -> ZigPlace): ZigPlace {
+        return map { place ->
+            when (val type = place.value.typeOf) {
+                is ZigMultiValue -> {
+                    val places = type.values.map { transform(place.mutability, it) }
+                    Multi.from(places.toSet())
+                }
+                else -> transform(place.mutability, type)
+            }
+        }
+    }
+
     override fun equals(other: Any?): Boolean
     override fun hashCode(): Int
     override fun toString(): String
@@ -2069,9 +2081,9 @@ private fun computeUnwrapOptional(element: ZigUnwrapOptional): ZigPlace {
         return ZigPlace.constant(tagType)
     }
     val operandElement = element.operand ?: return ZigPlace.unknown()
-    return resolvePlace(operandElement).map { operand ->
-        when (val typeOfOperand = operand.value.typeOf) {
-            is ZigOptionalType -> ZigPlace.Single(operand.mutability, ZigUnknown.of(typeOfOperand.child))
+    return resolvePlace(operandElement).mapType { mutability, typeOfOperand ->
+        when (typeOfOperand) {
+            is ZigOptionalType -> ZigPlace.Single(mutability, ZigUnknown.of(typeOfOperand.child))
             else -> ZigPlace.unknown()
         }
     }
@@ -2079,9 +2091,9 @@ private fun computeUnwrapOptional(element: ZigUnwrapOptional): ZigPlace {
 
 private fun computeTry(element: ZigTry): ZigPlace {
     val operandElement = element.operand ?: return ZigPlace.unknown()
-    return resolvePlace(operandElement).map { operand ->
-        when (val typeOfOperand = operand.value.typeOf) {
-            is ZigErrorUnionType -> ZigPlace.Single(operand.mutability, ZigUnknown.of(typeOfOperand.payload))
+    return resolvePlace(operandElement).mapType { mutability, typeOfOperand ->
+        when (typeOfOperand) {
+            is ZigErrorUnionType -> ZigPlace.Single(mutability, ZigUnknown.of(typeOfOperand.payload))
             else -> ZigPlace.unknown()
         }
     }
@@ -2089,8 +2101,8 @@ private fun computeTry(element: ZigTry): ZigPlace {
 
 private fun computeDeref(element: ZigDeref): ZigPlace {
     val operandElement = element.operand ?: return ZigPlace.unknown()
-    return resolvePlace(operandElement).map { operand ->
-        when (val typeOfOperand = operand.value.typeOf) {
+    return resolvePlace(operandElement).mapType { _, typeOfOperand ->
+        when (typeOfOperand) {
             is ZigPointerType -> when (typeOfOperand.size) {
                 ZigPointerSize.ONE,
                 ZigPointerSize.C -> ZigPlace.Single(typeOfOperand.mutability, ZigUnknown.of(typeOfOperand.child))
@@ -2188,8 +2200,8 @@ private fun computeComptime(element: ZigComptime): ZigValue {
 
 private fun computeAddressOf(element: ZigAddressOf): ZigPlace {
     val operandElement = element.operand ?: return ZigPlace.constant(ZigUnknown.ofUnknownType())
-    return resolvePlace(operandElement).map {
-        ZigPlace.constant(ZigUnknown.of(ZigPointerType(ZigPointerSize.ONE, null, it.mutability, it.value.typeOf)))
+    return resolvePlace(operandElement).mapType { mutability, type ->
+        ZigPlace.constant(ZigUnknown.of(ZigPointerType(ZigPointerSize.ONE, null, mutability, type)))
     }
 }
 
@@ -2262,14 +2274,14 @@ private fun computeSlice(element: ZigSlice): ZigPlace {
     // TODO: if the indexes are non-comptime, return a slice instead of an array of unknown length
     val length = ZigUnknown.of(ZigUsizeType)
     val sentinel = element.sentinelElement?.let { resolveValue(it.expression) }
-    return resolvePlace(element.sliced).map { sliced ->
-        val (mutability, childType) = when (val typeOfSliced = sliced.value.typeOf) {
-            is ZigArrayType -> Pair(sliced.mutability, typeOfSliced.child)
+    return resolvePlace(element.sliced).mapType { mutabilityOfSliced, typeOfSliced ->
+        val (mutability, childType) = when (typeOfSliced) {
+            is ZigArrayType -> Pair(mutabilityOfSliced, typeOfSliced.child)
 
             is ZigPointerType -> when (typeOfSliced.size) {
                 ZigPointerSize.ONE -> when (val pointerChild = typeOfSliced.child) {
                     is ZigArrayType -> Pair(typeOfSliced.mutability, pointerChild.child)
-                    else -> return@map ZigPlace.constant(ZigUnknown.ofUnknownType()) // TODO
+                    else -> return@mapType ZigPlace.constant(ZigUnknown.ofUnknownType()) // TODO
                 }
 
                 ZigPointerSize.MANY,
@@ -2277,7 +2289,7 @@ private fun computeSlice(element: ZigSlice): ZigPlace {
                 ZigPointerSize.C -> Pair(typeOfSliced.mutability, typeOfSliced.child)
             }
 
-            else -> return@map ZigPlace.constant(ZigUnknown.ofUnknownType())
+            else -> return@mapType ZigPlace.constant(ZigUnknown.ofUnknownType())
         }
         val arrayType = ZigArrayType(length, sentinel, childType)
         val pointerType = ZigPointerType(ZigPointerSize.ONE, null, mutability, arrayType)
@@ -2516,10 +2528,10 @@ private fun computeThenPayload(payloadElement: ZigThenPayload): ZigPlace {
         payloadElement.containingIf?.conditionElement?.expression
             ?: payloadElement.containingWhile?.conditionElement?.expression
             ?: return ZigPlace.unknown()
-    return resolvePlace(conditionElement).map { condition ->
-        when (val typeOfCondition = condition.value.typeOf) {
-            is ZigOptionalType -> ZigPlace.Single(condition.mutability, ZigUnknown.of(typeOfCondition.child))
-            is ZigErrorUnionType -> ZigPlace.Single(condition.mutability, ZigUnknown.of(typeOfCondition.payload))
+    return resolvePlace(conditionElement).mapType { mutability, typeOfCondition ->
+        when (typeOfCondition) {
+            is ZigOptionalType -> ZigPlace.Single(mutability, ZigUnknown.of(typeOfCondition.child))
+            is ZigErrorUnionType -> ZigPlace.Single(mutability, ZigUnknown.of(typeOfCondition.payload))
             else -> ZigPlace.unknown()
         }
     }
@@ -2530,9 +2542,9 @@ private fun computeElsePayload(payloadElement: ZigElsePayload): ZigPlace {
         payloadElement.containingIf?.conditionElement?.expression
             ?: payloadElement.containingWhile?.conditionElement?.expression
             ?: return ZigPlace.unknown()
-    return resolvePlace(conditionElement).map { condition ->
-        when (val typeOfCondition = condition.value.typeOf) {
-            is ZigErrorUnionType -> ZigPlace.Single(condition.mutability, ZigUnknown.of(typeOfCondition.errorSet))
+    return resolvePlace(conditionElement).mapType { mutability, typeOfCondition ->
+        when (typeOfCondition) {
+            is ZigErrorUnionType -> ZigPlace.Single(mutability, ZigUnknown.of(typeOfCondition.errorSet))
             else -> ZigPlace.unknown()
         }
     }
@@ -2540,9 +2552,9 @@ private fun computeElsePayload(payloadElement: ZigElsePayload): ZigPlace {
 
 private fun computeCatchPayload(payloadElement: ZigCatchPayload): ZigPlace {
     val leftElement = payloadElement.containingCatch.leftOperand
-    return resolvePlace(leftElement).map { left ->
-        when (val typeOfLeft = left.value.typeOf) {
-            is ZigErrorUnionType -> ZigPlace.Single(left.mutability, ZigUnknown.of(typeOfLeft.errorSet))
+    return resolvePlace(leftElement).mapType { mutability, typeOfLeft ->
+        when (typeOfLeft) {
+            is ZigErrorUnionType -> ZigPlace.Single(mutability, ZigUnknown.of(typeOfLeft.errorSet))
             else -> ZigPlace.unknown()
         }
     }
@@ -2602,8 +2614,8 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                     .map { it.name }
                     .toSet()
 
-            resolvePlace(conditionElement).map { condition ->
-                val values = when (val conditionType = condition.value.typeOf) {
+            resolvePlace(conditionElement).mapType { mutability, conditionType ->
+                val values = when (conditionType) {
                     is ZigErrorSetType -> {
                         if (isElseProng) {
                             val names = conditionType.names.toSortedSet()
@@ -2674,7 +2686,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                     }
                     else -> sequenceOf(ZigUnknown.of(conditionType)) // TODO
                 }
-                ZigPlace.Single(condition.mutability, ZigMultiValue.from(values.toSet()))
+                ZigPlace.Single(mutability, ZigMultiValue.from(values.toSet()))
             }
         }
         1 -> {
@@ -2698,10 +2710,9 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                     .filterIsInstance<ZigEnumLiteralValue>()
                     .map { it.name }
                     .toSet()
-            resolvePlace(conditionElement).map { condition ->
-                val conditionType = condition.value.typeOf
+            resolvePlace(conditionElement).mapType { _, conditionType ->
                 val values = if (conditionType is IZigContainerType && conditionType.isTaggedUnion) {
-                    val tagType = ZigAnalyzer.resolveUnionTagType(conditionType) ?: return@map ZigPlace.unknown()
+                    val tagType = ZigAnalyzer.resolveUnionTagType(conditionType) ?: return@mapType ZigPlace.unknown()
                     if (isInlineProng) {
                         if (isElseProng) {
                             sequenceOf(tagType.map { type ->
@@ -2752,8 +2763,8 @@ private fun computeForPayload(payloadElement: ZigForPayload, payloadItem: ZigPay
     if (inputElement !is ZigExpression) {
         return ZigPlace.unknown()
     }
-    return resolvePlace(inputElement).map { input ->
-        when (val typeOfInput = input.value.typeOf) {
+    return resolvePlace(inputElement).mapType { _, typeOfInput ->
+        when (typeOfInput) {
             is ZigArrayType -> {
                 if (payloadItem.isPointer) {
                     ZigPlace.unknown()
