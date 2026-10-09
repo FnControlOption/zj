@@ -1,6 +1,5 @@
 package io.github.fncontroloption.zig
 
-import com.intellij.codeInsight.documentation.DocumentationManagerProtocol
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.richcopy.HtmlSyntaxInfoUtil
 import com.intellij.openapi.module.ModuleUtilCore
@@ -1792,7 +1791,7 @@ private fun createLinkedHtmlChunk(
     text: String,
 ): HtmlChunk {
     val target = buildString {
-        append(DocumentationManagerProtocol.PSI_ELEMENT_PROTOCOL)
+        append(ZIG_DOCUMENTATION_PROTOCOL)
         append(element.containingFile.viewProvider.virtualFile.url)
         append(ZIG_DOCUMENTATION_OFFSET_SEPARATOR)
         append(element.textOffset)
@@ -1841,7 +1840,7 @@ private fun createContainerHtmlChunkStartingFrom(
                 assert(name.endsWith(".zig"))
                 val text = name.substringBeforeLast('.')
                 val target = buildString {
-                    append(DocumentationManagerProtocol.PSI_ELEMENT_PROTOCOL)
+                    append(ZIG_DOCUMENTATION_PROTOCOL)
                     append(element.viewProvider.virtualFile.url)
                 }
                 HtmlChunk.link(target, createStyledHtmlChunk(ZigHighlightingColors.CONSTANT, text))

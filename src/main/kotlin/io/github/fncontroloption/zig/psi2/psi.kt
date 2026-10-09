@@ -736,7 +736,7 @@ class ZigFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnDeclOrProto, 
         get() = null
 }
 
-class ZigBuiltinFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnOrBuiltinFnDeclOrProto {
+class ZigBuiltinFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnOrBuiltinFnDeclOrProto, ZigNavigatableElement {
     val builtinElement: PsiElement
         get() = findNotNullChildByType(ZigTokenType.BUILTIN)
 
@@ -748,6 +748,10 @@ class ZigBuiltinFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnOrBuil
 
     override val body: ZigBlock?
         get() = null
+
+    override fun navigate(requestFocus: Boolean) {}
+    override fun canNavigate() = false
+    override fun canNavigateToSource() = false
 }
 
 class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop {

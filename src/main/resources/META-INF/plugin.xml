@@ -66,7 +66,10 @@
     <codeStyleSettingsProvider implementation="io.github.fncontroloption.zig.ZigCodeStyleSettingsProvider"/>
     <langCodeStyleSettingsProvider implementation="io.github.fncontroloption.zig.ZigLanguageCodeStyleSettingsProvider"/>
     <lang.commenter language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigCommenter"/>
-    <lang.documentationProvider language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigDocumentationProvider"/>
+    <platform.backend.documentation.psiTargetProvider
+            implementation="io.github.fncontroloption.zig.ZigPsiDocumentationTargetProvider"/>
+    <platform.backend.documentation.linkHandler
+            implementation="io.github.fncontroloption.zig.ZigPsiDocumentationLinkHandler"/>
     <spellchecker.support language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigSpellcheckingStrategy"/>
     <lang.braceMatcher language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigBraceMatcher"/>
     <lang.quoteHandler language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigQuoteHandler"/>
