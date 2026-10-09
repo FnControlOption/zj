@@ -2498,8 +2498,8 @@ private fun computeContainerField(target: ZigContainerFieldImpl): ZigValue {
 
 private fun computePayloadItem(target: ZigPayloadItem): ZigPlace {
     return if (target.isPointer) {
-        computePayloadItemPlace(target).mapPlace {
-            ZigPlace.constant(ZigUnknown.of(ZigPointerType(ZigPointerSize.ONE, null, it.mutability, it.value.typeOf)))
+        computePayloadItemPlace(target).mapType { mutability, type ->
+            ZigPlace.constant(ZigUnknown.of(ZigPointerType(ZigPointerSize.ONE, null, mutability, type)))
         }
     } else {
         computePayloadItemPlace(target).mapPlace {
