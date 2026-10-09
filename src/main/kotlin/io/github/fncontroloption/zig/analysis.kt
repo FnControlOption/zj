@@ -2193,7 +2193,7 @@ private fun computeIf(element: ZigIf): ZigValue {
         null -> ZigVoidValue
         else -> resolveValue(outerElement.expression)
     }
-    return ZigMultiValue.from(resolvePeerValues(setOf(thenValue, elseValue)))
+    return resolvePeerValues(setOf(thenValue, elseValue))
 }
 
 private fun computeCatch(element: ZigCatch): ZigValue {
@@ -2204,7 +2204,7 @@ private fun computeCatch(element: ZigCatch): ZigValue {
         }
     }
     val rightValue = resolveValue(element.rightOperand)
-    return ZigMultiValue.from(resolvePeerValues(setOf(leftValue, rightValue)))
+    return resolvePeerValues(setOf(leftValue, rightValue))
 }
 
 private fun computeOrelse(element: ZigOrelse): ZigValue {
@@ -2215,7 +2215,7 @@ private fun computeOrelse(element: ZigOrelse): ZigValue {
         }
     }
     val rightValue = resolveValue(element.rightOperand)
-    return ZigMultiValue.from(resolvePeerValues(setOf(leftValue, rightValue)))
+    return resolvePeerValues(setOf(leftValue, rightValue))
 }
 
 private fun computeMergeErrorSets(element: ZigMergeErrorSets): ZigValue {
@@ -2345,11 +2345,12 @@ private fun computeThisBuiltinCall(element: ZigBuiltinCall): ZigValue {
 
 private fun computeTypeOfBuiltinCall(element: ZigBuiltinCall): ZigValue {
     val arguments = element.arguments.toList()
+    if (arguments.isEmpty()) return ZigUnknown.of(ZigTypeType)
     return if (arguments.size == 1) {
         resolveValue(arguments[0]).typeOf
     } else {
         val values = arguments.map { resolveValue(it) }.toSet()
-        ZigMultiValue.from(resolvePeerValues(values)).typeOf
+        resolvePeerValues(values).typeOf
     }
 }
 
@@ -2376,7 +2377,7 @@ private fun computeCall(element: ZigCall): ZigValue {
 private fun computeBlock(element: ZigBlock): ZigValue {
     val values = computeValuesFromLabeledBreaks(element).toSet()
     if (values.isEmpty()) return ZigVoidValue
-    return ZigMultiValue.from(resolvePeerValues(values))
+    return resolvePeerValues(values)
 }
 
 private fun computeSwitch(element: ZigSwitch): ZigValue {
@@ -2384,7 +2385,7 @@ private fun computeSwitch(element: ZigSwitch): ZigValue {
         addAll(computeValuesFromLabeledBreaks(element))
         addAll(element.prongs.map { resolveValue(it.expression) })
     }
-    return ZigMultiValue.from(resolvePeerValues(values))
+    return resolvePeerValues(values)
 }
 
 private fun computeLoop(element: ZigLoop): ZigValue {
@@ -2393,7 +2394,7 @@ private fun computeLoop(element: ZigLoop): ZigValue {
         addAll(computeValuesFromUnlabeledBreaks(element))
         add(element.elseElement?.let { resolveValue(it.expression) } ?: ZigVoidValue)
     }
-    return ZigMultiValue.from(resolvePeerValues(values))
+    return resolvePeerValues(values)
 }
 
 private fun computeStringExpression(element: ZigStringExpression): ZigValue {
@@ -2637,7 +2638,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                                 fieldValues
                             } else {
                                 // TODO: handle pointer capture of tagged union variants with incompatible types
-                                resolvePeerValues(fieldValues.toSet()).asSequence()
+                                sequenceOf(resolvePeerValues(fieldValues.toSet()))
                             }
                         }
                     }
@@ -3200,10 +3201,10 @@ private fun inferMemsetBuiltinCallArg(
 
 // Based on Sema.resolvePeerTypes
 // https://codeberg.org/ziglang/zig/src/commit/00b59eb/src/Sema.zig#L32687
-private fun resolvePeerValues(values: Set<ZigValue>): Set<ZigValue> {
+private fun resolvePeerValues(values: Set<ZigValue>): ZigValue {
     when (values.size) {
-        0 -> return emptySet()
-        1 -> return values
+        0 -> return ZigUnknown.ofUnknownType()
+        1 -> return values.single()
         else -> {}
     }
 
@@ -3220,13 +3221,16 @@ private fun resolvePeerValues(values: Set<ZigValue>): Set<ZigValue> {
     }
     if (sameType) {
         if (firstType == ZigTypeType) {
-            return values
+            return ZigMultiValue.from(values)
         }
-        return setOf(ZigUnknown.of(firstType))
+        return ZigUnknown.of(firstType)
     }
 
-    val type = resolvePeerTypesInner(tys.toMutableList(), vals.toMutableList())
-    return if (type != null) setOf(ZigUnknown.of(type)) else values
+    return when (val type = resolvePeerTypesInner(tys.toMutableList(), vals.toMutableList())) {
+        null -> ZigMultiValue.from(values)
+        ZigTypeType -> ZigMultiValue.from(values.filter { it.typeOf == ZigTypeType }.toSet())
+        else -> ZigUnknown.of(type)
+    }
 }
 
 private enum class PeerResolveStrategy {
