@@ -37,7 +37,7 @@ class ZigHighlightVisitor : HighlightVisitor {
 
             is ZigFnParam -> {
                 val identifier = element.nameIdentifier ?: return null
-                if (ZigAnalyzer.createGenericParameterValues(element).any { it is ZigComptimeParameterValue }) {
+                if (ZigAnalyzer.createGenericParameterValue(element) is ZigComptimeParameterValue) {
                     return createHighlightInfo(identifier, ZigHighlightInfoTypes.COMPTIME_PARAMETER)
                 }
 
@@ -47,10 +47,9 @@ class ZigHighlightVisitor : HighlightVisitor {
             is ZigVarDeclOrProto -> {
                 val identifier = element.nameIdentifier ?: return null
 
-                for (value in ZigAnalyzer.resolveValuesFromReferenceTo(element)) {
-                    if (value.typeOf is ZigFunctionType) {
-                        return createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD)
-                    }
+                val value = ZigAnalyzer.resolveValueFromReferenceTo(element)
+                if (value.anyValue { it.typeOf is ZigFunctionType }) {
+                    return createHighlightInfo(identifier, ZigHighlightInfoTypes.STATIC_METHOD)
                 }
 
                 val type = if (element is ZigVarDecl && !element.isLocal) {
@@ -108,10 +107,9 @@ class ZigHighlightVisitor : HighlightVisitor {
             is ZigFieldAccess -> {
                 val name = element.identifierElement ?: return null
                 val text = parseZigIdentifier(name) ?: return null
-                for (value in ZigAnalyzer.resolveValues(element.leftOperand)) {
-                    if (ZigAnalyzer.getBuiltinFieldType(value.typeOf, text) != null) {
-                        return createHighlightInfo(name, ZigHighlightInfoTypes.INSTANCE_FIELD)
-                    }
+                val value = ZigAnalyzer.resolveValue(element.leftOperand)
+                if (value.anyValue { ZigAnalyzer.getBuiltinFieldType(it.typeOf, text) != null }) {
+                    return createHighlightInfo(name, ZigHighlightInfoTypes.INSTANCE_FIELD)
                 }
                 createHighlightInfoFromReference(element, name)
             }

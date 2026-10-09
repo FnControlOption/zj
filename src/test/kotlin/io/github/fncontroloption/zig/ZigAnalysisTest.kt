@@ -3,13 +3,7 @@ package io.github.fncontroloption.zig
 import com.intellij.psi.PsiFileFactory
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.requireIs
-import io.github.fncontroloption.zig.psi2.ZigContainerFieldImpl
-import io.github.fncontroloption.zig.psi2.ZigContainerKind
-import io.github.fncontroloption.zig.psi2.ZigExpression
-import io.github.fncontroloption.zig.psi2.ZigFile
-import io.github.fncontroloption.zig.psi2.ZigMutability
-import io.github.fncontroloption.zig.psi2.ZigPointerSize
-import io.github.fncontroloption.zig.psi2.ZigVarDecl
+import io.github.fncontroloption.zig.psi2.*
 
 class ZigAnalysisTest : BasePlatformTestCase() {
     fun createFile(text: String): ZigFile {
@@ -24,15 +18,9 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         return varDecl.initializer!!
     }
 
-    fun resolveValues(text: String): Set<ZigValue> {
-        val expr = createExpression(text)
-        return ZigAnalyzer.resolveValues(expr)
-    }
-
     fun resolveValue(text: String): ZigValue {
-        val values = resolveValues(text)
-        assertSize(1, values)
-        return values.first()
+        val expr = createExpression(text)
+        return ZigAnalyzer.resolveValue(expr)
     }
 
     fun testContainer() {
@@ -253,6 +241,29 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "@as(?bool, true).?"
         val value = resolveValue(text).requireIs<ZigUnknown>()
         assertEquals(ZigBoolType, value.typeOf)
+    }
+
+    fun testUnwrapUnionTagType() {
+        val text = """
+            blk: {
+                const E = enum { foo };
+                const U = union(E) { foo: usize };
+                break :blk @typeInfo(U).@"union".tag_type.?;
+            }
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigContainerType>()
+        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+    }
+
+    fun testUnwrapUnionInferredTagType() {
+        val text = """
+            blk: {
+                const U = union(enum) { foo: usize };
+                break :blk @typeInfo(U).@"union".tag_type.?;
+            }
+        """.trimIndent()
+        val type = resolveValue(text).requireIs<ZigInferredUnionTagType>()
+        assertEquals(ZigContainerKind.UNION, type.union.containerKind)
     }
 
     fun testTry() {
@@ -863,7 +874,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 @as([*:0]u8, undefined),
             )
         """.trimIndent()
-        assertSize(2, resolveValues(text))
+        val value = resolveValue(text).requireIs<ZigMultiValue>()
+        assertSize(2, value.values)
     }
 
     // ptrSize = ZigPointerSize.SLICE
@@ -921,7 +933,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
                 @as([:0]u8, undefined),
             )
         """.trimIndent()
-        assertSize(2, resolveValues(text))
+        val value = resolveValue(text).requireIs<ZigMultiValue>()
+        assertSize(2, value.values)
     }
 
     // ptrSize = ZigPointerSize.SLICE
@@ -941,7 +954,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
 
     fun testPeerTypesEmptyTupleAndNoreturnArrayPointers() {
         val text = "@TypeOf(&.{}, @as(*[0]noreturn, undefined))"
-        assertSize(2, resolveValues(text))
+        val value = resolveValue(text).requireIs<ZigMultiValue>()
+        assertSize(2, value.values)
     }
 
     fun testPeerTypesConstPointer() {
@@ -1296,5 +1310,134 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigMutability.CONST, type.mutability)
+    }
+
+    fun testConstCastBuiltin() {
+        val text = "@constCast(@as(*const usize, undefined))"
+        val type = resolveValue(text).typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigMutability.VAR, type.mutability)
+    }
+
+    fun testFieldBuiltin() {
+        val text = """@field(@as(struct { foo: usize }, undefined), "foo")"""
+        assertEquals(ZigUsizeType, resolveValue(text).typeOf)
+    }
+
+    fun testFieldTypeBuiltin() {
+        val text = """@FieldType(struct { foo: usize }, "foo")"""
+        assertEquals(ZigUsizeType, resolveValue(text))
+    }
+
+    fun testTagNameBuiltin() {
+        val text = "@tagName(.foo)"
+        val value = resolveValue(text).requireIs<ZigStringLiteralValue>()
+        assertEquals("foo", value.value)
+    }
+
+    fun testTypeOfBuiltin() {
+        val text = "@TypeOf(@as(usize, 42))"
+        assertEquals(ZigUsizeType, resolveValue(text))
+    }
+
+    fun testVectorBuiltin() {
+        val text = "@Vector(42, usize)"
+        val type = resolveValue(text).requireIs<ZigVectorType>()
+        val length = type.length.requireIs<ZigIntValue>()
+        assertEquals(42, length.value)
+        assertEquals(ZigUsizeType, type.child)
+    }
+
+    fun testOptionalThenCapture() {
+        val text = "if (@as(?isize, 42)) |foo| {}"
+        val expr = createExpression(text).requireIs<ZigIf>()
+        val capture = expr.thenPayload!!.items.single()
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf
+        assertEquals(ZigIsizeType, type)
+    }
+
+    fun testErrorUnionThenCapture() {
+        val text = "if (@as(error{Foo}!isize, 42)) |foo| {}"
+        val expr = createExpression(text).requireIs<ZigIf>()
+        val capture = expr.thenPayload!!.items.single()
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf
+        assertEquals(ZigIsizeType, type)
+    }
+
+    fun testErrorUnionElseCapture() {
+        val text = "if (@as(error{Foo}!isize, 42)) {} else |foo| {}"
+        val expr = createExpression(text).requireIs<ZigIf>()
+        val capture = expr.elsePayload!!.items.single()
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo"), type.names)
+    }
+
+    fun testCatchCapture() {
+        val text = "@as(error{Foo}!isize, 42) catch |foo| {}"
+        val expr = createExpression(text).requireIs<ZigCatch>()
+        val capture = expr.payload!!.items.single()
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo"), type.names)
+    }
+
+    fun testForRangeCapture() {
+        val text = "for (0..42) |foo| {}"
+        val expr = createExpression(text).requireIs<ZigFor>()
+        val capture = expr.payload!!.items.single()
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf
+        assertEquals(ZigUsizeType, type)
+    }
+
+    fun testForArrayCapture() {
+        val text = "for (@as([42]isize, undefined)) |foo| {}"
+        val expr = createExpression(text).requireIs<ZigFor>()
+        val capture = expr.payload!!.items.single()
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf
+        assertEquals(ZigIsizeType, type)
+    }
+
+    fun testForArrayPointerCapture() {
+        val text = "for (@as(*[42]isize, undefined)) |foo| {}"
+        val expr = createExpression(text).requireIs<ZigFor>()
+        val capture = expr.payload!!.items.single()
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf
+        assertEquals(ZigIsizeType, type)
+    }
+
+    fun testForSliceCapture() {
+        val text = "for (@as([]isize, undefined)) |foo| {}"
+        val expr = createExpression(text).requireIs<ZigFor>()
+        val capture = expr.payload!!.items.single()
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf
+        assertEquals(ZigIsizeType, type)
+    }
+
+    fun testForSlicePointerCapture() {
+        val text = "for (@as([]isize, undefined)) |*foo| {}"
+        val expr = createExpression(text).requireIs<ZigFor>()
+        val capture = expr.payload!!.items.single()
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.ONE, type.size)
+        assertEquals(ZigMutability.VAR, type.mutability)
+        assertEquals(ZigIsizeType, type.child)
+    }
+
+    fun testForConstSlicePointerCapture() {
+        val text = "for (@as([]const isize, undefined)) |*foo| {}"
+        val expr = createExpression(text).requireIs<ZigFor>()
+        val capture = expr.payload!!.items.single()
+        val value = ZigAnalyzer.resolveValueFromReferenceTo(capture)
+        val type = value.typeOf.requireIs<ZigPointerType>()
+        assertEquals(ZigPointerSize.ONE, type.size)
+        assertEquals(ZigMutability.CONST, type.mutability)
+        assertEquals(ZigIsizeType, type.child)
     }
 }

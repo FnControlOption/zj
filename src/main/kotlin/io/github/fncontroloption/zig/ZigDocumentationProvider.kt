@@ -43,9 +43,8 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
 
         if (element is ZigNamedElement) {
             val typeParams = getOriginalContainerType(originalElement)?.typeParams ?: emptyMap()
-            val initialValues = ZigAnalyzer.resolveValuesFromReferenceTo(element)
-            val substitutedValues = ZigAnalyzer.substituteTypeParams(initialValues, typeParams)
-            for (value in substitutedValues) {
+            val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(element)
+            ZigAnalyzer.substituteTypeParams(initialValue, typeParams).forEachValue { value ->
                 val chunk = when (value) {
                     is ZigAnytypeParameterValue if value.element == element -> {
                         createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "anytype")
@@ -81,7 +80,7 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
             return null
         }
         val name = parseZigIdentifier(originalElement) ?: return null
-        val left = ZigAnalyzer.resolveValues(element.leftOperand).singleOrNull() ?: return null
+        val left = ZigAnalyzer.resolveValue(element.leftOperand)
         val type = ZigAnalyzer.getBuiltinFieldType(left.typeOf, name) ?: return null
         val sb = StringBuilder()
         HtmlChunk.text(name)
@@ -198,22 +197,22 @@ private fun getOriginalContainerType(originalElement: PsiElement?): IZigContaine
     when (val zigElement = originalElement?.findParentOfType<ZigElement>(strict = false)) {
         is ZigFieldAccess -> {
             if (zigElement.identifierElement == originalElement) {
-                val leftValues = ZigAnalyzer.resolveValues(zigElement.leftOperand)
-                return leftValues.singleOrNull()?.typeOf as? IZigContainerType
+                val leftValue = ZigAnalyzer.resolveValue(zigElement.leftOperand)
+                return leftValue.typeOf as? IZigContainerType
             }
         }
 
         is ZigListInitItem -> {
             if (zigElement.identifierElement == originalElement) {
-                val types = ZigAnalyzer.resolveOrInferStructInitTypes(zigElement.containingListInit)
-                return types.singleOrNull()
+                val type = ZigAnalyzer.resolveOrInferListInitType(zigElement.containingListInit)
+                return type as? IZigContainerType
             }
         }
 
         is ZigEnumLiteral -> {
             if (zigElement.identifierElement == originalElement) {
-                val types = ZigAnalyzer.inferEnumLiteralTypes(zigElement)
-                return types.singleOrNull()?.component2()
+                val type = ZigAnalyzer.inferResultType(zigElement)
+                return ZigAnalyzer.findEnumLiteralContainerType(type)
             }
         }
 
