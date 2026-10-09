@@ -150,8 +150,7 @@ object ZigAnalyzer {
 
     fun getBuiltinFieldType(type: ZigValue, name: String): ZigValue? {
         val value = ZigUnknown.of(type)
-        val place = ZigPlace.Single(null, value)
-        return getBuiltinFieldPlace(place, name)?.value?.typeOf
+        return getBuiltinFieldPlace(null, value, name)?.value?.typeOf
     }
 
     fun resolveEnumTagType(type: IZigContainerType): ZigValue? {
@@ -988,19 +987,19 @@ data class ZigLazyFieldType(val container: ZigValue, val fieldName: ZigValue) : 
     }
 }
 
-data class ZigLazyFieldValue(val left: ZigPlace, val fieldName: ZigValue) : ZigValue {
+data class ZigLazyFieldValue(val left: ZigValue, val fieldName: ZigValue) : ZigValue {
     override val typeOf = ZigUnknown.of(ZigTypeType)
 
     override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
         val builder = HtmlBuilder()
         if (fieldName is ZigStringLiteralValue) {
-            builder.append(left.value.toHtmlChunk(truncate))
+            builder.append(left.toHtmlChunk(truncate))
             builder.append(".")
             builder.append(renderZigIdentifier(fieldName.value, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
         } else {
             builder.append(createStyledHtmlChunk(ZigHighlightingColors.BUILTIN, "@field"))
             builder.append("(")
-            builder.append(left.value.toHtmlChunk(truncate))
+            builder.append(left.toHtmlChunk(truncate))
             builder.append(", ")
             builder.append(fieldName.toHtmlChunk(truncate))
             builder.append(")")
@@ -1216,9 +1215,9 @@ private fun toFixedIntType(text: String): ZigFixedIntType? {
     return ZigFixedIntType(signedness, bits)
 }
 
-private fun getBuiltinFieldPlace(place: ZigPlace, name: String): ZigPlace? {
-    var mutability = place.mutability
-    var type = place.value.typeOf
+private fun getBuiltinFieldPlace(mutability: ZigMutability?, value: ZigValue, name: String): ZigPlace? {
+    var mutability = mutability
+    var type = value.typeOf
     if (type is ZigPointerType && type.size == ZigPointerSize.ONE) {
         mutability = type.mutability
         type = type.child
@@ -1251,18 +1250,19 @@ private fun getBuiltinFieldPlace(place: ZigPlace, name: String): ZigPlace? {
 }
 
 private fun computeFieldAccess(
-    left: ZigPlace,
+    mutability: ZigMutability?,
+    leftValue: ZigValue,
     fieldName: ZigValue,
 ): ZigPlace {
     if (fieldName !is ZigStringLiteralValue) {
-        return ZigPlace.Single(null, ZigLazyFieldValue(left, fieldName))
+        return ZigPlace.Single(null, ZigLazyFieldValue(leftValue, fieldName))
     }
     val name = fieldName.value
-    val builtinPlace = getBuiltinFieldPlace(left, name)
+    val builtinPlace = getBuiltinFieldPlace(mutability, leftValue, name)
     if (builtinPlace != null) {
         return builtinPlace
     }
-    return when (val leftValue = left.value) {
+    return when (leftValue) {
         is ZigErrorSetType -> {
             if (name in leftValue.names) {
                 ZigPlace.constant(ZigErrorSetValue(leftValue, name))
@@ -1271,17 +1271,21 @@ private fun computeFieldAccess(
             }
         }
         is IZigContainerType -> computeContainerTypeDeclAccess(leftValue, fieldName)
+        is ZigMultiValue -> {
+            val places = leftValue.values.map { computeFieldAccess(mutability, it, fieldName) }
+            ZigPlace.Multi.from(places.toSet())
+        }
         else -> when (val typeOfLeft = leftValue.typeOf) {
-            is IZigContainerType -> computeContainerInstanceFieldAccess(left.mutability, typeOfLeft, fieldName)
+            is IZigContainerType -> computeContainerInstanceFieldAccess(mutability, typeOfLeft, fieldName)
             is ZigPointerType -> when (typeOfLeft.size) {
                 ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
                     is IZigContainerType ->
                         computeContainerInstanceFieldAccess(typeOfLeft.mutability, pointerChild, fieldName)
-                    else -> ZigPlace.Single(null, ZigLazyFieldValue(left, fieldName))
+                    else -> ZigPlace.Single(null, ZigLazyFieldValue(leftValue, fieldName))
                 }
                 else -> ZigPlace.unknown()
             }
-            else -> ZigPlace.Single(null, ZigLazyFieldValue(left, fieldName))
+            else -> ZigPlace.Single(null, ZigLazyFieldValue(leftValue, fieldName))
         }
     }
 }
@@ -1457,10 +1461,9 @@ private fun substituteTypeParams(
                 computeFieldType(containerType, fieldNameValue)
             }
             is ZigLazyFieldValue -> {
-                val leftValue = substituteTypeParams(value.left.value, typeParams)
-                val leftPlace = ZigPlace.Single(value.left.mutability, leftValue)
-                val fieldNameValue = substituteTypeParams(value.fieldName, typeParams)
-                computeFieldPlace(leftPlace, fieldNameValue).value
+                val leftValue = substituteTypeParams(value.left, typeParams)
+                val fieldName = substituteTypeParams(value.fieldName, typeParams)
+                computeFieldAccess(null, leftValue, fieldName).value
             }
             is ZigLazyTagNameValue -> {
                 computeTagNameValue(substituteTypeParams(value.value, typeParams))
@@ -1960,11 +1963,13 @@ private fun computeFieldType(
     }
 }
 
+/* TODO: delete
 private fun computeFieldPlace(
     leftPlace: ZigPlace,
     fieldName: ZigValue,
 ): ZigPlace =
     leftPlace.map { computeFieldAccess(it, fieldName) }
+ */
 
 fun computeTagNameValue(value: ZigValue): ZigValue {
     return value.map {
@@ -2038,7 +2043,7 @@ private fun computeFieldAccess(element: ZigFieldAccess): ZigPlace {
     val name = parseZigIdentifier(element.identifierElement) ?: return ZigPlace.unknown()
     val left = resolvePlace(element.leftOperand)
     val fieldName = ZigStringLiteralValue(name)
-    return left.map { computeFieldAccess(it, fieldName) }
+    return left.map { computeFieldAccess(it.mutability, it.value, fieldName) }
 }
 
 private fun computeArrayAccess(element: ZigArrayAccess): ZigPlace {
@@ -2103,9 +2108,9 @@ private fun computeFieldBuiltinCall(element: ZigBuiltinCall): ZigPlace {
         return ZigPlace.unknown()
     }
     val (leftElement, fieldNameElement) = arguments
-    val leftPlace = resolvePlace(leftElement)
-    val fieldNameValue = resolveValue(fieldNameElement)
-    return computeFieldPlace(leftPlace, fieldNameValue)
+    val left = resolvePlace(leftElement)
+    val fieldName = resolveValue(fieldNameElement)
+    return left.map { computeFieldAccess(it.mutability, it.value, fieldName) }
 }
 
 private fun computeContainerExpression(element: ZigContainerExpression): ZigValue {
