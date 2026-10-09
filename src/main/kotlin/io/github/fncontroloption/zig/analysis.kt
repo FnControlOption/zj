@@ -98,10 +98,10 @@ object ZigAnalyzer {
         if (typeExpression != null) {
             return resolveValue(typeExpression, ZigTypeType)
         }
-        return inferResultType(element).mapValue { findListInitType(it) }
+        return inferResultType(element).mapValue { findInitializerType(it) }
     }
 
-    fun findListInitType(originalType: ZigValue): ZigValue {
+    fun findInitializerType(originalType: ZigValue): ZigValue {
         var type = originalType
         while (true) {
             type = when (type) {
@@ -3007,13 +3007,13 @@ private fun inferAddressOf(
         return ZigUnknown.of(ZigTypeType)
     }
     return inferResultType(parentElement).mapValue {
-        when (it) {
-            is ZigPointerType -> when (it.size) {
-                ZigPointerSize.ONE -> it.child
+        when (val type = ZigAnalyzer.findInitializerType(it)) {
+            is ZigPointerType -> when (type.size) {
+                ZigPointerSize.ONE -> type.child
 
                 ZigPointerSize.SLICE -> {
                     val length = ZigUnknown.of(ZigUsizeType)
-                    ZigArrayType(length, null, it.child)
+                    ZigArrayType(length, null, type.child)
                 }
 
                 ZigPointerSize.MANY,
