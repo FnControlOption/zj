@@ -30,9 +30,9 @@ class ZigCompletionContributor : CompletionContributor() {
                 fillFieldAccessVariants(parameters, element, result)
             }
             is ZigEnumLiteral if element.identifierElement === position -> {
-                val parentElement = element.parent
-                if (parentElement is ZigListInitItem && !parentElement.isFieldInit) {
-                    fillFieldInitVariants(parentElement, result)
+                val parent = element.parent
+                if (parent is ZigListInitItem && !parent.isFieldInit) {
+                    fillFieldInitVariants(parent, result)
                 }
                 fillEnumLiteralVariants(parameters, element, result)
             }
@@ -492,6 +492,17 @@ private fun fillEnumLiteralVariants(
     result: CompletionResultSet,
 ) {
     val originalFile = element.containingFile
+    val enumFieldsToExclude = when (val parent = element.parent) {
+        is ZigSwitchItem -> {
+            parent.containingSwitchProng.containingSwitch.prongs
+                .flatMap { it.items }
+                .map { ZigAnalyzer.resolveValue(it.expression) }
+                .filterIsInstance<ZigEnumLiteralValue>()
+                .map { it.name }
+                .toSet()
+        }
+        else -> emptySet()
+    }
     val variants = mutableSetOf<LookupElement>()
     ZigAnalyzer.inferResultType(element).forEachValue { originalType ->
         val containerType = ZigAnalyzer.findEnumLiteralContainerType(originalType) ?: return@forEachValue
@@ -500,6 +511,9 @@ private fun fillEnumLiteralVariants(
             if (member is ZigContainerField) {
                 if (containerType.containerKind == ZigContainerKind.ENUM) {
                     if (member.nameIdentifier?.textMatches("_") == true) {
+                        continue
+                    }
+                    if (name in enumFieldsToExclude) {
                         continue
                     }
                     variants.add(
