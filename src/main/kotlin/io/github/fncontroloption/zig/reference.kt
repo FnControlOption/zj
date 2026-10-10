@@ -441,15 +441,17 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
     override fun getVariants(): Array<out LookupElement> {
         val parentElement = myElement.parent
         if (parentElement is ZigListInitItem && !parentElement.isFieldInit) {
-            val listType = ZigAnalyzer.resolveOrInferListInitType(parentElement.containingListInit)
+            val listInit = parentElement.containingListInit
+            val fieldsToExclude = listInit.initItems.mapNotNull { it.fieldName }.toSet()
+            val listType = ZigAnalyzer.resolveOrInferListInitType(listInit)
             var foundContainer = false
             val variants = mutableSetOf<LookupElement>()
             listType.forEachValue { type ->
                 val containerType = type as? IZigContainerType ?: return@forEachValue
                 foundContainer = true
-                variants.addAll(getFieldInitVariants(containerType))
+                variants.addAll(getFieldInitVariants(containerType, fieldsToExclude))
             }
-            if (foundContainer) {
+            if (fieldsToExclude.isNotEmpty() || foundContainer) {
                 return variants.toTypedArray()
             }
         }
@@ -554,11 +556,13 @@ class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElem
         )
 
     override fun getVariants(): Array<out LookupElement> {
-        val listType = ZigAnalyzer.resolveOrInferListInitType(myElement.containingListInit)
+        val listInit = myElement.containingListInit
+        val fieldsToExclude = listInit.initItems.mapNotNull { it.fieldName }.toSet()
+        val listType = ZigAnalyzer.resolveOrInferListInitType(listInit)
         val variants = mutableSetOf<LookupElement>()
         listType.forEachValue { type ->
             val containerType = type as? IZigContainerType ?: return@forEachValue
-            variants.addAll(getFieldInitVariants(containerType))
+            variants.addAll(getFieldInitVariants(containerType, fieldsToExclude))
         }
         return variants.toTypedArray()
     }
@@ -815,12 +819,16 @@ private object FieldInitInsertHandler : InsertHandler<LookupElement> {
     }
 }
 
-private fun getFieldInitVariants(containerType: IZigContainerType): Sequence<LookupElement> {
+private fun getFieldInitVariants(
+    containerType: IZigContainerType,
+    fieldsToExclude: Set<String>,
+): Sequence<LookupElement> {
     if (containerType.containerKind == ZigContainerKind.ENUM) {
         return emptySequence()
     }
     return containerType.members.filterIsInstance<ZigContainerField>().mapNotNull { member ->
         val name = member.name ?: return@mapNotNull null
+        if (name in fieldsToExclude) return@mapNotNull null
         val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
         val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
         buildLookupElement(member, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)

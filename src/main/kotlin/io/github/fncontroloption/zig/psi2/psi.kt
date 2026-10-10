@@ -938,6 +938,9 @@ class ZigListInitItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val fieldNameIdentifier: PsiElement?
         get() = findChildByType(ZigTokenType.IDENTIFIER)
 
+    val fieldName: String?
+        get() = parseZigIdentifier(fieldNameIdentifier)
+
     val isFieldInit: Boolean
         get() = fieldNameIdentifier != null
 

@@ -2847,8 +2847,7 @@ private fun inferListInitItem(
     }
     val initElement = parentElement.containingListInit
     return if (parentElement.isFieldInit) {
-        val name = parseZigIdentifier(parentElement.fieldNameIdentifier)
-            ?: return ZigUnknown.of(ZigTypeType)
+        val name = parentElement.fieldName ?: return ZigUnknown.of(ZigTypeType)
         ZigAnalyzer.resolveOrInferListInitType(initElement).mapValue { type ->
             if (type !is IZigContainerType) {
                 return@mapValue ZigUnknown.of(ZigTypeType)
