@@ -1,14 +1,15 @@
 package io.github.fncontroloption.zig
 
-import com.intellij.codeInsight.completion.CompletionContributor
-import com.intellij.codeInsight.completion.CompletionParameters
-import com.intellij.codeInsight.completion.CompletionResultSet
-import com.intellij.codeInsight.completion.CompletionSorter
+import com.intellij.codeInsight.AutoPopupController
+import com.intellij.codeInsight.completion.*
+import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.codeInsight.lookup.LookupElementWeigher
 import com.intellij.icons.AllIcons
+import com.intellij.psi.util.elementType
 import com.intellij.psi.util.findParentOfType
+import com.intellij.psi.util.parents
 import io.github.fncontroloption.zig.psi2.*
 
 class ZigCompletionContributor : CompletionContributor() {
@@ -16,6 +17,15 @@ class ZigCompletionContributor : CompletionContributor() {
         val position = parameters.position
         val element = position.findParentOfType<ZigElement>() ?: return
         when (element) {
+            is ZigIdentifier if element.identifierElement === position -> {
+                fillIdentifierVariants(element, result)
+            }
+            is ZigTestDecl if element.nameElement === position && position.elementType === ZigTokenType.IDENTIFIER -> {
+                fillTestVariants(element, result)
+            }
+            is ZigLabelRef if element.identifierElement === position -> {
+                fillLabelVariants(element, result)
+            }
             is ZigFieldAccess if element.identifierElement === position -> {
                 fillFieldAccessVariants(parameters, element, result)
             }
@@ -28,6 +38,9 @@ class ZigCompletionContributor : CompletionContributor() {
             }
             is ZigListInitItem if element.fieldNameIdentifier === position -> {
                 fillFieldInitVariants(element, result)
+            }
+            is ZigBuiltinCall if element.builtinElement === position -> {
+                fillBuiltinCallVariants(element, result)
             }
             else -> {}
         }
@@ -50,6 +63,309 @@ private object ZigMemberWeigherByDeclOrder : LookupElementWeigher("zigMemberDecl
         val index = container.members.indexOf(member)
         return if (index >= 0) index else null
     }
+}
+
+private class FunctionInsertHandler(val hasParams: Boolean) : InsertHandler<LookupElement> {
+    override fun handleInsert(context: InsertionContext, item: LookupElement) {
+        val project = context.project
+        val editor = context.editor
+        val document = editor.document
+        val tailOffset = context.tailOffset
+        val text = document.charsSequence
+        when (context.completionChar) {
+            Lookup.NORMAL_SELECT_CHAR -> {
+                document.insertString(tailOffset, "()")
+                if (hasParams) {
+                    editor.caretModel.moveToOffset(tailOffset + 1)
+                } else {
+                    editor.caretModel.moveToOffset(tailOffset + 2)
+                }
+                AutoPopupController.getInstance(project).autoPopupParameterInfo(editor, null)
+            }
+
+            Lookup.REPLACE_SELECT_CHAR,
+            Lookup.AUTO_INSERT_SELECT_CHAR -> {
+                val tail = text.subSequence(tailOffset, text.length)
+                var foundCallArgs = false
+                if (tail.startsWith("()")) {
+                    // no-op
+                } else if (tail.startsWith('(')) {
+                    foundCallArgs = true
+                } else {
+                    document.insertString(tailOffset, "()")
+                }
+                if (hasParams || foundCallArgs) {
+                    editor.caretModel.moveToOffset(tailOffset + 1)
+                } else {
+                    editor.caretModel.moveToOffset(tailOffset + 2)
+                }
+                AutoPopupController.getInstance(project).autoPopupParameterInfo(editor, null)
+            }
+
+            // TODO
+            else -> {}
+        }
+    }
+}
+
+private object FieldInitInsertHandler : InsertHandler<LookupElement> {
+    override fun handleInsert(context: InsertionContext, item: LookupElement) {
+        val editor = context.editor
+        val document = editor.document
+        val tailOffset = context.tailOffset
+        val text = document.charsSequence
+        when (context.completionChar) {
+            Lookup.NORMAL_SELECT_CHAR -> {
+                document.insertString(tailOffset, " = ")
+                editor.caretModel.moveToOffset(tailOffset + 3)
+            }
+
+            Lookup.REPLACE_SELECT_CHAR,
+            Lookup.AUTO_INSERT_SELECT_CHAR -> {
+                val tail = text.subSequence(tailOffset, text.length)
+                if (tail.startsWith(" = ")) {
+                    // no-op
+                } else if (tail.startsWith(" =")) {
+                    document.insertString(tailOffset + 2, " ")
+                } else if (tail.startsWith(' ')) {
+                    document.insertString(tailOffset + 1, "= ")
+                } else {
+                    document.insertString(tailOffset, " = ")
+                }
+                editor.caretModel.moveToOffset(tailOffset + 3)
+            }
+
+            // TODO
+            else -> {}
+        }
+    }
+}
+
+internal fun getFunctionParamTypes(
+    functionType: ZigFunctionType,
+    typeParams: Map<ZigFnParam, ZigValue?> = functionType.typeParams,
+): Pair<List<ZigFnParam>, List<ZigValue?>> {
+    return getFunctionParamTypes(functionType.element, typeParams)
+}
+
+internal fun getFunctionParamTypes(
+    functionElement: ZigFnOrBuiltinFnDeclOrProto,
+    typeParams: Map<ZigFnParam, ZigValue?>,
+): Pair<List<ZigFnParam>, List<ZigValue?>> {
+    return functionElement.parameters.map { param ->
+        param to param.typeElement?.expression?.let {
+            val initialValue = ZigAnalyzer.resolveValue(it)
+            ZigAnalyzer.substituteTypeParams(initialValue, typeParams)
+        }
+    }.unzip()
+}
+
+private fun getFunctionReceiverType(paramTypes: List<ZigValue?>): ZigValue? {
+    val firstParamType = paramTypes.firstOrNull() ?: return null
+    if (firstParamType is ZigPointerType && firstParamType.size == ZigPointerSize.ONE) {
+        return firstParamType.child
+    }
+    return firstParamType
+}
+
+private fun getFunctionTailText(
+    params: List<ZigFnParam>,
+    paramTypes: List<ZigValue?>,
+    hasVarargs: Boolean,
+): String {
+    return buildString {
+        append('(')
+        for (i in params.indices) {
+            if (i > 0) {
+                append(", ")
+            }
+            append(getParameterText(params[i], paramTypes[i]))
+        }
+        if (hasVarargs) {
+            if (params.isNotEmpty()) {
+                append(", ")
+            }
+            append("...")
+        }
+        append(')')
+    }
+}
+
+internal fun getParameterText(param: ZigFnParam, type: ZigValue?): String {
+    return buildString {
+        val name = param.name
+        if (name != null) {
+            append(name)
+            append(": ")
+        }
+        if (param.isAnytype) {
+            assert(type == null)
+            append("anytype")
+        } else if (type != null) {
+            append(type.toPlainText())
+        } else {
+            append('_')
+        }
+    }
+}
+
+private fun getFunctionTypeText(functionType: ZigFunctionType): String {
+    return getFunctionTypeText(functionType.element, functionType.typeParams)
+}
+
+private fun getFunctionTypeText(
+    functionElement: ZigFnOrBuiltinFnDeclOrProto,
+    typeParams: Map<ZigFnParam, ZigValue?>,
+): String {
+    if (functionElement is ZigBuiltinFnProto && functionElement.returnsAnytype) {
+        return "anytype"
+    }
+    val returnType = functionElement.returnTypeElement?.expression?.let {
+        val initialValue = ZigAnalyzer.resolveValue(it)
+        ZigAnalyzer.substituteTypeParams(initialValue, typeParams)
+    }
+    if (returnType == null) {
+        return "_"
+    }
+    val text = returnType.toPlainText()
+    return if (functionElement.bangTokenElement != null) "!$text" else text
+}
+
+private fun getFieldInitVariants(
+    containerType: IZigContainerType,
+    fieldsToExclude: Set<String>,
+): Sequence<LookupElement> {
+    if (containerType.containerKind == ZigContainerKind.ENUM) {
+        return emptySequence()
+    }
+    return containerType.members.filterIsInstance<ZigContainerField>().mapNotNull { member ->
+        val name = member.name ?: return@mapNotNull null
+        if (name in fieldsToExclude) return@mapNotNull null
+        val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
+        val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
+        val initializer = member.initializer
+        val tailText = buildString {
+            append(" =")
+            if (initializer != null) {
+                append(' ')
+                val initializerText = initializer.text
+                val newline = initializerText.indexOf('\n')
+                if (newline < 0) {
+                    append(initializerText)
+                } else {
+                    append(initializerText.substring(0, newline))
+                    append("...")
+                }
+            }
+        }
+        buildLookupElement(member, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
+            .withIcon(AllIcons.Nodes.Field)
+            .withTailText(tailText)
+            .withTypeText(value.typeOf.toPlainText())
+            .withInsertHandler(FieldInitInsertHandler)
+    }
+}
+
+private fun createLookupElementWithType(
+    element: ZigNamedElement,
+    name: String,
+    type: ZigValue?,
+    quote: ZigIdQuoteBehavior,
+): LookupElement {
+    return if (type != null) {
+        buildLookupElement(element, name, quote)
+            .withIcon(element.getIcon(0))
+            .withTypeText(type.toPlainText())
+    } else {
+        buildLookupElement(element, name, quote)
+    }
+}
+
+private fun buildLookupElement(
+    element: ZigNamedElement,
+    name: String,
+    quote: ZigIdQuoteBehavior,
+): LookupElementBuilder =
+    LookupElementBuilder.create(element, renderZigIdentifier(name, quote))
+        .withLookupString(name)
+        .withLookupString(escapeZigIdentifier(name))
+
+/** @see ZigIdentifierReference.multiResolve */
+private fun fillIdentifierVariants(element: ZigIdentifier, result: CompletionResultSet) {
+    val variants = mutableSetOf<LookupElement>()
+    for (candidate in identifierReferenceCandidates(element)) {
+        val name = candidate.name ?: continue
+        when (val type = ZigAnalyzer.resolveValueFromReferenceTo(candidate).typeOf) {
+            is ZigFunctionType -> {
+                val (params, paramTypes) = getFunctionParamTypes(type)
+                val hasVarargs = type.element.hasVarargs
+                val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
+                    is ZigContainerType -> receiverType.element == candidate.parent
+                    else -> false
+                }
+                variants.add(
+                    buildLookupElement(candidate, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
+                        .withIcon(if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function)
+                        .withTailText(getFunctionTailText(params, paramTypes, hasVarargs))
+                        .withTypeText(getFunctionTypeText(type))
+                        .withInsertHandler(FunctionInsertHandler(params.isNotEmpty() || hasVarargs))
+                )
+            }
+
+            else -> {
+                variants.add(
+                    createLookupElementWithType(
+                        candidate,
+                        name,
+                        type,
+                        ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING,
+                    )
+                )
+            }
+        }
+    }
+    result.addAllElements(variants)
+}
+
+/** @see ZigTestReference.multiResolve */
+private fun fillTestVariants(element: ZigTestDecl, result: CompletionResultSet) {
+    val variants = mutableSetOf<LookupElement>()
+    for (candidate in identifierReferenceCandidates(element)) {
+        val name = candidate.name ?: continue
+        when (candidate) {
+            is ZigFnDecl -> {}
+            is ZigVarDecl -> if (candidate.isLocal) continue
+            else -> continue
+        }
+        val icon = when (val type = ZigAnalyzer.resolveValueFromReferenceTo(candidate).typeOf) {
+            is ZigFunctionType -> {
+                val (_, paramTypes) = getFunctionParamTypes(type)
+                val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
+                    is ZigContainerType -> receiverType.element == candidate.parent
+                    else -> false
+                }
+                if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function
+            }
+            else -> candidate.getIcon(0)
+        }
+        variants.add(buildLookupElement(candidate, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING).withIcon(icon))
+    }
+    result.addAllElements(variants)
+}
+
+/** @see ZigLabelReference.resolve */
+private fun fillLabelVariants(element: ZigLabelRef, result: CompletionResultSet) {
+    val variants = mutableSetOf<LookupElement>()
+    for (parent in element.parents(withSelf = false)) {
+        if (parent is ZigLabelable) {
+            val labelDecl = parent.labelDecl
+            val label = parseZigIdentifier(labelDecl?.identifierElement)
+            if (labelDecl != null && label != null) {
+                variants.add(buildLookupElement(labelDecl, label, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
+            }
+        }
+    }
+    result.addAllElements(variants)
 }
 
 /** @see ZigFieldAccessReference.multiResolve */
@@ -267,4 +583,22 @@ private fun fillFieldInitVariants(element: ZigListInitItem, result: CompletionRe
             .weigh(ZigFieldWeigherByDefaultValue)
             .weighAfter(ZigFieldWeigherByDefaultValue.toString(), ZigMemberWeigherByDeclOrder)
     result.withRelevanceSorter(sorter).addAllElements(variants)
+}
+
+/** @see ZigBuiltinCallReference.resolve */
+private fun fillBuiltinCallVariants(element: ZigBuiltinCall, result: CompletionResultSet) {
+    val variants = mutableSetOf<LookupElement>()
+    for (builtin in ZigBuiltinFunctionsService.getAll(element.project)) {
+        val name = builtin.builtinElement.text
+        val (params, paramTypes) = getFunctionParamTypes(builtin, emptyMap())
+        val hasVarargs = builtin.hasVarargs
+        variants.add(
+            LookupElementBuilder.create(builtin, name)
+                .withIcon(AllIcons.Nodes.Function)
+                .withTailText(getFunctionTailText(params, paramTypes, hasVarargs))
+                .withTypeText(getFunctionTypeText(builtin, emptyMap()))
+                .withInsertHandler(FunctionInsertHandler(params.isNotEmpty() || hasVarargs))
+        )
+    }
+    result.addAllElements(variants)
 }
