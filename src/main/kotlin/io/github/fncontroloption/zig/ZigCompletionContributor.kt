@@ -19,6 +19,8 @@ class ZigCompletionContributor : CompletionContributor() {
         when (element) {
             is ZigIdentifier if element.identifierElement === position -> {
                 fillIdentifierVariants(element, result)
+                fillErrorValueVariants(element, "error.", result)
+                // TODO: add insert handler that also replaces identifier after `error.` (if any)
             }
             is ZigTestDecl if element.nameElement === position && position.elementType === ZigTokenType.IDENTIFIER -> {
                 fillTestVariants(element, result)
@@ -30,7 +32,7 @@ class ZigCompletionContributor : CompletionContributor() {
                 fillFieldAccessVariants(parameters, element, result)
             }
             is ZigErrorValueExpression if element.identifierElement === position -> {
-                fillErrorValueVariants(element, result)
+                fillErrorValueVariants(element, "", result)
             }
             is ZigEnumLiteral if element.identifierElement === position -> {
                 val parent = element.parent
@@ -493,7 +495,7 @@ private fun fillFieldAccessVariants(
     result.withRelevanceSorter(sorter).addAllElements(squashVariants(variants))
 }
 
-private fun fillErrorValueVariants(element: ZigErrorValueExpression, result: CompletionResultSet) {
+private fun fillErrorValueVariants(element: ZigExpression, prefix: String, result: CompletionResultSet) {
     val errorValuesToExclude = when (val parent = element.parent) {
         is ZigSwitchItem -> {
             parent.containingSwitchProng.containingSwitch.prongs
@@ -514,9 +516,9 @@ private fun fillErrorValueVariants(element: ZigErrorValueExpression, result: Com
         for (name in type.names) {
             if (name in errorValuesToExclude) continue
             variants.add(
-                LookupElementBuilder.create(renderZigIdentifier(name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
-                    .withLookupString(name)
-                    .withLookupString(escapeZigIdentifier(name))
+                LookupElementBuilder.create("${prefix}${renderZigIdentifier(name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)}")
+                    .withLookupString("${prefix}${name}")
+                    .withLookupString("${prefix}${escapeZigIdentifier(name)}")
             )
         }
     }
