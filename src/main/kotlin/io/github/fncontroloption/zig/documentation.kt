@@ -1,24 +1,78 @@
+@file:Suppress("UnstableApiUsage")
+
 package io.github.fncontroloption.zig
 
-import com.intellij.lang.documentation.AbstractDocumentationProvider
+import com.intellij.ide.util.ModuleRendererFactory
 import com.intellij.lang.documentation.DocumentationMarkup
 import com.intellij.markdown.utils.convertMarkdownToHtml
+import com.intellij.model.Pointer
 import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.vfs.VirtualFileManager
-import com.intellij.psi.PsiComment
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiManager
-import com.intellij.psi.PsiWhiteSpace
-import com.intellij.psi.util.findParentInFile
+import com.intellij.platform.backend.documentation.*
+import com.intellij.platform.backend.presentation.TargetPresentation
+import com.intellij.psi.*
 import com.intellij.psi.util.findParentOfType
 import io.github.fncontroloption.zig.psi2.*
 import io.github.fncontroloption.zig.syntaxHighlighter.ZigHighlightingColors
 
+const val ZIG_DOCUMENTATION_PROTOCOL = "zig_doc://"
 const val ZIG_DOCUMENTATION_OFFSET_SEPARATOR = $$"$zigDocumentationOffset$"
 
-class ZigDocumentationProvider : AbstractDocumentationProvider() {
-    override fun getQuickNavigateInfo(element: PsiElement, originalElement: PsiElement?): String? {
-        if (element !is ZigElement) {
+class ZigPsiDocumentationTargetProvider : PsiDocumentationTargetProvider {
+    override fun documentationTargets(element: PsiElement, originalElement: PsiElement?): List<DocumentationTarget> {
+        if (element is ZigFieldAccess && element.identifierElement === originalElement) {
+            return resolveReferences(element)
+                .filterIsInstance<ZigElement>()
+                .map { ZigPsiDocumentationTarget(it, originalElement) }
+                .toList()
+                .ifEmpty { listOf(ZigPsiDocumentationTarget(element, originalElement)) }
+        }
+        if (element is ZigElement) {
+            return listOf(ZigPsiDocumentationTarget(element, originalElement))
+        }
+        return emptyList()
+    }
+}
+
+private class ZigPsiDocumentationTargetPointer(
+    val elementPointer: Pointer<out ZigElement>,
+    val originalElementPointer: Pointer<out PsiElement>?,
+) : Pointer<ZigPsiDocumentationTarget> {
+    override fun dereference(): ZigPsiDocumentationTarget? {
+        val element = elementPointer.dereference() ?: return null
+        val originalElement = originalElementPointer?.let { it.dereference() ?: return null }
+        return ZigPsiDocumentationTarget(element, originalElement, this)
+    }
+}
+
+/** @see com.intellij.lang.documentation.psi.PsiElementDocumentationTarget */
+private class ZigPsiDocumentationTarget(
+    val element: ZigElement,
+    val originalElement: PsiElement?,
+    val pointer: ZigPsiDocumentationTargetPointer = ZigPsiDocumentationTargetPointer(
+        elementPointer = element.createSmartPointer(),
+        originalElementPointer = originalElement?.createSmartPointer(),
+    ),
+) : DocumentationTarget {
+    override fun createPointer() = pointer
+
+    /** @see com.intellij.codeInsight.navigation.targetPresentation */
+    override fun computePresentation(): TargetPresentation {
+        val moduleTextWithIcon = ModuleRendererFactory.findInstance(element).getModuleTextWithIcon(element)
+        val presentation = (element as? ZigNavigatableElement)?.presentation
+        return TargetPresentation
+            .builder(presentation?.presentableText ?: "")
+            .icon(presentation?.getIcon(false))
+            .containerText(element.containingFile.name)
+            .locationText(moduleTextWithIcon?.text, moduleTextWithIcon?.icon)
+            .presentation()
+    }
+
+    override val navigatable: ZigNavigatableElement?
+        get() = element as? ZigNavigatableElement
+
+    override fun computeDocumentationHint(): String? {
+        if (element !is ZigNavigatableElement) {
             return null
         }
         val definition = getDefinition(element) ?: return null
@@ -30,12 +84,14 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
         return sb.toString()
     }
 
-    override fun generateDoc(element: PsiElement, originalElement: PsiElement?): String? {
-        if (element !is ZigElement) {
+    override fun computeDocumentation(): DocumentationResult? {
+        val html = generateBuiltinFieldDoc() ?: generateNavigatableDoc() ?: return null
+        return DocumentationResult.documentation(html)
+    }
+
+    private fun generateNavigatableDoc(): String? {
+        if (element !is ZigNavigatableElement) {
             return null
-        }
-        if (element is ZigFieldAccess) {
-            return generateBuiltinFieldDoc(element, originalElement)
         }
         val definition = getDefinition(element) ?: return null
         val sb = StringBuilder()
@@ -45,9 +101,15 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
             .appendTo(sb)
 
         if (element is ZigNamedElement) {
-            val typeParams = getOriginalContainerType(originalElement)?.typeParams ?: emptyMap()
             val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(element)
-            ZigAnalyzer.substituteTypeParams(initialValue, typeParams).forEachValue { value ->
+            val values = mutableSetOf<ZigValue>()
+            forEachContainerType(originalElement) { containerType ->
+                values += ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
+            }
+            if (values.isEmpty()) {
+                values += initialValue
+            }
+            ZigMultiValue.from(values).forEachValue { value ->
                 val chunk = when (value) {
                     is ZigAnytypeParameterValue if value.element == element -> {
                         createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "anytype")
@@ -78,7 +140,10 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
         return sb.toString()
     }
 
-    private fun generateBuiltinFieldDoc(element: ZigFieldAccess, originalElement: PsiElement?): String? {
+    private fun generateBuiltinFieldDoc(): String? {
+        if (element !is ZigFieldAccess) {
+            return null
+        }
         if (originalElement == null || element.identifierElement !== originalElement) {
             return null
         }
@@ -96,25 +161,29 @@ class ZigDocumentationProvider : AbstractDocumentationProvider() {
             .appendTo(sb)
         return sb.toString()
     }
+}
 
-    override fun getDocumentationElementForLink(
-        psiManager: PsiManager,
-        link: String,
-        context: PsiElement
-    ): PsiElement? {
+class ZigPsiDocumentationLinkHandler : DocumentationLinkHandler {
+    override fun resolveLink(target: DocumentationTarget, url: String): LinkResolveResult? {
+        if (target !is ZigPsiDocumentationTarget) return null
+        if (!url.startsWith(ZIG_DOCUMENTATION_PROTOCOL)) return null
+        val link = url.substring(ZIG_DOCUMENTATION_PROTOCOL.length)
+        val context = target.element
+        val psiManager = PsiManager.getInstance(context.project)
         val offsetIdx = link.lastIndexOf(ZIG_DOCUMENTATION_OFFSET_SEPARATOR)
-        val url = if (offsetIdx < 0) link else link.substring(0, offsetIdx)
-        val virtualFile = VirtualFileManager.getInstance().findFileByUrl(url) ?: return null
+        val vfsUrl = if (offsetIdx < 0) link else link.substring(0, offsetIdx)
+        val virtualFile = VirtualFileManager.getInstance().findFileByUrl(vfsUrl) ?: return null
         val file = psiManager.findFile(virtualFile) ?: return null
-        if (offsetIdx < 0) return file
+        if (file !is ZigFile) return null
+        if (offsetIdx < 0) return LinkResolveResult.resolvedTarget(ZigPsiDocumentationTarget(file, null))
         val offset = link.substring(offsetIdx + ZIG_DOCUMENTATION_OFFSET_SEPARATOR.length).toInt()
-        val target = file.findElementAt(offset)?.findParentInFile { it is ZigNavigatableElement }
-        if (target == null || target == context) return null
-        return target
+        val parent = file.findElementAt(offset)?.findParentOfType<ZigNavigatableElement>()
+        if (parent == null || parent == context) return null
+        return LinkResolveResult.resolvedTarget(ZigPsiDocumentationTarget(parent, null))
     }
 }
 
-private fun getDefinition(element: PsiElement): String? {
+private fun getDefinition(element: ZigNavigatableElement): String? {
     return when (element) {
         is ZigFile -> element.name.substringBeforeLast('.')
         is ZigContainerExpression -> element.text
@@ -145,11 +214,10 @@ private fun getDefinition(element: PsiElement): String? {
             }
             originalText ?: element.container.fieldTypes[element.fieldIndex].toPlainText()
         }
-        else -> null
     }
 }
 
-private fun findDoc(element: PsiElement): String? {
+private fun findDoc(element: ZigNavigatableElement): String? {
     if (element is ZigFile) {
         return findFileDoc(element)
     }
@@ -176,7 +244,7 @@ private fun findDoc(element: PsiElement): String? {
     return list.joinToString("")
 }
 
-private fun findFileDoc(element: PsiElement): String? {
+private fun findFileDoc(element: ZigFile): String? {
     val list = mutableListOf<String>()
     var child = element.firstChild
     while (true) {
@@ -199,31 +267,45 @@ private fun findFileDoc(element: PsiElement): String? {
     return list.joinToString("")
 }
 
-private fun getOriginalContainerType(originalElement: PsiElement?): IZigContainerType? {
+/**
+ * @see io.github.fncontroloption.zig.ZigFieldAccessReference.multiResolve
+ * @see io.github.fncontroloption.zig.ZigListInitItemReference.multiResolve
+ * @see io.github.fncontroloption.zig.ZigEnumLiteralReference.multiResolve
+ */
+private fun forEachContainerType(
+    originalElement: PsiElement?,
+    action: (IZigContainerType) -> Unit,
+) {
     when (val zigElement = originalElement?.findParentOfType<ZigElement>(strict = false)) {
         is ZigFieldAccess -> {
             if (zigElement.identifierElement == originalElement) {
                 val leftValue = ZigAnalyzer.resolveValue(zigElement.leftOperand)
-                return leftValue.typeOf as? IZigContainerType
+                ZigAnalyzer.forEachFieldAccessContainer(leftValue) { containerType, _ ->
+                    action(containerType)
+                }
             }
         }
 
         is ZigListInitItem -> {
             if (zigElement.identifierElement == originalElement) {
-                val type = ZigAnalyzer.resolveOrInferListInitType(zigElement.containingListInit)
-                return type as? IZigContainerType
+                val listType = ZigAnalyzer.resolveOrInferListInitType(zigElement.containingListInit)
+                listType.forEachValue { type ->
+                    val containerType = type as? IZigContainerType ?: return@forEachValue
+                    action(containerType)
+                }
             }
         }
 
         is ZigEnumLiteral -> {
             if (zigElement.identifierElement == originalElement) {
-                val type = ZigAnalyzer.inferResultType(zigElement)
-                return ZigAnalyzer.findEnumLiteralContainerType(type)
+                val resultType = ZigAnalyzer.inferResultType(zigElement)
+                resultType.forEachValue { originalType ->
+                    val containerType = ZigAnalyzer.findEnumLiteralContainerType(originalType) ?: return@forEachValue
+                    action(containerType)
+                }
             }
         }
 
         else -> {}
     }
-
-    return null
 }

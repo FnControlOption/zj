@@ -1,6 +1,5 @@
 package io.github.fncontroloption.zig
 
-import com.intellij.codeInsight.documentation.DocumentationManagerProtocol
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.richcopy.HtmlSyntaxInfoUtil
 import com.intellij.openapi.module.ModuleUtilCore
@@ -216,6 +215,28 @@ object ZigAnalyzer {
         val virtualFile = ZigBuiltinService.getBuiltinFile(project) ?: return null
         val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
         return psiFile as? ZigFile
+    }
+
+    fun forEachFieldAccessContainer(
+        leftValue: ZigValue,
+        action: (IZigContainerType, isInstance: Boolean) -> Unit,
+    ) {
+        leftValue.forEachValue { left ->
+            when (left) {
+                is IZigContainerType -> action(left, false)
+                else -> when (val typeOfLeft = left.typeOf) {
+                    is IZigContainerType -> action(typeOfLeft, true)
+                    is ZigPointerType -> when (typeOfLeft.size) {
+                        ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
+                            is IZigContainerType -> action(pointerChild, true)
+                            else -> {}
+                        }
+                        else -> {}
+                    }
+                    else -> {}
+                }
+            }
+        }
     }
 }
 
@@ -1792,7 +1813,7 @@ private fun createLinkedHtmlChunk(
     text: String,
 ): HtmlChunk {
     val target = buildString {
-        append(DocumentationManagerProtocol.PSI_ELEMENT_PROTOCOL)
+        append(ZIG_DOCUMENTATION_PROTOCOL)
         append(element.containingFile.viewProvider.virtualFile.url)
         append(ZIG_DOCUMENTATION_OFFSET_SEPARATOR)
         append(element.textOffset)
@@ -1841,7 +1862,7 @@ private fun createContainerHtmlChunkStartingFrom(
                 assert(name.endsWith(".zig"))
                 val text = name.substringBeforeLast('.')
                 val target = buildString {
-                    append(DocumentationManagerProtocol.PSI_ELEMENT_PROTOCOL)
+                    append(ZIG_DOCUMENTATION_PROTOCOL)
                     append(element.viewProvider.virtualFile.url)
                 }
                 HtmlChunk.link(target, createStyledHtmlChunk(ZigHighlightingColors.CONSTANT, text))
