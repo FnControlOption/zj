@@ -20,12 +20,19 @@ const val ZIG_DOCUMENTATION_OFFSET_SEPARATOR = $$"$zigDocumentationOffset$"
 
 class ZigPsiDocumentationTargetProvider : PsiDocumentationTargetProvider {
     override fun documentationTargets(element: PsiElement, originalElement: PsiElement?): List<DocumentationTarget> {
-        if (element is ZigFieldAccess && element.identifierElement === originalElement) {
-            return resolveReferences(element)
-                .filterIsInstance<ZigElement>()
-                .map { ZigPsiDocumentationTarget(it, originalElement) }
-                .toList()
-                .ifEmpty { listOf(ZigPsiDocumentationTarget(element, originalElement)) }
+        val shouldResolveReferences = when (element) {
+            is ZigIdentifier -> element.identifierElement === originalElement
+            is ZigTestDecl -> element.nameElement === originalElement
+            is ZigFieldAccess -> element.identifierElement === originalElement
+            is ZigEnumLiteral -> element.identifierElement === originalElement
+            is ZigListInitItem -> element.fieldNameIdentifier === originalElement
+            else -> false
+        }
+        if (shouldResolveReferences) {
+            val references = resolveReferences(element).filterIsInstance<ZigElement>().toList()
+            if (references.isNotEmpty()) {
+                return references.map { ZigPsiDocumentationTarget(it, originalElement) }
+            }
         }
         if (element is ZigElement) {
             return listOf(ZigPsiDocumentationTarget(element, originalElement))
