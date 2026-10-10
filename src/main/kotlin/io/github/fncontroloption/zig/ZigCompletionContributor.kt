@@ -24,6 +24,7 @@ class ZigCompletionContributor : CompletionContributor() {
                 if (parentElement is ZigListInitItem && !parentElement.isFieldInit) {
                     fillFieldInitVariants(parentElement, result)
                 }
+                fillEnumLiteralVariants(parameters, element, result)
             }
             is ZigListInitItem if element.fieldNameIdentifier === position -> {
                 fillFieldInitVariants(element, result)
@@ -149,6 +150,88 @@ private fun fillFieldAccessVariants(
                     if (isInstance) {
                         continue
                     }
+                    variants.add(
+                        createLookupElementWithType(
+                            member,
+                            name,
+                            type,
+                            ZigIdQuoteBehavior.EAGERLY_UNQUOTE,
+                        )
+                    )
+                }
+            }
+        }
+    }
+    val sorter =
+        CompletionSorter
+            .defaultSorter(parameters, result.prefixMatcher)
+            .weigh(ZigMemberWeigherByDeclOrder)
+    result.withRelevanceSorter(sorter).addAllElements(variants)
+}
+
+/** @see ZigEnumLiteralReference.multiResolve */
+private fun fillEnumLiteralVariants(
+    parameters: CompletionParameters,
+    element: ZigEnumLiteral,
+    result: CompletionResultSet,
+) {
+    val originalFile = element.containingFile
+    val variants = mutableSetOf<LookupElement>()
+    ZigAnalyzer.inferResultType(element).forEachValue { originalType ->
+        val containerType = ZigAnalyzer.findEnumLiteralContainerType(originalType) ?: return@forEachValue
+        for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
+            val name = member.name ?: continue
+            if (member is ZigContainerField) {
+                if (containerType.containerKind == ZigContainerKind.ENUM) {
+                    if (member.nameIdentifier?.textMatches("_") == true) {
+                        continue
+                    }
+                    variants.add(
+                        createLookupElementWithType(
+                            member,
+                            name,
+                            containerType,
+                            ZigIdQuoteBehavior.EAGERLY_UNQUOTE,
+                        )
+                    )
+                } else if (containerType.isTaggedUnion) {
+                    val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
+                    val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
+                    val type = value.typeOf
+                    if (type == ZigVoidType) {
+                        variants.add(
+                            createLookupElementWithType(
+                                member,
+                                name,
+                                containerType,
+                                ZigIdQuoteBehavior.EAGERLY_UNQUOTE,
+                            )
+                        )
+                    } else {
+                        // TODO: add specialized completion item for non-void tagged union field
+                    }
+                }
+                continue
+            }
+            val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
+            val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
+            when (val type = value.typeOf) {
+                is ZigFunctionType -> {
+                    // TODO: check if return type can coerce to original type
+                    val (params, paramTypes) = getFunctionParamTypes(type, containerType.typeParams)
+                    val hasVarargs = type.element.hasVarargs
+                    val isMethod = getFunctionReceiverType(paramTypes) == containerType
+                    variants.add(
+                        buildLookupElement(member, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
+                            .withIcon(if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function)
+                            .withTailText(getFunctionTailText(params, paramTypes, hasVarargs))
+                            .withTypeText(getFunctionTypeText(type))
+                            .withInsertHandler(FunctionInsertHandler(params.isNotEmpty() || hasVarargs))
+                    )
+                }
+
+                else -> {
+                    // TODO: check if decl type can coerce to original type
                     variants.add(
                         createLookupElementWithType(
                             member,
