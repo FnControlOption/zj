@@ -29,6 +29,9 @@ class ZigCompletionContributor : CompletionContributor() {
             is ZigFieldAccess if element.identifierElement === position -> {
                 fillFieldAccessVariants(parameters, element, result)
             }
+            is ZigErrorValueExpression if element.identifierElement === position -> {
+                fillErrorValueVariants(element, result)
+            }
             is ZigEnumLiteral if element.identifierElement === position -> {
                 val parent = element.parent
                 if (parent is ZigListInitItem && !parent.isFieldInit) {
@@ -483,6 +486,36 @@ private fun fillFieldAccessVariants(
             .defaultSorter(parameters, result.prefixMatcher)
             .weigh(ZigMemberWeigherByDeclOrder)
     result.withRelevanceSorter(sorter).addAllElements(variants)
+}
+
+private fun fillErrorValueVariants(element: ZigErrorValueExpression, result: CompletionResultSet) {
+    val errorValuesToExclude = when (val parent = element.parent) {
+        is ZigSwitchItem -> {
+            parent.containingSwitchProng.containingSwitch.prongs
+                .flatMap { it.items }
+                .map { ZigAnalyzer.resolveValue(it.expression) }
+                .filterIsInstance<ZigErrorSetValue>()
+                .map { it.name }
+                .toSet()
+        }
+        else -> emptySet()
+    }
+    val variants = mutableSetOf<LookupElement>()
+    ZigAnalyzer.inferResultType(element).forEachValue { originalType ->
+        var type = originalType
+        while (type is ZigOptionalType) type = type.child
+        if (type is ZigErrorUnionType) type = type.errorSet
+        if (type !is ZigErrorSetType) return@forEachValue
+        for (name in type.names) {
+            if (name in errorValuesToExclude) continue
+            variants.add(
+                LookupElementBuilder.create(renderZigIdentifier(name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
+                    .withLookupString(name)
+                    .withLookupString(escapeZigIdentifier(name))
+            )
+        }
+    }
+    result.addAllElements(variants)
 }
 
 /** @see ZigEnumLiteralReference.multiResolve */
