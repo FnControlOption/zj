@@ -202,7 +202,7 @@ private fun getDefinition(element: ZigNavigatableElement): String? {
             val typeElement = element.typeElement
             if (typeElement == null) {
                 val newline = text.indexOf('\n')
-                return if (newline < 0) text else "${text.substring(0, newline)} ..."
+                return if (newline < 0) text else "${text.substring(0, newline)}..."
             }
             text.substring(0, typeElement.textRangeInParent.endOffset)
         }
@@ -268,9 +268,9 @@ private fun findFileDoc(element: ZigFile): String? {
 }
 
 /**
- * @see io.github.fncontroloption.zig.ZigFieldAccessReference.multiResolve
- * @see io.github.fncontroloption.zig.ZigListInitItemReference.multiResolve
- * @see io.github.fncontroloption.zig.ZigEnumLiteralReference.multiResolve
+ * @see ZigFieldAccessReference.multiResolve
+ * @see ZigListInitItemReference.multiResolve
+ * @see ZigEnumLiteralReference.multiResolve
  */
 private fun forEachContainerType(
     originalElement: PsiElement?,

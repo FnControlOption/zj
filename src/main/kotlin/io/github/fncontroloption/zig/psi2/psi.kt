@@ -130,7 +130,9 @@ sealed interface ZigContainerDecl : ZigContainerMember
 
 sealed interface ZigNamedContainerDecl : ZigNamedContainerMember, ZigContainerDecl
 
-sealed interface ZigContainerField : ZigNamedContainerMember
+sealed interface ZigContainerField : ZigNamedContainerMember {
+    val initializer: ZigExpression?
+}
 
 sealed interface ZigContainer : ZigElement {
     val containerKind: ZigContainerKind
@@ -544,7 +546,7 @@ class ZigContainerFieldImpl : ZigStubPsiElement<ZigContainerFieldStub>, ZigConta
     val equalTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.EQUAL)
 
-    val initializer: ZigExpression?
+    override val initializer: ZigExpression?
         get() =
             equalTokenElement
                 ?.siblings(forward = true, withSelf = false)
@@ -1478,6 +1480,9 @@ data class LightZigTupleField(
     override val container: LightZigTuple,
     val fieldIndex: Int,
 ) : LightZigElement(container.manager), ZigContainerField {
+    override val initializer: ZigExpression?
+        get() = null
+
     override fun getNameIdentifier() = null
     override fun getName() = fieldIndex.toString()
     override fun setName(name: String) = throw IncorrectOperationException()
