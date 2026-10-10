@@ -935,17 +935,17 @@ class ZigListInitItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val containingListInit: ZigListInit
         get() = parent as ZigListInit
 
-    val identifierElement: PsiElement?
+    val fieldNameIdentifier: PsiElement?
         get() = findChildByType(ZigTokenType.IDENTIFIER)
 
-    val isStructField: Boolean
-        get() = identifierElement != null
+    val isFieldInit: Boolean
+        get() = fieldNameIdentifier != null
 
     val expression: ZigExpression?
         get() = findChildByClass(ZigExpression::class.java)
 
     override fun getReferences(): Array<out PsiReference> {
-        val identifier = identifierElement ?: return emptyArray()
+        val identifier = fieldNameIdentifier ?: return emptyArray()
         return arrayOf(ZigListInitItemReference(this, identifier))
     }
 }

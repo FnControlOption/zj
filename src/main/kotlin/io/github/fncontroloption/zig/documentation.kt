@@ -287,7 +287,7 @@ private fun forEachContainerType(
         }
 
         is ZigListInitItem -> {
-            if (zigElement.identifierElement == originalElement) {
+            if (zigElement.fieldNameIdentifier == originalElement) {
                 val listType = ZigAnalyzer.resolveOrInferListInitType(zigElement.containingListInit)
                 listType.forEachValue { type ->
                     val containerType = type as? IZigContainerType ?: return@forEachValue

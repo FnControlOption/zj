@@ -2268,7 +2268,7 @@ private fun computeListInit(element: ZigListInit): ZigValue {
     }
     val fieldTypes = mutableListOf<ZigValue>()
     for (item in element.initItems) {
-        if (item.isStructField) {
+        if (item.isFieldInit) {
             return ZigUnknown.ofUnknownType() // TODO
         }
         fieldTypes.add(resolveValue(item.expression).typeOf)
@@ -2846,8 +2846,8 @@ private fun inferListInitItem(
         return ZigUnknown.of(ZigTypeType)
     }
     val initElement = parentElement.containingListInit
-    return if (parentElement.isStructField) {
-        val name = parseZigIdentifier(parentElement.identifierElement)
+    return if (parentElement.isFieldInit) {
+        val name = parseZigIdentifier(parentElement.fieldNameIdentifier)
             ?: return ZigUnknown.of(ZigTypeType)
         ZigAnalyzer.resolveOrInferListInitType(initElement).mapValue { type ->
             if (type !is IZigContainerType) {

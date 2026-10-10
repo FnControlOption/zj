@@ -440,7 +440,7 @@ class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElemen
 
     override fun getVariants(): Array<out LookupElement> {
         val parentElement = myElement.parent
-        if (parentElement is ZigListInitItem && !parentElement.isStructField) {
+        if (parentElement is ZigListInitItem && !parentElement.isFieldInit) {
             val listType = ZigAnalyzer.resolveOrInferListInitType(parentElement.containingListInit)
             var foundContainer = false
             val variants = mutableSetOf<LookupElement>()
@@ -548,7 +548,7 @@ class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElem
     override fun handleElementRename(newElementName: String) =
         replaceZigIdentifierElement(
             myElement,
-            myElement.identifierElement,
+            myElement.fieldNameIdentifier,
             newElementName,
             ZigIdQuoteBehavior.EAGERLY_UNQUOTE,
         )

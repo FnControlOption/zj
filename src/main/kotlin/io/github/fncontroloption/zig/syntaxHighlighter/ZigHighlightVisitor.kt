@@ -115,7 +115,7 @@ class ZigHighlightVisitor : HighlightVisitor {
             }
 
             is ZigListInitItem -> {
-                val name = element.identifierElement ?: return null
+                val name = element.fieldNameIdentifier ?: return null
                 createHighlightInfoFromReference(element, name)
             }
 
