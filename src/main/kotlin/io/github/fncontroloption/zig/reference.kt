@@ -301,114 +301,6 @@ class ZigFieldAccessReference(element: ZigFieldAccess, val identifier: PsiElemen
             newElementName,
             ZigIdQuoteBehavior.EAGERLY_UNQUOTE,
         )
-
-    override fun getVariants(): Array<out LookupElement> {
-        val leftValue = ZigAnalyzer.resolveValue(myElement.leftOperand)
-        val originalFile = myElement.containingFile
-        val variants = mutableSetOf<LookupElement>()
-        leftValue.forEachValue { left ->
-            val typeOfLeft = left.typeOf
-            when (typeOfLeft) {
-                is ZigOptionalType -> {
-                    variants.add(LookupElementBuilder.create("?").withTypeText(typeOfLeft.child.toPlainText()))
-                }
-                is ZigPointerType if typeOfLeft.size == ZigPointerSize.ONE -> {
-                    variants.add(LookupElementBuilder.create("*").withTypeText(typeOfLeft.child.toPlainText()))
-                }
-                else -> {}
-            }
-            for (fieldName in ZigAnalyzer.getBuiltinFields(typeOfLeft)) {
-                val fieldType = ZigAnalyzer.getBuiltinFieldType(typeOfLeft, fieldName)
-                variants.add(
-                    LookupElementBuilder.create(renderZigIdentifier(fieldName, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
-                        .withLookupString(fieldName)
-                        .withLookupString(escapeZigIdentifier(fieldName))
-                        .withIcon(AllIcons.Nodes.Field)
-                        .withTypeText(fieldType?.toPlainText())
-                )
-            }
-        }
-        ZigAnalyzer.forEachFieldAccessContainer(leftValue) { containerType, isInstance ->
-            for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
-                val name = member.name ?: continue
-                if (member is ZigContainerField) {
-                    if (containerType.containerKind == ZigContainerKind.ENUM) {
-                        if (isInstance || member.nameIdentifier?.textMatches("_") == true) {
-                            continue
-                        }
-                        variants.add(
-                            createLookupElementWithType(
-                                member,
-                                name,
-                                containerType,
-                                ZigIdQuoteBehavior.EAGERLY_UNQUOTE,
-                            )
-                        )
-                    } else if (isInstance) {
-                        val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
-                        val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
-                        variants.add(
-                            createLookupElementWithType(
-                                member,
-                                name,
-                                value.typeOf,
-                                ZigIdQuoteBehavior.EAGERLY_UNQUOTE,
-                            )
-                        )
-                    } else if (containerType.isTaggedUnion) {
-                        val type = ZigAnalyzer.resolveUnionTagType(containerType)
-                        variants.add(
-                            createLookupElementWithType(
-                                member,
-                                name,
-                                type,
-                                ZigIdQuoteBehavior.EAGERLY_UNQUOTE,
-                            )
-                        )
-                    }
-                    continue
-                }
-                val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
-                val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
-                when (val type = value.typeOf) {
-                    is ZigFunctionType -> {
-                        var (params, paramTypes) = getFunctionParamTypes(type, containerType.typeParams)
-                        val hasVarargs = type.element.hasVarargs
-                        val isMethod = getFunctionReceiverType(paramTypes) == containerType
-                        if (isInstance) {
-                            if (!isMethod) {
-                                continue
-                            }
-                            params = params.subList(1, params.size)
-                            paramTypes = paramTypes.subList(1, paramTypes.size)
-                        }
-                        variants.add(
-                            buildLookupElement(member, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
-                                .withIcon(if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function)
-                                .withTailText(getFunctionTailText(params, paramTypes, hasVarargs))
-                                .withTypeText(getFunctionTypeText(type))
-                                .withInsertHandler(FunctionInsertHandler(params.isNotEmpty() || hasVarargs))
-                        )
-                    }
-
-                    else -> {
-                        if (isInstance) {
-                            continue
-                        }
-                        variants.add(
-                            createLookupElementWithType(
-                                member,
-                                name,
-                                type,
-                                ZigIdQuoteBehavior.EAGERLY_UNQUOTE,
-                            )
-                        )
-                    }
-                }
-            }
-        }
-        return variants.toTypedArray()
-    }
 }
 
 class ZigEnumLiteralReference(element: ZigEnumLiteral, val identifier: PsiElement) :
@@ -644,7 +536,7 @@ internal fun getFunctionParamTypes(
     }.unzip()
 }
 
-private fun getFunctionReceiverType(paramTypes: List<ZigValue?>): ZigValue? {
+internal fun getFunctionReceiverType(paramTypes: List<ZigValue?>): ZigValue? {
     val firstParamType = paramTypes.firstOrNull() ?: return null
     if (firstParamType is ZigPointerType && firstParamType.size == ZigPointerSize.ONE) {
         return firstParamType.child
@@ -652,7 +544,7 @@ private fun getFunctionReceiverType(paramTypes: List<ZigValue?>): ZigValue? {
     return firstParamType
 }
 
-private fun getFunctionTailText(
+internal fun getFunctionTailText(
     params: List<ZigFnParam>,
     paramTypes: List<ZigValue?>,
     hasVarargs: Boolean,
@@ -693,11 +585,11 @@ internal fun getParameterText(param: ZigFnParam, type: ZigValue?): String {
     }
 }
 
-private fun getFunctionTypeText(functionType: ZigFunctionType): String {
+internal fun getFunctionTypeText(functionType: ZigFunctionType): String {
     return getFunctionTypeText(functionType.element, functionType.typeParams)
 }
 
-private fun getFunctionTypeText(
+internal fun getFunctionTypeText(
     functionElement: ZigFnOrBuiltinFnDeclOrProto,
     typeParams: Map<ZigFnParam, ZigValue?>,
 ): String {
@@ -715,7 +607,7 @@ private fun getFunctionTypeText(
     return if (functionElement.bangTokenElement != null) "!$text" else text
 }
 
-private class FunctionInsertHandler(val hasParams: Boolean) : InsertHandler<LookupElement> {
+internal class FunctionInsertHandler(val hasParams: Boolean) : InsertHandler<LookupElement> {
     override fun handleInsert(context: InsertionContext, item: LookupElement) {
         val project = context.project
         val editor = context.editor
@@ -758,7 +650,7 @@ private class FunctionInsertHandler(val hasParams: Boolean) : InsertHandler<Look
     }
 }
 
-private object FieldInitInsertHandler : InsertHandler<LookupElement> {
+internal object FieldInitInsertHandler : InsertHandler<LookupElement> {
     override fun handleInsert(context: InsertionContext, item: LookupElement) {
         val editor = context.editor
         val document = editor.document
@@ -826,7 +718,7 @@ internal fun getFieldInitVariants(
     }
 }
 
-private fun createLookupElementWithType(
+internal fun createLookupElementWithType(
     element: ZigNamedElement,
     name: String,
     type: ZigValue?,
@@ -841,7 +733,7 @@ private fun createLookupElementWithType(
     }
 }
 
-private fun buildLookupElement(
+internal fun buildLookupElement(
     element: ZigNamedElement,
     name: String,
     quote: ZigIdQuoteBehavior,
