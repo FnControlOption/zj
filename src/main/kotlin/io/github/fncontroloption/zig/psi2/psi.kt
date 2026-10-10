@@ -34,7 +34,9 @@ sealed class ZigStubPsiElement<T : StubElement<*>> : StubBasedPsiElementBase<T>,
     override fun toString() = "${javaClass.simpleName}(${elementTypeImpl})"
 }
 
-sealed interface ZigNavigatableElement : ZigElement, NavigatablePsiElement
+sealed interface ZigNavigatableElement : ZigElement, NavigatablePsiElement {
+    override fun getPresentation(): ItemPresentation
+}
 
 sealed interface ZigNamedElement : ZigNavigatableElement, PsiNamedElement
 
@@ -153,6 +155,8 @@ class ZigFile(
 
     override val members: Sequence<ZigContainerMember>
         get() = firstChild?.siblings()?.filterIsInstance<ZigContainerMember>() ?: emptySequence()
+
+    override fun getPresentation(): ItemPresentation = super<PsiFileBase>.presentation!!
 
     override fun getFileType() = ZigFileType
     override fun toString() = "ZigFile:$name"
@@ -522,7 +526,7 @@ class ZigContainerExpression(node: ASTNode) :
 
     override fun getPresentation(): ItemPresentation {
         val kind = containerKindElement.text
-        val location = "in ${containingFile.name}"
+        val location = "(in ${containingFile.name})"
         return PresentationData(kind, location, baseIcon, null)
     }
 }
@@ -562,8 +566,7 @@ class ZigContainerFieldImpl : ZigStubPsiElement<ZigContainerFieldStub>, ZigConta
     override fun getBaseIcon() = AllIcons.Nodes.Field
 
     override fun getPresentation(): ItemPresentation {
-        val name = parseZigIdentifier(nameIdentifier)
-        val location = "in ${containingFile.name}"
+        val location = "(in ${containingFile.name})"
         return PresentationData(name, location, baseIcon, null)
     }
 }
@@ -719,13 +722,16 @@ class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigFnDeclOrProto, ZigNamedCo
         replaceZigIdentifierElement(this, nameIdentifier, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
 
     override fun isVisibilitySupported() = true
-    override fun getElementIcon(flags: Int) = addVisibilityIcon(isPub, flags, baseIcon)
+    override fun getElementIcon(flags: Int) =
+        addVisibilityIcon(flags, baseIcon) {
+            if (isPub) AllIcons.Nodes.Public else AllIcons.Nodes.Private
+        }
+
     override fun getBaseIcon() = AllIcons.Nodes.Function
 
     override fun getPresentation(): ItemPresentation {
-        val name = parseZigIdentifier(nameIdentifier)
-        val text = if (name != null) "$name()" else null
-        val location = "in ${containingFile.name}"
+        val text = name?.let { "$it()" }
+        val location = "(in ${containingFile.name})"
         val icon = getElementIcon(ICON_FLAG_VISIBILITY)
         return PresentationData(text, location, icon, null)
     }
@@ -748,6 +754,15 @@ class ZigBuiltinFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnOrBuil
 
     override val body: ZigBlock?
         get() = null
+
+    override fun isVisibilitySupported() = false
+    override fun getElementIcon(flags: Int) = baseIcon
+    override fun getBaseIcon() = AllIcons.Nodes.Function
+
+    override fun getPresentation(): ItemPresentation {
+        val name = builtinElement.text
+        return PresentationData(name, null, baseIcon, null)
+    }
 
     override fun navigate(requestFocus: Boolean) {}
     override fun canNavigate() = false
@@ -878,6 +893,11 @@ class ZigLabelDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigNameIdentifie
     override fun getName() = parseZigIdentifier(identifierElement)
     override fun setName(name: String) =
         replaceZigIdentifierElement(this, identifierElement, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
+
+    override fun getPresentation(): ItemPresentation {
+        val location = "(in ${containingFile.name})"
+        return PresentationData(name, location, null, null)
+    }
 }
 
 class ZigLabelRef(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
@@ -1005,9 +1025,17 @@ class ZigFnParam(node: ASTNode) : ASTWrapperPsiElement(node), ZigNameIdentifierO
     override fun setName(name: String) =
         replaceZigIdentifierElement(this, nameIdentifier, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
 
-    override fun isVisibilitySupported() = false
-    override fun getElementIcon(flags: Int) = baseIcon
+    override fun isVisibilitySupported() = true
+    override fun getElementIcon(flags: Int) =
+        addVisibilityIcon(flags, baseIcon) { AllIcons.Nodes.PackageLocal }
+
     override fun getBaseIcon() = AllIcons.Nodes.Parameter
+
+    override fun getPresentation(): ItemPresentation {
+        val location = "(in ${containingFile.name})"
+        val icon = getElementIcon(ICON_FLAG_VISIBILITY)
+        return PresentationData(name, location, icon, null)
+    }
 }
 
 class ZigPayloadItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigNameIdentifierOwner {
@@ -1025,6 +1053,18 @@ class ZigPayloadItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigNameIdentif
     override fun getName() = parseZigIdentifier(nameIdentifier)
     override fun setName(name: String) =
         replaceZigIdentifierElement(this, nameIdentifier, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
+
+    override fun isVisibilitySupported() = true
+    override fun getElementIcon(flags: Int) =
+        addVisibilityIcon(flags, baseIcon) { AllIcons.Nodes.PackageLocal }
+
+    override fun getBaseIcon() = AllIcons.Nodes.Constant
+
+    override fun getPresentation(): ItemPresentation {
+        val location = "(in ${containingFile.name})"
+        val icon = getElementIcon(ICON_FLAG_VISIBILITY)
+        return PresentationData(name, location, icon, null)
+    }
 }
 
 enum class ZigPointerSize { ONE, MANY, SLICE, C }
@@ -1233,7 +1273,7 @@ class ZigTestDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainerDecl 
     override fun getPresentation(): ItemPresentation {
         val name = nameElement?.text
         val text = if (name != null) "test $name" else "test"
-        val location = "in ${containingFile.name}"
+        val location = "(in ${containingFile.name})"
         return PresentationData(text, location, baseIcon, null)
     }
 
@@ -1340,15 +1380,23 @@ class ZigVarDecl : ZigStubPsiElement<ZigVarDeclStub>, ZigVarDeclOrProto, ZigName
         replaceZigIdentifierElement(this, nameIdentifier, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
 
     override fun isVisibilitySupported() = true
-    override fun getElementIcon(flags: Int) = addVisibilityIcon(isPub, flags, baseIcon)
+    override fun getElementIcon(flags: Int) =
+        addVisibilityIcon(flags, baseIcon) {
+            if (isLocal)
+                AllIcons.Nodes.PackageLocal
+            else if (isPub)
+                AllIcons.Nodes.Public
+            else
+                AllIcons.Nodes.Private
+        }
+
     override fun getBaseIcon() = when (mutability) {
         ZigMutability.CONST -> AllIcons.Nodes.Constant
         ZigMutability.VAR -> AllIcons.Nodes.Variable
     }
 
     override fun getPresentation(): ItemPresentation {
-        val name = parseZigIdentifier(nameIdentifier)
-        val location = "in ${containingFile.name}"
+        val location = "(in ${containingFile.name})"
         val icon = getElementIcon(ICON_FLAG_VISIBILITY)
         return PresentationData(name, location, icon, null)
     }
@@ -1366,6 +1414,21 @@ class ZigVarProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto
     override fun getName() = parseZigIdentifier(nameIdentifier)
     override fun setName(name: String) =
         replaceZigIdentifierElement(this, nameIdentifier, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
+
+    override fun isVisibilitySupported() = true
+    override fun getElementIcon(flags: Int) =
+        addVisibilityIcon(flags, baseIcon) { AllIcons.Nodes.PackageLocal }
+
+    override fun getBaseIcon() = when (mutability) {
+        ZigMutability.CONST -> AllIcons.Nodes.Constant
+        ZigMutability.VAR -> AllIcons.Nodes.Variable
+    }
+
+    override fun getPresentation(): ItemPresentation {
+        val location = "(in ${containingFile.name})"
+        val icon = getElementIcon(ICON_FLAG_VISIBILITY)
+        return PresentationData(name, location, icon, null)
+    }
 }
 
 class ZigWhile(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop {
@@ -1419,6 +1482,10 @@ data class LightZigTupleField(
     override fun isVisibilitySupported() = false
     override fun getElementIcon(flags: Int) = baseIcon
     override fun getBaseIcon() = AllIcons.Nodes.Field
+
+    override fun getPresentation(): ItemPresentation {
+        return PresentationData(name, null, baseIcon, null)
+    }
 }
 
 fun createZigFile(project: Project, text: String): ZigFile {
@@ -1640,10 +1707,13 @@ private fun isValidZigIdentifier(chars: CharSequence): Boolean {
     return KEYWORDS.none { chars.contentEquals(it) }
 }
 
-private fun addVisibilityIcon(isPub: Boolean, flags: Int, baseIcon: Icon): Icon {
+private inline fun addVisibilityIcon(
+    flags: Int,
+    baseIcon: Icon,
+    visibility: () -> Icon,
+): Icon {
     if (BitUtil.isSet(flags, Iconable.ICON_FLAG_VISIBILITY)) {
-        val visibility = if (isPub) AllIcons.Nodes.Public else AllIcons.Nodes.Private
-        return IconManager.getInstance().createRowIcon(baseIcon, visibility)
+        return IconManager.getInstance().createRowIcon(baseIcon, visibility())
     }
     return baseIcon
 }

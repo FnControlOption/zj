@@ -56,10 +56,14 @@ private class ZigPsiDocumentationTarget(
 ) : DocumentationTarget {
     override fun createPointer() = pointer
 
+    /** @see com.intellij.codeInsight.navigation.targetPresentation */
     override fun computePresentation(): TargetPresentation {
         val moduleTextWithIcon = ModuleRendererFactory.findInstance(element).getModuleTextWithIcon(element)
+        val presentation = (element as? ZigNavigatableElement)?.presentation
         return TargetPresentation
-            .builder(element.toString()) // TODO
+            .builder(presentation?.presentableText ?: "")
+            .icon(presentation?.getIcon(false))
+            .containerText(element.containingFile.name)
             .locationText(moduleTextWithIcon?.text, moduleTextWithIcon?.icon)
             .presentation()
     }
