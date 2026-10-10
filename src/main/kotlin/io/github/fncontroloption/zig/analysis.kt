@@ -216,6 +216,28 @@ object ZigAnalyzer {
         val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
         return psiFile as? ZigFile
     }
+
+    fun forEachFieldAccessContainer(
+        leftValue: ZigValue,
+        action: (IZigContainerType, isInstance: Boolean) -> Unit,
+    ) {
+        leftValue.forEachValue { left ->
+            when (left) {
+                is IZigContainerType -> action(left, false)
+                else -> when (val typeOfLeft = left.typeOf) {
+                    is IZigContainerType -> action(typeOfLeft, true)
+                    is ZigPointerType -> when (typeOfLeft.size) {
+                        ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
+                            is IZigContainerType -> action(pointerChild, true)
+                            else -> {}
+                        }
+                        else -> {}
+                    }
+                    else -> {}
+                }
+            }
+        }
+    }
 }
 
 sealed interface ZigPlace {
