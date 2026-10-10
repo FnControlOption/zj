@@ -293,6 +293,11 @@ private fun buildLookupElement(
         .withLookupString(name)
         .withLookupString(escapeZigIdentifier(name))
 
+private fun squashVariants(set: Set<LookupElement>): Collection<LookupElement> {
+    // Limitation: We can only provide one lookup object per lookup element.
+    return set.groupBy { it.lookupString }.map { (_, list) -> list.first() }
+}
+
 /** @see ZigIdentifierReference.multiResolve */
 private fun fillIdentifierVariants(element: ZigIdentifier, result: CompletionResultSet) {
     val variants = mutableSetOf<LookupElement>()
@@ -327,7 +332,7 @@ private fun fillIdentifierVariants(element: ZigIdentifier, result: CompletionRes
             }
         }
     }
-    result.addAllElements(variants)
+    result.addAllElements(squashVariants(variants))
 }
 
 /** @see ZigTestReference.multiResolve */
@@ -353,7 +358,7 @@ private fun fillTestVariants(element: ZigTestDecl, result: CompletionResultSet) 
         }
         variants.add(buildLookupElement(candidate, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING).withIcon(icon))
     }
-    result.addAllElements(variants)
+    result.addAllElements(squashVariants(variants))
 }
 
 /** @see ZigLabelReference.resolve */
@@ -368,7 +373,7 @@ private fun fillLabelVariants(element: ZigLabelRef, result: CompletionResultSet)
             }
         }
     }
-    result.addAllElements(variants)
+    result.addAllElements(squashVariants(variants))
 }
 
 /** @see ZigFieldAccessReference.multiResolve */
@@ -485,7 +490,7 @@ private fun fillFieldAccessVariants(
         CompletionSorter
             .defaultSorter(parameters, result.prefixMatcher)
             .weigh(ZigMemberWeigherByDeclOrder)
-    result.withRelevanceSorter(sorter).addAllElements(variants)
+    result.withRelevanceSorter(sorter).addAllElements(squashVariants(variants))
 }
 
 private fun fillErrorValueVariants(element: ZigErrorValueExpression, result: CompletionResultSet) {
@@ -515,7 +520,7 @@ private fun fillErrorValueVariants(element: ZigErrorValueExpression, result: Com
             )
         }
     }
-    result.addAllElements(variants)
+    result.addAllElements(squashVariants(variants))
 }
 
 /** @see ZigEnumLiteralReference.multiResolve */
@@ -611,7 +616,7 @@ private fun fillEnumLiteralVariants(
         CompletionSorter
             .defaultSorter(parameters, result.prefixMatcher)
             .weigh(ZigMemberWeigherByDeclOrder)
-    result.withRelevanceSorter(sorter).addAllElements(variants)
+    result.withRelevanceSorter(sorter).addAllElements(squashVariants(variants))
 }
 
 /** @see ZigListInitItemReference.multiResolve */
@@ -629,7 +634,7 @@ private fun fillFieldInitVariants(element: ZigListInitItem, result: CompletionRe
             .emptySorter()
             .weigh(ZigFieldWeigherByDefaultValue)
             .weighAfter(ZigFieldWeigherByDefaultValue.toString(), ZigMemberWeigherByDeclOrder)
-    result.withRelevanceSorter(sorter).addAllElements(variants)
+    result.withRelevanceSorter(sorter).addAllElements(squashVariants(variants))
 }
 
 /** @see ZigBuiltinCallReference.resolve */
@@ -647,5 +652,5 @@ private fun fillBuiltinCallVariants(element: ZigBuiltinCall, result: CompletionR
                 .withInsertHandler(FunctionInsertHandler(params.isNotEmpty() || hasVarargs))
         )
     }
-    result.addAllElements(variants)
+    result.addAllElements(squashVariants(variants))
 }
