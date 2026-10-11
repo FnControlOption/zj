@@ -5,7 +5,7 @@ import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.TokenType;
 import io.github.fncontroloption.zig.psi2.ZigTokenType;
 
-// Based on https://codeberg.org/ziglang/zig/src/commit/72d954e/lib/std/zig/tokenizer.zig
+// Based on https://codeberg.org/ziglang/zig/src/tag/0.17.0/lib/std/zig/tokenizer.zig
 %%
 
 %class ZigLexer

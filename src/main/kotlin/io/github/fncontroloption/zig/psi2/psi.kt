@@ -744,7 +744,9 @@ class ZigFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnDeclOrProto, 
         get() = null
 }
 
-class ZigBuiltinFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnOrBuiltinFnDeclOrProto, ZigNavigatableElement {
+class ZigBuiltinFnProto(node: ASTNode) :
+    ASTWrapperPsiElement(node), ZigFnOrBuiltinFnDeclOrProto, ZigNavigatableElement {
+
     val builtinElement: PsiElement
         get() = findNotNullChildByType(ZigTokenType.BUILTIN)
 
@@ -1622,7 +1624,7 @@ fun renderZigIdentifier(chars: CharSequence, quote: ZigIdQuoteBehavior): String 
 }
 
 // Based on std.zig.Ast.Render.renderIdentifier
-// https://codeberg.org/ziglang/zig/src/commit/5b9147e/lib/std/zig/Ast/Render.zig#L2806-L2909
+// https://codeberg.org/ziglang/zig/src/tag/0.17.0/lib/std/zig/Ast/Render.zig#L2806-L2909
 fun renderZigIdentifier(chars: CharSequence, quote: ZigIdQuoteBehavior, builder: StringBuilder) {
     if (chars.isEmpty()) {
         escapeZigIdentifier(chars, builder)

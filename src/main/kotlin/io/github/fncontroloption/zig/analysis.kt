@@ -3224,7 +3224,7 @@ private fun inferMemsetBuiltinCallArg(
 }
 
 // Based on Sema.resolvePeerTypes
-// https://codeberg.org/ziglang/zig/src/commit/00b59eb/src/Sema.zig#L32687
+// https://codeberg.org/ziglang/zig/src/tag/0.17.0/src/Sema.zig#L32697
 private fun resolvePeerValues(values: Set<ZigValue>): ZigValue {
     when (values.size) {
         0 -> return ZigUnknown.ofUnknownType()
@@ -3979,7 +3979,7 @@ private fun typeIsArrayLike(ty: ZigValue): ArrayLike? {
 }
 
 // Based on Type.floatSignificandBits
-// https://codeberg.org/ziglang/zig/src/commit/ebb8683/src/Type.zig#L1952-L1962
+// https://codeberg.org/ziglang/zig/src/tag/0.17.0/src/Type.zig#L1952-L1962
 private fun floatSignificandBits(ty: ZigFixedFloatType): Int {
     return when (ty.bits) {
         16 -> 11

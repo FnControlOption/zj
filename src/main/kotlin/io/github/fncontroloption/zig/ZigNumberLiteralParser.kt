@@ -1,6 +1,6 @@
 package io.github.fncontroloption.zig
 
-// Based on https://codeberg.org/ziglang/zig/src/commit/69a2697/lib/std/zig/number_literal.zig
+// Based on https://codeberg.org/ziglang/zig/src/tag/0.17.0/lib/std/zig/number_literal.zig
 object ZigNumberLiteralParser {
     enum class Base(val radix: Int) {
         DECIMAL(10), HEX(16), BINARY(2), OCTAL(8)

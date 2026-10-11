@@ -45,7 +45,7 @@ class ZigBuiltinFnProtoParserDefinition : AbstractZigParserDefinition() {
     override fun createFile(viewProvider: FileViewProvider) = ZigFile(viewProvider, ZigBuiltinFnProtoLanguage)
 }
 
-// Based on https://codeberg.org/ziglang/zig/src/commit/69a2697/lib/std/zig/Parse.zig
+// Based on https://codeberg.org/ziglang/zig/src/tag/0.17.0/lib/std/zig/Parse.zig
 /** @see com.intellij.java.syntax.parser.JavaParser */
 class ZigParser(private val mode: ZigParserMode) : PsiParser {
     private val enclosureStack = ArrayDeque<IElementType?>()

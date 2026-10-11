@@ -1,6 +1,6 @@
 package io.github.fncontroloption.zig
 
-// Based on https://codeberg.org/ziglang/zig/src/commit/150169f/lib/std/zig/string_literal.zig
+// Based on https://codeberg.org/ziglang/zig/src/tag/0.17.0/lib/std/zig/string_literal.zig
 class ZigStringLiteralParser private constructor(
     private val chars: CharSequence,
     private val builder: StringBuilder,
