@@ -5,42 +5,46 @@ const Configuration = std.Build.Configuration;
 const Self = @This();
 
 arena: Allocator,
-module_set: std.AutoArrayHashMapUnmanaged(Configuration.Module.Index, void),
 configuration: *const Configuration,
+module_set: std.AutoArrayHashMapUnmanaged(Configuration.Module.Index, bool) = .empty,
 
 fn loadStep(self: *Self, step: *const Configuration.Step) Allocator.Error!void {
     if (step.extended.cast(self.configuration, Configuration.Step.Compile)) |compile| {
-        try self.loadModule(compile.root_module);
+        try self.loadModule(compile.root_module, !compile.flags3.kind.isTest());
     }
     for (step.deps.slice(self.configuration)) |dep| {
         try self.loadStep(dep.ptr(self.configuration));
     }
 }
 
-fn loadModule(self: *Self, module_index: Configuration.Module.Index) Allocator.Error!void {
+fn loadModule(self: *Self, module_index: Configuration.Module.Index, is_root_module: bool) Allocator.Error!void {
     const gop = try self.module_set.getOrPut(self.arena, module_index);
-    if (gop.found_existing) return;
+    if (gop.found_existing) {
+        if (is_root_module) gop.value_ptr.* = true;
+        return;
+    }
+    gop.value_ptr.* = is_root_module;
     const module = module_index.get(self.configuration);
     const import_table = module.import_table.get(self.configuration);
     for (0..import_table.imports.mal.len) |i| {
         const sub_import = import_table.imports.mal.get(i);
-        try self.loadModule(sub_import.module);
+        try self.loadModule(sub_import.module, false);
     }
 }
 
-fn sortModules(self: *Self) void {
-    const module_indexes = self.module_set.keys();
-    std.mem.sort(Configuration.Module.Index, module_indexes, {}, struct {
-        fn lessThan(_: void, a: Configuration.Module.Index, b: Configuration.Module.Index) bool {
-            return @backingInt(a) < @backingInt(b);
+fn sortModules(self: *Self) !void {
+    const Ctx = struct {
+        keys: []Configuration.Module.Index,
+        pub fn lessThan(ctx: @This(), a_index: usize, b_index: usize) bool {
+            return @backingInt(ctx.keys[a_index]) < @backingInt(ctx.keys[b_index]);
         }
-    }.lessThan);
+    };
+    self.module_set.sort(Ctx{ .keys = self.module_set.keys() });
 }
 
 fn modulesAsJsonValue(self: *const Self) !json.Value {
     var root: json.Array = .init(self.arena);
-    const module_indexes = self.module_set.keys();
-    for (module_indexes) |module_index| {
+    for (self.module_set.keys(), self.module_set.values()) |module_index, is_root_module| {
         const module = module_index.get(self.configuration);
 
         const root_source_file = blk: {
@@ -74,6 +78,7 @@ fn modulesAsJsonValue(self: *const Self) !json.Value {
 
         var module_object: json.ObjectMap = .empty;
         try module_object.put(self.arena, "index", .{ .integer = @backingInt(module_index) });
+        try module_object.put(self.arena, "is_root_module", .{ .bool = is_root_module });
         if (root_source_file) |path| {
             try module_object.put(self.arena, "root_source_file", .{ .string = path });
         } else {
@@ -101,13 +106,12 @@ pub fn main(init: std.process.Init) !void {
 
     var self: Self = .{
         .arena = arena,
-        .module_set = .empty,
         .configuration = &configuration,
     };
     for (configuration.steps) |*step| {
         try self.loadStep(step);
     }
-    self.sortModules();
+    try self.sortModules();
     const modules = try self.modulesAsJsonValue();
 
     var stdout_buffer: [1024]u8 = undefined;

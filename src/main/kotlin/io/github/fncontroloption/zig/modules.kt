@@ -78,6 +78,9 @@ class ZigModulesAppService {
 data class ZigModule(
     val index: Int,
 
+    @SerialName("is_root_module")
+    val isRootModule: Boolean,
+
     /** @see ZigModulesProjectService.getRootSourceVirtualFile */
     @SerialName("root_source_file")
     val rootSourceFile: String?,
@@ -199,6 +202,28 @@ class ZigModulesProjectService(private val project: Project) {
         for ((otherPath, otherImports) in fileImports) {
             if (path in otherImports) {
                 findFileModules(otherPath, visited, modules)
+            }
+        }
+    }
+
+    fun getFileRootModules(virtualFile: VirtualFile): Set<Int> {
+        val visited = mutableSetOf<Int>()
+        val roots = mutableSetOf<Int>()
+        for (moduleIndex in getFileModules(virtualFile)) {
+            val module = modules[moduleIndex] ?: continue
+            findRootModules(module, visited, roots)
+        }
+        return roots
+    }
+
+    private fun findRootModules(module: ZigModule, visited: MutableSet<Int>, roots: MutableSet<Int>) {
+        if (module.index in visited) return
+        visited.add(module.index)
+        if (module.isRootModule) roots.add(module.index)
+        for (otherModule in modules.values) {
+            if (otherModule.index in visited) continue
+            if (otherModule.importTable.containsValue(module.index)) {
+                findRootModules(otherModule, visited, roots)
             }
         }
     }
