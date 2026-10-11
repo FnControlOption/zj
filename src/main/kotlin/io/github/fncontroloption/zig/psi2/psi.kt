@@ -1536,19 +1536,24 @@ fun replaceZigIdentifierElement(
 
 fun createZigStringLiteral(project: Project, value: String): ZigStringLiteral {
     val text = buildString {
-        append("const dummy = ")
+        append("const dummy = \"")
         escapeZigString(value, this)
-        append(";")
+        append("\";")
     }
     val file = createZigFile(project, text)
     val varDecl = file.members.first() as ZigVarDecl
     return varDecl.initializer as ZigStringLiteral
 }
 
+fun escapeZigString(chars: CharSequence): String {
+    val builder = StringBuilder()
+    escapeZigString(chars, builder)
+    return builder.toString()
+}
+
 // Based on std.zig.stringEscape
-// https://codeberg.org/ziglang/zig/src/commit/e19a73c/lib/std/zig.zig#L540-L585
+// https://codeberg.org/ziglang/zig/src/tag/0.17.0/lib/std/zig.zig#L542-L629
 fun escapeZigString(chars: CharSequence, builder: StringBuilder) {
-    builder.append('"')
     for (c in chars) {
         when (c) {
             '\t' -> builder.append("\\t")
@@ -1556,16 +1561,19 @@ fun escapeZigString(chars: CharSequence, builder: StringBuilder) {
             '\r' -> builder.append("\\r")
             '\\' -> builder.append("\\\\")
             '"' -> builder.append("\\\"")
-            else -> when (val code = c.code) {
-                in 0..8, 11, 12, in 14..0x1f, 0x7f -> {
-                    builder.append("\\x")
-                    builder.append(code.toString(16).padStart(2, '0'))
-                }
-                else -> builder.append(c)
+            in '\u0000'..'\u0008', '\u000b', '\u000c', in '\u000e'..'\u001f', '\u007f' -> {
+                builder.append("\\x")
+                builder.append("%02x".format(c.code))
             }
+            '\ufeff', '\u0085', '\u2028', '\u2029' -> {
+                for (b in c.toString().toByteArray(Charsets.UTF_8)) {
+                    builder.append("\\x")
+                    builder.append("%02x".format(b))
+                }
+            }
+            else -> builder.append(c)
         }
     }
-    builder.append('"')
 }
 
 fun parseZigIdentifier(element: PsiElement?): String? {
@@ -1596,8 +1604,9 @@ fun escapeZigIdentifier(chars: CharSequence): String {
 }
 
 fun escapeZigIdentifier(chars: CharSequence, builder: StringBuilder) {
-    builder.append('@')
+    builder.append("@\"")
     escapeZigString(chars, builder)
+    builder.append('"')
 }
 
 enum class ZigIdQuoteBehavior {

@@ -1058,7 +1058,9 @@ data class ZigStringLiteralValue(val value: String) : ZigValue {
 
     override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
         val text = buildString {
+            append('"')
             escapeZigString(value, this)
+            append('"')
         }
         return createStyledHtmlChunk(ZigHighlightingColors.STRING, text)
     }
