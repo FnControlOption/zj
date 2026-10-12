@@ -1581,22 +1581,19 @@ fun escapeZigString(chars: CharSequence, builder: StringBuilder) {
     }
 }
 
+private val PARSED_IDENTIFIERS = mutableMapOf<String, String?>()
+
 fun parseZigIdentifier(element: PsiElement?): String? {
     if (element == null) return null
-    return CachedValuesManager.getCachedValue(element) {
-        val value = parseZigIdentifierUncached(element)
-        CachedValueProvider.Result.create(value, element)
-    }
-}
-
-private fun parseZigIdentifierUncached(element: PsiElement): String? {
     assert(
         element.elementType === ZigTokenType.IDENTIFIER
                 || element.elementType === ZigElementType.IDENTIFIER
     )
     val text = element.text
     return if (text.startsWith('@')) {
-        ZigStringLiteralParser.parse(text.subSequence(1, text.length))
+        PARSED_IDENTIFIERS.getOrPut(text) {
+            ZigStringLiteralParser.parse(text.subSequence(1, text.length))
+        }
     } else {
         text
     }
