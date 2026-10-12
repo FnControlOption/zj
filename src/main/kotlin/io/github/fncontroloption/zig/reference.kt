@@ -76,9 +76,12 @@ class ZigTestReference(element: ZigTestDecl, val nameElement: PsiElement) :
 class ZigLabelReference(element: ZigLabelRef) :
     PsiReferenceBase<ZigLabelRef>(element, element.identifierElement.textRangeInParent, true) {
 
-    override fun resolve(): PsiElement? {
+    override fun resolve(): ZigLabelDecl? {
         val name = parseZigIdentifier(myElement.identifierElement) ?: return null
         for (parent in myElement.parents(withSelf = false)) {
+            if (parent is ZigContainer) {
+                break
+            }
             if (parent is ZigLabelable) {
                 val labelDecl = parent.labelDecl
                 if (labelDecl != null && parseZigIdentifier(labelDecl.identifierElement) == name) {

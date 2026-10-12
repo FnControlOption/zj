@@ -367,6 +367,9 @@ private fun fillTestVariants(element: ZigTestDecl, result: CompletionResultSet) 
 private fun fillLabelVariants(element: ZigLabelRef, result: CompletionResultSet) {
     val variants = mutableSetOf<LookupElement>()
     for (parent in element.parents(withSelf = false)) {
+        if (parent is ZigContainer) {
+            break
+        }
         if (parent is ZigLabelable) {
             val labelDecl = parent.labelDecl
             val label = parseZigIdentifier(labelDecl?.identifierElement)
