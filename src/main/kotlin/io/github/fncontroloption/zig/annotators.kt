@@ -249,13 +249,16 @@ private fun annotateShadow(element: PsiElement, holder: AnnotationHolder) {
                 ZigMutability.VAR -> "local variable"
             }
 
+        is ZigVarDecl, is ZigFnDecl -> "declaration"
+
         else -> return
     }
     val containingScope = when (namedElement) {
         is ZigFnParam -> namedElement.containingFunction
         is ZigPayloadItem -> namedElement.containingPayload.parent
         is ZigVarProto -> namedElement.containingAssignDestructure.parent
-        is ZigVarDecl -> namedElement.parent
+        is ZigVarDecl, is ZigFnDecl -> namedElement.parent
+        else -> throw IllegalStateException()
     }
     val candidates = identifierReferenceCandidates(containingScope)
     val shadowed = candidates.firstOrNull { it.name == name } ?: return
@@ -268,6 +271,9 @@ private fun annotateShadow(element: PsiElement, holder: AnnotationHolder) {
                 ZigMutability.VAR -> "local variable"
             }
             is ZigVarDecl, is ZigFnDecl -> {
+                if (kind == "declaration") {
+                    return
+                }
                 val message = buildString {
                     append(Strings.capitalize(kind))
                     append(" shadows declaration of '")
