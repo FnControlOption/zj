@@ -19,7 +19,6 @@ import com.intellij.ui.IconManager
 import com.intellij.util.BitUtil
 import com.intellij.util.IncorrectOperationException
 import io.github.fncontroloption.zig.*
-import java.util.regex.Pattern
 import javax.swing.Icon
 
 sealed interface ZigElement : PsiElement
@@ -855,10 +854,14 @@ private val PRIMITIVES = setOf(
     "void"
 )
 
-private val INT_PATTERN: Pattern = Pattern.compile("\\A[iu]\\d+\\Z")
-
 fun isZigPrimitiveText(chars: CharSequence): Boolean {
-    return PRIMITIVES.any { chars.contentEquals(it) } || INT_PATTERN.matcher(chars).matches()
+    if (PRIMITIVES.any { it.contentEquals(chars) }) {
+        return true
+    }
+    return when (chars.firstOrNull()) {
+        'i', 'u' -> chars.subSequence(1, chars.length).all { it in '0'..'9' }
+        else -> false
+    }
 }
 
 class ZigIdentifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
