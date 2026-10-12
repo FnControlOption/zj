@@ -56,6 +56,7 @@
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigShadowAnnotator"/>
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigAmbiguousReferenceAnnotator"/>
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigLabelRedefinitionAnnotator"/>
+    <externalAnnotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigAstCheckAnnotator"/>
     <completion.contributor language="ZIG"
                             implementationClass="io.github.fncontroloption.zig.ZigCompletionContributor"/>
     <lang.findUsagesProvider language="ZIG"

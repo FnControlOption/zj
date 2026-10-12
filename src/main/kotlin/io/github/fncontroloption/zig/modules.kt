@@ -124,12 +124,18 @@ class ZigModulesProjectService(private val project: Project) {
         val buildFile = findBuildZigFile() ?: return
         val buildFilePath = buildFile.toNioPath().toString()
         val printConfigArgs = arrayOf("build", "--build-file", buildFilePath, "--print-configuration-path")
-        val configPath = getZigExeOutput(sdk, *printConfigArgs)?.trimEnd() ?: return
+        val printResult = runZigExe(sdk, *printConfigArgs) ?: return
+        printResult.logErrors()
+        if (!printResult.success) return
+        val configPath = printResult.stdout.readText().trimEnd()
 
         val appService = ApplicationManager.getApplication().service<ZigModulesAppService>()
         val printModulesPath = appService.printModulesFilePath.toString()
         val printModulesArgs = arrayOf("run", printModulesPath, "--", configPath)
-        val modulesText = getZigExeOutput(sdk, *printModulesArgs) ?: return
+        val modulesResult = runZigExe(sdk, *printModulesArgs) ?: return
+        modulesResult.logErrors()
+        if (!modulesResult.success) return
+        val modulesText = modulesResult.stdout.readText()
 
         val modules = Json.decodeFromString<List<ZigModule>>(modulesText)
         cachedModules = modules.associateBy { it.index }

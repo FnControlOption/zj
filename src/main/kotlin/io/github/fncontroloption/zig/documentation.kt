@@ -283,7 +283,7 @@ private fun forEachContainerType(
     originalElement: PsiElement?,
     action: (IZigContainerType) -> Unit,
 ) {
-    when (val zigElement = originalElement?.findParentOfType<ZigElement>(strict = false)) {
+    when (val zigElement = originalElement?.findParentOfType<ZigElement>()) {
         is ZigFieldAccess -> {
             if (zigElement.identifierElement == originalElement) {
                 val leftValue = ZigAnalyzer.resolveValue(zigElement.leftOperand)

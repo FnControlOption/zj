@@ -15,6 +15,7 @@ import com.intellij.openapi.util.io.FileUtilRt
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.findDirectory
 import org.jdom.Element
+import java.io.File
 import java.io.IOException
 import java.nio.file.Path
 import kotlin.io.path.Path
@@ -46,7 +47,10 @@ class ZigSdkType : SdkType("ZigSdk") {
     override fun getIcon() = ZigIcons.ZIG
 
     override fun getVersionString(sdkHome: String): String? {
-        return getZigExeOutput(sdkHome, "version")?.trimEnd()
+        val result = runZigExe(sdkHome, "version") ?: return null
+        result.logErrors()
+        if (!result.success) return null
+        return result.stdout.readText().trimEnd()
     }
 
     override fun setupSdkPaths(sdk: Sdk) {
@@ -105,16 +109,32 @@ private fun getPossibleZigExePaths(sdkHome: String): Array<Path> {
     )
 }
 
-internal fun getZigExeOutput(sdk: Sdk, vararg args: String): String? {
+internal class ZigExeResult(
+    val exe: Path,
+    val stdout: File,
+    val stderr: File,
+    val exitCode: Int,
+) {
+    val success: Boolean
+        get() = exitCode == 0
+
+    fun logErrors() {
+        if (stderr.length() > 0) {
+            log.error(exe.toString(), stderr.readText())
+        }
+    }
+}
+
+internal fun runZigExe(sdk: Sdk, vararg args: String): ZigExeResult? {
     if (sdk.sdkType is ZigSdkType) {
         val sdkHome = sdk.homePath ?: return null
-        return getZigExeOutput(sdkHome, *args)
+        return runZigExe(sdkHome, *args)
     }
     return null
 }
 
 /** @see org.jetbrains.jps.model.java.impl.JdkVersionDetectorImpl.detectFromOutput */
-private fun getZigExeOutput(sdkHome: String, vararg args: String): String? {
+private fun runZigExe(sdkHome: String, vararg args: String): ZigExeResult? {
     for (zigExe in getPossibleZigExePaths(sdkHome)) {
         if (!zigExe.isExecutable()) {
             continue
@@ -143,13 +163,7 @@ private fun getZigExeOutput(sdkHome: String, vararg args: String): String? {
             process.destroy()
             return null
         }
-        if (stderr.length() > 0) {
-            log.error(zigExe.toString(), stderr.readText())
-        }
-        if (exitCode != 0) {
-            return null
-        }
-        return stdout.readText()
+        return ZigExeResult(zigExe, stdout, stderr, exitCode)
     }
     return null
 }
