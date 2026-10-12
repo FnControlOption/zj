@@ -7,6 +7,7 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.text.Strings
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiRecursiveElementVisitor
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.SearchScope
@@ -22,6 +23,98 @@ class ZigUnusedAnnotator : Annotator, DumbAware {
     }
 }
 
+private class UnusedVisitor : PsiRecursiveElementVisitor() {
+    val allNamed = mutableMapOf<PsiElement, String>()
+    val usedNamed = mutableSetOf<PsiElement>()
+    val allLabels = mutableMapOf<ZigLabelDecl, String>()
+    val usedLabels = mutableSetOf<ZigLabelDecl>()
+
+    override fun visitElement(element: PsiElement) {
+        when (element) {
+            is ZigPayloadItem -> {
+                element.nameIdentifier?.let {
+                    if (it.textMatches("_")) return@let
+                    allNamed[it] = "capture"
+                }
+                // This is a leaf element, so no need to call super.visitElement
+            }
+
+            is ZigFnParam -> {
+                element.nameIdentifier?.let {
+                    if (it.textMatches("_")) return@let
+                    if (element.containingFunction.body == null) return@let
+                    allNamed[it] = "function parameter"
+                }
+                super.visitElement(element)
+            }
+
+            is ZigVarDeclOrProto -> {
+                element.nameIdentifier?.let {
+                    if (it.textMatches("_")) return@let
+                    if (!element.isLocal) return@let
+                    allNamed[it] = when (element.mutability) {
+                        ZigMutability.CONST -> "local constant"
+                        ZigMutability.VAR -> "local variable"
+                    }
+                }
+                super.visitElement(element)
+            }
+
+            is ZigIdentifier -> {
+                usedNamed +=
+                    resolveReferences(element)
+                        .filterIsInstance<ZigNameIdentifierOwner>()
+                        .mapNotNull { it.nameIdentifier }
+                // This is a leaf element, so no need to call super.visitElement
+            }
+
+            is ZigLabelable -> {
+                element.labelDecl?.let {
+                    allLabels[it] = when (element) {
+                        is ZigBlock -> "block"
+                        is ZigFor -> "for loop"
+                        is ZigWhile -> "while loop"
+                        is ZigSwitch -> "switch"
+                    }
+                }
+                super.visitElement(element)
+            }
+
+            is ZigLabelRef -> {
+                val labelDecl = ZigLabelReference(element).resolve() ?: return
+                usedLabels.add(labelDecl)
+                // This is a leaf element, so no need to call super.visitElement
+            }
+
+            else ->  {
+                super.visitElement(element)
+            }
+        }
+    }
+}
+
+private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
+    if (element !is ZigFile) return
+    val visitor = UnusedVisitor()
+    element.accept(visitor)
+    for ((identifier, kind) in visitor.allNamed) {
+        if (identifier in visitor.usedNamed) continue
+        holder.newAnnotation(HighlightSeverity.ERROR, "Unused $kind")
+            // TODO: .problemGroup {}
+            .range(identifier)
+            // TODO: .newFix().registerFix()
+            .create()
+    }
+    for ((labelDecl, kind) in visitor.allLabels) {
+        if (labelDecl in visitor.usedLabels) continue
+        holder.newAnnotation(HighlightSeverity.ERROR, "Unused $kind label")
+            // TODO: .problemGroup {}
+            .range(labelDecl.nameIdentifier)
+            .create()
+    }
+}
+
+/* TODO: delete
 private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
     val namedElement = element as? ZigNameIdentifierOwner ?: return
     val nameIdentifier = namedElement.nameIdentifier ?: return
@@ -57,6 +150,7 @@ private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
             .create()
     }
 }
+*/
 
 class ZigUnderscoreIdentifierAnnotator : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
