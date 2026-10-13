@@ -306,7 +306,7 @@ private fun fillIdentifierVariants(element: ZigIdentifier, result: CompletionRes
                     else -> getFunctionParamTypes(element, type.typeParams)
                 }
                 val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
-                    is ZigContainerType -> receiverType.element == candidate.parent
+                    is ZigContainerType -> receiverType.container.dereference() == candidate.parent
                     else -> false
                 }
                 variants.add(
@@ -350,7 +350,7 @@ private fun fillTestVariants(element: ZigTestDecl, result: CompletionResultSet) 
                     else -> getFunctionParamTypes(element, type.typeParams).component2()
                 }
                 val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
-                    is ZigContainerType -> receiverType.element == candidate.parent
+                    is ZigContainerType -> receiverType.container.dereference() == candidate.parent
                     else -> false
                 }
                 if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function

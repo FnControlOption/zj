@@ -24,8 +24,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
 
     fun testContainer() {
         val type = resolveValue("struct { foo: u42 }").requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.STRUCT, type.element.containerKind)
-        val members = type.element.members.toList()
+        assertEquals(ZigContainerKind.STRUCT, type.containerKind)
+        val members = type.members.toList()
         assertSize(1, members)
         val field = members[0].requireIs<ZigContainerFieldImpl>()
         assertEquals("foo", field.name)
@@ -40,7 +40,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
     fun testOptionalType() {
         val type = resolveValue("?struct { foo: u42 }").requireIs<ZigOptionalType>()
         val child = type.child.requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.STRUCT, child.element.containerKind)
+        assertEquals(ZigContainerKind.STRUCT, child.containerKind)
     }
 
     fun testErrorSet() {
@@ -127,7 +127,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val value = resolveValue("enum { foo, bar }.foo").requireIs<ZigEnumLiteralValue>()
         assertEquals("foo", value.name)
         val type = value.typeOf.requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
     }
 
     fun testDeclAccessConstWithType() {
@@ -138,7 +138,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
     }
 
     fun testDeclAccessVarWithType() {
@@ -149,7 +149,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
     }
 
     fun testDeclAccessConstOfType() {
@@ -159,7 +159,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             }.Foo
         """.trimIndent()
         val type = resolveValue(text).requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
     }
 
     fun testDeclAccessVarOfType() {
@@ -181,7 +181,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
     }
 
     fun testDeclAccessVarWithoutType() {
@@ -193,7 +193,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
     }
 
     fun testFieldAccessTuple() {
@@ -253,7 +253,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             }
         """.trimIndent()
         val type = resolveValue(text).requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
     }
 
     fun testUnwrapUnionInferredTagType() {
