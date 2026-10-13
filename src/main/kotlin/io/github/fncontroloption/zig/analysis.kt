@@ -216,23 +216,20 @@ object ZigAnalyzer {
         return psiFile as? ZigFile
     }
 
-    fun forEachFieldAccessContainer(
-        leftValue: ZigValue,
-        action: (IZigContainerType, isInstance: Boolean) -> Unit,
-    ) {
-        leftValue.forEachValue { left ->
+    fun fieldAccessContainers(leftValue: ZigValue): Sequence<Pair<IZigContainerType, Boolean>> {
+        return leftValue.asValueSequence().mapNotNull { left ->
             when (left) {
-                is IZigContainerType -> action(left, false)
+                is IZigContainerType -> Pair(left, false)
                 else -> when (val typeOfLeft = left.typeOf) {
-                    is IZigContainerType -> action(typeOfLeft, true)
+                    is IZigContainerType -> Pair(typeOfLeft, true)
                     is ZigPointerType -> when (typeOfLeft.size) {
                         ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
-                            is IZigContainerType -> action(pointerChild, true)
-                            else -> {}
+                            is IZigContainerType -> Pair(pointerChild, true)
+                            else -> null
                         }
-                        else -> {}
+                        else -> null
                     }
-                    else -> {}
+                    else -> null
                 }
             }
         }
@@ -319,6 +316,7 @@ sealed interface ZigValue {
     fun mapValue(transform: (ZigValue) -> ZigValue): ZigValue = transform(this)
     fun forEachValue(action: (ZigValue) -> Unit): Unit = action(this)
     fun anyValue(predicate: (ZigValue) -> Boolean): Boolean = predicate(this)
+    fun asValueSequence(): Sequence<ZigValue> = sequenceOf(this)
 
     override fun equals(other: Any?): Boolean
     override fun hashCode(): Int
@@ -392,6 +390,10 @@ data class ZigMultiValue private constructor(val values: Set<ZigValue>) : ZigVal
 
     override fun anyValue(predicate: (ZigValue) -> Boolean): Boolean {
         return values.any { it.anyValue(predicate) }
+    }
+
+    override fun asValueSequence(): Sequence<ZigValue> {
+        return values.asSequence().flatMap { it.asValueSequence() }
     }
 
     companion object {

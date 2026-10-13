@@ -412,7 +412,7 @@ private fun fillFieldAccessVariants(
             )
         }
     }
-    ZigAnalyzer.forEachFieldAccessContainer(leftValue) { containerType, isInstance ->
+    for ((containerType, isInstance) in ZigAnalyzer.fieldAccessContainers(leftValue)) {
         for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
             val name = member.name ?: continue
             if (member is ZigContainerField) {
