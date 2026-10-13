@@ -549,13 +549,15 @@ data class ZigContainerType(
 }
 
 data class ZigFunctionType(
-    val element: ZigFnDeclOrProto,
+    val function: SmartPsiElementPointer<ZigFnDeclOrProto>,
     val typeParams: Map<ZigFnParam, ZigValue?>,
 ) : ZigValue {
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
     override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
+        val element = function.dereference()
+            ?: return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
         val builder = HtmlBuilder()
         builder.append(createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "fn"))
         builder.append(" (")
@@ -1133,7 +1135,7 @@ private fun computeValueUncached(element: ZigExpression): ZigValue {
             -> resolvePlace(element).value
 
         is ZigContainerExpression -> computeContainerExpression(element)
-        is ZigFnProto -> ZigFunctionType(element, findUnboundTypeParams(element))
+        is ZigFnProto -> ZigFunctionType(element.createSmartPointer(), findUnboundTypeParams(element))
         is ZigOptionalTypeExpression -> computeOptionalTypeExpression(element)
         is ZigErrorSet -> computeErrorSet(element)
         is ZigErrorValueExpression -> computeErrorValueExpression(element)
@@ -1343,14 +1345,15 @@ private fun findUnboundTypeParams(element: ZigElement): Map<ZigFnParam, ZigValue
 }
 
 private fun computeTypeParams(
-    function: ZigFunctionType,
+    type: ZigFunctionType,
     arguments: Sequence<ZigValue?>,
 ): Map<ZigFnParam, ZigValue?> {
-    if (function.typeParams.isEmpty()) {
+    val element = type.function.dereference() ?: return emptyMap()
+    if (type.typeParams.isEmpty()) {
         return emptyMap()
     }
-    return function.typeParams.toMutableMap().apply {
-        for ((paramDecl, argValues) in function.element.parameters.zip(arguments)) {
+    return type.typeParams.toMutableMap().apply {
+        for ((paramDecl, argValues) in element.parameters.zip(arguments)) {
             if (ZigAnalyzer.createGenericParameterValue(paramDecl) != null) {
                 this[paramDecl] = argValues
             }
@@ -1404,7 +1407,7 @@ private fun substituteFunctionTypeParams(
     return if (type.typeParams.isEmpty()) {
         type
     } else {
-        ZigFunctionType(type.element, type.typeParams + typeParams)
+        ZigFunctionType(type.function, type.typeParams + typeParams)
     }
 }
 
@@ -1583,7 +1586,7 @@ private fun resolveValueFromReferenceTo(target: ZigNamedElement): ZigValue {
 private fun computeValueFromReferenceUncached(target: ZigNamedElement): ZigValue {
     return when (target) {
         is ZigFile -> ZigContainerType(target, emptyMap())
-        is ZigFnDecl -> computeFnDecl(target)
+        is ZigFnDecl -> ZigUnknown.of(ZigFunctionType(target.createSmartPointer(), findUnboundTypeParams(target)))
         is ZigVarDecl -> computeVarDecl(target)
         is ZigVarProto -> computeVarProto(target)
         is ZigFnParam -> computeFnParam(target)
@@ -1598,7 +1601,8 @@ private fun computeFunctionReturnValue(
     type: ZigFunctionType,
     arguments: Sequence<ZigValue?>,
 ): ZigValue {
-    val functionElement = type.element
+    val functionElement = type.function.dereference()
+        ?: return ZigUnknown.ofUnknownType()
     if (functionElement is ZigFnDecl
         && functionElement.containingFile.name == "meta.zig"
         && functionElement.containingFile.containingDirectory?.name == "std"
@@ -2456,10 +2460,6 @@ private fun computeEnumLiteral(element: ZigEnumLiteral): ZigValue {
     }
 }
 
-private fun computeFnDecl(target: ZigFnDecl): ZigValue {
-    return ZigUnknown.of(ZigFunctionType(target, findUnboundTypeParams(target)))
-}
-
 private fun computeVarDecl(target: ZigVarDecl): ZigValue {
     val typeElement = target.typeElement?.expression
     if (typeElement != null) {
@@ -3154,12 +3154,12 @@ private fun inferCallArg(
         val argIndex = callElement.argumentElements.indexOf(parentElement)
         assert(argIndex >= 0)
         return mapCalledFuncAndArgs(callElement) blk@{ function, isMethod, arguments ->
-            val functionType = function.typeOf
-            if (functionType !is ZigFunctionType) {
-                return@blk ZigUnknown.of(ZigTypeType)
-            }
+            val functionType = function.typeOf as? ZigFunctionType
+                ?: return@blk ZigUnknown.of(ZigTypeType)
+            val functionElement = functionType.function.dereference()
+                ?: return@blk ZigUnknown.of(ZigTypeType)
             val paramIndex = if (isMethod) argIndex + 1 else argIndex
-            val paramElement = functionType.element.parameters.elementAtOrNull(paramIndex)
+            val paramElement = functionElement.parameters.elementAtOrNull(paramIndex)
                 ?: return@blk ZigUnknown.of(ZigTypeType)
             var value = resolveValue(paramElement.typeElement?.expression, ZigTypeType)
             val typeParams = computeTypeParams(functionType, arguments)

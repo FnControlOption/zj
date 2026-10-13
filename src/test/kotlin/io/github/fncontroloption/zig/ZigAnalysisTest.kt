@@ -33,7 +33,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
 
     fun testFunctionType() {
         val type = resolveValue("fn (u42) bool").requireIs<ZigFunctionType>()
-        assertEquals("bool", type.element.returnTypeElement?.text)
+        val element = type.function.dereference()!!
+        assertEquals("bool", element.returnTypeElement?.text)
     }
 
     fun testOptionalType() {
@@ -209,7 +210,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigFunctionType>()
-        assertEquals("bool", type.element.returnTypeElement?.text)
+        val element = type.function.dereference()!!
+        assertEquals("bool", element.returnTypeElement?.text)
     }
 
     fun testFunctionCall() {

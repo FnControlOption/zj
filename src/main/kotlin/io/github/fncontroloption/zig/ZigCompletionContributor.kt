@@ -146,22 +146,16 @@ private object FieldInitInsertHandler : InsertHandler<LookupElement> {
 }
 
 internal fun getFunctionParamTypes(
-    functionType: ZigFunctionType,
-    typeParams: Map<ZigFnParam, ZigValue?> = functionType.typeParams,
-): Pair<List<ZigFnParam>, List<ZigValue?>> {
-    return getFunctionParamTypes(functionType.element, typeParams)
-}
-
-internal fun getFunctionParamTypes(
     functionElement: ZigFnOrBuiltinFnDeclOrProto,
     typeParams: Map<ZigFnParam, ZigValue?>,
-): Pair<List<ZigFnParam>, List<ZigValue?>> {
-    return functionElement.parameters.map { param ->
+): Triple<List<ZigFnParam>, List<ZigValue?>, Boolean> {
+    val (params, paramTypes) = functionElement.parameters.map { param ->
         param to param.typeElement?.expression?.let {
             val initialValue = ZigAnalyzer.resolveValue(it)
             ZigAnalyzer.substituteTypeParams(initialValue, typeParams)
         }
     }.unzip()
+    return Triple(params, paramTypes, functionElement.hasVarargs)
 }
 
 private fun getFunctionReceiverType(paramTypes: List<ZigValue?>): ZigValue? {
@@ -214,7 +208,8 @@ internal fun getParameterText(param: ZigFnParam, type: ZigValue?): String {
 }
 
 private fun getFunctionTypeText(functionType: ZigFunctionType): String {
-    return getFunctionTypeText(functionType.element, functionType.typeParams)
+    val element = functionType.function.dereference() ?: return "_"
+    return getFunctionTypeText(element, functionType.typeParams)
 }
 
 private fun getFunctionTypeText(
@@ -306,8 +301,10 @@ private fun fillIdentifierVariants(element: ZigIdentifier, result: CompletionRes
         val name = candidate.name ?: continue
         when (val type = ZigAnalyzer.resolveValueFromReferenceTo(candidate).typeOf) {
             is ZigFunctionType -> {
-                val (params, paramTypes) = getFunctionParamTypes(type)
-                val hasVarargs = type.element.hasVarargs
+                val (params, paramTypes, hasVarargs) = when (val element = type.function.dereference()) {
+                    null -> Triple(emptyList(), emptyList(), true)
+                    else -> getFunctionParamTypes(element, type.typeParams)
+                }
                 val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
                     is ZigContainerType -> receiverType.element == candidate.parent
                     else -> false
@@ -348,7 +345,10 @@ private fun fillTestVariants(element: ZigTestDecl, result: CompletionResultSet) 
         }
         val icon = when (val type = ZigAnalyzer.resolveValueFromReferenceTo(candidate).typeOf) {
             is ZigFunctionType -> {
-                val (_, paramTypes) = getFunctionParamTypes(type)
+                val paramTypes = when (val element = type.function.dereference()) {
+                    null -> emptyList()
+                    else -> getFunctionParamTypes(element, type.typeParams).component2()
+                }
                 val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
                     is ZigContainerType -> receiverType.element == candidate.parent
                     else -> false
@@ -455,8 +455,10 @@ private fun fillFieldAccessVariants(
             val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
             when (val type = value.typeOf) {
                 is ZigFunctionType -> {
-                    var (params, paramTypes) = getFunctionParamTypes(type, containerType.typeParams)
-                    val hasVarargs = type.element.hasVarargs
+                    var (params, paramTypes, hasVarargs) = when (val element = type.function.dereference()) {
+                        null -> Triple(emptyList(), emptyList(), true)
+                        else -> getFunctionParamTypes(element, containerType.typeParams)
+                    }
                     val isMethod = getFunctionReceiverType(paramTypes) == containerType
                     if (isInstance) {
                         if (!isMethod) {
@@ -590,8 +592,10 @@ private fun fillEnumLiteralVariants(
             when (val type = value.typeOf) {
                 is ZigFunctionType -> {
                     // TODO: check if return type can coerce to original type
-                    val (params, paramTypes) = getFunctionParamTypes(type, containerType.typeParams)
-                    val hasVarargs = type.element.hasVarargs
+                    val (params, paramTypes, hasVarargs) = when (val element = type.function.dereference()) {
+                        null -> Triple(emptyList(), emptyList(), true)
+                        else -> getFunctionParamTypes(element, containerType.typeParams)
+                    }
                     val isMethod = getFunctionReceiverType(paramTypes) == containerType
                     variants.add(
                         buildLookupElement(member, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
