@@ -116,7 +116,7 @@ private class ZigPsiDocumentationTarget(
             }
             ZigMultiValue.from(values).forEachValue { value ->
                 val chunk = when (value) {
-                    is ZigAnytypeParameterValue if value.element == element -> {
+                    is ZigAnytypeParameterValue if value.param.dereference() == element -> {
                         createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "anytype")
                     }
                     is ZigUnknown -> {

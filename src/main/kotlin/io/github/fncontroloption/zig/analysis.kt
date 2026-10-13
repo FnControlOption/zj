@@ -11,10 +11,7 @@ import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.util.text.Strings
 import com.intellij.openapi.vfs.findDirectory
 import com.intellij.openapi.vfs.findFile
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiManager
-import com.intellij.psi.SyntaxTraverser
+import com.intellij.psi.*
 import com.intellij.psi.util.*
 import org.jsoup.Jsoup
 
@@ -167,13 +164,13 @@ object ZigAnalyzer {
 
     fun createGenericParameterValue(param: ZigFnParam): ZigGenericParameterValue? {
         if (param.isAnytype) {
-            return ZigAnytypeParameterValue(param)
+            return ZigAnytypeParameterValue(param.createSmartPointer())
         }
         val typeElement = param.typeElement?.expression ?: return null
         val type = resolveValue(typeElement, ZigTypeType)
         val isComptime = param.isComptime || type == ZigTypeType
         if (isComptime) {
-            return ZigComptimeParameterValue(type, param)
+            return ZigComptimeParameterValue(type, param.createSmartPointer())
         }
         return null
     }
@@ -582,30 +579,38 @@ data class ZigFunctionType(
 }
 
 sealed interface ZigGenericParameterValue : ZigValue {
-    val element: ZigFnParam
+    val param: SmartPsiElementPointer<ZigFnParam>
 }
 
 data class ZigComptimeParameterValue(
     override val typeOf: ZigValue,
-    override val element: ZigFnParam,
+    override val param: SmartPsiElementPointer<ZigFnParam>,
 ) : ZigGenericParameterValue {
-    override fun toHtmlChunk(truncate: Boolean) =
-        createNamedHtmlChunk(
+    override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
+        val element = param.dereference()
+            ?: return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
+        return createNamedHtmlChunk(
             element,
             ZigHighlightingColors.COMPTIME_PARAMETER,
             ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING,
         )
+    }
 }
 
-data class ZigAnytypeParameterValue(override val element: ZigFnParam) : ZigGenericParameterValue {
+data class ZigAnytypeParameterValue(
+    override val param: SmartPsiElementPointer<ZigFnParam>,
+) : ZigGenericParameterValue {
     override val typeOf = ZigAnytypeParameterType(this)
 
-    override fun toHtmlChunk(truncate: Boolean) =
-        createNamedHtmlChunk(
+    override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
+        val element = param.dereference()
+            ?: return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
+        return createNamedHtmlChunk(
             element,
             ZigHighlightingColors.PARAMETER,
             ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING,
         )
+    }
 }
 
 data class ZigAnytypeParameterType(val value: ZigAnytypeParameterValue) : ZigValue {
@@ -1425,7 +1430,7 @@ private fun substituteTypeParams(
                 substituteFunctionTypeParams(value, typeParams)
             }
             is ZigGenericParameterValue -> {
-                val arg = typeParams[value.element]
+                val arg = value.param.dereference()?.let { typeParams[it] }
                 if (arg == null) {
                     value
                 } else {
