@@ -13,6 +13,7 @@ import com.intellij.openapi.vfs.findDirectory
 import com.intellij.openapi.vfs.findFile
 import com.intellij.psi.*
 import com.intellij.psi.util.*
+import com.intellij.util.containers.Interner
 import org.jsoup.Jsoup
 
 private val PRIMITIVE_VALUES = mapOf(
@@ -20,23 +21,23 @@ private val PRIMITIVE_VALUES = mapOf(
     //"anyframe",
     "anyopaque" to ZigAnyopaqueType,
     "bool" to ZigBoolType,
-    "c_int" to ZigCIntType(ZigSignedness.SIGNED),
-    "c_long" to ZigCLongType(ZigSignedness.SIGNED),
+    "c_int" to ZigCIntType.of(ZigSignedness.SIGNED),
+    "c_long" to ZigCLongType.of(ZigSignedness.SIGNED),
     "c_longdouble" to ZigCLongDoubleType,
-    "c_longlong" to ZigCLongLongType(ZigSignedness.SIGNED),
+    "c_longlong" to ZigCLongLongType.of(ZigSignedness.SIGNED),
     "c_char" to ZigCCharType,
-    "c_short" to ZigCShortType(ZigSignedness.SIGNED),
-    "c_uint" to ZigCIntType(ZigSignedness.UNSIGNED),
-    "c_ulong" to ZigCLongType(ZigSignedness.UNSIGNED),
-    "c_ulonglong" to ZigCLongLongType(ZigSignedness.UNSIGNED),
-    "c_ushort" to ZigCShortType(ZigSignedness.UNSIGNED),
+    "c_short" to ZigCShortType.of(ZigSignedness.SIGNED),
+    "c_uint" to ZigCIntType.of(ZigSignedness.UNSIGNED),
+    "c_ulong" to ZigCLongType.of(ZigSignedness.UNSIGNED),
+    "c_ulonglong" to ZigCLongLongType.of(ZigSignedness.UNSIGNED),
+    "c_ushort" to ZigCShortType.of(ZigSignedness.UNSIGNED),
     "comptime_float" to ZigComptimeFloatType,
     "comptime_int" to ZigComptimeIntType,
-    "f128" to ZigFixedFloatType(128),
-    "f16" to ZigFixedFloatType(16),
-    "f32" to ZigFixedFloatType(32),
-    "f64" to ZigFixedFloatType(64),
-    "f80" to ZigFixedFloatType(80),
+    "f128" to ZigFixedFloatType.of(128),
+    "f16" to ZigFixedFloatType.of(16),
+    "f32" to ZigFixedFloatType.of(32),
+    "f64" to ZigFixedFloatType.of(64),
+    "f80" to ZigFixedFloatType.of(80),
     "false" to ZigFalseValue,
     "isize" to ZigIsizeType,
     "noreturn" to ZigNoreturnType,
@@ -160,20 +161,20 @@ object ZigAnalyzer {
         }
         val tagElement = element.containerArgElement ?: return null
         if (tagElement.isInferredEnum) {
-            return ZigInferredUnionTagType(type)
+            return ZigInferredUnionTagType.of(type)
         }
         return resolveValue(tagElement.expression, ZigTypeType)
     }
 
     fun createGenericParameterValue(param: ZigFnParam): ZigGenericParameterValue? {
         if (param.isAnytype) {
-            return ZigAnytypeParameterValue(param.createSmartPointer())
+            return ZigAnytypeParameterValue.of(param.createSmartPointer())
         }
         val typeElement = param.typeElement?.expression ?: return null
         val type = resolveValue(typeElement, ZigTypeType)
         val isComptime = param.isComptime || type == ZigTypeType
         if (isComptime) {
-            return ZigComptimeParameterValue(type, param.createSmartPointer())
+            return ZigComptimeParameterValue.of(type, param.createSmartPointer())
         }
         return null
     }
@@ -260,10 +261,18 @@ sealed interface ZigPlace {
     override fun hashCode(): Int
     override fun toString(): String
 
-    data class Single(
+    @ConsistentCopyVisibility
+    data class Single private constructor(
         override val mutability: ZigMutability?,
         override val value: ZigValue,
     ) : ZigPlace {
+        companion object {
+            fun of(
+                mutability: ZigMutability?,
+                value: ZigValue,
+            ) = intern(Single(mutability, value))
+        }
+
         override fun mapPlace(transform: (ZigPlace) -> ZigPlace): ZigPlace = transform(this)
     }
 
@@ -284,14 +293,21 @@ sealed interface ZigPlace {
         companion object {
             fun from(places: Set<ZigPlace>): ZigPlace {
                 if (places.isEmpty()) return unknown()
-                return places.singleOrNull() ?: Multi(places)
+                return places.singleOrNull() ?: intern(Multi(places))
             }
         }
     }
 
     companion object {
-        fun constant(value: ZigValue) = Single(ZigMutability.CONST, value)
-        fun unknown() = Single(null, ZigUnknown.ofUnknownType())
+        private val interner = Interner.createWeakInterner<ZigPlace>()
+
+        @Suppress("UNCHECKED_CAST")
+        fun <T : ZigPlace> intern(place: T) = interner.intern(place) as T
+
+        fun constant(value: ZigValue) = Single.of(ZigMutability.CONST, value)
+
+        fun unknown() = UNKNOWN
+        val UNKNOWN by lazy { Single.of(null, ZigUnknown.ofUnknownType()) }
     }
 }
 
@@ -307,6 +323,13 @@ sealed interface ZigValue {
     override fun equals(other: Any?): Boolean
     override fun hashCode(): Int
     override fun toString(): String
+
+    companion object {
+        private val interner = Interner.createWeakInterner<ZigValue>()
+
+        @Suppress("UNCHECKED_CAST")
+        fun <T : ZigValue> intern(value: T) = interner.intern(value) as T
+    }
 }
 
 @ConsistentCopyVisibility
@@ -328,17 +351,21 @@ data class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigVa
     companion object {
         fun of(type: ZigValue): ZigValue {
             return when (type) {
+                TYPE -> VALUE
+                ZigTypeType -> TYPE
                 ZigNullType -> ZigNullValue
                 ZigUndefinedType -> ZigUndefinedValue
                 ZigVoidType -> ZigVoidValue
-                is ZigFixedIntType if type.bits == 0 -> ZigIntValue(type, 0)
-                is ZigErrorSetType if type.names.size == 1 -> ZigErrorSetValue(type, type.names.first())
-                is ZigMultiValue -> type.mapValue { ZigUnknown(it) }
-                else -> ZigUnknown(type)
+                is ZigFixedIntType if type.bits == 0 -> ZigIntValue.of(type, 0)
+                is ZigErrorSetType if type.names.size == 1 -> ZigErrorSetValue.of(type, type.names.first())
+                is ZigMultiValue -> type.mapValue { of(it) }
+                else -> ZigValue.intern(ZigUnknown(type))
             }
         }
 
-        fun ofUnknownType() = ZigUnknown(ZigUnknown(ZigTypeType))
+        val TYPE = ZigValue.intern(ZigUnknown(ZigTypeType))
+        val VALUE = ZigValue.intern(ZigUnknown(TYPE))
+        fun ofUnknownType() = VALUE
 
         private const val DEBUG = false
     }
@@ -370,7 +397,7 @@ data class ZigMultiValue private constructor(val values: Set<ZigValue>) : ZigVal
     companion object {
         fun from(values: Set<ZigValue>, expectedType: ZigValue? = null): ZigValue {
             if (values.isNotEmpty()) {
-                return values.singleOrNull() ?: ZigMultiValue(values)
+                return values.singleOrNull() ?: ZigValue.intern(ZigMultiValue(values))
             }
             if (expectedType != null) {
                 return ZigUnknown.of(expectedType)
@@ -491,7 +518,13 @@ data object ZigEnumLiteralType : ZigValue {
     )
 }
 
-data class ZigEnumLiteralValue(override val typeOf: ZigValue, val name: String) : ZigValue {
+@ConsistentCopyVisibility
+data class ZigEnumLiteralValue private constructor(override val typeOf: ZigValue, val name: String) : ZigValue {
+    companion object {
+        fun of(typeOf: ZigValue, name: String) =
+            ZigValue.intern(ZigEnumLiteralValue(typeOf, name))
+    }
+
     override fun toHtmlChunk(truncate: Boolean) = when (typeOf) {
         ZigEnumLiteralType -> HtmlChunk.fragment(
             HtmlChunk.text("."),
@@ -521,10 +554,18 @@ sealed interface IZigContainerType : ZigValue {
     fun getNamedMembersVisibleFrom(originalFile: PsiFile): Sequence<ZigNamedContainerMember>
 }
 
-data class ZigContainerType(
+@ConsistentCopyVisibility
+data class ZigContainerType private constructor(
     val container: SmartPsiElementPointer<ZigContainer>,
     override val typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
 ) : IZigContainerType {
+    companion object {
+        fun of(
+            container: SmartPsiElementPointer<ZigContainer>,
+            typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+        ) = ZigValue.intern(ZigContainerType(container, typeParams))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
@@ -565,10 +606,18 @@ data class ZigContainerType(
     }
 }
 
-data class ZigFunctionType(
+@ConsistentCopyVisibility
+data class ZigFunctionType private constructor(
     val function: SmartPsiElementPointer<ZigFnDeclOrProto>,
     val typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
 ) : ZigValue {
+    companion object {
+        fun of(
+            function: SmartPsiElementPointer<ZigFnDeclOrProto>,
+            typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+        ) = ZigValue.intern(ZigFunctionType(function, typeParams))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
@@ -601,10 +650,18 @@ sealed interface ZigGenericParameterValue : ZigValue {
     val param: SmartPsiElementPointer<ZigFnParam>
 }
 
-data class ZigComptimeParameterValue(
+@ConsistentCopyVisibility
+data class ZigComptimeParameterValue private constructor(
     override val typeOf: ZigValue,
     override val param: SmartPsiElementPointer<ZigFnParam>,
 ) : ZigGenericParameterValue {
+    companion object {
+        fun of(
+            typeOf: ZigValue,
+            param: SmartPsiElementPointer<ZigFnParam>,
+        ) = ZigValue.intern(ZigComptimeParameterValue(typeOf, param))
+    }
+
     override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
         val element = param.dereference()
             ?: return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
@@ -616,10 +673,16 @@ data class ZigComptimeParameterValue(
     }
 }
 
-data class ZigAnytypeParameterValue(
+@ConsistentCopyVisibility
+data class ZigAnytypeParameterValue private constructor(
     override val param: SmartPsiElementPointer<ZigFnParam>,
 ) : ZigGenericParameterValue {
-    override val typeOf = ZigAnytypeParameterType(this)
+    companion object {
+        fun of(param: SmartPsiElementPointer<ZigFnParam>) =
+            ZigValue.intern(ZigAnytypeParameterValue(param))
+    }
+
+    override val typeOf = ZigAnytypeParameterType.of(this)
 
     override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
         val element = param.dereference()
@@ -632,7 +695,13 @@ data class ZigAnytypeParameterValue(
     }
 }
 
-data class ZigAnytypeParameterType(val value: ZigAnytypeParameterValue) : ZigValue {
+@ConsistentCopyVisibility
+data class ZigAnytypeParameterType private constructor(val value: ZigAnytypeParameterValue) : ZigValue {
+    companion object {
+        fun of(value: ZigAnytypeParameterValue) =
+            ZigValue.intern(ZigAnytypeParameterType(value))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
@@ -646,14 +715,26 @@ data class ZigAnytypeParameterType(val value: ZigAnytypeParameterValue) : ZigVal
     }
 }
 
-data class ZigOptionalType(val child: ZigValue) : ZigValue {
+@ConsistentCopyVisibility
+data class ZigOptionalType private constructor(val child: ZigValue) : ZigValue {
+    companion object {
+        fun of(child: ZigValue) =
+            ZigValue.intern(ZigOptionalType(child))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
     override fun toHtmlChunk(truncate: Boolean) = HtmlChunk.fragment(HtmlChunk.text("?"), child.toHtmlChunk(truncate))
 }
 
-data class ZigErrorSetType(val names: Set<String>) : ZigValue {
+@ConsistentCopyVisibility
+data class ZigErrorSetType private constructor(val names: Set<String>) : ZigValue {
+    companion object {
+        fun of(names: Set<String>) =
+            ZigValue.intern(ZigErrorSetType(names))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
@@ -678,7 +759,13 @@ data class ZigErrorSetType(val names: Set<String>) : ZigValue {
     }
 }
 
-data class ZigErrorSetValue(override val typeOf: ZigErrorSetType, val name: String) : ZigValue {
+@ConsistentCopyVisibility
+data class ZigErrorSetValue private constructor(override val typeOf: ZigErrorSetType, val name: String) : ZigValue {
+    companion object {
+        fun of(typeOf: ZigErrorSetType, name: String) =
+            ZigValue.intern(ZigErrorSetValue(typeOf, name))
+    }
+
     override fun toHtmlChunk(truncate: Boolean) = when (typeOf.names.singleOrNull()) {
         name -> HtmlChunk.fragment(
             createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "error"),
@@ -698,7 +785,13 @@ data class ZigErrorSetValue(override val typeOf: ZigErrorSetType, val name: Stri
     }
 }
 
-data class ZigErrorUnionType(val errorSet: ZigValue, val payload: ZigValue) : ZigValue {
+@ConsistentCopyVisibility
+data class ZigErrorUnionType private constructor(val errorSet: ZigValue, val payload: ZigValue) : ZigValue {
+    companion object {
+        fun of(errorSet: ZigValue, payload: ZigValue) =
+            ZigValue.intern(ZigErrorUnionType(errorSet, payload))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
@@ -709,19 +802,29 @@ data class ZigErrorUnionType(val errorSet: ZigValue, val payload: ZigValue) : Zi
     )
 }
 
-data class ZigPointerType(
+@ConsistentCopyVisibility
+data class ZigPointerType private constructor(
     val size: ZigPointerSize,
     val sentinel: ZigValue?,
     // TODO: include other modifiers (volatile, allowzero, addrspace, align)
     val mutability: ZigMutability?,
     val child: ZigValue,
 ) : ZigValue {
+    companion object {
+        fun of(
+            size: ZigPointerSize,
+            sentinel: ZigValue?,
+            mutability: ZigMutability?,
+            child: ZigValue,
+        ) = ZigValue.intern(ZigPointerType(size, sentinel, mutability, child))
+    }
+
     fun with(
         size: ZigPointerSize = this.size,
         sentinel: ZigValue? = this.sentinel,
         mutability: ZigMutability? = this.mutability,
         child: ZigValue = this.child,
-    ) = ZigPointerType(size, sentinel, mutability, child)
+    ) = of(size, sentinel, mutability, child)
 
     override val typeOf: ZigTypeType
         get() = ZigTypeType
@@ -753,7 +856,20 @@ data class ZigPointerType(
     }
 }
 
-data class ZigArrayType(val length: ZigValue, val sentinel: ZigValue?, val child: ZigValue) : ZigValue {
+@ConsistentCopyVisibility
+data class ZigArrayType private constructor(
+    val length: ZigValue,
+    val sentinel: ZigValue?,
+    val child: ZigValue,
+) : ZigValue {
+    companion object {
+        fun of(
+            length: ZigValue,
+            sentinel: ZigValue?,
+            child: ZigValue,
+        ) = ZigValue.intern(ZigArrayType(length, sentinel, child))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
@@ -771,7 +887,13 @@ data class ZigArrayType(val length: ZigValue, val sentinel: ZigValue?, val child
     }
 }
 
-data class ZigVectorType(val length: ZigValue, val child: ZigValue) : ZigValue {
+@ConsistentCopyVisibility
+data class ZigVectorType private constructor(val length: ZigValue, val child: ZigValue) : ZigValue {
+    companion object {
+        fun of(length: ZigValue, child: ZigValue) =
+            ZigValue.intern(ZigVectorType(length, child))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
@@ -787,7 +909,13 @@ data class ZigVectorType(val length: ZigValue, val child: ZigValue) : ZigValue {
     }
 }
 
-data class ZigTupleType(val element: LightZigTuple) : IZigContainerType {
+@ConsistentCopyVisibility
+data class ZigTupleType private constructor(val element: LightZigTuple) : IZigContainerType {
+    companion object {
+        fun of(element: LightZigTuple) =
+            ZigValue.intern(ZigTupleType(element))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
@@ -842,7 +970,13 @@ data object ZigComptimeFloatType : ZigFloatType {
     override fun toHtmlChunk(truncate: Boolean) = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "comptime_float")
 }
 
-data class ZigFixedFloatType(val bits: Int) : ZigFloatType {
+@ConsistentCopyVisibility
+data class ZigFixedFloatType private constructor(val bits: Int) : ZigFloatType {
+    companion object {
+        fun of(bits: Int) =
+            ZigValue.intern(ZigFixedFloatType(bits))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
@@ -860,7 +994,13 @@ sealed interface ZigIntType : ZigValue {
     override val typeOf: ZigTypeType
 }
 
-data class ZigIntValue(override val typeOf: ZigIntType, val value: Int) : ZigValue {
+@ConsistentCopyVisibility
+data class ZigIntValue private constructor(override val typeOf: ZigIntType, val value: Int) : ZigValue {
+    companion object {
+        fun of(typeOf: ZigIntType, value: Int) =
+            ZigValue.intern(ZigIntValue(typeOf, value))
+    }
+
     override fun toHtmlChunk(truncate: Boolean) = when (typeOf) {
         ZigComptimeIntType -> createStyledHtmlChunk(ZigHighlightingColors.NUMBER, value.toString())
         else -> HtmlChunk.fragment(
@@ -883,7 +1023,13 @@ data object ZigComptimeIntType : ZigIntType {
 
 enum class ZigSignedness { SIGNED, UNSIGNED }
 
-data class ZigFixedIntType(val signedness: ZigSignedness, val bits: Int) : ZigIntType {
+@ConsistentCopyVisibility
+data class ZigFixedIntType private constructor(val signedness: ZigSignedness, val bits: Int) : ZigIntType {
+    companion object {
+        fun of(signedness: ZigSignedness, bits: Int) =
+            ZigValue.intern(ZigFixedIntType(signedness, bits))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
@@ -914,35 +1060,65 @@ data object ZigCCharType : ZigIntType {
     override fun toHtmlChunk(truncate: Boolean) = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "c_char")
 }
 
-data class ZigCShortType(val signedness: ZigSignedness) : ZigIntType {
+@ConsistentCopyVisibility
+data class ZigCShortType private constructor(val signedness: ZigSignedness) : ZigIntType {
+    companion object {
+        fun of(signedness: ZigSignedness) =
+            ZigValue.intern(ZigCShortType(signedness))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
     override fun toHtmlChunk(truncate: Boolean) = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "c_short")
 }
 
-data class ZigCIntType(val signedness: ZigSignedness) : ZigIntType {
+@ConsistentCopyVisibility
+data class ZigCIntType private constructor(val signedness: ZigSignedness) : ZigIntType {
+    companion object {
+        fun of(signedness: ZigSignedness) =
+            ZigValue.intern(ZigCIntType(signedness))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
     override fun toHtmlChunk(truncate: Boolean) = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "c_int")
 }
 
-data class ZigCLongType(val signedness: ZigSignedness) : ZigIntType {
+@ConsistentCopyVisibility
+data class ZigCLongType private constructor(val signedness: ZigSignedness) : ZigIntType {
+    companion object {
+        fun of(signedness: ZigSignedness) =
+            ZigValue.intern(ZigCLongType(signedness))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
     override fun toHtmlChunk(truncate: Boolean) = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "c_long")
 }
 
-data class ZigCLongLongType(val signedness: ZigSignedness) : ZigIntType {
+@ConsistentCopyVisibility
+data class ZigCLongLongType private constructor(val signedness: ZigSignedness) : ZigIntType {
+    companion object {
+        fun of(signedness: ZigSignedness) =
+            ZigValue.intern(ZigCLongLongType(signedness))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
     override fun toHtmlChunk(truncate: Boolean) = createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "c_longlong")
 }
 
-data class ZigInferredUnionTagType(val union: ZigContainerType) : IZigContainerType {
+@ConsistentCopyVisibility
+data class ZigInferredUnionTagType private constructor(val union: ZigContainerType) : IZigContainerType {
+    companion object {
+        fun of(union: ZigContainerType) =
+            ZigValue.intern(ZigInferredUnionTagType(union))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
@@ -974,7 +1150,13 @@ data class ZigInferredUnionTagType(val union: ZigContainerType) : IZigContainerT
     override fun getNamedMembersVisibleFrom(originalFile: PsiFile) = members
 }
 
-data class ZigFieldEnumType(val container: ZigValue) : IZigContainerType {
+@ConsistentCopyVisibility
+data class ZigFieldEnumType private constructor(val container: ZigValue) : IZigContainerType {
+    companion object {
+        fun of(container: ZigValue) =
+            ZigValue.intern(ZigFieldEnumType(container))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
@@ -1007,7 +1189,13 @@ data class ZigFieldEnumType(val container: ZigValue) : IZigContainerType {
     override fun getNamedMembersVisibleFrom(originalFile: PsiFile) = members
 }
 
-data class ZigLazyFieldType(val container: ZigValue, val fieldName: ZigValue) : ZigValue {
+@ConsistentCopyVisibility
+data class ZigLazyFieldType private constructor(val container: ZigValue, val fieldName: ZigValue) : ZigValue {
+    companion object {
+        fun of(container: ZigValue, fieldName: ZigValue) =
+            ZigValue.intern(ZigLazyFieldType(container, fieldName))
+    }
+
     override val typeOf: ZigTypeType
         get() = ZigTypeType
 
@@ -1023,7 +1211,13 @@ data class ZigLazyFieldType(val container: ZigValue, val fieldName: ZigValue) : 
     }
 }
 
-data class ZigLazyFieldValue(val left: ZigValue, val fieldName: ZigValue) : ZigValue {
+@ConsistentCopyVisibility
+data class ZigLazyFieldValue private constructor(val left: ZigValue, val fieldName: ZigValue) : ZigValue {
+    companion object {
+        fun of(left: ZigValue, fieldName: ZigValue) =
+            ZigValue.intern(ZigLazyFieldValue(left, fieldName))
+    }
+
     override val typeOf = ZigUnknown.of(ZigTypeType)
 
     override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
@@ -1044,15 +1238,21 @@ data class ZigLazyFieldValue(val left: ZigValue, val fieldName: ZigValue) : ZigV
     }
 }
 
-data class ZigLazyTagNameValue(val value: ZigValue) : ZigValue {
-    override val typeOf = ZigPointerType(
+@ConsistentCopyVisibility
+data class ZigLazyTagNameValue private constructor(val value: ZigValue) : ZigValue {
+    companion object {
+        fun of(value: ZigValue) =
+            ZigValue.intern(ZigLazyTagNameValue(value))
+    }
+
+    override val typeOf = ZigPointerType.of(
         ZigPointerSize.ONE,
         null,
         ZigMutability.CONST,
-        ZigArrayType(
+        ZigArrayType.of(
             ZigUnknown.of(ZigUsizeType),
-            ZigIntValue(ZigComptimeIntType, 0),
-            ZigFixedIntType(ZigSignedness.UNSIGNED, 8)
+            ZigIntValue.of(ZigComptimeIntType, 0),
+            ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8)
         )
     )
 
@@ -1066,15 +1266,21 @@ data class ZigLazyTagNameValue(val value: ZigValue) : ZigValue {
     }
 }
 
-data class ZigStringLiteralValue(val value: String) : ZigValue {
-    override val typeOf = ZigPointerType(
+@ConsistentCopyVisibility
+data class ZigStringLiteralValue private constructor(val value: String) : ZigValue {
+    companion object {
+        fun of(value: String) =
+            ZigValue.intern(ZigStringLiteralValue(value))
+    }
+
+    override val typeOf = ZigPointerType.of(
         ZigPointerSize.ONE,
         null,
         ZigMutability.CONST,
-        ZigArrayType(
-            ZigIntValue(ZigUsizeType, value.length),
-            ZigIntValue(ZigComptimeIntType, 0),
-            ZigFixedIntType(ZigSignedness.UNSIGNED, 8)
+        ZigArrayType.of(
+            ZigIntValue.of(ZigUsizeType, value.length),
+            ZigIntValue.of(ZigComptimeIntType, 0),
+            ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8)
         )
     )
 
@@ -1152,7 +1358,7 @@ private fun computeValueUncached(element: ZigExpression): ZigValue {
             -> resolvePlace(element).value
 
         is ZigContainerExpression -> computeContainerExpression(element)
-        is ZigFnProto -> ZigFunctionType(element.createSmartPointer(), findUnboundTypeParams(element))
+        is ZigFnProto -> ZigFunctionType.of(element.createSmartPointer(), findUnboundTypeParams(element))
         is ZigOptionalTypeExpression -> computeOptionalTypeExpression(element)
         is ZigErrorSet -> computeErrorSet(element)
         is ZigErrorValueExpression -> computeErrorValueExpression(element)
@@ -1250,7 +1456,7 @@ private fun toFixedIntType(text: String): ZigFixedIntType? {
             else -> return null
         }
     }
-    return ZigFixedIntType(signedness, bits)
+    return ZigFixedIntType.of(signedness, bits)
 }
 
 private fun getBuiltinFieldPlace(mutability: ZigMutability?, value: ZigValue, name: String): ZigPlace? {
@@ -1267,8 +1473,8 @@ private fun getBuiltinFieldPlace(mutability: ZigMutability?, value: ZigValue, na
             ZigPointerSize.C -> null
 
             ZigPointerSize.SLICE -> when (name) {
-                "len" -> ZigPlace.Single(mutability, ZigUnknown.of(ZigUsizeType))
-                "ptr" -> ZigPlace.Single(mutability, ZigUnknown.of(type.with(size = ZigPointerSize.MANY)))
+                "len" -> ZigPlace.Single.of(mutability, ZigUnknown.of(ZigUsizeType))
+                "ptr" -> ZigPlace.Single.of(mutability, ZigUnknown.of(type.with(size = ZigPointerSize.MANY)))
                 else -> null
             }
         }
@@ -1279,7 +1485,7 @@ private fun getBuiltinFieldPlace(mutability: ZigMutability?, value: ZigValue, na
         }
 
         is ZigTupleType -> when (name) {
-            "len" -> ZigPlace.constant(ZigIntValue(ZigUsizeType, type.fields.size))
+            "len" -> ZigPlace.constant(ZigIntValue.of(ZigUsizeType, type.fields.size))
             else -> null
         }
 
@@ -1293,7 +1499,7 @@ private fun computeFieldAccess(
     fieldName: ZigValue,
 ): ZigPlace {
     if (fieldName !is ZigStringLiteralValue) {
-        return ZigPlace.Single(null, ZigLazyFieldValue(leftValue, fieldName))
+        return ZigPlace.Single.of(null, ZigLazyFieldValue.of(leftValue, fieldName))
     }
     val name = fieldName.value
     val builtinPlace = getBuiltinFieldPlace(mutability, leftValue, name)
@@ -1303,7 +1509,7 @@ private fun computeFieldAccess(
     return when (leftValue) {
         is ZigErrorSetType -> {
             if (name in leftValue.names) {
-                ZigPlace.constant(ZigErrorSetValue(leftValue, name))
+                ZigPlace.constant(ZigErrorSetValue.of(leftValue, name))
             } else {
                 ZigPlace.unknown()
             }
@@ -1319,11 +1525,11 @@ private fun computeFieldAccess(
                 ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
                     is IZigContainerType ->
                         computeContainerInstanceFieldAccess(typeOfLeft.mutability, pointerChild, fieldName)
-                    else -> ZigPlace.Single(null, ZigLazyFieldValue(leftValue, fieldName))
+                    else -> ZigPlace.Single.of(null, ZigLazyFieldValue.of(leftValue, fieldName))
                 }
                 else -> ZigPlace.unknown()
             }
-            else -> ZigPlace.Single(null, ZigLazyFieldValue(leftValue, fieldName))
+            else -> ZigPlace.Single.of(null, ZigLazyFieldValue.of(leftValue, fieldName))
         }
     }
 }
@@ -1342,7 +1548,7 @@ private fun computeArrayAccessOnTuple(
             else -> null
         } ?: ZigUnknown.of(ZigTypeType)
     }
-    return ZigPlace.Single(mutability, ZigUnknown.of(fieldType))
+    return ZigPlace.Single.of(mutability, ZigUnknown.of(fieldType))
 }
 
 private fun findUnboundTypeParams(element: ZigElement): Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?> {
@@ -1416,7 +1622,7 @@ private fun substituteContainerTypeParams(
         //    to get its value, which is `u8`.
         // 3. Since `u8` is a primitive type, we are done.
         //
-        ZigContainerType(type.container, type.typeParams + typeParams)
+        ZigContainerType.of(type.container, type.typeParams + typeParams)
     }
 }
 
@@ -1427,7 +1633,7 @@ private fun substituteFunctionTypeParams(
     return if (type.typeParams.isEmpty()) {
         type
     } else {
-        ZigFunctionType(type.function, type.typeParams + typeParams)
+        ZigFunctionType.of(type.function, type.typeParams + typeParams)
     }
 }
 
@@ -1444,7 +1650,7 @@ private fun substituteTypeParams(
                 value.mapValue { substituteTypeParams(it, typeParams) }
             }
             is ZigEnumLiteralValue -> {
-                substituteTypeParams(value.typeOf, typeParams).mapValue { ZigEnumLiteralValue(it, value.name) }
+                substituteTypeParams(value.typeOf, typeParams).mapValue { ZigEnumLiteralValue.of(it, value.name) }
             }
             is ZigContainerType -> {
                 substituteContainerTypeParams(value, typeParams)
@@ -1464,23 +1670,23 @@ private fun substituteTypeParams(
                 substituteTypeParams(value.value, typeParams).typeOf
             }
             is ZigOptionalType -> {
-                substituteTypeParams(value.child, typeParams).mapValue { ZigOptionalType(it) }
+                substituteTypeParams(value.child, typeParams).mapValue { ZigOptionalType.of(it) }
             }
             is ZigErrorUnionType -> {
                 val errorSet = substituteTypeParams(value.errorSet, typeParams)
                 val payload = substituteTypeParams(value.payload, typeParams)
-                payload.mapValue { ZigErrorUnionType(errorSet, it) }
+                payload.mapValue { ZigErrorUnionType.of(errorSet, it) }
             }
             is ZigArrayType -> {
                 val length = substituteTypeParams(value.length, typeParams)
                 val sentinel = value.sentinel?.let { substituteTypeParams(it, typeParams) }
                 val child = substituteTypeParams(value.child, typeParams)
-                child.mapValue { ZigArrayType(length, sentinel, it) }
+                child.mapValue { ZigArrayType.of(length, sentinel, it) }
             }
             is ZigVectorType -> {
                 val length = substituteTypeParams(value.length, typeParams)
                 val child = substituteTypeParams(value.child, typeParams)
-                child.mapValue { ZigVectorType(length, it) }
+                child.mapValue { ZigVectorType.of(length, it) }
             }
             is ZigPointerType -> {
                 val sentinel = value.sentinel?.let { substituteTypeParams(it, typeParams) }
@@ -1489,13 +1695,13 @@ private fun substituteTypeParams(
             }
             is ZigTupleType -> {
                 val fields = value.fields.map { substituteTypeParams(it, typeParams) }
-                ZigTupleType(LightZigTuple(value.element.manager, fields))
+                ZigTupleType.of(LightZigTuple(value.element.manager, fields))
             }
             is ZigInferredUnionTagType -> {
-                ZigInferredUnionTagType(substituteContainerTypeParams(value.union, typeParams))
+                ZigInferredUnionTagType.of(substituteContainerTypeParams(value.union, typeParams))
             }
             is ZigFieldEnumType -> {
-                substituteTypeParams(value.container, typeParams).mapValue { ZigFieldEnumType(it) }
+                substituteTypeParams(value.container, typeParams).mapValue { ZigFieldEnumType.of(it) }
             }
             is ZigLazyFieldType -> {
                 val containerType = substituteTypeParams(value.container, typeParams)
@@ -1555,7 +1761,7 @@ private fun computeContainerInstanceFieldAccess(
     if (type.typeParams.isNotEmpty()) {
         value = substituteTypeParams(value, type.typeParams)
     }
-    return ZigPlace.Single(mutability, value)
+    return ZigPlace.Single.of(mutability, value)
 }
 
 private fun computeContainerTypeDeclAccess(
@@ -1571,10 +1777,10 @@ private fun computeContainerTypeDeclAccess(
     }
     if (member is ZigContainerField) {
         return if (type.containerKind == ZigContainerKind.ENUM) {
-            ZigPlace.constant(ZigEnumLiteralValue(type, name))
+            ZigPlace.constant(ZigEnumLiteralValue.of(type, name))
         } else if (type.isTaggedUnion) {
             val tagType = ZigAnalyzer.resolveUnionTagType(type) ?: return ZigPlace.unknown()
-            ZigPlace.constant(tagType.mapValue { ZigEnumLiteralValue(it, name) })
+            ZigPlace.constant(tagType.mapValue { ZigEnumLiteralValue.of(it, name) })
         } else {
             ZigPlace.unknown()
         }
@@ -1584,7 +1790,7 @@ private fun computeContainerTypeDeclAccess(
         value = substituteTypeParams(value, type.typeParams)
     }
     return when (member) {
-        is ZigVarDecl -> ZigPlace.Single(member.mutability, value)
+        is ZigVarDecl -> ZigPlace.Single.of(member.mutability, value)
         else -> ZigPlace.constant(value)
     }
 }
@@ -1605,8 +1811,8 @@ private fun resolveValueFromReferenceTo(target: ZigNamedElement): ZigValue {
 
 private fun computeValueFromReferenceUncached(target: ZigNamedElement): ZigValue {
     return when (target) {
-        is ZigFile -> ZigContainerType(target.createSmartPointer(), emptyMap())
-        is ZigFnDecl -> ZigUnknown.of(ZigFunctionType(target.createSmartPointer(), findUnboundTypeParams(target)))
+        is ZigFile -> ZigContainerType.of(target.createSmartPointer(), emptyMap())
+        is ZigFnDecl -> ZigUnknown.of(ZigFunctionType.of(target.createSmartPointer(), findUnboundTypeParams(target)))
         is ZigVarDecl -> computeVarDecl(target)
         is ZigVarProto -> computeVarProto(target)
         is ZigFnParam -> computeFnParam(target)
@@ -1636,7 +1842,7 @@ private fun computeFunctionReturnValue(
             "FieldEnum" -> {
                 val value = arguments.firstOrNull()
                     ?: return ZigUnknown.of(ZigTypeType)
-                return value.mapValue { ZigFieldEnumType(it) }
+                return value.mapValue { ZigFieldEnumType.of(it) }
             }
             else -> {}
         }
@@ -1645,7 +1851,7 @@ private fun computeFunctionReturnValue(
         ?: return ZigUnknown.ofUnknownType()
     val returnType = if (functionElement.bangTokenElement != null) {
         val errorSet = ZigUnknown.ofUnknownType() // TODO: infer error set
-        resolveValue(returnTypeElement).mapValue { ZigErrorUnionType(errorSet, it) }
+        resolveValue(returnTypeElement).mapValue { ZigErrorUnionType.of(errorSet, it) }
     } else {
         resolveValue(returnTypeElement)
     }
@@ -1718,7 +1924,7 @@ internal fun mapCalledFuncAndSelfArg(
         is ZigFieldAccess -> {
             val name = parseZigIdentifier(functionElement.identifierElement)
                 ?: return ZigUnknown.ofUnknownType()
-            val fieldName = ZigStringLiteralValue(name)
+            val fieldName = ZigStringLiteralValue.of(name)
             resolveValue(functionElement.leftOperand).mapValue { left ->
                 when (left) {
                     is IZigContainerType -> {
@@ -2010,10 +2216,10 @@ private fun computeFieldType(
             if (field != null) {
                 resolveValueFromReferenceTo(field).typeOf
             } else {
-                ZigLazyFieldType(container, fieldName)
+                ZigLazyFieldType.of(container, fieldName)
             }
         } else {
-            ZigLazyFieldType(container, fieldName)
+            ZigLazyFieldType.of(container, fieldName)
         }
     }
 }
@@ -2021,8 +2227,8 @@ private fun computeFieldType(
 fun computeTagNameValue(value: ZigValue): ZigValue {
     return value.mapValue {
         when (it) {
-            is ZigEnumLiteralValue -> ZigStringLiteralValue(it.name)
-            else -> ZigLazyTagNameValue(it)
+            is ZigEnumLiteralValue -> ZigStringLiteralValue.of(it.name)
+            else -> ZigLazyTagNameValue.of(it)
         }
     }
 }
@@ -2047,17 +2253,17 @@ private fun computeArrayAccess(
     indexExpression: ZigExpression?,
 ): ZigPlace {
     return when (typeOfLeft) {
-        is ZigArrayType -> ZigPlace.Single(mutability, ZigUnknown.of(typeOfLeft.child))
-        is ZigVectorType -> ZigPlace.Single(mutability, ZigUnknown.of(typeOfLeft.child))
+        is ZigArrayType -> ZigPlace.Single.of(mutability, ZigUnknown.of(typeOfLeft.child))
+        is ZigVectorType -> ZigPlace.Single.of(mutability, ZigUnknown.of(typeOfLeft.child))
         is ZigTupleType -> computeArrayAccessOnTuple(mutability, typeOfLeft, indexExpression)
         is ZigPointerType -> when (typeOfLeft.size) {
             ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
-                is ZigArrayType -> ZigPlace.Single(typeOfLeft.mutability, ZigUnknown.of(pointerChild.child))
-                is ZigVectorType -> ZigPlace.Single(typeOfLeft.mutability, ZigUnknown.of(pointerChild.child))
+                is ZigArrayType -> ZigPlace.Single.of(typeOfLeft.mutability, ZigUnknown.of(pointerChild.child))
+                is ZigVectorType -> ZigPlace.Single.of(typeOfLeft.mutability, ZigUnknown.of(pointerChild.child))
                 is ZigTupleType -> computeArrayAccessOnTuple(typeOfLeft.mutability, pointerChild, indexExpression)
                 else -> ZigPlace.unknown()
             }
-            else -> ZigPlace.Single(typeOfLeft.mutability, ZigUnknown.of(typeOfLeft.child))
+            else -> ZigPlace.Single.of(typeOfLeft.mutability, ZigUnknown.of(typeOfLeft.child))
         }
         is ZigMultiValue -> {
             val places = typeOfLeft.values.map { computeArrayAccess(mutability, it, indexExpression) }
@@ -2079,7 +2285,7 @@ private fun computeIdentifier(element: ZigIdentifier): ZigPlace {
             else -> ZigUnknown.ofUnknownType()
         }
         when (target) {
-            is ZigVarDeclOrProto -> ZigPlace.Single(target.mutability, value)
+            is ZigVarDeclOrProto -> ZigPlace.Single.of(target.mutability, value)
             else -> ZigPlace.constant(value)
         }
     }
@@ -2089,7 +2295,7 @@ private fun computeIdentifier(element: ZigIdentifier): ZigPlace {
 private fun computeFieldAccess(element: ZigFieldAccess): ZigPlace {
     val name = parseZigIdentifier(element.identifierElement) ?: return ZigPlace.unknown()
     val left = resolvePlace(element.leftOperand)
-    val fieldName = ZigStringLiteralValue(name)
+    val fieldName = ZigStringLiteralValue.of(name)
     return left.mapPlace { computeFieldAccess(it.mutability, it.value, fieldName) }
 }
 
@@ -2118,7 +2324,7 @@ private fun computeUnwrapOptional(element: ZigUnwrapOptional): ZigPlace {
     val operandElement = element.operand ?: return ZigPlace.unknown()
     return resolvePlace(operandElement).mapType { mutability, typeOfOperand ->
         when (typeOfOperand) {
-            is ZigOptionalType -> ZigPlace.Single(mutability, ZigUnknown.of(typeOfOperand.child))
+            is ZigOptionalType -> ZigPlace.Single.of(mutability, ZigUnknown.of(typeOfOperand.child))
             else -> ZigPlace.unknown()
         }
     }
@@ -2128,7 +2334,7 @@ private fun computeTry(element: ZigTry): ZigPlace {
     val operandElement = element.operand ?: return ZigPlace.unknown()
     return resolvePlace(operandElement).mapType { mutability, typeOfOperand ->
         when (typeOfOperand) {
-            is ZigErrorUnionType -> ZigPlace.Single(mutability, ZigUnknown.of(typeOfOperand.payload))
+            is ZigErrorUnionType -> ZigPlace.Single.of(mutability, ZigUnknown.of(typeOfOperand.payload))
             else -> ZigPlace.unknown()
         }
     }
@@ -2140,7 +2346,7 @@ private fun computeDeref(element: ZigDeref): ZigPlace {
         when (typeOfOperand) {
             is ZigPointerType -> when (typeOfOperand.size) {
                 ZigPointerSize.ONE,
-                ZigPointerSize.C -> ZigPlace.Single(typeOfOperand.mutability, ZigUnknown.of(typeOfOperand.child))
+                ZigPointerSize.C -> ZigPlace.Single.of(typeOfOperand.mutability, ZigUnknown.of(typeOfOperand.child))
                 ZigPointerSize.SLICE,
                 ZigPointerSize.MANY -> ZigPlace.unknown()
             }
@@ -2183,14 +2389,14 @@ private fun computeContainerExpression(element: ZigContainerExpression): ZigValu
         for ((i, member) in element.members.withIndex()) {
             lightTuple.fields[i].navigationElement = member
         }
-        return ZigTupleType(lightTuple)
+        return ZigTupleType.of(lightTuple)
     }
-    return ZigContainerType(element.createSmartPointer(), findUnboundTypeParams(element))
+    return ZigContainerType.of(element.createSmartPointer(), findUnboundTypeParams(element))
 }
 
 private fun computeOptionalTypeExpression(element: ZigOptionalTypeExpression): ZigValue {
     val child = resolveValue(element.childExpression, ZigTypeType)
-    return child.mapValue { ZigOptionalType(it) }
+    return child.mapValue { ZigOptionalType.of(it) }
 }
 
 private fun computeErrorSet(element: ZigErrorSet): ZigValue {
@@ -2199,26 +2405,26 @@ private fun computeErrorSet(element: ZigErrorSet): ZigValue {
         val name = parseZigIdentifier(item.identifierElement) ?: return ZigUnknown.of(ZigTypeType)
         names.add(name)
     }
-    return ZigErrorSetType(names)
+    return ZigErrorSetType.of(names)
 }
 
 private fun computeErrorValueExpression(element: ZigErrorValueExpression): ZigValue {
     val name = parseZigIdentifier(element.identifierElement) ?: return ZigUnknown.ofUnknownType()
-    val type = ZigErrorSetType(setOf(name))
-    return ZigErrorSetValue(type, name)
+    val type = ZigErrorSetType.of(setOf(name))
+    return ZigErrorSetValue.of(type, name)
 }
 
 private fun computeErrorUnion(element: ZigErrorUnion): ZigValue {
     val errorSet = resolveValue(element.errorSet, ZigTypeType)
     val payload = resolveValue(element.payload, ZigTypeType)
-    return payload.mapValue { ZigErrorUnionType(errorSet, it) }
+    return payload.mapValue { ZigErrorUnionType.of(errorSet, it) }
 }
 
 private fun computeArrayTypeExpression(element: ZigArrayTypeExpression): ZigValue {
     val length = resolveValue(element.lengthElement.expression, ZigUsizeType)
     val sentinel = element.sentinelElement?.let { resolveValue(it.expression) }
     val child = resolveValue(element.childExpression, ZigTypeType)
-    return child.mapValue { ZigArrayType(length, sentinel, it) }
+    return child.mapValue { ZigArrayType.of(length, sentinel, it) }
 }
 
 private fun computePointerTypeExpression(element: ZigPointerTypeExpression): ZigValue {
@@ -2226,7 +2432,7 @@ private fun computePointerTypeExpression(element: ZigPointerTypeExpression): Zig
     val sentinel = element.sentinelElement?.let { resolveValue(it.expression) }
     val mutability = element.mutability
     val child = resolveValue(element.childExpression, ZigTypeType)
-    return child.mapValue { ZigPointerType(size, sentinel, mutability, it) }
+    return child.mapValue { ZigPointerType.of(size, sentinel, mutability, it) }
 }
 
 private fun computeComptime(element: ZigComptime): ZigValue {
@@ -2236,7 +2442,7 @@ private fun computeComptime(element: ZigComptime): ZigValue {
 private fun computeAddressOf(element: ZigAddressOf): ZigPlace {
     val operandElement = element.operand ?: return ZigPlace.constant(ZigUnknown.ofUnknownType())
     return resolvePlace(operandElement).mapType { mutability, type ->
-        ZigPlace.constant(ZigUnknown.of(ZigPointerType(ZigPointerSize.ONE, null, mutability, type)))
+        ZigPlace.constant(ZigUnknown.of(ZigPointerType.of(ZigPointerSize.ONE, null, mutability, type)))
     }
 }
 
@@ -2280,7 +2486,7 @@ private fun computeMergeErrorSets(element: ZigMergeErrorSets): ZigValue {
                 when (right) {
                     is ZigErrorSetType -> {
                         val names = left.names + right.names
-                        ZigErrorSetType(names.toSortedSet())
+                        ZigErrorSetType.of(names.toSortedSet())
                     }
                     else -> ZigUnknown.of(ZigTypeType)
                 }
@@ -2302,7 +2508,7 @@ private fun computeListInit(element: ZigListInit): ZigValue {
         }
         fieldTypes.add(resolveValue(item.expression).typeOf)
     }
-    return ZigUnknown.of(ZigTupleType(LightZigTuple(element.manager, fieldTypes)))
+    return ZigUnknown.of(ZigTupleType.of(LightZigTuple(element.manager, fieldTypes)))
 }
 
 private fun computeSlice(element: ZigSlice): ZigPlace {
@@ -2326,8 +2532,8 @@ private fun computeSlice(element: ZigSlice): ZigPlace {
 
             else -> return@mapType ZigPlace.constant(ZigUnknown.ofUnknownType())
         }
-        val arrayType = ZigArrayType(length, sentinel, childType)
-        val pointerType = ZigPointerType(ZigPointerSize.ONE, null, mutability, arrayType)
+        val arrayType = ZigArrayType.of(length, sentinel, childType)
+        val pointerType = ZigPointerType.of(ZigPointerSize.ONE, null, mutability, arrayType)
         ZigPlace.constant(ZigUnknown.of(pointerType))
     }
 }
@@ -2380,7 +2586,7 @@ private fun computeImportBuiltinCall(element: ZigBuiltinCall): ZigValue {
     }
     val values = resolveReferences(argument).map { target ->
         when (target) {
-            is ZigFile -> ZigContainerType(target.createSmartPointer(), emptyMap())
+            is ZigFile -> ZigContainerType.of(target.createSmartPointer(), emptyMap())
             else -> ZigUnknown.ofUnknownType()
         }
     }
@@ -2393,7 +2599,7 @@ private fun computeTagNameBuiltinCall(element: ZigBuiltinCall): ZigValue {
 
 private fun computeThisBuiltinCall(element: ZigBuiltinCall): ZigValue {
     val container = element.findParentOfType<ZigContainer>() ?: return ZigUnknown.of(ZigTypeType)
-    return ZigContainerType(container.createSmartPointer(), findUnboundTypeParams(container))
+    return ZigContainerType.of(container.createSmartPointer(), findUnboundTypeParams(container))
 }
 
 private fun computeTypeOfBuiltinCall(element: ZigBuiltinCall): ZigValue {
@@ -2415,7 +2621,7 @@ private fun computeVectorBuiltinCall(element: ZigBuiltinCall): ZigValue {
     val (lengthExpression, childExpression) = arguments
     val length = resolveValue(lengthExpression, ZigComptimeIntType)
     val child = resolveValue(childExpression)
-    return child.mapValue { ZigVectorType(length, it) }
+    return child.mapValue { ZigVectorType.of(length, it) }
 }
 
 private fun computeCall(element: ZigCall): ZigValue {
@@ -2453,18 +2659,18 @@ private fun computeLoop(element: ZigLoop): ZigValue {
 private fun computeStringExpression(element: ZigStringExpression): ZigValue {
     val value = element.value
     if (value != null) {
-        return ZigStringLiteralValue(value)
+        return ZigStringLiteralValue.of(value)
     }
     val length = ZigUnknown.of(ZigUsizeType)
-    val u8 = ZigFixedIntType(ZigSignedness.UNSIGNED, 8)
-    val array = ZigArrayType(length, ZigIntValue(ZigComptimeIntType, 0), u8)
-    val pointer = ZigPointerType(ZigPointerSize.ONE, null, ZigMutability.CONST, array)
+    val u8 = ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8)
+    val array = ZigArrayType.of(length, ZigIntValue.of(ZigComptimeIntType, 0), u8)
+    val pointer = ZigPointerType.of(ZigPointerSize.ONE, null, ZigMutability.CONST, array)
     return ZigUnknown.of(pointer)
 }
 
 private fun computeNumberLiteral(element: ZigNumberLiteral): ZigValue {
     return when (val result = ZigNumberLiteralParser.parse(element.text)) {
-        is ZigNumberLiteralParser.IntResult -> ZigIntValue(ZigComptimeIntType, result.value)
+        is ZigNumberLiteralParser.IntResult -> ZigIntValue.of(ZigComptimeIntType, result.value)
         is ZigNumberLiteralParser.BigIntResult -> ZigUnknown.of(ZigComptimeIntType)
         is ZigNumberLiteralParser.FloatResult -> ZigUnknown.of(ZigComptimeFloatType)
         ZigNumberLiteralParser.FailureResult -> ZigUnknown.ofUnknownType()
@@ -2474,7 +2680,7 @@ private fun computeNumberLiteral(element: ZigNumberLiteral): ZigValue {
 private fun computeEnumLiteral(element: ZigEnumLiteral): ZigValue {
     val name = parseZigIdentifier(element.identifierElement)
     return if (name != null) {
-        ZigEnumLiteralValue(ZigEnumLiteralType, name)
+        ZigEnumLiteralValue.of(ZigEnumLiteralType, name)
     } else {
         ZigUnknown.of(ZigEnumLiteralType)
     }
@@ -2531,7 +2737,7 @@ private fun computeContainerField(target: ZigContainerFieldImpl): ZigValue {
             ZigContainerKind.OPAQUE -> ZigUnknown.ofUnknownType()
             ZigContainerKind.ENUM -> {
                 val typeParams = findUnboundTypeParams(target.container)
-                ZigUnknown.of(ZigContainerType(target.container.createSmartPointer(), typeParams))
+                ZigUnknown.of(ZigContainerType.of(target.container.createSmartPointer(), typeParams))
             }
             ZigContainerKind.UNION -> when (target.container.containerArgElement) {
                 null -> ZigUnknown.ofUnknownType()
@@ -2545,7 +2751,7 @@ private fun computeContainerField(target: ZigContainerFieldImpl): ZigValue {
 private fun computePayloadItem(target: ZigPayloadItem): ZigPlace {
     return if (target.isPointer) {
         computePayloadItemPlace(target).mapType { mutability, type ->
-            ZigPlace.constant(ZigUnknown.of(ZigPointerType(ZigPointerSize.ONE, null, mutability, type)))
+            ZigPlace.constant(ZigUnknown.of(ZigPointerType.of(ZigPointerSize.ONE, null, mutability, type)))
         }
     } else {
         computePayloadItemPlace(target).mapPlace {
@@ -2561,8 +2767,8 @@ private fun computeThenPayload(payloadElement: ZigThenPayload): ZigPlace {
             ?: return ZigPlace.unknown()
     return resolvePlace(conditionElement).mapType { mutability, typeOfCondition ->
         when (typeOfCondition) {
-            is ZigOptionalType -> ZigPlace.Single(mutability, ZigUnknown.of(typeOfCondition.child))
-            is ZigErrorUnionType -> ZigPlace.Single(mutability, ZigUnknown.of(typeOfCondition.payload))
+            is ZigOptionalType -> ZigPlace.Single.of(mutability, ZigUnknown.of(typeOfCondition.child))
+            is ZigErrorUnionType -> ZigPlace.Single.of(mutability, ZigUnknown.of(typeOfCondition.payload))
             else -> ZigPlace.unknown()
         }
     }
@@ -2575,7 +2781,7 @@ private fun computeElsePayload(payloadElement: ZigElsePayload): ZigPlace {
             ?: return ZigPlace.unknown()
     return resolvePlace(conditionElement).mapType { mutability, typeOfCondition ->
         when (typeOfCondition) {
-            is ZigErrorUnionType -> ZigPlace.Single(mutability, ZigUnknown.of(typeOfCondition.errorSet))
+            is ZigErrorUnionType -> ZigPlace.Single.of(mutability, ZigUnknown.of(typeOfCondition.errorSet))
             else -> ZigPlace.unknown()
         }
     }
@@ -2585,7 +2791,7 @@ private fun computeCatchPayload(payloadElement: ZigCatchPayload): ZigPlace {
     val leftElement = payloadElement.containingCatch.leftOperand
     return resolvePlace(leftElement).mapType { mutability, typeOfLeft ->
         when (typeOfLeft) {
-            is ZigErrorUnionType -> ZigPlace.Single(mutability, ZigUnknown.of(typeOfLeft.errorSet))
+            is ZigErrorUnionType -> ZigPlace.Single.of(mutability, ZigUnknown.of(typeOfLeft.errorSet))
             else -> ZigPlace.unknown()
         }
     }
@@ -2629,7 +2835,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                     .asSequence()
                     .map { it.name }
                     .toSortedSet()
-            val prongErrorSet = ZigErrorSetType(prongErrorNames)
+            val prongErrorSet = ZigErrorSetType.of(prongErrorNames)
 
             // Helper variables for tagged unions:
             val otherEnumLiterals =
@@ -2652,9 +2858,9 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                             val names = conditionType.names.toSortedSet()
                             names.removeAll(otherErrorNames)
                             if (isInlineProng) {
-                                names.asSequence().map { ZigErrorSetValue(ZigErrorSetType(setOf(it)), it) }
+                                names.asSequence().map { ZigErrorSetValue.of(ZigErrorSetType.of(setOf(it)), it) }
                             } else {
-                                sequenceOf(ZigUnknown.of(ZigErrorSetType(names)))
+                                sequenceOf(ZigUnknown.of(ZigErrorSetType.of(names)))
                             }
                         } else {
                             if (isInlineProng) {
@@ -2702,14 +2908,14 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                                         .asSequence()
                                         .mapNotNull { it.name }
                                         .filter { it !in otherEnumLiterals }
-                                        .map { ZigEnumLiteralValue(conditionType, it) }
+                                        .map { ZigEnumLiteralValue.of(conditionType, it) }
                                 }
                             } else {
                                 sequenceOf(ZigUnknown.of(conditionType))
                             }
                         } else {
                             if (isInlineProng) {
-                                prongEnumLiterals.asSequence().map { ZigEnumLiteralValue(conditionType, it) }
+                                prongEnumLiterals.asSequence().map { ZigEnumLiteralValue.of(conditionType, it) }
                             } else {
                                 sequenceOf(ZigUnknown.of(conditionType))
                             }
@@ -2717,7 +2923,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                     }
                     else -> sequenceOf(ZigUnknown.of(conditionType)) // TODO
                 }
-                ZigPlace.Single(mutability, ZigMultiValue.from(values.toSet()))
+                ZigPlace.Single.of(mutability, ZigMultiValue.from(values.toSet()))
             }
         }
         1 -> {
@@ -2754,7 +2960,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                                                 .filterIsInstance<ZigContainerField>()
                                                 .mapNotNull { it.name }
                                                 .filter { it !in otherEnumLiterals }
-                                                .map { ZigEnumLiteralValue(type, it) }
+                                                .map { ZigEnumLiteralValue.of(type, it) }
                                         ZigMultiValue.from(values.toSet(), type)
                                     }
                                     else -> ZigUnknown.of(type)
@@ -2762,7 +2968,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                             })
                         } else {
                             sequenceOf(tagType.mapValue { type ->
-                                val values = prongEnumLiterals.map { ZigEnumLiteralValue(type, it) }
+                                val values = prongEnumLiterals.map { ZigEnumLiteralValue.of(type, it) }
                                 ZigMultiValue.from(values.toSet(), type)
                             })
                         }
@@ -2788,7 +2994,7 @@ private fun computeForPayload(payloadElement: ZigForPayload, payloadItem: ZigPay
         return if (payloadItem.isPointer) {
             ZigPlace.unknown()
         } else {
-            ZigPlace.Single(null, ZigUnknown.of(ZigUsizeType))
+            ZigPlace.Single.of(null, ZigUnknown.of(ZigUsizeType))
         }
     }
     if (inputElement !is ZigExpression) {
@@ -2800,13 +3006,13 @@ private fun computeForPayload(payloadElement: ZigForPayload, payloadItem: ZigPay
                 if (payloadItem.isPointer) {
                     ZigPlace.unknown()
                 } else {
-                    ZigPlace.Single(null, ZigUnknown.of(typeOfInput.child))
+                    ZigPlace.Single.of(null, ZigUnknown.of(typeOfInput.child))
                 }
             }
             is ZigPointerType -> when (typeOfInput.size) {
-                ZigPointerSize.SLICE -> ZigPlace.Single(typeOfInput.mutability, ZigUnknown.of(typeOfInput.child))
+                ZigPointerSize.SLICE -> ZigPlace.Single.of(typeOfInput.mutability, ZigUnknown.of(typeOfInput.child))
                 ZigPointerSize.ONE -> when (val pointerChild = typeOfInput.child) {
-                    is ZigArrayType -> ZigPlace.Single(typeOfInput.mutability, ZigUnknown.of(pointerChild.child))
+                    is ZigArrayType -> ZigPlace.Single.of(typeOfInput.mutability, ZigUnknown.of(pointerChild.child))
                     else -> ZigPlace.unknown()
                 }
                 else -> ZigPlace.unknown()
@@ -2860,7 +3066,7 @@ private fun inferAssignDestructure(
             else -> ZigUnknown.of(ZigTypeType)
         }
     }
-    return ZigTupleType(LightZigTuple(childElement.manager, fields.toList()))
+    return ZigTupleType.of(LightZigTuple(childElement.manager, fields.toList()))
 }
 
 private fun inferListInitItem(
@@ -3043,7 +3249,7 @@ private fun inferAddressOf(
 
                 ZigPointerSize.SLICE -> {
                     val length = ZigUnknown.of(ZigUsizeType)
-                    ZigArrayType(length, null, type.child)
+                    ZigArrayType.of(length, null, type.child)
                 }
 
                 ZigPointerSize.MANY,
@@ -3067,7 +3273,7 @@ private fun inferReturn(
         ?: return ZigUnknown.of(ZigTypeType)
     return if (fnDecl.bangTokenElement != null) {
         val errorSet = ZigUnknown.of(ZigTypeType)
-        resolveValue(typeElement).mapValue { ZigErrorUnionType(errorSet, it) }
+        resolveValue(typeElement).mapValue { ZigErrorUnionType.of(errorSet, it) }
     } else {
         resolveValue(typeElement)
     }
@@ -3157,7 +3363,7 @@ private fun inferCall(
     val grandparentElement = parentElement.parent
     if (grandparentElement is ZigTry) {
         val errorSet = ZigUnknown.of(ZigTypeType)
-        return inferResultType(grandparentElement).mapValue { ZigErrorUnionType(errorSet, it) }
+        return inferResultType(grandparentElement).mapValue { ZigErrorUnionType.of(errorSet, it) }
     }
     return inferResultType(parentElement)
 }
@@ -3437,7 +3643,7 @@ private fun resolvePeerTypesInner(
                 if (ty !is ZigErrorSetType) return null
                 if (finalSet != null) {
                     val names = finalSet.names + ty.names
-                    finalSet = ZigErrorSetType(names.toSortedSet())
+                    finalSet = ZigErrorSetType.of(names.toSortedSet())
                 } else {
                     finalSet = ty
                 }
@@ -3464,13 +3670,13 @@ private fun resolvePeerTypesInner(
                 }
                 if (finalSet != null) {
                     val names = finalSet.names + setTy.names
-                    finalSet = ZigErrorSetType(names.toSortedSet())
+                    finalSet = ZigErrorSetType.of(names.toSortedSet())
                 } else {
                     finalSet = setTy
                 }
             }
             val finalPayload = resolvePeerTypesInner(peerTys, peerVals) ?: return null
-            return ZigErrorUnionType(finalSet!!, finalPayload)
+            return ZigErrorUnionType.of(finalSet!!, finalPayload)
         }
 
         PeerResolveStrategy.NULLABLE -> {
@@ -3497,7 +3703,7 @@ private fun resolvePeerTypesInner(
                 }
             }
             val childTy = resolvePeerTypesInner(peerTys, peerVals) ?: return null
-            return ZigOptionalType(childTy)
+            return ZigOptionalType.of(childTy)
         }
 
         PeerResolveStrategy.ARRAY -> {
@@ -3545,7 +3751,7 @@ private fun resolvePeerTypesInner(
                     ZigMutability.VAR -> peerTy.mutability
                     null -> null
                 }
-                ptrTy = ZigPointerType(ZigPointerSize.C, null, ptrMutability, ptrChild)
+                ptrTy = ZigPointerType.of(ZigPointerSize.C, null, ptrMutability, ptrChild)
             }
             return ptrTy!!
         }
@@ -3557,7 +3763,7 @@ private fun resolvePeerTypesInner(
                 val ty = peerTys[idx] ?: continue
                 val peerTy = when (ty) {
                     is ZigPointerType -> ty
-                    is ZigFunctionType -> ZigPointerType(ZigPointerSize.ONE, null, ZigMutability.CONST, ty)
+                    is ZigFunctionType -> ZigPointerType.of(ZigPointerSize.ONE, null, ZigMutability.CONST, ty)
                     else -> return null
                 }
                 when (peerTy.size) {
@@ -3608,10 +3814,10 @@ private fun resolvePeerTypesInner(
                                 // TODO: resolve pair in memory coercible
                                 if (curArr.child == peerArr.child) {
                                     if (curArr.length == peerArr.length) {
-                                        ptrChild = ZigArrayType(
-                                            length = ZigIntValue(ZigUsizeType, curArr.length),
-                                            child = curArr.child,
+                                        ptrChild = ZigArrayType.of(
+                                            length = ZigIntValue.of(ZigUsizeType, curArr.length),
                                             sentinel = null,
+                                            child = curArr.child
                                         )
                                         return@good
                                     }
@@ -3723,11 +3929,12 @@ private fun resolvePeerTypesInner(
                         //  TODO: get coerced sentinels
                         if (peerSentinel != curSentinel) return@noSentinel
                         if (ptrSize == ZigPointerSize.ONE) when (val pointee = ptrChild) {
-                            is ZigArrayType -> ptrChild = ZigArrayType(
-                                length = pointee.length,
-                                child = pointee.child,
-                                sentinel = curSentinel,
-                            )
+                            is ZigArrayType -> ptrChild =
+                                ZigArrayType.of(
+                                    length = pointee.length,
+                                    sentinel = curSentinel,
+                                    child = pointee.child
+                                )
                             else -> throw IllegalStateException()
                         } else {
                             ptrSentinel = curSentinel
@@ -3736,7 +3943,7 @@ private fun resolvePeerTypesInner(
                     }
                     ptrSentinel = null
                     if (ptrSize == ZigPointerSize.ONE) when (val pointee = ptrChild) {
-                        is ZigArrayType -> ptrChild = ZigArrayType(
+                        is ZigArrayType -> ptrChild = ZigArrayType.of(
                             length = pointee.length,
                             child = pointee.child,
                             sentinel = null,
@@ -3744,7 +3951,7 @@ private fun resolvePeerTypesInner(
                         else -> {}
                     }
                 }
-                ptrTy = ZigPointerType(ptrSize, ptrSentinel, ptrMutability, ptrChild)
+                ptrTy = ZigPointerType.of(ptrSize, ptrSentinel, ptrMutability, ptrChild)
             }
             check(ptrTy != null)
             when (val pointee = ptrTy.child) {
@@ -3896,7 +4103,7 @@ private fun resolvePeerTypesInner(
                         if (curTy != null) {
                             if (curTy == ty) continue
                             val bits = maxOf(curTy.bits, ty.bits)
-                            curTy = ZigFixedFloatType(bits)
+                            curTy = ZigFixedFloatType.of(bits)
                         } else {
                             curTy = ty
                         }
@@ -3959,7 +4166,7 @@ private fun resolvePeerTypesInner(
                 val fieldTy = resolvePeerTypesInner(subPeerTys, subPeerVals) ?: return null
                 fieldTypes.add(fieldTy)
             }
-            return ZigTupleType(LightZigTuple(manager, fieldTypes))
+            return ZigTupleType.of(LightZigTuple(manager, fieldTypes))
         }
 
         PeerResolveStrategy.EXACT -> {
