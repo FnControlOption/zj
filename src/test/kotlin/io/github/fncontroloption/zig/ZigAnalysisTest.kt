@@ -3,7 +3,6 @@ package io.github.fncontroloption.zig
 import com.intellij.psi.PsiFileFactory
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.requireIs
-import io.github.fncontroloption.zig.psi2.*
 
 class ZigAnalysisTest : BasePlatformTestCase() {
     fun createFile(text: String): ZigFile {

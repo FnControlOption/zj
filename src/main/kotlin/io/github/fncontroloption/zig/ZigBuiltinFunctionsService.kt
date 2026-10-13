@@ -8,7 +8,6 @@ import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.vfs.findPsiFile
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.util.concurrency.annotations.RequiresReadLock
-import io.github.fncontroloption.zig.psi2.ZigBuiltinFnProto
 import org.jsoup.Jsoup
 import java.io.InputStream
 

@@ -1,12 +1,9 @@
-package io.github.fncontroloption.zig.syntaxHighlighter
+package io.github.fncontroloption.zig
 
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.fileTypes.SyntaxHighlighterBase
 import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
-import io.github.fncontroloption.zig.ZigLexerAdapter
-import io.github.fncontroloption.zig.psi2.ZigTokenSets
-import io.github.fncontroloption.zig.psi2.ZigTokenType
 
 private val IDENTIFIER_KEYS = arrayOf(ZigHighlightingColors.IDENTIFIER)
 private val NUMBER_KEYS = arrayOf(ZigHighlightingColors.NUMBER)

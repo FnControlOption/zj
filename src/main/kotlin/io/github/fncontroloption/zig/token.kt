@@ -1,8 +1,7 @@
-package io.github.fncontroloption.zig.psi2
+package io.github.fncontroloption.zig
 
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
-import io.github.fncontroloption.zig.ZigLanguage
 
 class ZigTokenType(debugName: String) : IElementType(debugName, ZigLanguage) {
     companion object {

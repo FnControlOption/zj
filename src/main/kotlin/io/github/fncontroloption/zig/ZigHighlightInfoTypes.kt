@@ -1,4 +1,4 @@
-package io.github.fncontroloption.zig.syntaxHighlighter
+package io.github.fncontroloption.zig
 
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType.HighlightInfoTypeImpl

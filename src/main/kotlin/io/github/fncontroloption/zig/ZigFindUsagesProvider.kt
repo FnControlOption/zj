@@ -5,7 +5,6 @@ import com.intellij.lang.cacheBuilder.WordsScanner
 import com.intellij.lang.findUsages.FindUsagesProvider
 import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.TokenSet
-import io.github.fncontroloption.zig.psi2.*
 
 class ZigFindUsagesProvider : FindUsagesProvider {
     override fun getWordsScanner(): WordsScanner {

@@ -6,7 +6,6 @@ import com.intellij.lang.tree.util.children
 import com.intellij.lang.tree.util.siblings
 import com.intellij.psi.TokenType
 import com.intellij.psi.util.siblings
-import io.github.fncontroloption.zig.psi2.*
 import com.intellij.formatting.Block as FormattingBlock
 import com.intellij.psi.formatter.common.AbstractBlock as AbstractFormattingBlock
 

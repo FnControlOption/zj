@@ -9,9 +9,6 @@ import com.intellij.psi.stubs.StubIndexKey
 import com.intellij.util.Processor
 import com.intellij.util.indexing.FindSymbolParameters
 import com.intellij.util.indexing.IdFilter
-import io.github.fncontroloption.zig.psi2.ZigContainerFieldImpl
-import io.github.fncontroloption.zig.psi2.ZigFnDecl
-import io.github.fncontroloption.zig.psi2.ZigVarDecl
 
 class ZigChooseByNameContributor : ChooseByNameContributorEx {
     override fun processNames(

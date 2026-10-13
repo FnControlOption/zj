@@ -11,8 +11,6 @@ import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiRecursiveVisitor
 import com.intellij.psi.PsiWalkingState
 import com.intellij.psi.tree.TokenSet
-import io.github.fncontroloption.zig.psi2.ZigElementType
-import io.github.fncontroloption.zig.psi2.ZigTokenType
 
 private val BRACE_ENCLOSED = TokenSet.create(
     ZigElementType.BLOCK,

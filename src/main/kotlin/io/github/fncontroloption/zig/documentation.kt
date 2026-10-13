@@ -12,8 +12,6 @@ import com.intellij.platform.backend.documentation.*
 import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.psi.*
 import com.intellij.psi.util.findParentOfType
-import io.github.fncontroloption.zig.psi2.*
-import io.github.fncontroloption.zig.syntaxHighlighter.ZigHighlightingColors
 
 const val ZIG_DOCUMENTATION_PROTOCOL = "zig_doc://"
 const val ZIG_DOCUMENTATION_OFFSET_SEPARATOR = $$"$zigDocumentationOffset$"

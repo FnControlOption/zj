@@ -2,7 +2,6 @@ package io.github.fncontroloption.zig
 
 import com.intellij.psi.PsiElement
 import com.intellij.ui.breadcrumbs.BreadcrumbsProvider
-import io.github.fncontroloption.zig.psi2.*
 
 class ZigBreadcrumbsProvider : BreadcrumbsProvider {
     override fun getLanguages() = arrayOf(ZigLanguage)

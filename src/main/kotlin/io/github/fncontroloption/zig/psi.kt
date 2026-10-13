@@ -1,4 +1,4 @@
-package io.github.fncontroloption.zig.psi2
+package io.github.fncontroloption.zig
 
 import com.intellij.extapi.psi.ASTWrapperPsiElement
 import com.intellij.extapi.psi.PsiFileBase
@@ -14,11 +14,12 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.light.LightElement
 import com.intellij.psi.stubs.StubElement
 import com.intellij.psi.tree.IElementType
-import com.intellij.psi.util.*
+import com.intellij.psi.util.elementType
+import com.intellij.psi.util.findParentInFile
+import com.intellij.psi.util.siblings
 import com.intellij.ui.IconManager
 import com.intellij.util.BitUtil
 import com.intellij.util.IncorrectOperationException
-import io.github.fncontroloption.zig.*
 import javax.swing.Icon
 
 sealed interface ZigElement : PsiElement

@@ -1,4 +1,4 @@
-package io.github.fncontroloption.zig.syntaxHighlighter
+package io.github.fncontroloption.zig
 
 import com.intellij.ide.highlighter.JavaHighlightingColors
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors

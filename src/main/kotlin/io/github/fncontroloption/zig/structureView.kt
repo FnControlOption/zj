@@ -13,7 +13,6 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SyntaxTraverser
-import io.github.fncontroloption.zig.psi2.*
 
 private fun shouldIncludeInStructureView(element: NavigatablePsiElement): Boolean {
     return when (element) {

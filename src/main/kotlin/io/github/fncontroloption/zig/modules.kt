@@ -21,8 +21,6 @@ import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.psi.PsiManager
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.util.concurrency.annotations.RequiresReadLock
-import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
-import io.github.fncontroloption.zig.psi2.ZigStringLiteral
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json

@@ -5,7 +5,6 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
 import com.intellij.psi.util.*
 import com.intellij.util.IncorrectOperationException
-import io.github.fncontroloption.zig.psi2.*
 
 /** @see com.intellij.psi.impl.source.resolve.reference.ReferenceProvidersRegistry.getReferencesFromProviders */
 fun resolveReferences(element: PsiElement): Sequence<PsiElement> {

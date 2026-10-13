@@ -1,12 +1,9 @@
-package io.github.fncontroloption.zig.psi2
+package io.github.fncontroloption.zig
 
 import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.IFileElementType
-import io.github.fncontroloption.zig.ZigBuiltinFnProtoLanguage
-import io.github.fncontroloption.zig.ZigLanguage
-import io.github.fncontroloption.zig.ZonLanguage
 
 object ZigFileElementType : IFileElementType(ZigLanguage)
 

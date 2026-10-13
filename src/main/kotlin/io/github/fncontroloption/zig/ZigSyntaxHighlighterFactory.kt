@@ -1,4 +1,4 @@
-package io.github.fncontroloption.zig.syntaxHighlighter
+package io.github.fncontroloption.zig
 
 import com.intellij.openapi.fileTypes.SyntaxHighlighterFactory
 import com.intellij.openapi.project.Project

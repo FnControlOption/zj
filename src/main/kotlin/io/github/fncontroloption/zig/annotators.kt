@@ -4,18 +4,12 @@ import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.project.DumbAware
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.text.Strings
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementVisitor
-import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.search.LocalSearchScope
-import com.intellij.psi.search.SearchScope
-import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.elementType
 import com.intellij.psi.util.parents
 import com.intellij.psi.util.siblings
-import io.github.fncontroloption.zig.psi2.*
 
 class ZigUnusedAnnotator : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
@@ -86,7 +80,7 @@ private class UnusedVisitor : PsiRecursiveElementVisitor() {
                 // This is a leaf element, so no need to call super.visitElement
             }
 
-            else ->  {
+            else -> {
                 super.visitElement(element)
             }
         }

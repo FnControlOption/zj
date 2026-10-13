@@ -1,4 +1,4 @@
-package io.github.fncontroloption.zig.syntaxHighlighter
+package io.github.fncontroloption.zig
 
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType
@@ -7,11 +7,6 @@ import com.intellij.codeInsight.daemon.impl.analysis.HighlightInfoHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.elementType
-import io.github.fncontroloption.zig.ZigAnalyzer
-import io.github.fncontroloption.zig.ZigComptimeParameterValue
-import io.github.fncontroloption.zig.ZigFunctionType
-import io.github.fncontroloption.zig.psi2.*
-import io.github.fncontroloption.zig.resolveReferences
 
 /** @see com.intellij.codeInsight.daemon.impl.analysis.JavaNamesHighlightVisitor */
 class ZigHighlightVisitor : HighlightVisitor {

@@ -6,10 +6,6 @@ import com.intellij.psi.search.PsiElementProcessor
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.refactoring.listeners.RefactoringElementListener
 import com.intellij.refactoring.listeners.RefactoringElementListenerProvider
-import io.github.fncontroloption.zig.psi2.ZigBuiltinCall
-import io.github.fncontroloption.zig.psi2.ZigFile
-import io.github.fncontroloption.zig.psi2.ZigStringLiteral
-import io.github.fncontroloption.zig.psi2.createZigStringLiteral
 import java.nio.file.Path
 
 fun nioPathToUnixString(path: Path): String {

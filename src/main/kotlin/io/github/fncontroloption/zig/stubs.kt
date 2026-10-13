@@ -4,7 +4,6 @@ package io.github.fncontroloption.zig
 
 import com.intellij.lang.ASTNode
 import com.intellij.psi.stubs.*
-import io.github.fncontroloption.zig.psi2.*
 
 class ZigStubDefinition : LanguageStubDefinition {
     override val builder = DefaultStubBuilder()

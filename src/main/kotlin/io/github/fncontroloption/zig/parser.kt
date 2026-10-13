@@ -6,7 +6,6 @@ import com.intellij.psi.FileViewProvider
 import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
-import io.github.fncontroloption.zig.psi2.*
 
 enum class ZigParserMode {
     ZIG,

@@ -3,8 +3,6 @@ package io.github.fncontroloption.zig
 import org.junit.Assert.*
 import org.junit.Test
 
-import io.github.fncontroloption.zig.psi2.escapeZigString
-
 class ZigStringEscapeTest {
     @Test
     fun testEscape() {

@@ -1,9 +1,8 @@
-package io.github.fncontroloption.zig.syntaxHighlighter
+package io.github.fncontroloption.zig
 
 import com.intellij.openapi.options.colors.AttributesDescriptor
 import com.intellij.openapi.options.colors.ColorDescriptor
 import com.intellij.openapi.options.colors.ColorSettingsPage
-import io.github.fncontroloption.zig.ZigIcons
 
 private val DESCRIPTORS = arrayOf(
     AttributesDescriptor("Identifier", ZigHighlightingColors.IDENTIFIER),

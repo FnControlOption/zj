@@ -10,7 +10,6 @@ import com.intellij.icons.AllIcons
 import com.intellij.psi.util.elementType
 import com.intellij.psi.util.findParentOfType
 import com.intellij.psi.util.parents
-import io.github.fncontroloption.zig.psi2.*
 
 class ZigCompletionContributor : CompletionContributor() {
     override fun fillCompletionVariants(parameters: CompletionParameters, result: CompletionResultSet) {

@@ -8,19 +8,18 @@ import com.intellij.psi.util.elementType
 import com.intellij.psi.util.endOffset
 import com.intellij.psi.util.siblings
 import com.intellij.psi.util.startOffset
-import io.github.fncontroloption.zig.psi2.*
 
 private fun isInsideCallArgs(call: ZigCallOrBuiltinCall, offset: Int): Boolean {
     return call.leftParenElement.startOffset < offset && offset < call.endOffset
 }
 
-data class ZigParameterInfoItem(
-    val text: String,
-    val paramRanges: List<Pair<Int, Int>>,
-    val varargsRange: Pair<Int, Int>?,
-)
+class ZigParameterInfoHandler : ParameterInfoHandler<ZigCallOrBuiltinCall, ZigParameterInfoHandler.Item> {
+    data class Item(
+        val text: String,
+        val paramRanges: List<Pair<Int, Int>>,
+        val varargsRange: Pair<Int, Int>?,
+    )
 
-class ZigParameterInfoHandler : ParameterInfoHandler<ZigCallOrBuiltinCall, ZigParameterInfoItem> {
     override fun findElementForParameterInfo(context: CreateParameterInfoContext): ZigCallOrBuiltinCall? {
         var element = context.file.findElementAt(context.offset)
         var call: ZigCallOrBuiltinCall? = null
@@ -57,7 +56,7 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCallOrBuiltinCall, ZigPa
         }
         val infoItems = candidates.map { (params, paramTypes, hasVarargs) ->
             if (params.isEmpty() && !hasVarargs) {
-                return@map ZigParameterInfoItem("<no parameters>", emptyList(), null)
+                return@map Item("<no parameters>", emptyList(), null)
             }
             val paramRanges = mutableListOf<Pair<Int, Int>>()
             var varargsRange: Pair<Int, Int>? = null
@@ -81,7 +80,7 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCallOrBuiltinCall, ZigPa
                     varargsRange = start to end
                 }
             }
-            ZigParameterInfoItem(text, paramRanges, varargsRange)
+            Item(text, paramRanges, varargsRange)
         }
         context.itemsToShow = infoItems.toSet().toTypedArray()
         return call
@@ -111,7 +110,7 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCallOrBuiltinCall, ZigPa
         context.setCurrentParameter(currentParam)
     }
 
-    override fun updateUI(p: ZigParameterInfoItem?, context: ParameterInfoUIContext) {
+    override fun updateUI(p: Item?, context: ParameterInfoUIContext) {
         if (p == null) {
             return
         }

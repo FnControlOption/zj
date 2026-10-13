@@ -11,8 +11,6 @@ import com.intellij.psi.util.elementType
 import com.intellij.util.Processor
 import com.intellij.util.indexing.*
 import com.intellij.util.io.EnumeratorStringDescriptor
-import io.github.fncontroloption.zig.psi2.ZigNameIdentifierOwner
-import io.github.fncontroloption.zig.psi2.ZigTokenType
 
 val ZIG_ESCAPED_IDENTIFIER_INDEX_NAME =
     ID.create<String, Void?>("io.github.fncontroloption.zig.ZigEscapedIdentifierIndex")

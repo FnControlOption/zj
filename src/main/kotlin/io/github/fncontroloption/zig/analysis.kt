@@ -16,8 +16,6 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.util.*
-import io.github.fncontroloption.zig.psi2.*
-import io.github.fncontroloption.zig.syntaxHighlighter.ZigHighlightingColors
 import org.jsoup.Jsoup
 
 private val PRIMITIVE_VALUES = mapOf(

@@ -4,7 +4,6 @@ import com.intellij.lang.BracePair
 import com.intellij.lang.PairedBraceMatcher
 import com.intellij.psi.PsiFile
 import com.intellij.psi.tree.IElementType
-import io.github.fncontroloption.zig.psi2.ZigTokenType
 
 private val PAIRS = arrayOf(
     BracePair(ZigTokenType.L_PAREN, ZigTokenType.R_PAREN, false),
