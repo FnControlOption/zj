@@ -26,7 +26,7 @@ object ZigHighlightingColors {
     val BUILTIN = TextAttributesKey.createTextAttributesKey("ZIG_BUILTIN", DefaultLanguageHighlighterColors.METADATA)
     val BAD_CHARACTER = TextAttributesKey.createTextAttributesKey("ZIG_BAD_CHARACTER", HighlighterColors.BAD_CHARACTER)
 
-    // *** Highlight visitor ***
+    // *** Highlight annotator ***
 
     val INSTANCE_METHOD = TextAttributesKey.createTextAttributesKey("ZIG_INSTANCE_METHOD", DefaultLanguageHighlighterColors.INSTANCE_METHOD)
     val INSTANCE_FIELD = TextAttributesKey.createTextAttributesKey("ZIG_INSTANCE_FIELD", DefaultLanguageHighlighterColors.INSTANCE_FIELD)

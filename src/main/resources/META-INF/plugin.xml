@@ -46,8 +46,8 @@
                            implementationClass="io.github.fncontroloption.zig.ZigBuiltinFnProtoParserDefinition"/>
     <lang.syntaxHighlighterFactory language="ZIG"
                                    implementationClass="io.github.fncontroloption.zig.ZigSyntaxHighlighterFactory"/>
-    <highlightVisitor implementation="io.github.fncontroloption.zig.ZigHighlightVisitor"/>
     <colorSettingsPage implementation="io.github.fncontroloption.zig.ZigColorSettingsPage"/>
+    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigHighlightAnnotator"/>
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigUnusedAnnotator"/>
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigUnderscoreIdentifierAnnotator"/>
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigUndeclaredIdentifierAnnotator"/>
