@@ -5,40 +5,31 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.FileViewProvider
 import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
+import com.intellij.psi.tree.IFileElementType
 import com.intellij.psi.tree.TokenSet
 
-enum class ZigParserMode {
-    ZIG,
-    ZON,
-    BUILTIN_FN_PROTO,
-}
-
 sealed class AbstractZigParserDefinition : ParserDefinition {
-    abstract val mode: ZigParserMode
     abstract val language: Language
     override fun createLexer(project: Project?) = ZigLexerAdapter()
     override fun getCommentTokens() = ZigTokenSets.COMMENTS
     override fun getStringLiteralElements() = ZigTokenSets.STRINGS
-    override fun createParser(project: Project?) = ZigParser(mode)
+    override fun createParser(project: Project?) = ZigParser()
     override fun createElement(node: ASTNode) = ZigElementType.createPsiElement(node)
 }
 
 class ZigParserDefinition : AbstractZigParserDefinition() {
-    override val mode get() = ZigParserMode.ZIG
     override val language get() = ZigLanguage
     override fun getFileNodeType() = ZigFileElementType
     override fun createFile(viewProvider: FileViewProvider) = ZigFile(viewProvider, ZigLanguage)
 }
 
 class ZonParserDefinition : AbstractZigParserDefinition() {
-    override val mode get() = ZigParserMode.ZON
     override val language get() = ZonLanguage
     override fun getFileNodeType() = ZonFileElementType
     override fun createFile(viewProvider: FileViewProvider) = ZonFile(viewProvider)
 }
 
 class ZigBuiltinFnProtoParserDefinition : AbstractZigParserDefinition() {
-    override val mode get() = ZigParserMode.BUILTIN_FN_PROTO
     override val language get() = ZigBuiltinFnProtoLanguage
     override fun getFileNodeType() = ZigBuiltinFnProtoFileElementType
     override fun createFile(viewProvider: FileViewProvider) = ZigFile(viewProvider, ZigBuiltinFnProtoLanguage)
@@ -46,22 +37,25 @@ class ZigBuiltinFnProtoParserDefinition : AbstractZigParserDefinition() {
 
 // Based on https://codeberg.org/ziglang/zig/src/tag/0.17.0/lib/std/zig/Parse.zig
 /** @see com.intellij.java.syntax.parser.JavaParser */
-class ZigParser(private val mode: ZigParserMode) : PsiParser {
+class ZigParser : PsiParser {
     private val enclosureStack = ArrayDeque<IElementType?>()
     private val containerStack = ArrayDeque<IElementType?>()
 
     override fun parse(root: IElementType, builder: PsiBuilder): ASTNode {
         enclosureStack.clear()
         containerStack.clear()
-        containerStack.addLast(null)
-        val rootMarker = builder.mark()
-        when (mode) {
-            ZigParserMode.ZIG -> {
+        when (root) {
+            ZigFileElementType -> {
+                containerStack.addLast(null)
+                val rootMarker = builder.mark()
                 parseEnclosed(builder, null) {
                     parseContainerMember(builder) != null
                 }
+                rootMarker.done(root)
+                containerStack.removeLast()
             }
-            ZigParserMode.ZON -> {
+            ZonFileElementType -> {
+                val rootMarker = builder.mark()
                 tryExpr(builder)
                 if (!builder.eof()) {
                     builder.mark().error("Expected EOF")
@@ -69,17 +63,24 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
                         builder.advanceLexer()
                     }
                 }
+                rootMarker.done(root)
             }
-            ZigParserMode.BUILTIN_FN_PROTO -> {
+            ZigBuiltinFnProtoFileElementType -> {
+                containerStack.addLast(null)
+                val rootMarker = builder.mark()
                 while (parseContainerMember(builder) != null) {
                     // no-op
                 }
                 assertBuiltinFnProto(builder)
                 check(builder.eof())
+                rootMarker.done(root)
+                containerStack.removeLast()
             }
+            is ZigLazyParseableElementType -> when (root) {
+                ZigBlockElementType -> parseBlock(builder, allowLabel = true, lazy = false)
+            }
+            else -> throw IllegalArgumentException()
         }
-        rootMarker.done(root)
-        containerStack.removeLast()
         return builder.treeBuilt
     }
 
@@ -147,7 +148,11 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
         return marker
     }
 
-    private fun parseBlock(builder: PsiBuilder, allowLabel: Boolean = false): PsiBuilder.Marker? {
+    private fun parseBlock(
+        builder: PsiBuilder,
+        allowLabel: Boolean,
+        lazy: Boolean = true,
+    ): PsiBuilder.Marker? {
         val prevToken = builder.rawLookup(-1)
         if (prevToken === ZigTokenType.PERIOD) {
             return null
@@ -161,16 +166,20 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
             marker.rollbackTo()
             return null
         }
-        parseEnclosed(builder, ZigTokenType.R_BRACE) {
+        parseEnclosed(builder, ZigTokenType.R_BRACE, lazy) {
             parseStatement(builder, true) != null
         }
         expectToken(builder, ZigTokenType.R_BRACE)
-        marker.done(ZigElementType.BLOCK)
+        if (lazy) {
+            marker.collapse(ZigBlockElementType)
+        } else {
+            marker.done(ZigBlockElementType)
+        }
         return marker
     }
 
     private fun parseBlockExpr(builder: PsiBuilder): PsiBuilder.Marker? {
-        return parseBlock(builder, true)
+        return parseBlock(builder, allowLabel = true)
     }
 
     private fun parseBlockExprStatement(builder: PsiBuilder): PsiBuilder.Marker? {
@@ -345,7 +354,7 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
             builder.advanceLexer()
             return decl
         }
-        parseBlock(builder)
+        parseBlock(builder, allowLabel = false)
         decl.done(ZigElementType.FN_DECL)
         return decl
     }
@@ -436,7 +445,7 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
             return null
         }
         eatToken(builder, ZigTokenSets.TEST_NAME)
-        parseBlock(builder)
+        parseBlock(builder, allowLabel = false)
         decl.done(ZigElementType.TEST_DECL)
         return decl
     }
@@ -447,7 +456,7 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
             comptime.rollbackTo()
             return null
         }
-        parseBlock(builder)
+        parseBlock(builder, allowLabel = false)
         comptime.done(ZigElementType.COMPTIME)
         return comptime
     }
@@ -1101,7 +1110,7 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
             }
             ZigTokenType.KEYWORD_FOR -> return parseFor(builder, this::tryExpr)
             ZigTokenType.KEYWORD_WHILE -> return parseWhile(builder, this::tryExpr)
-            ZigTokenType.L_BRACE -> return parseBlock(builder)
+            ZigTokenType.L_BRACE -> return parseBlock(builder, allowLabel = false)
             else -> return parseCurlySuffixExpr(builder)
         }
     }
@@ -2016,16 +2025,18 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
     private fun parseEnclosed(
         builder: PsiBuilder,
         right: IElementType?,
+        lazy: Boolean = false,
         parseMember: () -> Boolean,
     ) {
         enclosureStack.addLast(right)
-        parseUntil(builder, right, parseMember)
+        parseUntil(builder, right, lazy, parseMember)
         enclosureStack.removeLast()
     }
 
     private fun parseUntil(
         builder: PsiBuilder,
         tokenType: IElementType?,
+        lazy: Boolean = false,
         parseMember: () -> Boolean,
     ) {
         while (!builder.eof()) {
@@ -2035,38 +2046,51 @@ class ZigParser(private val mode: ZigParserMode) : PsiParser {
             if (enclosureStack.any { builder.tokenType === it }) {
                 break
             }
-            if (parseMember()) {
+            if (!lazy && parseMember()) {
                 continue
             }
             val type = builder.tokenType
-            with(builder.mark()) {
+            if (lazy) {
                 builder.advanceLexer()
-                error("Unexpected token: ${tokenSymbol(type)}")
+            } else {
+                val marker = builder.mark()
+                builder.advanceLexer()
+                marker.error("Unexpected token: ${tokenSymbol(type)}")
             }
             when (type) {
                 ZigTokenType.L_BRACE -> {
                     parseEnclosed(builder, ZigTokenType.R_BRACE) { false }
                     if (builder.tokenType === ZigTokenType.R_BRACE) {
-                        val invalid = builder.mark()
-                        builder.advanceLexer()
-                        invalid.error("Unexpected token: }")
+                        if (lazy) {
+                            builder.advanceLexer()
+                        } else {
+                            val marker = builder.mark()
+                            builder.advanceLexer()
+                            marker.error("Unexpected token: }")
+                        }
                     }
                 }
                 ZigTokenType.L_BRACKET -> {
                     parseEnclosed(builder, ZigTokenType.R_BRACKET) { false }
                     if (builder.tokenType === ZigTokenType.R_BRACKET) {
-                        with(builder.mark()) {
+                        if (lazy) {
                             builder.advanceLexer()
-                            error("Unexpected token: ]")
+                        } else {
+                            val marker = builder.mark()
+                            builder.advanceLexer()
+                            marker.error("Unexpected token: ]")
                         }
                     }
                 }
                 ZigTokenType.L_PAREN -> {
                     parseEnclosed(builder, ZigTokenType.R_PAREN) { false }
                     if (builder.tokenType === ZigTokenType.R_PAREN) {
-                        with(builder.mark()) {
+                        if (lazy) {
                             builder.advanceLexer()
-                            error("Unexpected token: )")
+                        } else {
+                            val marker = builder.mark()
+                            builder.advanceLexer()
+                            marker.error("Unexpected token: )")
                         }
                     }
                 }
