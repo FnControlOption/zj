@@ -7,6 +7,7 @@ import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.codeInsight.lookup.LookupElementWeigher
 import com.intellij.icons.AllIcons
+import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.util.elementType
 import com.intellij.psi.util.findParentOfType
 import com.intellij.psi.util.parents
@@ -147,7 +148,7 @@ private object FieldInitInsertHandler : InsertHandler<LookupElement> {
 
 internal fun getFunctionParamTypes(
     functionElement: ZigFnOrBuiltinFnDeclOrProto,
-    typeParams: Map<ZigFnParam, ZigValue?>,
+    typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
 ): Triple<List<ZigFnParam>, List<ZigValue?>, Boolean> {
     val (params, paramTypes) = functionElement.parameters.map { param ->
         param to param.typeElement?.expression?.let {
@@ -214,7 +215,7 @@ private fun getFunctionTypeText(functionType: ZigFunctionType): String {
 
 private fun getFunctionTypeText(
     functionElement: ZigFnOrBuiltinFnDeclOrProto,
-    typeParams: Map<ZigFnParam, ZigValue?>,
+    typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
 ): String {
     if (functionElement is ZigBuiltinFnProto && functionElement.returnsAnytype) {
         return "anytype"
