@@ -8,25 +8,15 @@ import com.intellij.util.IncorrectOperationException
 
 /** @see com.intellij.psi.impl.source.resolve.reference.ReferenceProvidersRegistry.getReferencesFromProviders */
 fun resolveReferences(element: PsiElement): Sequence<PsiElement> {
-    val cached = CachedValuesManager.getCachedValue(element) {
-        val targets = element.references.asSequence().flatMap { reference ->
-            if (reference is PsiPolyVariantReference) {
-                val results = reference.multiResolve(false)
-                results.asSequence().mapNotNull { it.element }
-            } else {
-                val target = reference.resolve()
-                if (target != null) sequenceOf(target) else emptySequence()
-            }
+    return element.references.asSequence().flatMap { reference ->
+        if (reference is PsiPolyVariantReference) {
+            val results = reference.multiResolve(false)
+            results.asSequence().mapNotNull { it.element }
+        } else {
+            val target = reference.resolve()
+            if (target != null) sequenceOf(target) else emptySequence()
         }
-        CachedValueProvider.Result.create(
-            targets.toSet(),
-            PsiModificationTracker.MODIFICATION_COUNT,
-            ZigBuiltinService.getModificationTracker(element.project),
-            ZigBuiltinFunctionsService.getModificationTracker(element.project),
-            ZigModulesProjectService.getModificationTracker(element.project),
-        )
     }
-    return cached.asSequence()
 }
 
 class ZigIdentifierReference(element: ZigIdentifier) :

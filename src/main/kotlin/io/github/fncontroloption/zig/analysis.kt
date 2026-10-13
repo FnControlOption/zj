@@ -1328,16 +1328,8 @@ private fun resolveValue(element: ZigExpression?, expectedType: ZigValue? = null
     if (element == null) {
         return if (expectedType != null) ZigUnknown.of(expectedType) else ZigUnknown.ofUnknownType()
     }
-    return CachedValuesManager.getCachedValue(element) {
-        RecursionManager.doPreventingRecursion(element, true) {
-            CachedValueProvider.Result.create(
-                computeValueUncached(element),
-                PsiModificationTracker.MODIFICATION_COUNT,
-                ZigBuiltinService.getModificationTracker(element.project),
-                ZigBuiltinFunctionsService.getModificationTracker(element.project),
-                ZigModulesProjectService.getModificationTracker(element.project),
-            )
-        }
+    return RecursionManager.doPreventingRecursion(element, true) {
+        computeValueUncached(element)
     } ?: if (expectedType != null) ZigUnknown.of(expectedType) else ZigUnknown.ofUnknownType()
 }
 
