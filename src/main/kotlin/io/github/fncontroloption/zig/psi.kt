@@ -431,7 +431,10 @@ sealed interface ZigCallOrBuiltinCall : ZigExpression {
                 ?.elementType === ZigTokenType.COMMA
 }
 
-class ZigBuiltinCall(node: ASTNode) : ASTWrapperPsiElement(node), ZigCallOrBuiltinCall {
+class ZigBuiltinCall : ZigStubPsiElement<ZigBuiltinCallStub>, ZigCallOrBuiltinCall {
+    constructor(stub: ZigBuiltinCallStub) : super(stub, ZigElementType.BUILTIN_CALL)
+    constructor(node: ASTNode) : super(node)
+
     val builtinElement: PsiElement
         get() = findNotNullChildByType(ZigTokenType.BUILTIN)
 

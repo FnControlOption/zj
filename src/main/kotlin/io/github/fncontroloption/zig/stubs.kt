@@ -5,9 +5,11 @@ package io.github.fncontroloption.zig
 import com.intellij.lang.ASTNode
 import com.intellij.psi.stubs.*
 
+const val ZIG_STUB_VERSION = 12
+
 class ZigStubDefinition : LanguageStubDefinition {
     override val builder = DefaultStubBuilder()
-    override val stubVersion = 9
+    override val stubVersion = ZIG_STUB_VERSION
 }
 
 object ZigStubIndexKeys {
@@ -17,17 +19,17 @@ object ZigStubIndexKeys {
 }
 
 class ZigContainerFieldStubIndex : StringStubIndexExtension<ZigContainerFieldImpl>() {
-    override fun getVersion() = super.getVersion() + 1
+    override fun getVersion() = super.getVersion() + ZIG_STUB_VERSION
     override fun getKey() = ZigStubIndexKeys.CONTAINER_FIELDS
 }
 
 class ZigFnDeclStubIndex : StringStubIndexExtension<ZigFnDecl>() {
-    override fun getVersion() = super.getVersion() + 1
+    override fun getVersion() = super.getVersion() + ZIG_STUB_VERSION
     override fun getKey() = ZigStubIndexKeys.FN_DECLS
 }
 
 class ZigVarDeclStubIndex : StringStubIndexExtension<ZigVarDecl>() {
-    override fun getVersion() = super.getVersion() + 1
+    override fun getVersion() = super.getVersion() + ZIG_STUB_VERSION
     override fun getKey() = ZigStubIndexKeys.VAR_DECLS
 }
 
@@ -43,6 +45,9 @@ class ZigStubRegistryExtension : StubRegistryExtension {
 
         registry.registerStubSerializer(ZigElementType.VAR_DECL, ZigVarDeclStubSerializer)
         registry.registerStubFactory(ZigElementType.VAR_DECL, ZigVarDeclStubFactory)
+
+        registry.registerStubSerializer(ZigElementType.BUILTIN_CALL, ZigBuiltinCallStubSerializer)
+        registry.registerStubFactory(ZigElementType.BUILTIN_CALL, ZigBuiltinCallStubFactory)
     }
 }
 
@@ -192,4 +197,69 @@ object ZigVarDeclStubFactory : StubElementFactory<ZigVarDeclStub, ZigVarDecl> {
         }
         return !element.isLocal
     }
+}
+
+// ---------- BUILTIN_CALL ---------- //
+
+sealed class ZigBuiltinCallStub(parent: StubElement<*>?) :
+    StubBase<ZigBuiltinCall>(parent, ZigElementType.BUILTIN_CALL)
+
+class ZigImportStub(parent: StubElement<*>?, val target: String?) : ZigBuiltinCallStub(parent)
+
+object ZigBuiltinCallStubSerializer : StubSerializer<ZigBuiltinCallStub> {
+    override fun getExternalId() = "zig.BUILTIN_CALL"
+
+    override fun serialize(stub: ZigBuiltinCallStub, dataStream: StubOutputStream) {
+        when (stub) {
+            is ZigImportStub -> {
+                dataStream.writeUTFFast("@import")
+                if (stub.target != null) {
+                    dataStream.writeBoolean(true)
+                    dataStream.writeUTFFast(stub.target)
+                } else {
+                    dataStream.writeBoolean(false)
+                }
+            }
+        }
+    }
+
+    override fun deserialize(
+        dataStream: StubInputStream,
+        parentStub: StubElement<*>?
+    ): ZigBuiltinCallStub {
+        return when (dataStream.readUTFFast()) {
+            "@import" -> {
+                val target = when (dataStream.readBoolean()) {
+                    true -> dataStream.readUTFFast()
+                    else -> null
+                }
+                ZigImportStub(parentStub, target)
+            }
+            else -> throw IllegalArgumentException()
+        }
+    }
+
+    override fun indexStub(stub: ZigBuiltinCallStub, sink: IndexSink) {}
+}
+
+object ZigBuiltinCallStubFactory : StubElementFactory<ZigBuiltinCallStub, ZigBuiltinCall> {
+    override fun shouldCreateStub(node: ASTNode): Boolean {
+        val builtinElement = node.findChildByType(ZigTokenType.BUILTIN) ?: return false
+        return when (builtinElement.text) {
+            "@import" -> true
+            else -> false
+        }
+    }
+
+    override fun createStub(psi: ZigBuiltinCall, parentStub: StubElement<*>?): ZigBuiltinCallStub {
+        return when (psi.builtinElement.text) {
+            "@import" -> {
+                val target = psi.arguments.firstOrNull() as? ZigStringExpression
+                ZigImportStub(parentStub, target?.value)
+            }
+            else -> throw IllegalArgumentException()
+        }
+    }
+
+    override fun createPsi(stub: ZigBuiltinCallStub) = ZigBuiltinCall(stub)
 }
