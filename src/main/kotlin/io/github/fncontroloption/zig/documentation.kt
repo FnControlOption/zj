@@ -68,7 +68,7 @@ private class ZigPsiDocumentationTarget(
         return TargetPresentation
             .builder(presentation?.presentableText ?: "")
             .icon(presentation?.getIcon(false))
-            .containerText(element.containingFile.name)
+            .containerText(element.containingFile?.name)
             .locationText(moduleTextWithIcon?.text, moduleTextWithIcon?.icon)
             .presentation()
     }

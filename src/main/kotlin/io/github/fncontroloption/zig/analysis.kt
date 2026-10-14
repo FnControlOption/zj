@@ -1679,7 +1679,12 @@ private fun substituteGenericParams(
             }
             is ZigTupleType -> {
                 val fields = value.fields.map { substituteGenericParams(it, genericParams) }
-                ZigTupleType.of(LightZigTuple(value.element.manager, fields))
+                val lightTuple = LightZigTuple(value.element.manager, fields)
+                lightTuple.navigationElement = value.element
+                for ((newField, oldField) in lightTuple.fields.zip(value.element.fields)) {
+                    newField.navigationElement = oldField
+                }
+                ZigTupleType.of(lightTuple)
             }
             is ZigInferredUnionTagType -> {
                 ZigInferredUnionTagType.of(substituteContainerGenericParams(value.union, genericParams))

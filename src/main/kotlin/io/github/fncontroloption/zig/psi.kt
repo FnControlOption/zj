@@ -1463,6 +1463,14 @@ class ZigWhileContinueExpr(node: ASTNode) : ASTWrapperPsiElement(node), ZigEleme
 }
 
 sealed class LightZigElement(manager: PsiManager) : LightElement(manager, ZigLanguage), ZigElement {
+    private var navigationElementPointer: SmartPsiElementPointer<*>? = null
+    override fun getNavigationElement() = navigationElementPointer?.dereference() ?: this
+    override fun setNavigationElement(navigationElement: PsiElement) {
+        val element = navigationElement.navigationElement?.takeIf { it != navigationElement } ?: navigationElement
+        if (element is LightElement) return
+        navigationElementPointer = element.createSmartPointer()
+    }
+
     override fun toString() = this::class.simpleName ?: "LightZigElement"
 }
 
