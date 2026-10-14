@@ -1625,6 +1625,9 @@ private fun substituteGenericParams(
     value: ZigValue,
     genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
 ): ZigValue {
+    if (genericParams.isEmpty()) {
+        return value
+    }
     return RecursionManager.doPreventingRecursion(value, true) {
         when (value) {
             is ZigUnknown -> {
@@ -1748,10 +1751,8 @@ private fun computeContainerInstanceFieldAccess(
     if (member == null) {
         return ZigPlace.unknown()
     }
-    var value = resolveValueFromReferenceTo(member)
-    if (type.genericParams.isNotEmpty()) {
-        value = substituteGenericParams(value, type.genericParams)
-    }
+    val initialValue = resolveValueFromReferenceTo(member)
+    val value = substituteGenericParams(initialValue, type.genericParams)
     return ZigPlace.Single.of(mutability, value)
 }
 
@@ -1776,10 +1777,8 @@ private fun computeContainerTypeDeclAccess(
             ZigPlace.unknown()
         }
     }
-    var value = resolveValueFromReferenceTo(member)
-    if (type.genericParams.isNotEmpty()) {
-        value = substituteGenericParams(value, type.genericParams)
-    }
+    val initialValue = resolveValueFromReferenceTo(member)
+    val value = substituteGenericParams(initialValue, type.genericParams)
     return when (member) {
         is ZigVarDecl -> ZigPlace.Single.of(member.mutability, value)
         else -> ZigPlace.constant(value)
@@ -1840,13 +1839,13 @@ private fun computeFunctionReturnValue(
     }
     val returnTypeElement = functionElement.returnTypeElement?.expression
         ?: return ZigUnknown.ofUnknownType()
-    val returnType = if (functionElement.bangTokenElement != null) {
+    val initialReturnType = if (functionElement.bangTokenElement != null) {
         val errorSet = ZigUnknown.ofUnknownType() // TODO: infer error set
         resolveValue(returnTypeElement).mapValue { ZigErrorUnionType.of(errorSet, it) }
     } else {
         resolveValue(returnTypeElement)
     }
-    if (returnType == ZigTypeType) {
+    if (initialReturnType == ZigTypeType) {
         val functionBodyElement = (functionElement as? ZigFnDecl)?.body
         if (functionBodyElement != null) {
             val genericParams = computeGenericParams(type, arguments)
@@ -1855,26 +1854,20 @@ private fun computeFunctionReturnValue(
                 .asSequence()
                 .filterIsInstance<ZigReturn>()
                 .map { descendant ->
-                    when (val returnValue = descendant.returnOperand) {
+                    when (val operand = descendant.returnOperand) {
                         null -> ZigVoidValue
                         else -> {
-                            var value = resolveValue(returnValue)
-                            if (genericParams.isNotEmpty()) {
-                                value = substituteGenericParams(value, genericParams)
-                            }
-                            value
+                            val initialValue = resolveValue(operand)
+                            substituteGenericParams(initialValue, genericParams)
                         }
                     }
                 }
             return ZigMultiValue.from(values.toSet())
         }
     }
-    var value = returnType
     val genericParams = computeGenericParams(type, arguments)
-    if (genericParams.isNotEmpty()) {
-        value = substituteGenericParams(value, genericParams)
-    }
-    return ZigUnknown.of(value)
+    val returnType = substituteGenericParams(initialReturnType, genericParams)
+    return ZigUnknown.of(returnType)
 }
 
 private fun computeTagType(type: ZigValue): ZigValue? {
@@ -1953,8 +1946,8 @@ internal fun mapCalledFuncAndSelfArg(
                     if (it is ZigNamedContainerDecl && it.name == name) it else null
                 }
                 if (member != null) {
-                    var value = resolveValueFromReferenceTo(member)
-                    value = substituteGenericParams(value, type.genericParams)
+                    val initialValue = resolveValueFromReferenceTo(member)
+                    val value = substituteGenericParams(initialValue, type.genericParams)
                     value.mapValue { transform(it, null) }
                 } else {
                     ZigUnknown.ofUnknownType()
@@ -3078,9 +3071,8 @@ private fun inferListInitItem(
                 if (it is ZigContainerField && it.name == name) it else null
             }
             if (member != null) {
-                var value = resolveValueFromReferenceTo(member).typeOf
-                value = substituteGenericParams(value, type.genericParams)
-                value
+                val fieldType = resolveValueFromReferenceTo(member).typeOf
+                substituteGenericParams(fieldType, type.genericParams)
             } else {
                 ZigUnknown.of(ZigTypeType)
             }
@@ -3378,12 +3370,9 @@ private fun inferCallArg(
             val paramIndex = if (isMethod) argIndex + 1 else argIndex
             val paramElement = functionElement.parameters.elementAtOrNull(paramIndex)
                 ?: return@blk ZigUnknown.of(ZigTypeType)
-            var value = resolveValue(paramElement.typeElement?.expression, ZigTypeType)
+            val value = resolveValue(paramElement.typeElement?.expression, ZigTypeType)
             val genericParams = computeGenericParams(functionType, arguments)
-            if (genericParams.isNotEmpty()) {
-                value = substituteGenericParams(value, genericParams)
-            }
-            value
+            substituteGenericParams(value, genericParams)
         }
     }
     val builtinCallElement = parentElement.containingBuiltinCall
