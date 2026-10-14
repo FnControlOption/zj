@@ -116,6 +116,11 @@ private fun getHighlightRangeAndAttributes(element: PsiElement): Pair<PsiElement
             Pair(identifier, attributes)
         }
 
+        is ZigErrorSetExpressionItem -> {
+            val identifier = element.identifierElement
+            Pair(identifier, ZigHighlightingColors.CONSTANT)
+        }
+
         else -> null
     }
 }
@@ -125,6 +130,7 @@ private fun getHighlightAttributesFromReference(element: PsiElement): TextAttrib
         for (target in resolveReferences(element)) {
             when (target) {
                 is LightZigTupleField -> return ZigHighlightingColors.INSTANCE_FIELD
+                is LightZigErrorSetItem -> return ZigHighlightingColors.CONSTANT
                 else -> {
                     val (_, attributes) = getHighlightRangeAndAttributes(target) ?: continue
                     return attributes

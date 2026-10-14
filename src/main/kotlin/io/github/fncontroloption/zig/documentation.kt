@@ -210,12 +210,18 @@ private fun getDefinition(element: ZigNavigatableElement): String? {
             text.substring(0, typeElement.textRangeInParent.endOffset)
         }
         is ZigVarProto -> element.text
+        is ZigErrorSetExpressionItem -> element.text
         is LightZigTupleField -> {
-            var originalText: String? = null
             if (element.navigationElement != element) {
-                originalText = element.navigationElement.text
+                return element.navigationElement.text
             }
-            originalText ?: element.container.fieldTypes[element.fieldIndex].toPlainText()
+            element.container.fieldTypes[element.fieldIndex].toPlainText()
+        }
+        is LightZigErrorSetItem -> {
+            if (element.navigationElement != element) {
+                return element.navigationElement.text
+            }
+            element.name
         }
     }
 }

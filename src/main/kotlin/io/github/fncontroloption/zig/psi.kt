@@ -635,14 +635,33 @@ class ZigEqualEqual(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpres
 class ZigErrdefer(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigErrorSet(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
+sealed interface ZigErrorSet : ZigElement {
     val setItems: Sequence<ZigErrorSetItem>
-        get() = firstChild.siblings().filterIsInstance<ZigErrorSetItem>()
 }
 
-class ZigErrorSetItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+class ZigErrorSetExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigErrorSet, ZigExpression {
+    override val setItems: Sequence<ZigErrorSetExpressionItem>
+        get() = firstChild.siblings().filterIsInstance<ZigErrorSetExpressionItem>()
+}
+
+sealed interface ZigErrorSetItem : ZigNamedElement {
+    val containingSet: ZigErrorSet
+}
+
+class ZigErrorSetExpressionItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigErrorSetItem {
+    override val containingSet: ZigErrorSetExpression
+        get() = parent as ZigErrorSetExpression
+
     val identifierElement: PsiElement
         get() = findNotNullChildByType(ZigTokenType.IDENTIFIER)
+
+    override fun getName() = parseZigIdentifier(identifierElement)
+    override fun setName(name: String) = throw IncorrectOperationException()
+
+    override fun getPresentation(): ItemPresentation {
+        val location = "(in ${containingFile.name})"
+        return PresentationData(name, location, null, null)
+    }
 }
 
 class ZigErrorUnion(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
@@ -1463,6 +1482,12 @@ class ZigWhileContinueExpr(node: ASTNode) : ASTWrapperPsiElement(node), ZigEleme
 }
 
 sealed class LightZigElement(manager: PsiManager) : LightElement(manager, ZigLanguage), ZigElement {
+    private var navigationElementPointer: SmartPsiElementPointer<*>? = null
+    override fun getNavigationElement() = navigationElementPointer?.dereference() ?: this
+    override fun setNavigationElement(navigationElement: PsiElement) {
+        navigationElementPointer = navigationElement.createSmartPointer()
+    }
+
     override fun toString() = this::class.simpleName ?: "LightZigElement"
 }
 
@@ -1502,6 +1527,31 @@ data class LightZigTupleField(
 
     override fun getPresentation(): ItemPresentation {
         return PresentationData(name, null, baseIcon, null)
+    }
+}
+
+class LightZigErrorSet(
+    manager: PsiManager,
+    val names: Set<String>,
+) : LightZigElement(manager), ZigErrorSet {
+    val setItemList = names.map { LightZigErrorSetItem(this, it) }
+
+    override val setItems: Sequence<LightZigErrorSetItem>
+        get() = setItemList.asSequence()
+
+    override fun equals(other: Any?) = other is LightZigErrorSet && other.names == names
+    override fun hashCode() = names.hashCode()
+}
+
+data class LightZigErrorSetItem(
+    override val containingSet: LightZigErrorSet,
+    private val name: String,
+) : LightZigElement(containingSet.manager), ZigErrorSetItem {
+    override fun getName() = name
+    override fun setName(name: String) = throw IncorrectOperationException()
+
+    override fun getPresentation(): ItemPresentation {
+        return PresentationData(name, null, null, null)
     }
 }
 

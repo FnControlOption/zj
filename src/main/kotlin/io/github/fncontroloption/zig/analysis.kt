@@ -731,14 +731,17 @@ data class ZigOptionalType private constructor(val child: ZigValue) : ZigValue {
 }
 
 @ConsistentCopyVisibility
-data class ZigErrorSetType private constructor(val names: Set<String>) : ZigValue {
+data class ZigErrorSetType private constructor(val element: LightZigErrorSet) : ZigValue {
     companion object {
-        fun of(names: Set<String>) =
-            ZigValue.intern(ZigErrorSetType(names))
+        fun of(element: LightZigErrorSet) =
+            ZigValue.intern(ZigErrorSetType(element))
     }
 
     override val typeOf: ZigTypeType
         get() = ZigTypeType
+
+    val names: Set<String>
+        get() = element.names
 
     override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
         val builder = HtmlBuilder()
@@ -762,14 +765,14 @@ data class ZigErrorSetType private constructor(val names: Set<String>) : ZigValu
 }
 
 @ConsistentCopyVisibility
-data class ZigErrorValue private constructor(override val typeOf: ZigErrorSetType, val name: String) : ZigValue {
+data class ZigErrorValue private constructor(override val typeOf: ZigValue, val name: String) : ZigValue {
     companion object {
-        fun of(typeOf: ZigErrorSetType, name: String) =
+        fun of(typeOf: ZigValue, name: String) =
             ZigValue.intern(ZigErrorValue(typeOf, name))
     }
 
-    override fun toHtmlChunk(truncate: Boolean) = when (typeOf.names.singleOrNull()) {
-        name -> HtmlChunk.fragment(
+    override fun toHtmlChunk(truncate: Boolean) = when (typeOf) {
+        is ZigErrorSetType if typeOf.names.singleOrNull() == name -> HtmlChunk.fragment(
             createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "error"),
             HtmlChunk.text("."),
             HtmlChunk.text(renderZigIdentifier(name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
@@ -1354,7 +1357,7 @@ private fun computeValueUncached(element: ZigExpression): ZigValue {
         is ZigContainerExpression -> computeContainerExpression(element)
         is ZigFnProto -> ZigFunctionType.of(element.createSmartPointer(), findUnboundTypeParams(element))
         is ZigOptionalTypeExpression -> computeOptionalTypeExpression(element)
-        is ZigErrorSet -> computeErrorSet(element)
+        is ZigErrorSetExpression -> computeErrorSet(element)
         is ZigErrorValueExpression -> computeErrorValueExpression(element)
         is ZigErrorUnion -> computeErrorUnion(element)
         is ZigArrayTypeExpression -> computeArrayTypeExpression(element)
@@ -1814,7 +1817,9 @@ private fun computeValueFromReferenceUncached(target: ZigNamedElement): ZigValue
         is ZigFnParam -> computeFnParam(target)
         is ZigContainerFieldImpl -> computeContainerField(target)
         is ZigPayloadItem -> computePayloadItem(target).value
+        is ZigErrorSetExpressionItem -> computeErrorSetItem(target)
         is LightZigTupleField -> ZigUnknown.of(target.container.fieldTypes[target.fieldIndex])
+        is LightZigErrorSetItem -> ZigErrorValue.of(ZigErrorSetType.of(target.containingSet), target.name)
         is ZigLabelDecl -> ZigUnknown.ofUnknownType()
     }
 }
@@ -2395,18 +2400,24 @@ private fun computeOptionalTypeExpression(element: ZigOptionalTypeExpression): Z
     return child.mapValue { ZigOptionalType.of(it) }
 }
 
-private fun computeErrorSet(element: ZigErrorSet): ZigValue {
-    val names = sortedSetOf<String>()
+private fun computeErrorSet(element: ZigErrorSetExpression): ZigValue {
+    val itemMap = sortedMapOf<String, ZigErrorSetExpressionItem>()
     for (item in element.setItems) {
-        val name = parseZigIdentifier(item.identifierElement) ?: return ZigUnknown.of(ZigTypeType)
-        names.add(name)
+        val name = item.name ?: return ZigUnknown.of(ZigTypeType)
+        itemMap[name] = item
     }
-    return ZigErrorSetType.of(names)
+    val lightSet = LightZigErrorSet(element.manager, itemMap.keys)
+    lightSet.navigationElement = element
+    for ((name, item) in itemMap) {
+        val lightItem = lightSet.setItemList.first { it.name == name }
+        lightItem.navigationElement = item
+    }
+    return ZigErrorSetType.of(lightSet)
 }
 
 private fun computeErrorValueExpression(element: ZigErrorValueExpression): ZigValue {
     val name = parseZigIdentifier(element.identifierElement) ?: return ZigUnknown.ofUnknownType()
-    val type = ZigErrorSetType.of(setOf(name))
+    val type = ZigErrorSetType.of(LightZigErrorSet(element.manager, setOf(name)))
     return ZigErrorValue.of(type, name)
 }
 
@@ -2482,7 +2493,7 @@ private fun computeMergeErrorSets(element: ZigMergeErrorSets): ZigValue {
                 when (right) {
                     is ZigErrorSetType -> {
                         val names = left.names + right.names
-                        ZigErrorSetType.of(names.toSortedSet())
+                        ZigErrorSetType.of(LightZigErrorSet(element.manager, names.toSortedSet()))
                     }
                     else -> ZigUnknown.of(ZigTypeType)
                 }
@@ -2756,6 +2767,12 @@ private fun computePayloadItem(target: ZigPayloadItem): ZigPlace {
     }
 }
 
+private fun computeErrorSetItem(target: ZigErrorSetExpressionItem): ZigValue {
+    val type = computeErrorSet(target.containingSet)
+    val name = target.name ?: return ZigUnknown.of(type)
+    return ZigErrorValue.of(type, name)
+}
+
 private fun computeThenPayload(payloadElement: ZigThenPayload): ZigPlace {
     val conditionElement =
         payloadElement.containingIf?.conditionElement?.expression
@@ -2831,7 +2848,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                     .asSequence()
                     .map { it.name }
                     .toSortedSet()
-            val prongErrorSet = ZigErrorSetType.of(prongErrorNames)
+            val prongErrorSet = ZigErrorSetType.of(LightZigErrorSet(payloadElement.manager, prongErrorNames))
 
             // Helper variables for tagged unions:
             val otherEnumLiterals =
@@ -2854,9 +2871,9 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                             val names = conditionType.names.toSortedSet()
                             names.removeAll(otherErrorNames)
                             if (isInlineProng) {
-                                names.asSequence().map { ZigErrorValue.of(ZigErrorSetType.of(setOf(it)), it) }
+                                names.asSequence().map { ZigErrorValue.of(ZigErrorSetType.of(LightZigErrorSet(payloadElement.manager, setOf(it))), it) }
                             } else {
-                                sequenceOf(ZigUnknown.of(ZigErrorSetType.of(names)))
+                                sequenceOf(ZigUnknown.of(ZigErrorSetType.of(LightZigErrorSet(payloadElement.manager, names))))
                             }
                         } else {
                             if (isInlineProng) {
@@ -3639,7 +3656,7 @@ private fun resolvePeerTypesInner(
                 if (ty !is ZigErrorSetType) return null
                 if (finalSet != null) {
                     val names = finalSet.names + ty.names
-                    finalSet = ZigErrorSetType.of(names.toSortedSet())
+                    finalSet = ZigErrorSetType.of(LightZigErrorSet(finalSet.element.manager, names.toSortedSet()))
                 } else {
                     finalSet = ty
                 }
@@ -3666,7 +3683,7 @@ private fun resolvePeerTypesInner(
                 }
                 if (finalSet != null) {
                     val names = finalSet.names + setTy.names
-                    finalSet = ZigErrorSetType.of(names.toSortedSet())
+                    finalSet = ZigErrorSetType.of(LightZigErrorSet(finalSet.element.manager, names.toSortedSet()))
                 } else {
                     finalSet = setTy
                 }

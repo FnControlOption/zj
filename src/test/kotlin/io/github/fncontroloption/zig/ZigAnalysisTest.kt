@@ -53,19 +53,22 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "error{Foo,Bar}.Foo"
         val value = resolveValue(text).requireIs<ZigErrorValue>()
         assertEquals("Foo", value.name)
-        assertEquals(ZigErrorSetType.of(setOf("Foo", "Bar")), value.typeOf)
+        val type = value.typeOf.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo", "Bar"), type.names)
     }
 
     fun testErrorValue() {
         val text = "error.Foo"
         val value = resolveValue(text).requireIs<ZigErrorValue>()
         assertEquals("Foo", value.name)
-        assertEquals(ZigErrorSetType.of(setOf("Foo")), value.typeOf)
+        val type = value.typeOf.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo"), type.names)
     }
 
     fun testErrorUnion() {
         val type = resolveValue("error{Foo}!bool").requireIs<ZigErrorUnionType>()
-        assertEquals(ZigErrorSetType.of(setOf("Foo")), type.errorSet)
+        val errorSet = type.errorSet.requireIs<ZigErrorSetType>()
+        assertEquals(setOf("Foo"), errorSet.names)
         assertEquals(ZigBoolType, type.payload)
     }
 

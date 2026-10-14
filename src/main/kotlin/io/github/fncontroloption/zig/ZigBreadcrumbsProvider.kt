@@ -8,7 +8,7 @@ class ZigBreadcrumbsProvider : BreadcrumbsProvider {
 
     override fun acceptElement(element: PsiElement) = when (element) {
         is ZigContainerExpression,
-        is ZigErrorSet,
+        is ZigErrorSetExpression,
         is ZigFnDecl,
         is ZigTestDecl -> true
         else -> false
@@ -26,7 +26,7 @@ class ZigBreadcrumbsProvider : BreadcrumbsProvider {
             }
         }
 
-        is ZigErrorSet -> {
+        is ZigErrorSetExpression -> {
             val varDecl = element.parent as? ZigVarDecl
             varDecl?.name ?: "error{}"
         }
