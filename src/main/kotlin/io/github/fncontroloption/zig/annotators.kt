@@ -108,44 +108,6 @@ private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
     }
 }
 
-/* TODO: delete
-private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
-    val namedElement = element as? ZigNameIdentifierOwner ?: return
-    val nameIdentifier = namedElement.nameIdentifier ?: return
-    val kind = when (namedElement) {
-        is ZigLabelDecl ->
-            "label"
-
-        is ZigFnParam if !nameIdentifier.textMatches("_") && namedElement.containingFunction.body != null ->
-            "function parameter"
-
-        is ZigPayloadItem if !nameIdentifier.textMatches("_") ->
-            "capture"
-
-        is ZigVarDeclOrProto if !nameIdentifier.textMatches("_") && namedElement.isLocal ->
-            when (namedElement.mutability) {
-                ZigMutability.CONST -> "local constant"
-                ZigMutability.VAR -> "local variable"
-            }
-
-        else -> return
-    }
-    val containingFile = namedElement.containingFile
-    val searchScopes = mutableListOf<SearchScope>()
-    searchScopes.add(LocalSearchScope(containingFile))
-    if (!DumbService.isDumb(namedElement.project)) {
-        searchScopes.add(GlobalSearchScope.fileScope(containingFile))
-    }
-    if (searchScopes.all { ReferencesSearch.search(namedElement, it).findFirst() == null }) {
-        holder.newAnnotation(HighlightSeverity.ERROR, "Unused $kind")
-            .problemGroup { "UNUSED" }
-            .range(nameIdentifier)
-            // TODO: .newFix().registerFix()
-            .create()
-    }
-}
-*/
-
 class ZigUnderscoreIdentifierAnnotator : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         annotateInvalidUnderscoreIdentifier(element, holder)

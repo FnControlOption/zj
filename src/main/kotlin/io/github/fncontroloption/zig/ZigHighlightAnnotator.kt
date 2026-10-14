@@ -34,7 +34,8 @@ private fun getHighlightRangeAndAttributes(element: PsiElement): Pair<PsiElement
                 if (genericValue is ZigComptimeParameterValue) {
                     return Pair(identifier, ZigHighlightingColors.COMPTIME_PARAMETER)
                 }
-            } catch (_: IndexNotReadyException) {}
+            } catch (_: IndexNotReadyException) {
+            }
             Pair(identifier, ZigHighlightingColors.PARAMETER)
         }
 
@@ -45,7 +46,8 @@ private fun getHighlightRangeAndAttributes(element: PsiElement): Pair<PsiElement
                 if (value.asValueSequence().any { it.typeOf is ZigFunctionType }) {
                     return Pair(identifier, ZigHighlightingColors.STATIC_METHOD)
                 }
-            } catch (_: IndexNotReadyException) {}
+            } catch (_: IndexNotReadyException) {
+            }
             val attributes = when (element.isLocal) {
                 true -> when (element.mutability) {
                     ZigMutability.CONST -> ZigHighlightingColors.LOCAL_VARIABLE
@@ -105,7 +107,8 @@ private fun getHighlightRangeAndAttributes(element: PsiElement): Pair<PsiElement
                 if (left.asValueSequence().any { ZigAnalyzer.getBuiltinFieldType(it.typeOf, name) != null }) {
                     return Pair(identifier, ZigHighlightingColors.INSTANCE_FIELD)
                 }
-            } catch (_: IndexNotReadyException) {}
+            } catch (_: IndexNotReadyException) {
+            }
             val attributes = getHighlightAttributesFromReference(element) ?: return null
             Pair(identifier, attributes)
         }
@@ -131,6 +134,7 @@ private fun getHighlightAttributesFromReference(element: PsiElement): TextAttrib
                 }
             }
         }
-    } catch (_: IndexNotReadyException) {}
+    } catch (_: IndexNotReadyException) {
+    }
     return null
 }
