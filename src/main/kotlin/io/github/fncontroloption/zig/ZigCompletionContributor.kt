@@ -148,12 +148,12 @@ private object FieldInitInsertHandler : InsertHandler<LookupElement> {
 
 internal fun getFunctionParamTypes(
     functionElement: ZigFnOrBuiltinFnDeclOrProto,
-    typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+    genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
 ): Triple<List<ZigFnParam>, List<ZigValue?>, Boolean> {
     val (params, paramTypes) = functionElement.parameters.map { param ->
         param to param.typeElement?.expression?.let {
             val initialValue = ZigAnalyzer.resolveValue(it)
-            ZigAnalyzer.substituteTypeParams(initialValue, typeParams)
+            ZigAnalyzer.substituteGenericParams(initialValue, genericParams)
         }
     }.unzip()
     return Triple(params, paramTypes, functionElement.hasVarargs)
@@ -210,19 +210,19 @@ internal fun getParameterText(param: ZigFnParam, type: ZigValue?): String {
 
 private fun getFunctionTypeText(functionType: ZigFunctionType): String {
     val element = functionType.function.dereference() ?: return "_"
-    return getFunctionTypeText(element, functionType.typeParams)
+    return getFunctionTypeText(element, functionType.genericParams)
 }
 
 private fun getFunctionTypeText(
     functionElement: ZigFnOrBuiltinFnDeclOrProto,
-    typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+    genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
 ): String {
     if (functionElement is ZigBuiltinFnProto && functionElement.returnsAnytype) {
         return "anytype"
     }
     val returnType = functionElement.returnTypeElement?.expression?.let {
         val initialValue = ZigAnalyzer.resolveValue(it)
-        ZigAnalyzer.substituteTypeParams(initialValue, typeParams)
+        ZigAnalyzer.substituteGenericParams(initialValue, genericParams)
     }
     if (returnType == null) {
         return "_"
@@ -242,7 +242,7 @@ private fun getFieldInitVariants(
         val name = member.name ?: return@mapNotNull null
         if (name in fieldsToExclude) return@mapNotNull null
         val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
-        val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
+        val value = ZigAnalyzer.substituteGenericParams(initialValue, containerType.genericParams)
         val initializer = member.initializer
         val tailText = buildString {
             append(" =")
@@ -304,7 +304,7 @@ private fun fillIdentifierVariants(element: ZigIdentifier, result: CompletionRes
             is ZigFunctionType -> {
                 val (params, paramTypes, hasVarargs) = when (val element = type.function.dereference()) {
                     null -> Triple(emptyList(), emptyList(), true)
-                    else -> getFunctionParamTypes(element, type.typeParams)
+                    else -> getFunctionParamTypes(element, type.genericParams)
                 }
                 val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
                     is ZigPsiContainerType -> receiverType.container.dereference() == candidate.parent
@@ -348,7 +348,7 @@ private fun fillTestVariants(element: ZigTestDecl, result: CompletionResultSet) 
             is ZigFunctionType -> {
                 val paramTypes = when (val element = type.function.dereference()) {
                     null -> emptyList()
-                    else -> getFunctionParamTypes(element, type.typeParams).component2()
+                    else -> getFunctionParamTypes(element, type.genericParams).component2()
                 }
                 val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
                     is ZigPsiContainerType -> receiverType.container.dereference() == candidate.parent
@@ -430,7 +430,7 @@ private fun fillFieldAccessVariants(
                     )
                 } else if (isInstance) {
                     val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
-                    val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
+                    val value = ZigAnalyzer.substituteGenericParams(initialValue, containerType.genericParams)
                     variants.add(
                         createLookupElementWithType(
                             member,
@@ -453,12 +453,12 @@ private fun fillFieldAccessVariants(
                 continue
             }
             val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
-            val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
+            val value = ZigAnalyzer.substituteGenericParams(initialValue, containerType.genericParams)
             when (val type = value.typeOf) {
                 is ZigFunctionType -> {
                     var (params, paramTypes, hasVarargs) = when (val element = type.function.dereference()) {
                         null -> Triple(emptyList(), emptyList(), true)
-                        else -> getFunctionParamTypes(element, containerType.typeParams)
+                        else -> getFunctionParamTypes(element, containerType.genericParams)
                     }
                     val isMethod = getFunctionReceiverType(paramTypes) == containerType
                     if (isInstance) {
@@ -571,7 +571,7 @@ private fun fillEnumLiteralVariants(
                     )
                 } else if (containerType.isTaggedUnion) {
                     val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
-                    val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
+                    val value = ZigAnalyzer.substituteGenericParams(initialValue, containerType.genericParams)
                     val type = value.typeOf
                     if (type == ZigVoidType) {
                         variants.add(
@@ -589,13 +589,13 @@ private fun fillEnumLiteralVariants(
                 continue
             }
             val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(member)
-            val value = ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
+            val value = ZigAnalyzer.substituteGenericParams(initialValue, containerType.genericParams)
             when (val type = value.typeOf) {
                 is ZigFunctionType -> {
                     // TODO: check if return type can coerce to original type
                     val (params, paramTypes, hasVarargs) = when (val element = type.function.dereference()) {
                         null -> Triple(emptyList(), emptyList(), true)
-                        else -> getFunctionParamTypes(element, containerType.typeParams)
+                        else -> getFunctionParamTypes(element, containerType.genericParams)
                     }
                     val isMethod = getFunctionReceiverType(paramTypes) == containerType
                     variants.add(

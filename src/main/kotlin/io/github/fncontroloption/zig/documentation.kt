@@ -109,7 +109,7 @@ private class ZigPsiDocumentationTarget(
             val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(element)
             val values =
                 containerTypes(originalElement)
-                    .map { ZigAnalyzer.substituteTypeParams(initialValue, it.typeParams) }
+                    .map { ZigAnalyzer.substituteGenericParams(initialValue, it.genericParams) }
                     .toSet()
                     .ifEmpty { setOf(initialValue) }
             ZigMultiValue.from(values).forEachValue { value ->

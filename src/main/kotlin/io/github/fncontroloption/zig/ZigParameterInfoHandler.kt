@@ -38,7 +38,8 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCallOrBuiltinCall, ZigPa
             is ZigCall -> mapCalledFuncAndSelfArg(call) blk@{ function, selfArg ->
                 val functionType = function.typeOf as? ZigFunctionType ?: return@blk ZigVoidValue
                 val functionElement = functionType.function.dereference() ?: return@blk ZigVoidValue
-                var (params, paramTypes, hasVarargs) = getFunctionParamTypes(functionElement, functionType.typeParams)
+                var (params, paramTypes, hasVarargs) =
+                    getFunctionParamTypes(functionElement, functionType.genericParams)
                 if (selfArg != null) {
                     params = params.subList(1, params.size)
                     paramTypes = paramTypes.subList(1, paramTypes.size)

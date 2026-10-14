@@ -58,11 +58,11 @@ object ZigAnalyzer {
         return io.github.fncontroloption.zig.resolveValueFromReferenceTo(target)
     }
 
-    fun substituteTypeParams(
+    fun substituteGenericParams(
         value: ZigValue,
-        typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+        genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
     ): ZigValue {
-        return io.github.fncontroloption.zig.substituteTypeParams(value, typeParams)
+        return io.github.fncontroloption.zig.substituteGenericParams(value, genericParams)
     }
 
     fun inferResultType(childElement: ZigExpression): ZigValue {
@@ -549,7 +549,7 @@ data class ZigEnumLiteralValue private constructor(override val typeOf: ZigValue
 
 sealed interface ZigContainerType : ZigValue {
     override val typeOf: ZigTypeType
-    val typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>
+    val genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>
     val containerKind: ZigContainerKind?
     val isTaggedUnion: Boolean
     val members: Sequence<ZigContainerMember>
@@ -559,13 +559,13 @@ sealed interface ZigContainerType : ZigValue {
 @ConsistentCopyVisibility
 data class ZigPsiContainerType private constructor(
     val container: SmartPsiElementPointer<ZigContainer>,
-    override val typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+    override val genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
 ) : ZigContainerType {
     companion object {
         fun of(
             container: SmartPsiElementPointer<ZigContainer>,
-            typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
-        ) = ZigValue.intern(ZigPsiContainerType(container, typeParams))
+            genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+        ) = ZigValue.intern(ZigPsiContainerType(container, genericParams))
     }
 
     override val typeOf: ZigTypeType
@@ -574,7 +574,7 @@ data class ZigPsiContainerType private constructor(
     override fun toHtmlChunk(truncate: Boolean): HtmlChunk {
         val element = container.dereference()
             ?: return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
-        return createContainerHtmlChunkStartingFrom(element, typeParams, truncate)
+        return createContainerHtmlChunkStartingFrom(element, genericParams, truncate)
     }
 
     override val containerKind: ZigContainerKind?
@@ -611,13 +611,13 @@ data class ZigPsiContainerType private constructor(
 @ConsistentCopyVisibility
 data class ZigFunctionType private constructor(
     val function: SmartPsiElementPointer<ZigFnDeclOrProto>,
-    val typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+    val genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
 ) : ZigValue {
     companion object {
         fun of(
             function: SmartPsiElementPointer<ZigFnDeclOrProto>,
-            typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
-        ) = ZigValue.intern(ZigFunctionType(function, typeParams))
+            genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+        ) = ZigValue.intern(ZigFunctionType(function, genericParams))
     }
 
     override val typeOf: ZigTypeType
@@ -636,14 +636,14 @@ data class ZigFunctionType private constructor(
             if (param.isAnytype) {
                 builder.append(createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "anytype"))
             } else {
-                builder.append(createTypeElementHtmlChunk(param.typeElement, typeParams, truncate))
+                builder.append(createTypeElementHtmlChunk(param.typeElement, genericParams, truncate))
             }
         }
         builder.append(") ")
         if (element.bangTokenElement != null) {
             builder.append("!")
         }
-        builder.append(createTypeElementHtmlChunk(element.returnTypeElement, typeParams, truncate))
+        builder.append(createTypeElementHtmlChunk(element.returnTypeElement, genericParams, truncate))
         return builder.toFragment()
     }
 }
@@ -946,7 +946,7 @@ data class ZigTupleType private constructor(val element: LightZigTuple) : ZigCon
         return builder.toFragment()
     }
 
-    override val typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>
+    override val genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>
         get() = emptyMap()
 
     override val containerKind: ZigContainerKind
@@ -1137,7 +1137,7 @@ data class ZigInferredUnionTagType private constructor(val union: ZigPsiContaine
         return builder.toFragment()
     }
 
-    override val typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>
+    override val genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>
         get() = emptyMap()
 
     override val containerKind: ZigContainerKind
@@ -1173,7 +1173,7 @@ data class ZigFieldEnumType private constructor(val container: ZigValue) : ZigCo
         return builder.toFragment()
     }
 
-    override val typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>
+    override val genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>
         get() = emptyMap()
 
     override val containerKind: ZigContainerKind
@@ -1352,7 +1352,7 @@ private fun computeValueUncached(element: ZigExpression): ZigValue {
             -> resolvePlace(element).value
 
         is ZigContainerExpression -> computeContainerExpression(element)
-        is ZigFnProto -> ZigFunctionType.of(element.createSmartPointer(), findUnboundTypeParams(element))
+        is ZigFnProto -> ZigFunctionType.of(element.createSmartPointer(), findUnboundGenericParams(element))
         is ZigOptionalTypeExpression -> computeOptionalTypeExpression(element)
         is ZigErrorSet -> computeErrorSet(element)
         is ZigErrorValueExpression -> computeErrorValueExpression(element)
@@ -1545,7 +1545,7 @@ private fun computeArrayAccessOnTuple(
     return ZigPlace.Single.of(mutability, ZigUnknown.of(fieldType))
 }
 
-private fun findUnboundTypeParams(element: ZigElement): Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?> {
+private fun findUnboundGenericParams(element: ZigElement): Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?> {
     return buildMap {
         var element: PsiElement? = element
         while (element != null) {
@@ -1562,15 +1562,15 @@ private fun findUnboundTypeParams(element: ZigElement): Map<SmartPsiElementPoint
     }
 }
 
-private fun computeTypeParams(
+private fun computeGenericParams(
     type: ZigFunctionType,
     arguments: Sequence<ZigValue?>,
 ): Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?> {
     val element = type.function.dereference() ?: return emptyMap()
-    if (type.typeParams.isEmpty()) {
+    if (type.genericParams.isEmpty()) {
         return emptyMap()
     }
-    return type.typeParams.toMutableMap().apply {
+    return type.genericParams.toMutableMap().apply {
         for ((paramDecl, argValue) in element.parameters.zip(arguments)) {
             val genericValue = ZigAnalyzer.createGenericParameterValue(paramDecl)
             if (genericValue != null) {
@@ -1594,11 +1594,11 @@ private fun computeBuiltinFnGenericParams(
     }
 }
 
-private fun substituteContainerTypeParams(
+private fun substituteContainerGenericParams(
     type: ZigPsiContainerType,
-    typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+    genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
 ): ZigPsiContainerType {
-    return if (type.typeParams.isEmpty()) {
+    return if (type.genericParams.isEmpty()) {
         type
     } else {
         // NOTE:
@@ -1610,107 +1610,107 @@ private fun substituteContainerTypeParams(
         //
         // Given `Foo(u8)`, the process of resolving `Y` is as follows:
         //
-        // 1. Since `Y` is a comptime param, we use `ZigContainerType.typeParams`
+        // 1. Since `Y` is a comptime param, we use `ZigContainerType.genericParams`
         //    to get its value, which is `X`.
-        // 2. Since `X` is a comptime param, we use `ZigContainerType.typeParams`
+        // 2. Since `X` is a comptime param, we use `ZigContainerType.genericParams`
         //    to get its value, which is `u8`.
         // 3. Since `u8` is a primitive type, we are done.
         //
-        ZigPsiContainerType.of(type.container, type.typeParams + typeParams)
+        ZigPsiContainerType.of(type.container, type.genericParams + genericParams)
     }
 }
 
-private fun substituteFunctionTypeParams(
+private fun substituteFunctionGenericParams(
     type: ZigFunctionType,
-    typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+    genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
 ): ZigFunctionType {
-    return if (type.typeParams.isEmpty()) {
+    return if (type.genericParams.isEmpty()) {
         type
     } else {
-        ZigFunctionType.of(type.function, type.typeParams + typeParams)
+        ZigFunctionType.of(type.function, type.genericParams + genericParams)
     }
 }
 
-private fun substituteTypeParams(
+private fun substituteGenericParams(
     value: ZigValue,
-    typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+    genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
 ): ZigValue {
     return RecursionManager.doPreventingRecursion(value, true) {
         when (value) {
             is ZigUnknown -> {
-                ZigUnknown.of(substituteTypeParams(value.typeOf, typeParams))
+                ZigUnknown.of(substituteGenericParams(value.typeOf, genericParams))
             }
             is ZigMultiValue -> {
-                value.mapValue { substituteTypeParams(it, typeParams) }
+                value.mapValue { substituteGenericParams(it, genericParams) }
             }
             is ZigEnumLiteralValue -> {
-                substituteTypeParams(value.typeOf, typeParams).mapValue { ZigEnumLiteralValue.of(it, value.name) }
+                substituteGenericParams(value.typeOf, genericParams).mapValue { ZigEnumLiteralValue.of(it, value.name) }
             }
             is ZigPsiContainerType -> {
-                substituteContainerTypeParams(value, typeParams)
+                substituteContainerGenericParams(value, genericParams)
             }
             is ZigFunctionType -> {
-                substituteFunctionTypeParams(value, typeParams)
+                substituteFunctionGenericParams(value, genericParams)
             }
             is ZigGenericParameterValue -> {
-                val arg = typeParams[value.param]
+                val arg = genericParams[value.param]
                 if (arg == null) {
                     value
                 } else {
-                    substituteTypeParams(arg, typeParams)
+                    substituteGenericParams(arg, genericParams)
                 }
             }
             is ZigAnytypeParameterType -> {
-                substituteTypeParams(value.value, typeParams).typeOf
+                substituteGenericParams(value.value, genericParams).typeOf
             }
             is ZigOptionalType -> {
-                substituteTypeParams(value.child, typeParams).mapValue { ZigOptionalType.of(it) }
+                substituteGenericParams(value.child, genericParams).mapValue { ZigOptionalType.of(it) }
             }
             is ZigErrorUnionType -> {
-                val errorSet = substituteTypeParams(value.errorSet, typeParams)
-                val payload = substituteTypeParams(value.payload, typeParams)
+                val errorSet = substituteGenericParams(value.errorSet, genericParams)
+                val payload = substituteGenericParams(value.payload, genericParams)
                 payload.mapValue { ZigErrorUnionType.of(errorSet, it) }
             }
             is ZigArrayType -> {
-                val length = substituteTypeParams(value.length, typeParams)
-                val sentinel = value.sentinel?.let { substituteTypeParams(it, typeParams) }
-                val child = substituteTypeParams(value.child, typeParams)
+                val length = substituteGenericParams(value.length, genericParams)
+                val sentinel = value.sentinel?.let { substituteGenericParams(it, genericParams) }
+                val child = substituteGenericParams(value.child, genericParams)
                 child.mapValue { ZigArrayType.of(length, sentinel, it) }
             }
             is ZigVectorType -> {
-                val length = substituteTypeParams(value.length, typeParams)
-                val child = substituteTypeParams(value.child, typeParams)
+                val length = substituteGenericParams(value.length, genericParams)
+                val child = substituteGenericParams(value.child, genericParams)
                 child.mapValue { ZigVectorType.of(length, it) }
             }
             is ZigPointerType -> {
-                val sentinel = value.sentinel?.let { substituteTypeParams(it, typeParams) }
-                val child = substituteTypeParams(value.child, typeParams)
+                val sentinel = value.sentinel?.let { substituteGenericParams(it, genericParams) }
+                val child = substituteGenericParams(value.child, genericParams)
                 child.mapValue { value.with(sentinel = sentinel, child = it) }
             }
             is ZigTupleType -> {
-                val fields = value.fields.map { substituteTypeParams(it, typeParams) }
+                val fields = value.fields.map { substituteGenericParams(it, genericParams) }
                 ZigTupleType.of(LightZigTuple(value.element.manager, fields))
             }
             is ZigInferredUnionTagType -> {
-                ZigInferredUnionTagType.of(substituteContainerTypeParams(value.union, typeParams))
+                ZigInferredUnionTagType.of(substituteContainerGenericParams(value.union, genericParams))
             }
             is ZigFieldEnumType -> {
-                substituteTypeParams(value.container, typeParams).mapValue { ZigFieldEnumType.of(it) }
+                substituteGenericParams(value.container, genericParams).mapValue { ZigFieldEnumType.of(it) }
             }
             is ZigLazyFieldType -> {
-                val containerType = substituteTypeParams(value.container, typeParams)
-                val fieldNameValue = substituteTypeParams(value.fieldName, typeParams)
+                val containerType = substituteGenericParams(value.container, genericParams)
+                val fieldNameValue = substituteGenericParams(value.fieldName, genericParams)
                 val fieldType = computeFieldType(containerType, fieldNameValue)
-                substituteTypeParams(fieldType, typeParams)
+                substituteGenericParams(fieldType, genericParams)
             }
             is ZigLazyFieldValue -> {
-                val leftValue = substituteTypeParams(value.left, typeParams)
-                val fieldName = substituteTypeParams(value.fieldName, typeParams)
+                val leftValue = substituteGenericParams(value.left, genericParams)
+                val fieldName = substituteGenericParams(value.fieldName, genericParams)
                 val fieldValue = computeFieldAccess(null, leftValue, fieldName).value
-                substituteTypeParams(fieldValue, typeParams)
+                substituteGenericParams(fieldValue, genericParams)
             }
             is ZigLazyTagNameValue -> {
-                computeTagNameValue(substituteTypeParams(value.value, typeParams))
+                computeTagNameValue(substituteGenericParams(value.value, genericParams))
             }
             ZigTypeType,
             ZigAnyerrorType,
@@ -1754,8 +1754,8 @@ private fun computeContainerInstanceFieldAccess(
         return ZigPlace.unknown()
     }
     var value = resolveValueFromReferenceTo(member)
-    if (type.typeParams.isNotEmpty()) {
-        value = substituteTypeParams(value, type.typeParams)
+    if (type.genericParams.isNotEmpty()) {
+        value = substituteGenericParams(value, type.genericParams)
     }
     return ZigPlace.Single.of(mutability, value)
 }
@@ -1782,8 +1782,8 @@ private fun computeContainerTypeDeclAccess(
         }
     }
     var value = resolveValueFromReferenceTo(member)
-    if (type.typeParams.isNotEmpty()) {
-        value = substituteTypeParams(value, type.typeParams)
+    if (type.genericParams.isNotEmpty()) {
+        value = substituteGenericParams(value, type.genericParams)
     }
     return when (member) {
         is ZigVarDecl -> ZigPlace.Single.of(member.mutability, value)
@@ -1808,7 +1808,7 @@ private fun resolveValueFromReferenceTo(target: ZigNamedElement): ZigValue {
 private fun computeValueFromReferenceUncached(target: ZigNamedElement): ZigValue {
     return when (target) {
         is ZigFile -> ZigPsiContainerType.of(target.createSmartPointer(), emptyMap())
-        is ZigFnDecl -> ZigUnknown.of(ZigFunctionType.of(target.createSmartPointer(), findUnboundTypeParams(target)))
+        is ZigFnDecl -> ZigUnknown.of(ZigFunctionType.of(target.createSmartPointer(), findUnboundGenericParams(target)))
         is ZigVarDecl -> computeVarDecl(target)
         is ZigVarProto -> computeVarProto(target)
         is ZigFnParam -> computeFnParam(target)
@@ -1854,7 +1854,7 @@ private fun computeFunctionReturnValue(
     if (returnType == ZigTypeType) {
         val functionBodyElement = (functionElement as? ZigFnDecl)?.body
         if (functionBodyElement != null) {
-            val typeParams = computeTypeParams(type, arguments)
+            val genericParams = computeGenericParams(type, arguments)
             val traverser = SyntaxTraverser.psiTraverser(functionBodyElement).expand { it !is ZigContainerExpression }
             val values = traverser
                 .asSequence()
@@ -1864,8 +1864,8 @@ private fun computeFunctionReturnValue(
                         null -> ZigVoidValue
                         else -> {
                             var value = resolveValue(returnValue)
-                            if (typeParams.isNotEmpty()) {
-                                value = substituteTypeParams(value, typeParams)
+                            if (genericParams.isNotEmpty()) {
+                                value = substituteGenericParams(value, genericParams)
                             }
                             value
                         }
@@ -1875,9 +1875,9 @@ private fun computeFunctionReturnValue(
         }
     }
     var value = returnType
-    val typeParams = computeTypeParams(type, arguments)
-    if (typeParams.isNotEmpty()) {
-        value = substituteTypeParams(value, typeParams)
+    val genericParams = computeGenericParams(type, arguments)
+    if (genericParams.isNotEmpty()) {
+        value = substituteGenericParams(value, genericParams)
     }
     return ZigUnknown.of(value)
 }
@@ -1959,7 +1959,7 @@ internal fun mapCalledFuncAndSelfArg(
                 }
                 if (member != null) {
                     var value = resolveValueFromReferenceTo(member)
-                    value = substituteTypeParams(value, type.typeParams)
+                    value = substituteGenericParams(value, type.genericParams)
                     value.mapValue { transform(it, null) }
                 } else {
                     ZigUnknown.ofUnknownType()
@@ -2067,19 +2067,19 @@ private fun createNamedHtmlChunk(
 
 private fun createTypeElementHtmlChunk(
     typeElement: ZigTypeElement?,
-    typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+    genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
     truncate: Boolean,
 ): HtmlChunk {
     val value = typeElement?.expression?.let {
         val initialValue = resolveValue(it)
-        substituteTypeParams(initialValue, typeParams)
+        substituteGenericParams(initialValue, genericParams)
     }
     return value?.toHtmlChunk(truncate) ?: createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
 }
 
 private fun createContainerHtmlChunkStartingFrom(
     element: PsiElement,
-    typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+    genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
     truncate: Boolean,
 ): HtmlChunk {
     val quote = when (truncate) {
@@ -2106,14 +2106,14 @@ private fun createContainerHtmlChunkStartingFrom(
                         return parentChunk
                     }
                     val grandparent = parent.parent!!
-                    val grandparentChunk = createContainerHtmlChunkStartingFrom(grandparent, typeParams, false)
+                    val grandparentChunk = createContainerHtmlChunkStartingFrom(grandparent, genericParams, false)
                     HtmlChunk.fragment(grandparentChunk, HtmlChunk.text("."), parentChunk)
                 }
 
                 is ZigReturn if parent.returnOperand == element -> {
                     val fnDecl = parent.findParentOfType<ZigFnDecl>()
                         ?: return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
-                    val fnChunk = createContainerHtmlChunkStartingFrom(fnDecl, typeParams, truncate)
+                    val fnChunk = createContainerHtmlChunkStartingFrom(fnDecl, genericParams, truncate)
                     val builder = HtmlBuilder()
                     builder.append(fnChunk)
                     builder.append("(")
@@ -2121,14 +2121,14 @@ private fun createContainerHtmlChunkStartingFrom(
                         if (i > 0) {
                             builder.append(", ")
                         }
-                        builder.append(createParameterHtmlChunk(paramDecl, typeParams, truncate))
+                        builder.append(createParameterHtmlChunk(paramDecl, genericParams, truncate))
                     }
                     builder.append(")")
                     builder.toFragment()
                 }
 
                 else -> {
-                    val parentChunk = createContainerHtmlChunkStartingFrom(parent, typeParams, truncate)
+                    val parentChunk = createContainerHtmlChunkStartingFrom(parent, genericParams, truncate)
                     val kind = when (element.containerKind) {
                         ZigContainerKind.STRUCT -> "struct"
                         ZigContainerKind.OPAQUE -> "opaque"
@@ -2164,23 +2164,23 @@ private fun createContainerHtmlChunkStartingFrom(
         is ZigFnDecl -> {
             createNamedHtmlChunk(element, ZigHighlightingColors.STATIC_METHOD, quote)
         }
-        else -> return createContainerHtmlChunkStartingFrom(parent, typeParams, truncate)
+        else -> return createContainerHtmlChunkStartingFrom(parent, genericParams, truncate)
     }
     if (truncate) {
         return elementChunk
     }
-    val parentChunk = createContainerHtmlChunkStartingFrom(parent, typeParams, false)
+    val parentChunk = createContainerHtmlChunkStartingFrom(parent, genericParams, false)
     return HtmlChunk.fragment(parentChunk, HtmlChunk.text("."), elementChunk)
 }
 
 private fun createParameterHtmlChunk(
     param: ZigFnParam,
-    typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
+    genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
     truncate: Boolean,
 ): HtmlChunk {
     val genericParam = ZigAnalyzer.createGenericParameterValue(param)
     if (genericParam != null) {
-        val genericArg = substituteTypeParams(genericParam, typeParams)
+        val genericArg = substituteGenericParams(genericParam, genericParams)
         return genericArg.toHtmlChunk(truncate)
     }
     return createStyledHtmlChunk(ZigHighlightingColors.BAD_CHARACTER, "_")
@@ -2387,7 +2387,7 @@ private fun computeContainerExpression(element: ZigContainerExpression): ZigValu
         }
         return ZigTupleType.of(lightTuple)
     }
-    return ZigPsiContainerType.of(element.createSmartPointer(), findUnboundTypeParams(element))
+    return ZigPsiContainerType.of(element.createSmartPointer(), findUnboundGenericParams(element))
 }
 
 private fun computeOptionalTypeExpression(element: ZigOptionalTypeExpression): ZigValue {
@@ -2549,8 +2549,8 @@ private fun computeBuiltinCall(element: ZigBuiltinCall): ZigValue {
                 ?: return ZigUnknown.ofUnknownType()
             val type = resolveValue(builtin.returnTypeElement?.expression, ZigTypeType)
             val arguments = element.arguments.map { resolveValue(it) }
-            val typeParams = computeBuiltinFnGenericParams(builtin, arguments)
-            ZigUnknown.of(substituteTypeParams(type, typeParams))
+            val genericParams = computeBuiltinFnGenericParams(builtin, arguments)
+            ZigUnknown.of(substituteGenericParams(type, genericParams))
         }
     }
 }
@@ -2595,7 +2595,7 @@ private fun computeTagNameBuiltinCall(element: ZigBuiltinCall): ZigValue {
 
 private fun computeThisBuiltinCall(element: ZigBuiltinCall): ZigValue {
     val container = element.findParentOfType<ZigContainer>() ?: return ZigUnknown.of(ZigTypeType)
-    return ZigPsiContainerType.of(container.createSmartPointer(), findUnboundTypeParams(container))
+    return ZigPsiContainerType.of(container.createSmartPointer(), findUnboundGenericParams(container))
 }
 
 private fun computeTypeOfBuiltinCall(element: ZigBuiltinCall): ZigValue {
@@ -2732,8 +2732,8 @@ private fun computeContainerField(target: ZigContainerFieldImpl): ZigValue {
             ZigContainerKind.STRUCT,
             ZigContainerKind.OPAQUE -> ZigUnknown.ofUnknownType()
             ZigContainerKind.ENUM -> {
-                val typeParams = findUnboundTypeParams(target.container)
-                ZigUnknown.of(ZigPsiContainerType.of(target.container.createSmartPointer(), typeParams))
+                val genericParams = findUnboundGenericParams(target.container)
+                ZigUnknown.of(ZigPsiContainerType.of(target.container.createSmartPointer(), genericParams))
             }
             ZigContainerKind.UNION -> when (target.container.containerArgElement) {
                 null -> ZigUnknown.ofUnknownType()
@@ -2873,7 +2873,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                                     .filterIsInstance<ZigContainerField>()
                                     .filter { it.name !in otherEnumLiterals }
                                     .map { resolveValueFromReferenceTo(it) }
-                                    .map { substituteTypeParams(it, conditionType.typeParams) }
+                                    .map { substituteGenericParams(it, conditionType.genericParams) }
                             } else {
                                 sequenceOf(ZigUnknown.of(conditionType))
                             }
@@ -2884,7 +2884,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                                     .filter { it.name in prongEnumLiterals }
                                     .sortedBy { prongEnumLiterals.indexOf(it.name) }
                                     .map { resolveValueFromReferenceTo(it) }
-                                    .map { substituteTypeParams(it, conditionType.typeParams) }
+                                    .map { substituteGenericParams(it, conditionType.genericParams) }
                             if (isInlineProng) {
                                 fieldValues
                             } else {
@@ -3084,7 +3084,7 @@ private fun inferListInitItem(
             }
             if (member != null) {
                 var value = resolveValueFromReferenceTo(member).typeOf
-                value = substituteTypeParams(value, type.typeParams)
+                value = substituteGenericParams(value, type.genericParams)
                 value
             } else {
                 ZigUnknown.of(ZigTypeType)
@@ -3384,9 +3384,9 @@ private fun inferCallArg(
             val paramElement = functionElement.parameters.elementAtOrNull(paramIndex)
                 ?: return@blk ZigUnknown.of(ZigTypeType)
             var value = resolveValue(paramElement.typeElement?.expression, ZigTypeType)
-            val typeParams = computeTypeParams(functionType, arguments)
-            if (typeParams.isNotEmpty()) {
-                value = substituteTypeParams(value, typeParams)
+            val genericParams = computeGenericParams(functionType, arguments)
+            if (genericParams.isNotEmpty()) {
+                value = substituteGenericParams(value, genericParams)
             }
             value
         }
@@ -3405,8 +3405,8 @@ private fun inferCallArg(
             val typeElement = builtin.parameters.elementAtOrNull(argIndex)?.typeElement?.expression
                 ?: return ZigUnknown.of(ZigTypeType)
             val arguments = builtinCallElement.arguments.map { resolveValue(it) }
-            val typeParams = computeBuiltinFnGenericParams(builtin, arguments)
-            substituteTypeParams(resolveValue(typeElement), typeParams)
+            val genericParams = computeBuiltinFnGenericParams(builtin, arguments)
+            substituteGenericParams(resolveValue(typeElement), genericParams)
         }
     }
 }
