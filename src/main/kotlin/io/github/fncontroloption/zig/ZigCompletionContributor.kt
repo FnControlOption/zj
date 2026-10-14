@@ -387,7 +387,7 @@ private fun fillFieldAccessVariants(
     element: ZigFieldAccess,
     result: CompletionResultSet,
 ) {
-    val errorValuesToExclude = findErrorValuesToExclude(element)
+    val enumOrErrorValuesToExclude = findEnumOrErrorValuesToExclude(element)
     val leftValue = ZigAnalyzer.resolveValue(element.leftOperand)
     val originalFile = element.containingFile
     val variants = mutableSetOf<LookupElement>()
@@ -395,7 +395,7 @@ private fun fillFieldAccessVariants(
         when (left) {
             is ZigErrorSetType -> {
                 for (name in left.names) {
-                    if (name in errorValuesToExclude) {
+                    if (name in enumOrErrorValuesToExclude) {
                         continue
                     }
                     variants.add(
@@ -436,6 +436,9 @@ private fun fillFieldAccessVariants(
                     if (isInstance || member.nameIdentifier?.textMatches("_") == true) {
                         continue
                     }
+                    if (name in enumOrErrorValuesToExclude) {
+                        continue
+                    }
                     variants.add(
                         createLookupElementWithType(
                             member,
@@ -456,6 +459,9 @@ private fun fillFieldAccessVariants(
                         )
                     )
                 } else if (containerType.isTaggedUnion) {
+                    if (name in enumOrErrorValuesToExclude) {
+                        continue
+                    }
                     val type = ZigAnalyzer.resolveUnionTagType(containerType)
                     variants.add(
                         createLookupElementWithType(
@@ -516,14 +522,19 @@ private fun fillFieldAccessVariants(
     result.withRelevanceSorter(sorter).addAllElements(squashVariants(variants))
 }
 
-private fun findErrorValuesToExclude(element: ZigExpression): Set<String> {
+private fun findEnumOrErrorValuesToExclude(element: ZigExpression): Set<String> {
     return when (val parent = element.parent) {
         is ZigSwitchItem -> {
             parent.containingSwitchProng.containingSwitch.prongs
                 .flatMap { it.items }
                 .map { ZigAnalyzer.resolveValue(it.expression) }
-                .filterIsInstance<ZigErrorValue>()
-                .map { it.name }
+                .mapNotNull {
+                    when (it) {
+                        is ZigEnumValue -> it.name
+                        is ZigErrorValue -> it.name
+                        else -> null
+                    }
+                }
                 .toSet()
         }
         else -> emptySet()
@@ -531,7 +542,7 @@ private fun findErrorValuesToExclude(element: ZigExpression): Set<String> {
 }
 
 private fun fillErrorValueVariants(element: ZigExpression, prefix: String, result: CompletionResultSet) {
-    val errorValuesToExclude = findErrorValuesToExclude(element)
+    val errorValuesToExclude = findEnumOrErrorValuesToExclude(element)
     val variants = mutableSetOf<LookupElement>()
     for (originalType in ZigAnalyzer.inferResultType(element).asValueSequence()) {
         var type = originalType
@@ -565,17 +576,7 @@ private fun fillEnumLiteralVariants(
     result: CompletionResultSet,
 ) {
     val originalFile = element.containingFile
-    val enumFieldsToExclude = when (val parent = element.parent) {
-        is ZigSwitchItem -> {
-            parent.containingSwitchProng.containingSwitch.prongs
-                .flatMap { it.items }
-                .map { ZigAnalyzer.resolveValue(it.expression) }
-                .filterIsInstance<ZigEnumValue>()
-                .map { it.name }
-                .toSet()
-        }
-        else -> emptySet()
-    }
+    val enumFieldsToExclude = findEnumOrErrorValuesToExclude(element)
     val variants = mutableSetOf<LookupElement>()
     for (originalType in ZigAnalyzer.inferResultType(element).asValueSequence()) {
         val containerType = ZigAnalyzer.findEnumLiteralContainerType(originalType) ?: continue
