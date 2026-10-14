@@ -1700,12 +1700,14 @@ private fun substituteTypeParams(
             is ZigLazyFieldType -> {
                 val containerType = substituteTypeParams(value.container, typeParams)
                 val fieldNameValue = substituteTypeParams(value.fieldName, typeParams)
-                computeFieldType(containerType, fieldNameValue)
+                val fieldType = computeFieldType(containerType, fieldNameValue)
+                substituteTypeParams(fieldType, typeParams)
             }
             is ZigLazyFieldValue -> {
                 val leftValue = substituteTypeParams(value.left, typeParams)
                 val fieldName = substituteTypeParams(value.fieldName, typeParams)
-                computeFieldAccess(null, leftValue, fieldName).value
+                val fieldValue = computeFieldAccess(null, leftValue, fieldName).value
+                substituteTypeParams(fieldValue, typeParams)
             }
             is ZigLazyTagNameValue -> {
                 computeTagNameValue(substituteTypeParams(value.value, typeParams))
