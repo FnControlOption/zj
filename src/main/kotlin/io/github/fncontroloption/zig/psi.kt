@@ -862,7 +862,10 @@ fun isZigPrimitiveText(chars: CharSequence): Boolean {
     if (PRIMITIVES.any { it.contentEquals(chars) }) {
         return true
     }
-    return when (chars.firstOrNull()) {
+    if (chars.length < 2) {
+        return false
+    }
+    return when (chars[0]) {
         'i', 'u' -> chars.subSequence(1, chars.length).all { it in '0'..'9' }
         else -> false
     }
