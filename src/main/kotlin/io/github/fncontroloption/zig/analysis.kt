@@ -314,8 +314,6 @@ sealed interface ZigValue {
     fun toHtmlChunk(truncate: Boolean = false): HtmlChunk
     fun toPlainText() = Jsoup.parse(toHtmlChunk(truncate = true).toString()).text()
     fun mapValue(transform: (ZigValue) -> ZigValue): ZigValue = transform(this)
-    fun forEachValue(action: (ZigValue) -> Unit): Unit = action(this)
-    fun anyValue(predicate: (ZigValue) -> Boolean): Boolean = predicate(this)
     fun asValueSequence(): Sequence<ZigValue> = sequenceOf(this)
 
     override fun equals(other: Any?): Boolean
@@ -382,14 +380,6 @@ data class ZigMultiValue private constructor(val values: Set<ZigValue>) : ZigVal
 
     override fun mapValue(transform: (ZigValue) -> ZigValue): ZigValue {
         return from(values.map { it.mapValue(transform) }.toSet())
-    }
-
-    override fun forEachValue(action: (ZigValue) -> Unit) {
-        values.forEach { it.forEachValue(action) }
-    }
-
-    override fun anyValue(predicate: (ZigValue) -> Boolean): Boolean {
-        return values.any { it.anyValue(predicate) }
     }
 
     override fun asValueSequence(): Sequence<ZigValue> {

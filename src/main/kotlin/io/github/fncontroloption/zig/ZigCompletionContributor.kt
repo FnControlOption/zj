@@ -390,7 +390,7 @@ private fun fillFieldAccessVariants(
     val leftValue = ZigAnalyzer.resolveValue(element.leftOperand)
     val originalFile = element.containingFile
     val variants = mutableSetOf<LookupElement>()
-    leftValue.forEachValue { left ->
+    for (left in leftValue.asValueSequence()) {
         val typeOfLeft = left.typeOf
         when (typeOfLeft) {
             is ZigOptionalType -> {
@@ -513,11 +513,11 @@ private fun fillErrorValueVariants(element: ZigExpression, prefix: String, resul
         else -> emptySet()
     }
     val variants = mutableSetOf<LookupElement>()
-    ZigAnalyzer.inferResultType(element).forEachValue { originalType ->
+    for (originalType in ZigAnalyzer.inferResultType(element).asValueSequence()) {
         var type = originalType
         while (type is ZigOptionalType) type = type.child
         if (type is ZigErrorUnionType) type = type.errorSet
-        if (type !is ZigErrorSetType) return@forEachValue
+        if (type !is ZigErrorSetType) continue
         for (name in type.names) {
             if (name in errorValuesToExclude) continue
             variants.add(
@@ -549,8 +549,8 @@ private fun fillEnumLiteralVariants(
         else -> emptySet()
     }
     val variants = mutableSetOf<LookupElement>()
-    ZigAnalyzer.inferResultType(element).forEachValue { originalType ->
-        val containerType = ZigAnalyzer.findEnumLiteralContainerType(originalType) ?: return@forEachValue
+    for (originalType in ZigAnalyzer.inferResultType(element).asValueSequence()) {
+        val containerType = ZigAnalyzer.findEnumLiteralContainerType(originalType) ?: continue
         for (member in containerType.getNamedMembersVisibleFrom(originalFile)) {
             val name = member.name ?: continue
             if (member is ZigContainerField) {
@@ -634,8 +634,8 @@ private fun fillFieldInitVariants(element: ZigListInitItem, result: CompletionRe
     val fieldsToExclude = listInit.initItems.mapNotNull { it.fieldName }.toSet()
     val listType = ZigAnalyzer.resolveOrInferListInitType(listInit)
     val variants = mutableSetOf<LookupElement>()
-    listType.forEachValue { type ->
-        val containerType = type as? ZigContainerType ?: return@forEachValue
+    for (type in listType.asValueSequence()) {
+        val containerType = type as? ZigContainerType ?: continue
         variants.addAll(getFieldInitVariants(containerType, fieldsToExclude))
     }
     val sorter =

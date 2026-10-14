@@ -112,7 +112,7 @@ private class ZigPsiDocumentationTarget(
                     .map { ZigAnalyzer.substituteGenericParams(initialValue, it.genericParams) }
                     .toSet()
                     .ifEmpty { setOf(initialValue) }
-            ZigMultiValue.from(values).forEachValue { value ->
+            for (value in ZigMultiValue.from(values).asValueSequence()) {
                 val chunk = when (value) {
                     is ZigAnytypeParameterValue if value.param.dereference() == element -> {
                         createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "anytype")

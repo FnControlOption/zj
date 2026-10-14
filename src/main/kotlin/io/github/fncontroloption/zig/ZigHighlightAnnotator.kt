@@ -42,7 +42,7 @@ private fun getHighlightRangeAndAttributes(element: PsiElement): Pair<PsiElement
             val identifier = element.nameIdentifier ?: return null
             try {
                 val value = ZigAnalyzer.resolveValueFromReferenceTo(element)
-                if (value.anyValue { it.typeOf is ZigFunctionType }) {
+                if (value.asValueSequence().any { it.typeOf is ZigFunctionType }) {
                     return Pair(identifier, ZigHighlightingColors.STATIC_METHOD)
                 }
             } catch (_: IndexNotReadyException) {}
@@ -102,7 +102,7 @@ private fun getHighlightRangeAndAttributes(element: PsiElement): Pair<PsiElement
             val name = parseZigIdentifier(identifier) ?: return null
             try {
                 val left = ZigAnalyzer.resolveValue(element.leftOperand)
-                if (left.anyValue { ZigAnalyzer.getBuiltinFieldType(it.typeOf, name) != null }) {
+                if (left.asValueSequence().any { ZigAnalyzer.getBuiltinFieldType(it.typeOf, name) != null }) {
                     return Pair(identifier, ZigHighlightingColors.INSTANCE_FIELD)
                 }
             } catch (_: IndexNotReadyException) {}
