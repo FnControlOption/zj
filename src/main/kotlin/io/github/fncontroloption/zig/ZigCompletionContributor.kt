@@ -387,10 +387,26 @@ private fun fillFieldAccessVariants(
     element: ZigFieldAccess,
     result: CompletionResultSet,
 ) {
+    val errorValuesToExclude = findErrorValuesToExclude(element)
     val leftValue = ZigAnalyzer.resolveValue(element.leftOperand)
     val originalFile = element.containingFile
     val variants = mutableSetOf<LookupElement>()
     for (left in leftValue.asValueSequence()) {
+        when (left) {
+            is ZigErrorSetType -> {
+                for (name in left.names) {
+                    if (name in errorValuesToExclude) {
+                        continue
+                    }
+                    variants.add(
+                        LookupElementBuilder.create(renderZigIdentifier(name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE))
+                            .withLookupString(name)
+                            .withLookupString(escapeZigIdentifier(name))
+                    )
+                }
+            }
+            else -> {}
+        }
         val typeOfLeft = left.typeOf
         when (typeOfLeft) {
             is ZigOptionalType -> {
@@ -500,8 +516,8 @@ private fun fillFieldAccessVariants(
     result.withRelevanceSorter(sorter).addAllElements(squashVariants(variants))
 }
 
-private fun fillErrorValueVariants(element: ZigExpression, prefix: String, result: CompletionResultSet) {
-    val errorValuesToExclude = when (val parent = element.parent) {
+private fun findErrorValuesToExclude(element: ZigExpression): Set<String> {
+    return when (val parent = element.parent) {
         is ZigSwitchItem -> {
             parent.containingSwitchProng.containingSwitch.prongs
                 .flatMap { it.items }
@@ -512,14 +528,26 @@ private fun fillErrorValueVariants(element: ZigExpression, prefix: String, resul
         }
         else -> emptySet()
     }
+}
+
+private fun fillErrorValueVariants(element: ZigExpression, prefix: String, result: CompletionResultSet) {
+    val errorValuesToExclude = findErrorValuesToExclude(element)
     val variants = mutableSetOf<LookupElement>()
     for (originalType in ZigAnalyzer.inferResultType(element).asValueSequence()) {
         var type = originalType
-        while (type is ZigOptionalType) type = type.child
-        if (type is ZigErrorUnionType) type = type.errorSet
-        if (type !is ZigErrorSetType) continue
+        while (type is ZigOptionalType) {
+            type = type.child
+        }
+        if (type is ZigErrorUnionType) {
+            type = type.errorSet
+        }
+        if (type !is ZigErrorSetType) {
+            continue
+        }
         for (name in type.names) {
-            if (name in errorValuesToExclude) continue
+            if (name in errorValuesToExclude) {
+                continue
+            }
             variants.add(
                 LookupElementBuilder.create("${prefix}${renderZigIdentifier(name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)}")
                     .withLookupString("${prefix}${name}")
