@@ -570,7 +570,7 @@ private fun fillEnumLiteralVariants(
             parent.containingSwitchProng.containingSwitch.prongs
                 .flatMap { it.items }
                 .map { ZigAnalyzer.resolveValue(it.expression) }
-                .filterIsInstance<ZigEnumLiteralValue>()
+                .filterIsInstance<ZigEnumValue>()
                 .map { it.name }
                 .toSet()
         }

@@ -509,10 +509,10 @@ data object ZigEnumLiteralType : ZigValue {
 }
 
 @ConsistentCopyVisibility
-data class ZigEnumLiteralValue private constructor(override val typeOf: ZigValue, val name: String) : ZigValue {
+data class ZigEnumValue private constructor(override val typeOf: ZigValue, val name: String) : ZigValue {
     companion object {
         fun of(typeOf: ZigValue, name: String) =
-            ZigValue.intern(ZigEnumLiteralValue(typeOf, name))
+            ZigValue.intern(ZigEnumValue(typeOf, name))
     }
 
     override fun toHtmlChunk(truncate: Boolean) = when (typeOf) {
@@ -1634,8 +1634,8 @@ private fun substituteGenericParams(
             is ZigMultiValue -> {
                 value.mapValue { substituteGenericParams(it, genericParams) }
             }
-            is ZigEnumLiteralValue -> {
-                substituteGenericParams(value.typeOf, genericParams).mapValue { ZigEnumLiteralValue.of(it, value.name) }
+            is ZigEnumValue -> {
+                substituteGenericParams(value.typeOf, genericParams).mapValue { ZigEnumValue.of(it, value.name) }
             }
             is ZigPsiContainerType -> {
                 substituteContainerGenericParams(value, genericParams)
@@ -1767,10 +1767,10 @@ private fun computeContainerTypeDeclAccess(
     }
     if (member is ZigContainerField) {
         return if (type.containerKind == ZigContainerKind.ENUM) {
-            ZigPlace.constant(ZigEnumLiteralValue.of(type, name))
+            ZigPlace.constant(ZigEnumValue.of(type, name))
         } else if (type.isTaggedUnion) {
             val tagType = ZigAnalyzer.resolveUnionTagType(type) ?: return ZigPlace.UNKNOWN
-            ZigPlace.constant(tagType.mapValue { ZigEnumLiteralValue.of(it, name) })
+            ZigPlace.constant(tagType.mapValue { ZigEnumValue.of(it, name) })
         } else {
             ZigPlace.UNKNOWN
         }
@@ -2209,7 +2209,7 @@ private fun computeFieldType(
 fun computeTagNameValue(value: ZigValue): ZigValue {
     return value.mapValue {
         when (it) {
-            is ZigEnumLiteralValue -> ZigStringLiteralValue.of(it.name)
+            is ZigEnumValue -> ZigStringLiteralValue.of(it.name)
             else -> ZigLazyTagNameValue.of(it)
         }
     }
@@ -2662,7 +2662,7 @@ private fun computeNumberLiteral(element: ZigNumberLiteral): ZigValue {
 private fun computeEnumLiteral(element: ZigEnumLiteral): ZigValue {
     val name = parseZigIdentifier(element.identifierElement)
     return if (name != null) {
-        ZigEnumLiteralValue.of(ZigEnumLiteralType, name)
+        ZigEnumValue.of(ZigEnumLiteralType, name)
     } else {
         ZigUnknown.of(ZigEnumLiteralType)
     }
@@ -2823,13 +2823,13 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
             val otherEnumLiterals =
                 otherSwitchItems
                     .asSequence()
-                    .filterIsInstance<ZigEnumLiteralValue>()
+                    .filterIsInstance<ZigEnumValue>()
                     .map { it.name }
                     .toSet()
             val prongEnumLiterals =
                 prongSwitchItems
                     .asSequence()
-                    .filterIsInstance<ZigEnumLiteralValue>()
+                    .filterIsInstance<ZigEnumValue>()
                     .map { it.name }
                     .toSet()
 
@@ -2890,14 +2890,14 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                                         .asSequence()
                                         .mapNotNull { it.name }
                                         .filter { it !in otherEnumLiterals }
-                                        .map { ZigEnumLiteralValue.of(conditionType, it) }
+                                        .map { ZigEnumValue.of(conditionType, it) }
                                 }
                             } else {
                                 sequenceOf(ZigUnknown.of(conditionType))
                             }
                         } else {
                             if (isInlineProng) {
-                                prongEnumLiterals.asSequence().map { ZigEnumLiteralValue.of(conditionType, it) }
+                                prongEnumLiterals.asSequence().map { ZigEnumValue.of(conditionType, it) }
                             } else {
                                 sequenceOf(ZigUnknown.of(conditionType))
                             }
@@ -2920,13 +2920,13 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                     .filter { it !== switchProng }
                     .flatMap { it.items }
                     .map { resolveValue(it.expression) }
-                    .filterIsInstance<ZigEnumLiteralValue>()
+                    .filterIsInstance<ZigEnumValue>()
                     .map { it.name }
                     .toSet()
             val prongEnumLiterals =
                 switchProng.items
                     .map { resolveValue(it.expression) }
-                    .filterIsInstance<ZigEnumLiteralValue>()
+                    .filterIsInstance<ZigEnumValue>()
                     .map { it.name }
                     .toSet()
             resolvePlace(conditionElement).mapType { _, conditionType ->
@@ -2942,7 +2942,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                                                 .filterIsInstance<ZigContainerField>()
                                                 .mapNotNull { it.name }
                                                 .filter { it !in otherEnumLiterals }
-                                                .map { ZigEnumLiteralValue.of(type, it) }
+                                                .map { ZigEnumValue.of(type, it) }
                                         ZigMultiValue.from(values.toSet(), type)
                                     }
                                     else -> ZigUnknown.of(type)
@@ -2950,7 +2950,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                             })
                         } else {
                             sequenceOf(tagType.mapValue { type ->
-                                val values = prongEnumLiterals.map { ZigEnumLiteralValue.of(type, it) }
+                                val values = prongEnumLiterals.map { ZigEnumValue.of(type, it) }
                                 ZigMultiValue.from(values.toSet(), type)
                             })
                         }

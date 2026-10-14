@@ -124,7 +124,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
     }
 
     fun testEnumFieldAccess() {
-        val value = resolveValue("enum { foo, bar }.foo").requireIs<ZigEnumLiteralValue>()
+        val value = resolveValue("enum { foo, bar }.foo").requireIs<ZigEnumValue>()
         assertEquals("foo", value.name)
         val type = value.typeOf.requireIs<ZigContainerType>()
         assertEquals(ZigContainerKind.ENUM, type.containerKind)
@@ -370,7 +370,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
 
     fun testEnumLiteral() {
         val text = ".foo"
-        val value = resolveValue(text).requireIs<ZigEnumLiteralValue>()
+        val value = resolveValue(text).requireIs<ZigEnumValue>()
         assertEquals("foo", value.name)
         assertEquals(ZigEnumLiteralType, value.typeOf)
     }
