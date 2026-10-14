@@ -1758,7 +1758,7 @@ class ZigParser : PsiParser {
         }
         thenMarker.done(ZigElementType.THEN)
         if (eatToken(builder, ZigTokenType.KEYWORD_ELSE)) {
-            parsePayload(builder, ZigElementType.THEN_PAYLOAD)
+            parsePayload(builder, ZigElementType.ELSE_PAYLOAD)
             val elseMarker = builder.mark()
             tryStatement(builder)
             elseMarker.done(ZigElementType.ELSE)
