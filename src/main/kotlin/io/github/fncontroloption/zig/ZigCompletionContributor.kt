@@ -506,7 +506,7 @@ private fun fillErrorValueVariants(element: ZigExpression, prefix: String, resul
             parent.containingSwitchProng.containingSwitch.prongs
                 .flatMap { it.items }
                 .map { ZigAnalyzer.resolveValue(it.expression) }
-                .filterIsInstance<ZigErrorSetValue>()
+                .filterIsInstance<ZigErrorValue>()
                 .map { it.name }
                 .toSet()
         }

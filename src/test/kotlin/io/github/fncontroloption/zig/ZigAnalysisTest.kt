@@ -51,14 +51,14 @@ class ZigAnalysisTest : BasePlatformTestCase() {
 
     fun testErrorSetAccess() {
         val text = "error{Foo,Bar}.Foo"
-        val value = resolveValue(text).requireIs<ZigErrorSetValue>()
+        val value = resolveValue(text).requireIs<ZigErrorValue>()
         assertEquals("Foo", value.name)
         assertEquals(ZigErrorSetType.of(setOf("Foo", "Bar")), value.typeOf)
     }
 
     fun testErrorValue() {
         val text = "error.Foo"
-        val value = resolveValue(text).requireIs<ZigErrorSetValue>()
+        val value = resolveValue(text).requireIs<ZigErrorValue>()
         assertEquals("Foo", value.name)
         assertEquals(ZigErrorSetType.of(setOf("Foo")), value.typeOf)
     }

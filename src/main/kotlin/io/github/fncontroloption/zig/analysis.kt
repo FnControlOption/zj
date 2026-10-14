@@ -355,7 +355,7 @@ data class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigVa
                 ZigUndefinedType -> ZigUndefinedValue
                 ZigVoidType -> ZigVoidValue
                 is ZigFixedIntType if type.bits == 0 -> ZigIntValue.of(type, 0)
-                is ZigErrorSetType if type.names.size == 1 -> ZigErrorSetValue.of(type, type.names.first())
+                is ZigErrorSetType if type.names.size == 1 -> ZigErrorValue.of(type, type.names.first())
                 is ZigMultiValue -> type.mapValue { of(it) }
                 else -> ZigValue.intern(ZigUnknown(type))
             }
@@ -762,10 +762,10 @@ data class ZigErrorSetType private constructor(val names: Set<String>) : ZigValu
 }
 
 @ConsistentCopyVisibility
-data class ZigErrorSetValue private constructor(override val typeOf: ZigErrorSetType, val name: String) : ZigValue {
+data class ZigErrorValue private constructor(override val typeOf: ZigErrorSetType, val name: String) : ZigValue {
     companion object {
         fun of(typeOf: ZigErrorSetType, name: String) =
-            ZigValue.intern(ZigErrorSetValue(typeOf, name))
+            ZigValue.intern(ZigErrorValue(typeOf, name))
     }
 
     override fun toHtmlChunk(truncate: Boolean) = when (typeOf.names.singleOrNull()) {
@@ -1503,7 +1503,7 @@ private fun computeFieldAccess(
     return when (leftValue) {
         is ZigErrorSetType -> {
             if (name in leftValue.names) {
-                ZigPlace.constant(ZigErrorSetValue.of(leftValue, name))
+                ZigPlace.constant(ZigErrorValue.of(leftValue, name))
             } else {
                 ZigPlace.unknown()
             }
@@ -1728,7 +1728,7 @@ private fun substituteTypeParams(
             ZigVoidValue,
             ZigEnumLiteralType,
             is ZigErrorSetType,
-            is ZigErrorSetValue,
+            is ZigErrorValue,
             is ZigFloatType,
             is ZigIntType,
             is ZigIntValue,
@@ -2407,7 +2407,7 @@ private fun computeErrorSet(element: ZigErrorSet): ZigValue {
 private fun computeErrorValueExpression(element: ZigErrorValueExpression): ZigValue {
     val name = parseZigIdentifier(element.identifierElement) ?: return ZigUnknown.ofUnknownType()
     val type = ZigErrorSetType.of(setOf(name))
-    return ZigErrorSetValue.of(type, name)
+    return ZigErrorValue.of(type, name)
 }
 
 private fun computeErrorUnion(element: ZigErrorUnion): ZigValue {
@@ -2818,13 +2818,13 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
             val otherErrorNames =
                 otherSwitchItems
                     .asSequence()
-                    .filterIsInstance<ZigErrorSetValue>()
+                    .filterIsInstance<ZigErrorValue>()
                     .map { it.name }
                     .toSet()
             val prongErrorValues =
                 prongSwitchItems
                     .asSequence()
-                    .filterIsInstance<ZigErrorSetValue>()
+                    .filterIsInstance<ZigErrorValue>()
                     .toList()
             val prongErrorNames =
                 prongErrorValues
@@ -2854,7 +2854,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                             val names = conditionType.names.toSortedSet()
                             names.removeAll(otherErrorNames)
                             if (isInlineProng) {
-                                names.asSequence().map { ZigErrorSetValue.of(ZigErrorSetType.of(setOf(it)), it) }
+                                names.asSequence().map { ZigErrorValue.of(ZigErrorSetType.of(setOf(it)), it) }
                             } else {
                                 sequenceOf(ZigUnknown.of(ZigErrorSetType.of(names)))
                             }
