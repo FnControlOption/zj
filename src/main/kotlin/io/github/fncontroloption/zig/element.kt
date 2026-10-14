@@ -4,12 +4,17 @@ import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.IFileElementType
+import com.intellij.psi.tree.ILazyParseableElementType
 
 object ZigFileElementType : IFileElementType(ZigLanguage)
 
 object ZonFileElementType : IFileElementType(ZonLanguage)
 
 object ZigBuiltinFnProtoFileElementType : IFileElementType(ZigBuiltinFnProtoLanguage)
+
+sealed class ZigLazyParseableElementType(debugName: String) : ILazyParseableElementType(debugName, ZigLanguage)
+
+object ZigBlockElementType : ZigLazyParseableElementType("BLOCK")
 
 class ZigElementType(debugName: String) : IElementType(debugName, ZigLanguage) {
     companion object {
@@ -51,7 +56,7 @@ class ZigElementType(debugName: String) : IElementType(debugName, ZigLanguage) {
         val BIT_NOT = ZigElementType("BIT_NOT")
         val BIT_OR = ZigElementType("BIT_OR")
         val BIT_XOR = ZigElementType("BIT_XOR")
-        val BLOCK = ZigElementType("BLOCK")
+        val BLOCK = ZigBlockElementType
         val BOOL_AND = ZigElementType("BOOL_AND")
         val BOOL_NOT = ZigElementType("BOOL_NOT")
         val BOOL_OR = ZigElementType("BOOL_OR")

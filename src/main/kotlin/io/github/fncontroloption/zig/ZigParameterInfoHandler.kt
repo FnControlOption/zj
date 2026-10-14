@@ -37,8 +37,8 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCallOrBuiltinCall, ZigPa
         when (call) {
             is ZigCall -> mapCalledFuncAndSelfArg(call) blk@{ function, selfArg ->
                 val functionType = function.typeOf as? ZigFunctionType ?: return@blk ZigVoidValue
-                var (params, paramTypes) = getFunctionParamTypes(functionType)
-                val hasVarargs = functionType.element.hasVarargs
+                val functionElement = functionType.function.dereference() ?: return@blk ZigVoidValue
+                var (params, paramTypes, hasVarargs) = getFunctionParamTypes(functionElement, functionType.typeParams)
                 if (selfArg != null) {
                     params = params.subList(1, params.size)
                     paramTypes = paramTypes.subList(1, paramTypes.size)
@@ -49,8 +49,7 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCallOrBuiltinCall, ZigPa
             is ZigBuiltinCall -> {
                 val name = call.builtinElement.text
                 val builtin = ZigBuiltinFunctionsService.getBuiltinFnProto(call.project, name) ?: return null
-                val (params, paramTypes) = getFunctionParamTypes(builtin, emptyMap())
-                val hasVarargs = builtin.hasVarargs
+                val (params, paramTypes, hasVarargs) = getFunctionParamTypes(builtin, emptyMap())
                 candidates.add(Triple(params, paramTypes, hasVarargs))
             }
         }

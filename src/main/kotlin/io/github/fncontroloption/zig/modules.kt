@@ -173,16 +173,29 @@ class ZigModulesProjectService(private val project: Project) {
         if (fileImports.containsKey(path)) return
         val virtualFile = VirtualFileManager.getInstance().findFileByNioPath(path) ?: return
         val psiFile = psiManager.findFile(virtualFile) ?: return
+        if (psiFile !is ZigFile) return
         val imports = mutableSetOf<Path>()
         fileImports[path] = imports
-        for (element in SyntaxTraverser.psiTraverser(psiFile)) {
-            if (element !is ZigBuiltinCall) continue
-            if (!element.builtinElement.textMatches("@import")) continue
-            val arg = element.arguments.firstOrNull() ?: continue
-            if (arg !is ZigStringLiteral) continue
-            val value = arg.value ?: continue
-            if (!value.endsWith(".zig")) continue
-            val otherPath = path.parent.resolve(value).normalize()
+        val targets = when (val stubTree = psiFile.stubTree) {
+            null -> {
+                SyntaxTraverser.psiTraverser(psiFile)
+                    .asSequence()
+                    .filterIsInstance<ZigBuiltinCall>()
+                    .filter { it.builtinElement.textMatches("@import") }
+                    .mapNotNull { it.arguments.firstOrNull() }
+                    .filterIsInstance<ZigStringExpression>()
+                    .mapNotNull { it.value }
+            }
+            else -> {
+                stubTree.plainList
+                    .asSequence()
+                    .filterIsInstance<ZigImportStub>()
+                    .mapNotNull { it.target }
+            }
+        }
+        for (target in targets) {
+            if (!target.endsWith(".zig")) continue
+            val otherPath = path.parent.resolve(target).normalize()
             imports.add(otherPath)
             followImports(otherPath)
         }

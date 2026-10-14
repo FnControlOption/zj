@@ -24,8 +24,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
 
     fun testContainer() {
         val type = resolveValue("struct { foo: u42 }").requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.STRUCT, type.element.containerKind)
-        val members = type.element.members.toList()
+        assertEquals(ZigContainerKind.STRUCT, type.containerKind)
+        val members = type.members.toList()
         assertSize(1, members)
         val field = members[0].requireIs<ZigContainerFieldImpl>()
         assertEquals("foo", field.name)
@@ -33,13 +33,14 @@ class ZigAnalysisTest : BasePlatformTestCase() {
 
     fun testFunctionType() {
         val type = resolveValue("fn (u42) bool").requireIs<ZigFunctionType>()
-        assertEquals("bool", type.element.returnTypeElement?.text)
+        val element = type.function.dereference()!!
+        assertEquals("bool", element.returnTypeElement?.text)
     }
 
     fun testOptionalType() {
         val type = resolveValue("?struct { foo: u42 }").requireIs<ZigOptionalType>()
         val child = type.child.requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.STRUCT, child.element.containerKind)
+        assertEquals(ZigContainerKind.STRUCT, child.containerKind)
     }
 
     fun testErrorSet() {
@@ -52,19 +53,19 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "error{Foo,Bar}.Foo"
         val value = resolveValue(text).requireIs<ZigErrorSetValue>()
         assertEquals("Foo", value.name)
-        assertEquals(ZigErrorSetType(setOf("Foo", "Bar")), value.typeOf)
+        assertEquals(ZigErrorSetType.of(setOf("Foo", "Bar")), value.typeOf)
     }
 
     fun testErrorValue() {
         val text = "error.Foo"
         val value = resolveValue(text).requireIs<ZigErrorSetValue>()
         assertEquals("Foo", value.name)
-        assertEquals(ZigErrorSetType(setOf("Foo")), value.typeOf)
+        assertEquals(ZigErrorSetType.of(setOf("Foo")), value.typeOf)
     }
 
     fun testErrorUnion() {
         val type = resolveValue("error{Foo}!bool").requireIs<ZigErrorUnionType>()
-        assertEquals(ZigErrorSetType(setOf("Foo")), type.errorSet)
+        assertEquals(ZigErrorSetType.of(setOf("Foo")), type.errorSet)
         assertEquals(ZigBoolType, type.payload)
     }
 
@@ -72,35 +73,35 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue("*u42").requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.ONE, type.size)
         assertNull(type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), type.child)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 42), type.child)
     }
 
     fun testSliceType() {
         val type = resolveValue("[:7]u42").requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.SLICE, type.size)
-        assertEquals(ZigIntValue(ZigComptimeIntType, 7), type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), type.child)
+        assertEquals(ZigIntValue.of(ZigComptimeIntType, 7), type.sentinel)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 42), type.child)
     }
 
     fun testManyItemPointerType() {
         val type = resolveValue("[*:7]u42").requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.MANY, type.size)
-        assertEquals(ZigIntValue(ZigComptimeIntType, 7), type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), type.child)
+        assertEquals(ZigIntValue.of(ZigComptimeIntType, 7), type.sentinel)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 42), type.child)
     }
 
     fun testCPointerType() {
         val type = resolveValue("[*c]u42").requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.C, type.size)
         assertNull(type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), type.child)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 42), type.child)
     }
 
     fun testArrayType() {
         val type = resolveValue("[6:7]u42").requireIs<ZigArrayType>()
-        assertEquals(ZigIntValue(ZigComptimeIntType, 6), type.length)
-        assertEquals(ZigIntValue(ZigComptimeIntType, 7), type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), type.child)
+        assertEquals(ZigIntValue.of(ZigComptimeIntType, 6), type.length)
+        assertEquals(ZigIntValue.of(ZigComptimeIntType, 7), type.sentinel)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 42), type.child)
     }
 
     fun testTupleType() {
@@ -109,13 +110,13 @@ class ZigAnalysisTest : BasePlatformTestCase() {
     }
 
     fun testFixedFloatType() {
-        assertEquals(ZigFixedFloatType(32), resolveValue("f32"))
-        assertEquals(ZigFixedFloatType(80), resolveValue("f80"))
+        assertEquals(ZigFixedFloatType.of(32), resolveValue("f32"))
+        assertEquals(ZigFixedFloatType.of(80), resolveValue("f80"))
     }
 
     fun testFixedIntType() {
-        assertEquals(ZigFixedIntType(ZigSignedness.SIGNED, 42), resolveValue("i42"))
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 67), resolveValue("u67"))
+        assertEquals(ZigFixedIntType.of(ZigSignedness.SIGNED, 42), resolveValue("i42"))
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 67), resolveValue("u67"))
     }
 
     fun testComptime() {
@@ -126,7 +127,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val value = resolveValue("enum { foo, bar }.foo").requireIs<ZigEnumLiteralValue>()
         assertEquals("foo", value.name)
         val type = value.typeOf.requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
     }
 
     fun testDeclAccessConstWithType() {
@@ -137,7 +138,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
     }
 
     fun testDeclAccessVarWithType() {
@@ -148,7 +149,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
     }
 
     fun testDeclAccessConstOfType() {
@@ -158,7 +159,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             }.Foo
         """.trimIndent()
         val type = resolveValue(text).requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
     }
 
     fun testDeclAccessVarOfType() {
@@ -180,7 +181,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
     }
 
     fun testDeclAccessVarWithoutType() {
@@ -192,7 +193,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
     }
 
     fun testFieldAccessTuple() {
@@ -209,7 +210,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigFunctionType>()
-        assertEquals("bool", type.element.returnTypeElement?.text)
+        val element = type.function.dereference()!!
+        assertEquals("bool", element.returnTypeElement?.text)
     }
 
     fun testFunctionCall() {
@@ -251,7 +253,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
             }
         """.trimIndent()
         val type = resolveValue(text).requireIs<ZigContainerType>()
-        assertEquals(ZigContainerKind.ENUM, type.element.containerKind)
+        assertEquals(ZigContainerKind.ENUM, type.containerKind)
     }
 
     fun testUnwrapUnionInferredTagType() {
@@ -311,7 +313,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val text = "[2]bool{ true, false }"
         val value = resolveValue(text).requireIs<ZigUnknown>()
         val type = value.typeOf.requireIs<ZigArrayType>()
-        assertEquals(ZigIntValue(ZigComptimeIntType, 2), type.length)
+        assertEquals(ZigIntValue.of(ZigComptimeIntType, 2), type.length)
         assertNull(type.sentinel)
         assertEquals(ZigBoolType, type.child)
     }
@@ -386,7 +388,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val pointer = value.typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.ONE, pointer.size)
         val array = pointer.child.requireIs<ZigArrayType>()
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), array.child)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), array.child)
         val length = array.length.requireIs<ZigIntValue>()
         assertEquals(ZigUsizeType, length.typeOf)
         assertEquals(3, length.value)
@@ -404,7 +406,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val pointer = value.typeOf.requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.ONE, pointer.size)
         val array = pointer.child.requireIs<ZigArrayType>()
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), array.child)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), array.child)
         array.length.requireIs<ZigUnknown>()
         val sentinel = array.sentinel.requireIs<ZigIntValue>()
         assertEquals(ZigComptimeIntType, sentinel.typeOf)
@@ -649,22 +651,22 @@ class ZigAnalysisTest : BasePlatformTestCase() {
 
     fun testPeerTypesUnsignedFixedInt() {
         val text = "@TypeOf(1, @as(u8, 2), @as(u42, 3))"
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 42), resolveValue(text))
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 42), resolveValue(text))
     }
 
     fun testPeerTypesSignedFixedInt() {
         val text = "@TypeOf(1, @as(i8, 2), @as(i42, 3))"
-        assertEquals(ZigFixedIntType(ZigSignedness.SIGNED, 42), resolveValue(text))
+        assertEquals(ZigFixedIntType.of(ZigSignedness.SIGNED, 42), resolveValue(text))
     }
 
     fun testPeerTypesUnsignedAndSignedFixedInt() {
         val text = "@TypeOf(1, @as(u8, 2), @as(i42, 3))"
-        assertEquals(ZigFixedIntType(ZigSignedness.SIGNED, 42), resolveValue(text))
+        assertEquals(ZigFixedIntType.of(ZigSignedness.SIGNED, 42), resolveValue(text))
     }
 
     fun testPeerTypesFixedFloat() {
         val text = "@TypeOf(1, @as(u8, 2), @as(f16, 3), @as(f80, 4), 5.0)"
-        assertEquals(ZigFixedFloatType(80), resolveValue(text))
+        assertEquals(ZigFixedFloatType.of(80), resolveValue(text))
     }
 
     fun testPeerTypesTuple() {
@@ -676,8 +678,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val type = resolveValue(text).requireIs<ZigTupleType>()
         assertSize(2, type.fields)
-        assertEquals(ZigFixedIntType(ZigSignedness.SIGNED, 42), type.fields[0])
-        assertEquals(ZigFixedFloatType(80), type.fields[1])
+        assertEquals(ZigFixedIntType.of(ZigSignedness.SIGNED, 42), type.fields[0])
+        assertEquals(ZigFixedFloatType.of(80), type.fields[1])
     }
 
     fun testPeerTypesCPointer() {
@@ -693,7 +695,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.C, type.size)
         assertNull(type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     // ptrSize = ZigPointerSize.ONE
@@ -707,8 +709,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.SLICE, type.size)
-        assertEquals(ZigIntValue(ZigComptimeIntType, 0), type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigIntValue.of(ZigComptimeIntType, 0), type.sentinel)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     // ptrSize = ZigPointerSize.ONE
@@ -724,9 +726,9 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         assertEquals(ZigPointerSize.ONE, type.size)
         assertNull(type.sentinel)
         val array = type.child.requireIs<ZigArrayType>()
-        assertEquals(ZigIntValue(ZigUsizeType, 2), array.length)
+        assertEquals(ZigIntValue.of(ZigUsizeType, 2), array.length)
         assertNull(array.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), array.child)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), array.child)
     }
 
     // ptrSize = ZigPointerSize.ONE
@@ -741,7 +743,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.SLICE, type.size)
         assertNull(type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     // ptrSize = ZigPointerSize.ONE
@@ -756,7 +758,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.SLICE, type.size)
         assertNull(type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     // ptrSize = ZigPointerSize.MANY
@@ -770,8 +772,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.MANY, type.size)
-        assertEquals(ZigIntValue(ZigComptimeIntType, 0), type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigIntValue.of(ZigComptimeIntType, 0), type.sentinel)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     // ptrSize = ZigPointerSize.MANY
@@ -786,7 +788,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.MANY, type.size)
         assertNull(type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     // ptrSize = ZigPointerSize.SLICE
@@ -800,8 +802,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.SLICE, type.size)
-        assertEquals(ZigIntValue(ZigComptimeIntType, 0), type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigIntValue.of(ZigComptimeIntType, 0), type.sentinel)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     // ptrSize = ZigPointerSize.SLICE
@@ -816,7 +818,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.SLICE, type.size)
         assertNull(type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     // ptrSize = ZigPointerSize.ONE
@@ -830,8 +832,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.MANY, type.size)
-        assertEquals(ZigIntValue(ZigComptimeIntType, 0), type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigIntValue.of(ZigComptimeIntType, 0), type.sentinel)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     // ptrSize = ZigPointerSize.ONE
@@ -846,7 +848,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.MANY, type.size)
         assertNull(type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     // ptrSize = ZigPointerSize.MANY
@@ -861,7 +863,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.MANY, type.size)
         assertNull(type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     // ptrSize = ZigPointerSize.SLICE
@@ -889,8 +891,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.MANY, type.size)
-        assertEquals(ZigIntValue(ZigComptimeIntType, 0), type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigIntValue.of(ZigComptimeIntType, 0), type.sentinel)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     // ptrSize = ZigPointerSize.ONE
@@ -904,8 +906,8 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         """.trimIndent()
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.SLICE, type.size)
-        assertEquals(ZigIntValue(ZigComptimeIntType, 0), type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigIntValue.of(ZigComptimeIntType, 0), type.sentinel)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     // ptrSize = ZigPointerSize.ONE
@@ -920,7 +922,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.SLICE, type.size)
         assertNull(type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     // ptrSize = ZigPointerSize.MANY
@@ -948,7 +950,7 @@ class ZigAnalysisTest : BasePlatformTestCase() {
         val type = resolveValue(text).requireIs<ZigPointerType>()
         assertEquals(ZigPointerSize.SLICE, type.size)
         assertNull(type.sentinel)
-        assertEquals(ZigFixedIntType(ZigSignedness.UNSIGNED, 8), type.child)
+        assertEquals(ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8), type.child)
     }
 
     fun testPeerTypesEmptyTupleAndNoreturnArrayPointers() {

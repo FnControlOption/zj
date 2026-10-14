@@ -107,16 +107,14 @@ private class ZigPsiDocumentationTarget(
 
         if (element is ZigNamedElement) {
             val initialValue = ZigAnalyzer.resolveValueFromReferenceTo(element)
-            val values = mutableSetOf<ZigValue>()
-            forEachContainerType(originalElement) { containerType ->
-                values += ZigAnalyzer.substituteTypeParams(initialValue, containerType.typeParams)
-            }
-            if (values.isEmpty()) {
-                values += initialValue
-            }
+            val values =
+                containerTypes(originalElement)
+                    .map { ZigAnalyzer.substituteTypeParams(initialValue, it.typeParams) }
+                    .toSet()
+                    .ifEmpty { setOf(initialValue) }
             ZigMultiValue.from(values).forEachValue { value ->
                 val chunk = when (value) {
-                    is ZigAnytypeParameterValue if value.element == element -> {
+                    is ZigAnytypeParameterValue if value.param.dereference() == element -> {
                         createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "anytype")
                     }
                     is ZigUnknown -> {
@@ -277,40 +275,31 @@ private fun findFileDoc(element: ZigFile): String? {
  * @see ZigListInitItemReference.multiResolve
  * @see ZigEnumLiteralReference.multiResolve
  */
-private fun forEachContainerType(
-    originalElement: PsiElement?,
-    action: (IZigContainerType) -> Unit,
-) {
+private fun containerTypes(originalElement: PsiElement?): Sequence<IZigContainerType> {
     when (val zigElement = originalElement?.findParentOfType<ZigElement>()) {
         is ZigFieldAccess -> {
             if (zigElement.identifierElement == originalElement) {
                 val leftValue = ZigAnalyzer.resolveValue(zigElement.leftOperand)
-                ZigAnalyzer.forEachFieldAccessContainer(leftValue) { containerType, _ ->
-                    action(containerType)
-                }
+                return ZigAnalyzer.fieldAccessContainers(leftValue).map { (containerType, _) -> containerType }
             }
         }
 
         is ZigListInitItem -> {
             if (zigElement.fieldNameIdentifier == originalElement) {
                 val listType = ZigAnalyzer.resolveOrInferListInitType(zigElement.containingListInit)
-                listType.forEachValue { type ->
-                    val containerType = type as? IZigContainerType ?: return@forEachValue
-                    action(containerType)
-                }
+                return listType.asValueSequence().filterIsInstance<IZigContainerType>()
             }
         }
 
         is ZigEnumLiteral -> {
             if (zigElement.identifierElement == originalElement) {
                 val resultType = ZigAnalyzer.inferResultType(zigElement)
-                resultType.forEachValue { originalType ->
-                    val containerType = ZigAnalyzer.findEnumLiteralContainerType(originalType) ?: return@forEachValue
-                    action(containerType)
-                }
+                return resultType.asValueSequence().mapNotNull { ZigAnalyzer.findEnumLiteralContainerType(it) }
             }
         }
 
         else -> {}
     }
+
+    return emptySequence()
 }
