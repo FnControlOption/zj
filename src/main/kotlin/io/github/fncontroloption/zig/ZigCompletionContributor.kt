@@ -232,7 +232,7 @@ private fun getFunctionTypeText(
 }
 
 private fun getFieldInitVariants(
-    containerType: IZigContainerType,
+    containerType: ZigContainerType,
     fieldsToExclude: Set<String>,
 ): Sequence<LookupElement> {
     if (containerType.containerKind == ZigContainerKind.ENUM) {
@@ -307,7 +307,7 @@ private fun fillIdentifierVariants(element: ZigIdentifier, result: CompletionRes
                     else -> getFunctionParamTypes(element, type.typeParams)
                 }
                 val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
-                    is ZigContainerType -> receiverType.container.dereference() == candidate.parent
+                    is ZigPsiContainerType -> receiverType.container.dereference() == candidate.parent
                     else -> false
                 }
                 variants.add(
@@ -351,7 +351,7 @@ private fun fillTestVariants(element: ZigTestDecl, result: CompletionResultSet) 
                     else -> getFunctionParamTypes(element, type.typeParams).component2()
                 }
                 val isMethod = when (val receiverType = getFunctionReceiverType(paramTypes)) {
-                    is ZigContainerType -> receiverType.container.dereference() == candidate.parent
+                    is ZigPsiContainerType -> receiverType.container.dereference() == candidate.parent
                     else -> false
                 }
                 if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function
@@ -635,7 +635,7 @@ private fun fillFieldInitVariants(element: ZigListInitItem, result: CompletionRe
     val listType = ZigAnalyzer.resolveOrInferListInitType(listInit)
     val variants = mutableSetOf<LookupElement>()
     listType.forEachValue { type ->
-        val containerType = type as? IZigContainerType ?: return@forEachValue
+        val containerType = type as? ZigContainerType ?: return@forEachValue
         variants.addAll(getFieldInitVariants(containerType, fieldsToExclude))
     }
     val sorter =

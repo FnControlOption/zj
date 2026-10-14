@@ -275,7 +275,7 @@ private fun findFileDoc(element: ZigFile): String? {
  * @see ZigListInitItemReference.multiResolve
  * @see ZigEnumLiteralReference.multiResolve
  */
-private fun containerTypes(originalElement: PsiElement?): Sequence<IZigContainerType> {
+private fun containerTypes(originalElement: PsiElement?): Sequence<ZigContainerType> {
     when (val zigElement = originalElement?.findParentOfType<ZigElement>()) {
         is ZigFieldAccess -> {
             if (zigElement.identifierElement == originalElement) {
@@ -287,7 +287,7 @@ private fun containerTypes(originalElement: PsiElement?): Sequence<IZigContainer
         is ZigListInitItem -> {
             if (zigElement.fieldNameIdentifier == originalElement) {
                 val listType = ZigAnalyzer.resolveOrInferListInitType(zigElement.containingListInit)
-                return listType.asValueSequence().filterIsInstance<IZigContainerType>()
+                return listType.asValueSequence().filterIsInstance<ZigContainerType>()
             }
         }
 

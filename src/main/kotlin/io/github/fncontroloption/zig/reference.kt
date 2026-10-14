@@ -261,7 +261,7 @@ class ZigListInitItemReference(element: ZigListInitItem, val identifier: PsiElem
         val name = parseZigIdentifier(identifier) ?: return emptySequence()
         val listType = ZigAnalyzer.resolveOrInferListInitType(myElement.containingListInit)
         return listType.asValueSequence().mapNotNull { type ->
-            val containerType = type as? IZigContainerType ?: return@mapNotNull null
+            val containerType = type as? ZigContainerType ?: return@mapNotNull null
             val member = containerType.members.firstOrNull {
                 it is ZigContainerField && it.name == name
             }

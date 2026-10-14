@@ -89,7 +89,7 @@ object ZigAnalyzer {
         return type
     }
 
-    fun findEnumLiteralContainerType(originalType: ZigValue): IZigContainerType? {
+    fun findEnumLiteralContainerType(originalType: ZigValue): ZigContainerType? {
         var type = originalType
         while (true) {
             type = when (type) {
@@ -99,7 +99,7 @@ object ZigAnalyzer {
                 else -> break
             }
         }
-        return type as? IZigContainerType
+        return type as? ZigContainerType
     }
 
     fun getBuiltinFields(type: ZigValue): Array<String> {
@@ -129,12 +129,12 @@ object ZigAnalyzer {
         return getBuiltinFieldPlace(null, value, name)?.value?.typeOf
     }
 
-    fun resolveEnumTagType(type: IZigContainerType): ZigValue? {
+    fun resolveEnumTagType(type: ZigContainerType): ZigValue? {
         if (type.containerKind != ZigContainerKind.ENUM) {
             return null
         }
         return when (type) {
-            is ZigContainerType -> {
+            is ZigPsiContainerType -> {
                 val element = type.container.dereference()
                 resolveValue(element?.containerArgElement?.expression, ZigTypeType)
             }
@@ -151,8 +151,8 @@ object ZigAnalyzer {
         }
     }
 
-    fun resolveUnionTagType(type: IZigContainerType): ZigValue? {
-        if (type !is ZigContainerType) {
+    fun resolveUnionTagType(type: ZigContainerType): ZigValue? {
+        if (type !is ZigPsiContainerType) {
             return null
         }
         val element = type.container.dereference() ?: return null
@@ -216,15 +216,15 @@ object ZigAnalyzer {
         return psiFile as? ZigFile
     }
 
-    fun fieldAccessContainers(leftValue: ZigValue): Sequence<Pair<IZigContainerType, Boolean>> {
+    fun fieldAccessContainers(leftValue: ZigValue): Sequence<Pair<ZigContainerType, Boolean>> {
         return leftValue.asValueSequence().mapNotNull { left ->
             when (left) {
-                is IZigContainerType -> Pair(left, false)
+                is ZigContainerType -> Pair(left, false)
                 else -> when (val typeOfLeft = left.typeOf) {
-                    is IZigContainerType -> Pair(typeOfLeft, true)
+                    is ZigContainerType -> Pair(typeOfLeft, true)
                     is ZigPointerType -> when (typeOfLeft.size) {
                         ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
-                            is IZigContainerType -> Pair(pointerChild, true)
+                            is ZigContainerType -> Pair(pointerChild, true)
                             else -> null
                         }
                         else -> null
@@ -547,7 +547,7 @@ data class ZigEnumLiteralValue private constructor(override val typeOf: ZigValue
     }
 }
 
-sealed interface IZigContainerType : ZigValue {
+sealed interface ZigContainerType : ZigValue {
     override val typeOf: ZigTypeType
     val typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>
     val containerKind: ZigContainerKind?
@@ -557,15 +557,15 @@ sealed interface IZigContainerType : ZigValue {
 }
 
 @ConsistentCopyVisibility
-data class ZigContainerType private constructor(
+data class ZigPsiContainerType private constructor(
     val container: SmartPsiElementPointer<ZigContainer>,
     override val typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
-) : IZigContainerType {
+) : ZigContainerType {
     companion object {
         fun of(
             container: SmartPsiElementPointer<ZigContainer>,
             typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
-        ) = ZigValue.intern(ZigContainerType(container, typeParams))
+        ) = ZigValue.intern(ZigPsiContainerType(container, typeParams))
     }
 
     override val typeOf: ZigTypeType
@@ -912,7 +912,7 @@ data class ZigVectorType private constructor(val length: ZigValue, val child: Zi
 }
 
 @ConsistentCopyVisibility
-data class ZigTupleType private constructor(val element: LightZigTuple) : IZigContainerType {
+data class ZigTupleType private constructor(val element: LightZigTuple) : ZigContainerType {
     companion object {
         fun of(element: LightZigTuple) =
             ZigValue.intern(ZigTupleType(element))
@@ -1115,9 +1115,9 @@ data class ZigCLongLongType private constructor(val signedness: ZigSignedness) :
 }
 
 @ConsistentCopyVisibility
-data class ZigInferredUnionTagType private constructor(val union: ZigContainerType) : IZigContainerType {
+data class ZigInferredUnionTagType private constructor(val union: ZigPsiContainerType) : ZigContainerType {
     companion object {
-        fun of(union: ZigContainerType) =
+        fun of(union: ZigPsiContainerType) =
             ZigValue.intern(ZigInferredUnionTagType(union))
     }
 
@@ -1153,7 +1153,7 @@ data class ZigInferredUnionTagType private constructor(val union: ZigContainerTy
 }
 
 @ConsistentCopyVisibility
-data class ZigFieldEnumType private constructor(val container: ZigValue) : IZigContainerType {
+data class ZigFieldEnumType private constructor(val container: ZigValue) : ZigContainerType {
     companion object {
         fun of(container: ZigValue) =
             ZigValue.intern(ZigFieldEnumType(container))
@@ -1184,7 +1184,7 @@ data class ZigFieldEnumType private constructor(val container: ZigValue) : IZigC
 
     override val members: Sequence<ZigContainerField>
         get() = when (container) {
-            is IZigContainerType -> container.members.filterIsInstance<ZigContainerField>()
+            is ZigContainerType -> container.members.filterIsInstance<ZigContainerField>()
             else -> emptySequence()
         }
 
@@ -1508,16 +1508,16 @@ private fun computeFieldAccess(
                 ZigPlace.unknown()
             }
         }
-        is IZigContainerType -> computeContainerTypeDeclAccess(leftValue, fieldName)
+        is ZigContainerType -> computeContainerTypeDeclAccess(leftValue, fieldName)
         is ZigMultiValue -> {
             val places = leftValue.values.map { computeFieldAccess(mutability, it, fieldName) }
             ZigPlace.Multi.from(places.toSet())
         }
         else -> when (val typeOfLeft = leftValue.typeOf) {
-            is IZigContainerType -> computeContainerInstanceFieldAccess(mutability, typeOfLeft, fieldName)
+            is ZigContainerType -> computeContainerInstanceFieldAccess(mutability, typeOfLeft, fieldName)
             is ZigPointerType -> when (typeOfLeft.size) {
                 ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
-                    is IZigContainerType ->
+                    is ZigContainerType ->
                         computeContainerInstanceFieldAccess(typeOfLeft.mutability, pointerChild, fieldName)
                     else -> ZigPlace.Single.of(null, ZigLazyFieldValue.of(leftValue, fieldName))
                 }
@@ -1595,9 +1595,9 @@ private fun computeBuiltinFnGenericParams(
 }
 
 private fun substituteContainerTypeParams(
-    type: ZigContainerType,
+    type: ZigPsiContainerType,
     typeParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
-): ZigContainerType {
+): ZigPsiContainerType {
     return if (type.typeParams.isEmpty()) {
         type
     } else {
@@ -1616,7 +1616,7 @@ private fun substituteContainerTypeParams(
         //    to get its value, which is `u8`.
         // 3. Since `u8` is a primitive type, we are done.
         //
-        ZigContainerType.of(type.container, type.typeParams + typeParams)
+        ZigPsiContainerType.of(type.container, type.typeParams + typeParams)
     }
 }
 
@@ -1646,7 +1646,7 @@ private fun substituteTypeParams(
             is ZigEnumLiteralValue -> {
                 substituteTypeParams(value.typeOf, typeParams).mapValue { ZigEnumLiteralValue.of(it, value.name) }
             }
-            is ZigContainerType -> {
+            is ZigPsiContainerType -> {
                 substituteContainerTypeParams(value, typeParams)
             }
             is ZigFunctionType -> {
@@ -1740,7 +1740,7 @@ private fun substituteTypeParams(
 
 private fun computeContainerInstanceFieldAccess(
     mutability: ZigMutability?,
-    type: IZigContainerType,
+    type: ZigContainerType,
     fieldName: ZigStringLiteralValue,
 ): ZigPlace {
     val name = fieldName.value
@@ -1761,7 +1761,7 @@ private fun computeContainerInstanceFieldAccess(
 }
 
 private fun computeContainerTypeDeclAccess(
-    type: IZigContainerType,
+    type: ZigContainerType,
     fieldName: ZigStringLiteralValue,
 ): ZigPlace {
     val name = fieldName.value
@@ -1807,7 +1807,7 @@ private fun resolveValueFromReferenceTo(target: ZigNamedElement): ZigValue {
 
 private fun computeValueFromReferenceUncached(target: ZigNamedElement): ZigValue {
     return when (target) {
-        is ZigFile -> ZigContainerType.of(target.createSmartPointer(), emptyMap())
+        is ZigFile -> ZigPsiContainerType.of(target.createSmartPointer(), emptyMap())
         is ZigFnDecl -> ZigUnknown.of(ZigFunctionType.of(target.createSmartPointer(), findUnboundTypeParams(target)))
         is ZigVarDecl -> computeVarDecl(target)
         is ZigVarProto -> computeVarProto(target)
@@ -1884,7 +1884,7 @@ private fun computeFunctionReturnValue(
 
 private fun computeTagType(type: ZigValue): ZigValue? {
     return when (type) {
-        is IZigContainerType -> {
+        is ZigContainerType -> {
             if (type.containerKind == ZigContainerKind.ENUM) {
                 ZigAnalyzer.resolveEnumTagType(type)
             } else if (type.isTaggedUnion) {
@@ -1923,18 +1923,18 @@ internal fun mapCalledFuncAndSelfArg(
             val fieldName = ZigStringLiteralValue.of(name)
             resolveValue(functionElement.leftOperand).mapValue { left ->
                 when (left) {
-                    is IZigContainerType -> {
+                    is ZigContainerType -> {
                         val place = computeContainerTypeDeclAccess(left, fieldName)
                         place.value.mapValue { transform(it, null) }
                     }
                     else -> when (val typeOfLeft = left.typeOf) {
-                        is IZigContainerType -> {
+                        is ZigContainerType -> {
                             val place = computeContainerTypeDeclAccess(typeOfLeft, fieldName)
                             place.value.mapValue { transform(it, left) }
                         }
                         is ZigPointerType -> when (typeOfLeft.size) {
                             ZigPointerSize.ONE -> when (val pointerChild = typeOfLeft.child) {
-                                is IZigContainerType -> {
+                                is ZigContainerType -> {
                                     val place = computeContainerTypeDeclAccess(pointerChild, fieldName)
                                     place.value.mapValue { transform(it, left) }
                                 }
@@ -2201,7 +2201,7 @@ private fun computeFieldType(
     fieldNameValue: ZigValue,
 ): ZigValue = containerType.mapValue { container ->
     fieldNameValue.mapValue { fieldName ->
-        if (container is IZigContainerType
+        if (container is ZigContainerType
             && (container.containerKind == ZigContainerKind.STRUCT
                     || container.containerKind == ZigContainerKind.UNION)
             && fieldName is ZigStringLiteralValue
@@ -2387,7 +2387,7 @@ private fun computeContainerExpression(element: ZigContainerExpression): ZigValu
         }
         return ZigTupleType.of(lightTuple)
     }
-    return ZigContainerType.of(element.createSmartPointer(), findUnboundTypeParams(element))
+    return ZigPsiContainerType.of(element.createSmartPointer(), findUnboundTypeParams(element))
 }
 
 private fun computeOptionalTypeExpression(element: ZigOptionalTypeExpression): ZigValue {
@@ -2582,7 +2582,7 @@ private fun computeImportBuiltinCall(element: ZigBuiltinCall): ZigValue {
     }
     val values = resolveReferences(argument).map { target ->
         when (target) {
-            is ZigFile -> ZigContainerType.of(target.createSmartPointer(), emptyMap())
+            is ZigFile -> ZigPsiContainerType.of(target.createSmartPointer(), emptyMap())
             else -> ZigUnknown.ofUnknownType()
         }
     }
@@ -2595,7 +2595,7 @@ private fun computeTagNameBuiltinCall(element: ZigBuiltinCall): ZigValue {
 
 private fun computeThisBuiltinCall(element: ZigBuiltinCall): ZigValue {
     val container = element.findParentOfType<ZigContainer>() ?: return ZigUnknown.of(ZigTypeType)
-    return ZigContainerType.of(container.createSmartPointer(), findUnboundTypeParams(container))
+    return ZigPsiContainerType.of(container.createSmartPointer(), findUnboundTypeParams(container))
 }
 
 private fun computeTypeOfBuiltinCall(element: ZigBuiltinCall): ZigValue {
@@ -2733,7 +2733,7 @@ private fun computeContainerField(target: ZigContainerFieldImpl): ZigValue {
             ZigContainerKind.OPAQUE -> ZigUnknown.ofUnknownType()
             ZigContainerKind.ENUM -> {
                 val typeParams = findUnboundTypeParams(target.container)
-                ZigUnknown.of(ZigContainerType.of(target.container.createSmartPointer(), typeParams))
+                ZigUnknown.of(ZigPsiContainerType.of(target.container.createSmartPointer(), typeParams))
             }
             ZigContainerKind.UNION -> when (target.container.containerArgElement) {
                 null -> ZigUnknown.ofUnknownType()
@@ -2866,7 +2866,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                             }
                         }
                     }
-                    is IZigContainerType if conditionType.isTaggedUnion -> {
+                    is ZigContainerType if conditionType.isTaggedUnion -> {
                         if (isElseProng) {
                             if (isInlineProng) {
                                 conditionType.members
@@ -2893,7 +2893,7 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                             }
                         }
                     }
-                    is IZigContainerType if conditionType.containerKind == ZigContainerKind.ENUM -> {
+                    is ZigContainerType if conditionType.containerKind == ZigContainerKind.ENUM -> {
                         if (isElseProng) {
                             if (isInlineProng) {
                                 val fields = conditionType.members.filterIsInstance<ZigContainerField>().toList()
@@ -2944,13 +2944,13 @@ private fun computeSwitchPayload(payloadElement: ZigSwitchPayload, payloadItem: 
                     .map { it.name }
                     .toSet()
             resolvePlace(conditionElement).mapType { _, conditionType ->
-                val values = if (conditionType is IZigContainerType && conditionType.isTaggedUnion) {
+                val values = if (conditionType is ZigContainerType && conditionType.isTaggedUnion) {
                     val tagType = ZigAnalyzer.resolveUnionTagType(conditionType) ?: return@mapType ZigPlace.unknown()
                     if (isInlineProng) {
                         if (isElseProng) {
                             sequenceOf(tagType.mapValue { type ->
                                 when (type) {
-                                    is IZigContainerType if type.containerKind == ZigContainerKind.ENUM -> {
+                                    is ZigContainerType if type.containerKind == ZigContainerKind.ENUM -> {
                                         val values =
                                             type.members
                                                 .filterIsInstance<ZigContainerField>()
@@ -3076,7 +3076,7 @@ private fun inferListInitItem(
     return if (parentElement.isFieldInit) {
         val name = parentElement.fieldName ?: return ZigUnknown.of(ZigTypeType)
         ZigAnalyzer.resolveOrInferListInitType(initElement).mapValue { type ->
-            if (type !is IZigContainerType) {
+            if (type !is ZigContainerType) {
                 return@mapValue ZigUnknown.of(ZigTypeType)
             }
             val member = type.members.firstNotNullOfOrNull {
@@ -3132,7 +3132,7 @@ private fun inferSwitchItem(
         ?: return ZigUnknown.of(ZigTypeType)
     return resolveValue(conditionElement).mapValue {
         val type = it.typeOf
-        if (type is IZigContainerType && type.isTaggedUnion) {
+        if (type is ZigContainerType && type.isTaggedUnion) {
             val tagType = ZigAnalyzer.resolveUnionTagType(type) ?: return@mapValue ZigUnknown.of(ZigTypeType)
             tagType
         } else {
@@ -3594,7 +3594,7 @@ private enum class PeerResolveStrategy {
                 is ZigEnumLiteralType -> ENUM_OR_UNION
                 is ZigFunctionType -> FUNC
                 is ZigTupleType -> TUPLE
-                is IZigContainerType -> when (ty.containerKind) {
+                is ZigContainerType -> when (ty.containerKind) {
                     ZigContainerKind.OPAQUE -> EXACT
                     ZigContainerKind.ENUM -> ENUM_OR_UNION
                     ZigContainerKind.UNION -> ENUM_OR_UNION
@@ -3968,7 +3968,7 @@ private fun resolvePeerTypesInner(
                 if (ty == null) continue
                 when (ty) {
                     ZigEnumLiteralType -> {}
-                    is IZigContainerType -> when (ty.containerKind) {
+                    is ZigContainerType -> when (ty.containerKind) {
                         ZigContainerKind.ENUM -> {}
                         ZigContainerKind.UNION -> {}
                         else -> return null
@@ -3983,10 +3983,10 @@ private fun resolvePeerTypesInner(
                     ZigEnumLiteralType -> {
                         curTy = ty
                     }
-                    is IZigContainerType -> when (curTy.containerKind) {
+                    is ZigContainerType -> when (curTy.containerKind) {
                         ZigContainerKind.ENUM -> when (ty) {
                             ZigEnumLiteralType -> {}
-                            is IZigContainerType -> when (ty.containerKind) {
+                            is ZigContainerType -> when (ty.containerKind) {
                                 ZigContainerKind.ENUM -> {
                                     if (ty != curTy) return null
                                 }
@@ -4000,7 +4000,7 @@ private fun resolvePeerTypesInner(
                         }
                         ZigContainerKind.UNION -> when (ty) {
                             ZigEnumLiteralType -> {}
-                            is IZigContainerType -> when (ty.containerKind) {
+                            is ZigContainerType -> when (ty.containerKind) {
                                 ZigContainerKind.ENUM -> {
                                     val curTagTy = ZigAnalyzer.resolveUnionTagType(curTy)
                                     if (ty != curTagTy) return null
