@@ -30,9 +30,10 @@ class ZigAstCheckAnnotator :
 
     override fun doAnnotate(collectedInfo: Info): List<Result>? {
         val sdk = collectedInfo.sdk
+        val exe = ZigExe.find(sdk) ?: return null
         val path = collectedInfo.path.toString()
         val contents = collectedInfo.contents
-        val result = runZigExe(sdk, "ast-check", "--color", "off", path) ?: return null
+        val result = exe.run("ast-check", "--color", "off", path) ?: return null
         if (result.success) return null
         val annotateResults = mutableListOf<Result>()
         result.stderr.forEachLine { line ->

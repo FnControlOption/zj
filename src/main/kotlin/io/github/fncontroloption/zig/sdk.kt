@@ -47,7 +47,8 @@ class ZigSdkType : SdkType("ZigSdk") {
     override fun getIcon() = ZigIcons.ZIG
 
     override fun getVersionString(sdkHome: String): String? {
-        val result = runZigExe(sdkHome, "version") ?: return null
+        val exe = ZigExe.find(sdkHome) ?: return null
+        val result = exe.run("version") ?: return null
         result.logErrors()
         if (!result.success) return null
         return result.stdout.readText().trimEnd()
@@ -109,7 +110,7 @@ private fun getPossibleZigExePaths(sdkHome: String): Array<Path> {
     )
 }
 
-internal class ZigExeResult(
+class ZigExeResult(
     val exe: Path,
     val stdout: File,
     val stderr: File,
@@ -125,45 +126,49 @@ internal class ZigExeResult(
     }
 }
 
-internal fun runZigExe(sdk: Sdk, vararg args: String): ZigExeResult? {
-    if (sdk.sdkType is ZigSdkType) {
-        val sdkHome = sdk.homePath ?: return null
-        return runZigExe(sdkHome, *args)
-    }
-    return null
-}
-
-/** @see org.jetbrains.jps.model.java.impl.JdkVersionDetectorImpl.detectFromOutput */
-private fun runZigExe(sdkHome: String, vararg args: String): ZigExeResult? {
-    for (zigExe in getPossibleZigExePaths(sdkHome)) {
-        if (!zigExe.isExecutable()) {
-            continue
-        }
-
+class ZigExe(val path: Path) {
+    /** @see org.jetbrains.jps.model.java.impl.JdkVersionDetectorImpl.detectFromOutput */
+    fun run(vararg args: String): ZigExeResult? {
         // Redirect output to temporary files so that we don't have to worry
         // about stdout/stderr buffers becoming full.
         val stdout = FileUtilRt.createTempFile("zig.", ".stdout", true)
         val stderr = FileUtilRt.createTempFile("zig.", ".stderr", true)
 
         val process = try {
-            with(ProcessBuilder(zigExe.toString(), *args)) {
+            with(ProcessBuilder(path.toString(), *args)) {
                 redirectOutput(stdout)
                 redirectError(stderr)
                 start()
             }
         } catch (e: IOException) {
-            log.error(zigExe.toString(), e)
+            log.error(path.toString(), e)
             return null
         }
         val exitCode: Int
         try {
             exitCode = process.waitFor()
         } catch (e: InterruptedException) {
-            log.error(zigExe.toString(), e)
+            log.error(path.toString(), e)
             process.destroy()
             return null
         }
-        return ZigExeResult(zigExe, stdout, stderr, exitCode)
+        return ZigExeResult(path, stdout, stderr, exitCode)
     }
-    return null
+
+    companion object {
+        fun find(sdk: Sdk): ZigExe? {
+            if (sdk.sdkType !is ZigSdkType) return null
+            val sdkHome = sdk.homePath ?: return null
+            return find(sdkHome)
+        }
+
+        fun find(sdkHome: String): ZigExe? {
+            for (path in getPossibleZigExePaths(sdkHome)) {
+                if (path.isExecutable()) {
+                    return ZigExe(path)
+                }
+            }
+            return null
+        }
+    }
 }

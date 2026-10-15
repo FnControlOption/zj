@@ -27,7 +27,7 @@ class ZigBuiltinService(private val project: Project) {
             cachedBuiltinFile = null
             if (currentSdk != null) {
                 cachedSdk = currentSdk
-                val result = runZigExe(currentSdk, "build-exe", "--show-builtin")
+                val result = ZigExe.find(currentSdk)?.run("build-exe", "--show-builtin")
                 result?.logErrors()
                 if (result != null && result.success) {
                     val builtinText = result.stdout.readText()
