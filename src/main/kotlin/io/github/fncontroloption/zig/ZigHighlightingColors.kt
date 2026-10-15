@@ -37,6 +37,7 @@ object ZigHighlightingColors {
     val REASSIGNED_LOCAL_VARIABLE = TextAttributesKey.createTextAttributesKey("ZIG_REASSIGNED_LOCAL_VARIABLE", DefaultLanguageHighlighterColors.REASSIGNED_LOCAL_VARIABLE)
     val PARAMETER = TextAttributesKey.createTextAttributesKey("ZIG_PARAMETER", DefaultLanguageHighlighterColors.PARAMETER)
     val COMPTIME_PARAMETER = TextAttributesKey.createTextAttributesKey("ZIG_COMPTIME_PARAMETER", JavaHighlightingColors.TYPE_PARAMETER_NAME_ATTRIBUTES)
+    val ERROR_NAME = TextAttributesKey.createTextAttributesKey("ZIG_ERROR_NAME", DefaultLanguageHighlighterColors.PREDEFINED_SYMBOL)
 
     // @formatter:on
 }

@@ -42,9 +42,10 @@ private fun getHighlightRangeAndAttributes(element: PsiElement): Pair<PsiElement
         is ZigVarDeclOrProto -> {
             val identifier = element.nameIdentifier ?: return null
             try {
-                val value = ZigAnalyzer.resolveValueFromReferenceTo(element)
-                if (value.asValueSequence().any { it.typeOf is ZigFunctionType }) {
-                    return Pair(identifier, ZigHighlightingColors.STATIC_METHOD)
+                for (value in ZigAnalyzer.resolveValueFromReferenceTo(element).asValueSequence()) {
+                    if (value.typeOf is ZigFunctionType) {
+                        return Pair(identifier, ZigHighlightingColors.STATIC_METHOD)
+                    }
                 }
             } catch (_: IndexNotReadyException) {
             }
@@ -75,6 +76,16 @@ private fun getHighlightRangeAndAttributes(element: PsiElement): Pair<PsiElement
             Pair(identifier, attributes)
         }
 
+        is ZigErrorSetItem -> {
+            val identifier = element.identifierElement
+            Pair(identifier, ZigHighlightingColors.ERROR_NAME)
+        }
+
+        is ZigErrorValueExpression -> {
+            val identifier = element.identifierElement ?: return null
+            Pair(identifier, ZigHighlightingColors.ERROR_NAME)
+        }
+
         is ZigEnumLiteral -> {
             val identifier = element.identifierElement ?: return null
             val attributes = getHighlightAttributesFromReference(element) ?: return null
@@ -103,9 +114,13 @@ private fun getHighlightRangeAndAttributes(element: PsiElement): Pair<PsiElement
             val identifier = element.identifierElement ?: return null
             val name = parseZigIdentifier(identifier) ?: return null
             try {
-                val left = ZigAnalyzer.resolveValue(element.leftOperand)
-                if (left.asValueSequence().any { ZigAnalyzer.getBuiltinFieldType(it.typeOf, name) != null }) {
-                    return Pair(identifier, ZigHighlightingColors.INSTANCE_FIELD)
+                for (left in ZigAnalyzer.resolveValue(element.leftOperand).asValueSequence()) {
+                    if (left is ZigErrorSetType && name in left.names) {
+                        return Pair(identifier, ZigHighlightingColors.ERROR_NAME)
+                    }
+                    if (ZigAnalyzer.getBuiltinFieldType(left.typeOf, name) != null) {
+                        return Pair(identifier, ZigHighlightingColors.INSTANCE_FIELD)
+                    }
                 }
             } catch (_: IndexNotReadyException) {
             }
