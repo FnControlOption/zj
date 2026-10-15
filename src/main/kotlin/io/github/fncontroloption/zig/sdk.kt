@@ -17,13 +17,11 @@ import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.roots.ui.configuration.SdkPopupFactory
 import com.intellij.openapi.util.NlsContexts.TabTitle
 import com.intellij.openapi.util.SystemInfoRt
-import com.intellij.openapi.util.io.FileUtilRt
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.findDirectory
 import com.intellij.openapi.wm.ToolWindowId
 import com.intellij.openapi.wm.ToolWindowManager
 import org.jdom.Element
-import java.io.IOException
 import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.io.path.exists
@@ -55,7 +53,7 @@ class ZigSdkType : SdkType("ZigSdk") {
 
     override fun getVersionString(sdkHome: String): String? {
         val exe = ZigExe.find(sdkHome) ?: return null
-        val result = exe.run("version") ?: return null
+        val result = exe.run("version")
         result.logErrors()
         if (!result.success) return null
         return result.stdout.trimEnd()
@@ -134,32 +132,21 @@ class ZigExeResult(
 }
 
 class ZigExe(val path: Path) {
-    /** @see org.jetbrains.jps.model.java.impl.JdkVersionDetectorImpl.detectFromOutput */
-    fun run(vararg args: String): ZigExeResult? {
-        // Redirect output to temporary files so that we don't have to worry
-        // about stdout/stderr buffers becoming full.
-        val stdout = FileUtilRt.createTempFile("zig.", ".stdout", true)
-        val stderr = FileUtilRt.createTempFile("zig.", ".stderr", true)
-
-        val process = try {
-            with(ProcessBuilder(path.toString(), *args)) {
-                redirectOutput(stdout)
-                redirectError(stderr)
-                start()
-            }
-        } catch (e: IOException) {
-            log.error(path.toString(), e)
-            return null
-        }
-        val exitCode: Int
-        try {
-            exitCode = process.waitFor()
-        } catch (e: InterruptedException) {
-            log.error(path.toString(), e)
-            process.destroy()
-            return null
-        }
-        return ZigExeResult(path, stdout.readText(), stderr.readText(), exitCode)
+    fun run(vararg args: String): ZigExeResult {
+        val processHandler = OSProcessHandler(
+            GeneralCommandLine()
+                .withExePath(path.toString())
+                .withParameters(*args)
+                .withCharset(Charsets.UTF_8)
+        )
+        val processListener = CapturingProcessAdapter()
+        processHandler.addProcessListener(processListener)
+        processHandler.startNotify()
+        processHandler.waitFor()
+        val exitCode = processHandler.exitCode
+        val stdout = processListener.output.stdout
+        val stderr = processListener.output.stderr
+        return ZigExeResult(path, stdout, stderr, exitCode)
     }
 
     suspend fun runInToolWindow(

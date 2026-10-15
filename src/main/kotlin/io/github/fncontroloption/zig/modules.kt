@@ -144,7 +144,7 @@ class ZigModulesProjectService(private val project: Project) {
     private fun getModulesJsonText(exe: ZigExe, configPath: String): String? {
         val appService = ApplicationManager.getApplication().service<ZigModulesAppService>()
         val printModulesPath = appService.printModulesFilePath.toString()
-        val modulesResult = exe.run("run", printModulesPath, "--", configPath) ?: return null
+        val modulesResult = exe.run("run", printModulesPath, "--", configPath)
         modulesResult.logErrors()
         if (!modulesResult.success) return null
         return modulesResult.stdout

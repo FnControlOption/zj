@@ -33,7 +33,7 @@ class ZigAstCheckAnnotator :
         val exe = ZigExe.find(sdk) ?: return null
         val path = collectedInfo.path.toString()
         val contents = collectedInfo.contents
-        val result = exe.run("ast-check", "--color", "off", path) ?: return null
+        val result = exe.run("ast-check", "--color", "off", path)
         if (result.success) return null
         val annotateResults = mutableListOf<Result>()
         for (line in result.stderr.lineSequence()) {
