@@ -25,6 +25,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.exists
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
@@ -92,8 +93,8 @@ class ZigModulesProjectService(private val project: Project) {
     private var cachedSdk: Sdk? = null
     private var cachedBuildFile: VirtualFile? = null
     private var cachedModules: Map<Int, ZigModule>? = null
-    private var rootFileToModule = mutableMapOf<Path, Int>()
-    private var fileImports = mutableMapOf<Path, MutableSet<Path>>()
+    private var rootFileToModule: MutableMap<Path, Int> = ConcurrentHashMap()
+    private var fileImports: MutableMap<Path, MutableSet<Path>> = ConcurrentHashMap()
     private val psiManager = PsiManager.getInstance(project)
 
     val modules: Map<Int, ZigModule>
