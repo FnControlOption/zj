@@ -1,13 +1,8 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
-import com.intellij.execution.RunContentExecutor
-import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.execution.process.CapturingProcessAdapter
-import com.intellij.execution.process.OSProcessHandler
 import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -21,8 +16,6 @@ import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.vfs.*
 import com.intellij.openapi.vfs.newvfs.events.*
-import com.intellij.openapi.wm.ToolWindowId
-import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.psi.PsiManager
@@ -127,10 +120,9 @@ class ZigModulesProjectService(private val project: Project) {
 
     private suspend fun fetchModulesWithSdk(sdk: Sdk) {
         val exe = ZigExe.find(sdk) ?: return
-        val exePath = exe.path.toString()
         val buildFile = findBuildZigFile() ?: return
         val buildFilePath = buildFile.toNioPath().toString()
-        val configPath = getConfigPath(exePath, buildFilePath) ?: return
+        val configPath = getConfigPath(exe, buildFilePath) ?: return
         val modulesText = getModulesJsonText(exe, configPath) ?: return
 
         val modules = Json.decodeFromString<List<ZigModule>>(modulesText)
@@ -141,31 +133,12 @@ class ZigModulesProjectService(private val project: Project) {
         projectDir.refresh(false, true)
     }
 
-    private suspend fun getConfigPath(exePath: String, buildFilePath: String): String? {
-        val processHandler = OSProcessHandler(
-            GeneralCommandLine()
-                .withExePath(exePath)
-                .withParameters("build", "--print-configuration-path", "--build-file", buildFilePath)
-                .withCharset(Charsets.UTF_8)
-        )
-        val processListener = CapturingProcessAdapter()
-        processHandler.addProcessListener(processListener)
-        edtWriteAction {
-            RunContentExecutor(project, processHandler)
-                .withActivateToolWindow(false)
-                .withTitle("Zig")
-                .run()
-        }
-        processHandler.waitFor()
-        if (processHandler.exitCode != 0) {
-            edtWriteAction {
-                val toolWindowManager = ToolWindowManager.getInstance(project)
-                val toolWindow = toolWindowManager.getToolWindow(ToolWindowId.RUN)
-                toolWindow?.activate(null)
-            }
-            return null
-        }
-        return processListener.output.stdout.trimEnd()
+    private suspend fun getConfigPath(exe: ZigExe, buildFilePath: String): String? {
+        val args = listOf("build", "--print-configuration-path", "--build-file", buildFilePath)
+        val printResult = exe.runInToolWindow(project, "Zig", args)
+        printResult.logErrors()
+        if (!printResult.success) return null
+        return printResult.stdout.trimEnd()
     }
 
     private fun getModulesJsonText(exe: ZigExe, configPath: String): String? {
@@ -174,7 +147,7 @@ class ZigModulesProjectService(private val project: Project) {
         val modulesResult = exe.run("run", printModulesPath, "--", configPath) ?: return null
         modulesResult.logErrors()
         if (!modulesResult.success) return null
-        return modulesResult.stdout.readText()
+        return modulesResult.stdout
     }
 
     private fun findBuildZigFile(): VirtualFile? {

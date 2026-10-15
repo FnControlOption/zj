@@ -1,7 +1,12 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.codeInsight.daemon.ProjectSdkSetupValidator
+import com.intellij.execution.RunContentExecutor
+import com.intellij.execution.configurations.GeneralCommandLine
+import com.intellij.execution.process.CapturingProcessAdapter
+import com.intellij.execution.process.OSProcessHandler
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
@@ -10,12 +15,14 @@ import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.roots.ui.configuration.SdkPopupFactory
+import com.intellij.openapi.util.NlsContexts.TabTitle
 import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.openapi.util.io.FileUtilRt
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.findDirectory
+import com.intellij.openapi.wm.ToolWindowId
+import com.intellij.openapi.wm.ToolWindowManager
 import org.jdom.Element
-import java.io.File
 import java.io.IOException
 import java.nio.file.Path
 import kotlin.io.path.Path
@@ -51,7 +58,7 @@ class ZigSdkType : SdkType("ZigSdk") {
         val result = exe.run("version") ?: return null
         result.logErrors()
         if (!result.success) return null
-        return result.stdout.readText().trimEnd()
+        return result.stdout.trimEnd()
     }
 
     override fun setupSdkPaths(sdk: Sdk) {
@@ -112,16 +119,16 @@ private fun getPossibleZigExePaths(sdkHome: String): Array<Path> {
 
 class ZigExeResult(
     val exe: Path,
-    val stdout: File,
-    val stderr: File,
-    val exitCode: Int,
+    val stdout: String,
+    val stderr: String,
+    val exitCode: Int?,
 ) {
     val success: Boolean
         get() = exitCode == 0
 
     fun logErrors() {
-        if (stderr.length() > 0) {
-            log.error(exe.toString(), stderr.readText())
+        if (stderr.isNotEmpty()) {
+            log.error(exe.toString(), stderr)
         }
     }
 }
@@ -152,6 +159,39 @@ class ZigExe(val path: Path) {
             process.destroy()
             return null
         }
+        return ZigExeResult(path, stdout.readText(), stderr.readText(), exitCode)
+    }
+
+    suspend fun runInToolWindow(
+        project: Project,
+        @TabTitle title: String,
+        args: List<String>,
+    ): ZigExeResult {
+        val processHandler = OSProcessHandler(
+            GeneralCommandLine()
+                .withExePath(path.toString())
+                .withParameters(args)
+                .withCharset(Charsets.UTF_8)
+        )
+        val processListener = CapturingProcessAdapter()
+        processHandler.addProcessListener(processListener)
+        edtWriteAction {
+            RunContentExecutor(project, processHandler)
+                .withActivateToolWindow(false)
+                .withTitle(title)
+                .run()
+        }
+        processHandler.waitFor()
+        val exitCode = processHandler.exitCode
+        if (exitCode != 0) {
+            edtWriteAction {
+                val toolWindowManager = ToolWindowManager.getInstance(project)
+                val toolWindow = toolWindowManager.getToolWindow(ToolWindowId.RUN)
+                toolWindow?.activate(null)
+            }
+        }
+        val stdout = processListener.output.stdout
+        val stderr = processListener.output.stderr
         return ZigExeResult(path, stdout, stderr, exitCode)
     }
 

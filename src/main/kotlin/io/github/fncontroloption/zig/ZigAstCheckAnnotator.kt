@@ -36,18 +36,18 @@ class ZigAstCheckAnnotator :
         val result = exe.run("ast-check", "--color", "off", path) ?: return null
         if (result.success) return null
         val annotateResults = mutableListOf<Result>()
-        result.stderr.forEachLine { line ->
+        for (line in result.stderr.lineSequence()) {
             // TODO: handle multiline message, f.e. duplicate struct member @"foo\nbar"
-            val match = MESSAGE_REGEX.matchEntire(line) ?: return@forEachLine
+            val match = MESSAGE_REGEX.matchEntire(line) ?: continue
             val line = match.groupValues[2].toInt() - 1
             val column = match.groupValues[3].toInt() - 1
             val severity = when (match.groupValues[4]) {
                 "error" -> HighlightSeverity.ERROR
                 "note" -> HighlightSeverity.WEAK_WARNING
-                else -> return@forEachLine
+                else -> continue
             }
             val message = Strings.capitalize(match.groupValues[5])
-            val index = lineAndColumnToIndex(contents, line, column) ?: return@forEachLine
+            val index = lineAndColumnToIndex(contents, line, column) ?: continue
             annotateResults.add(Result(index, severity, message))
         }
         return annotateResults

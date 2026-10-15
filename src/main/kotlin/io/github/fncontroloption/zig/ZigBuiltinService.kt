@@ -30,7 +30,7 @@ class ZigBuiltinService(private val project: Project) {
                 val result = ZigExe.find(currentSdk)?.run("build-exe", "--show-builtin")
                 result?.logErrors()
                 if (result != null && result.success) {
-                    val builtinText = result.stdout.readText()
+                    val builtinText = result.stdout
                     val virtualFile = LightVirtualFile("builtin.zig", ZigLanguage, builtinText)
                     virtualFile.isWritable = false
                     cachedBuiltinFile = virtualFile
