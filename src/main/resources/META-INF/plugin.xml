@@ -51,6 +51,7 @@
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigUnusedAnnotator"/>
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigUnderscoreIdentifierAnnotator"/>
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigUndeclaredIdentifierAnnotator"/>
+    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigUndeclaredLabelAnnotator"/>
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigDuplicateMembersAnnotator"/>
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigRedeclarationsAnnotator"/>
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigShadowAnnotator"/>

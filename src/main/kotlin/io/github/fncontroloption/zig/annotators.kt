@@ -332,6 +332,28 @@ private fun annotateUndeclaredIdentifier(element: PsiElement, holder: Annotation
         .create()
 }
 
+class ZigUndeclaredLabelAnnotator : Annotator, DumbAware {
+    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+        annotateUndeclaredLabel(element, holder)
+    }
+}
+
+private fun annotateUndeclaredLabel(element: PsiElement, holder: AnnotationHolder) {
+    if (element !is ZigLabelRef) return
+    if (resolveReferences(element).any()) return
+    val identifier = element.identifierElement
+    val name = parseZigIdentifier(identifier) ?: return
+    val message = buildString {
+        append("Label not found: '")
+        append(name)
+        append("'")
+    }
+    holder.newAnnotation(HighlightSeverity.ERROR, message)
+        // TODO: .problemGroup {}
+        .range(identifier)
+        .create()
+}
+
 class ZigDuplicateMembersAnnotator : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         annotateDuplicateMembers(element, holder)
