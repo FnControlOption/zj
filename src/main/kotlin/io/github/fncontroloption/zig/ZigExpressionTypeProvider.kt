@@ -16,6 +16,22 @@ class ZigExpressionTypeProvider : ExpressionTypeProvider<ZigExpression>() {
     }
 
     override fun getExpressionsAt(elementAt: PsiElement): List<ZigExpression> {
-        return elementAt.parents(withSelf = true).filterIsInstance<ZigExpression>().toList()
+        val result = mutableListOf<ZigExpression>()
+        for (element in elementAt.parents(withSelf = true)) {
+            when (element) {
+                is ZigBlock -> {
+                    if (element.labelDecl != null) {
+                        result.add(element)
+                    }
+                }
+                is ZigContainerExpression -> {}
+                is ZigBreak -> {}
+                is ZigContinue -> {}
+                is ZigReturn -> {}
+                is ZigExpression -> result.add(element)
+                else -> {}
+            }
+        }
+        return result
     }
 }
