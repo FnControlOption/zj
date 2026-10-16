@@ -1,8 +1,11 @@
 package io.github.fncontroloption.zig
 
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.vfs.findPsiFile
@@ -10,6 +13,14 @@ import com.intellij.testFramework.LightVirtualFile
 import com.intellij.util.concurrency.annotations.RequiresReadLock
 import org.jsoup.Jsoup
 import java.io.InputStream
+
+class ZigBuiltinFunctionsProjectActivity : ProjectActivity, DumbAware {
+    override suspend fun execute(project: Project) {
+        readAction {
+            project.service<ZigBuiltinFunctionsService>().loadBuiltinFunctions()
+        }
+    }
+}
 
 @Service(Service.Level.PROJECT)
 class ZigBuiltinFunctionsService(private val project: Project) {

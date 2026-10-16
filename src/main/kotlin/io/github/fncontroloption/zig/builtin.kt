@@ -2,13 +2,24 @@ package io.github.fncontroloption.zig
 
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.projectRoots.Sdk
 import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.testFramework.LightVirtualFile
+
+class ZigBuiltinProjectActivity : ProjectActivity, DumbAware {
+    override suspend fun execute(project: Project) {
+        project.workspaceModel.eventLog.collect {
+            project.service<ZigBuiltinService>().updateCachedBuiltinFile()
+        }
+    }
+}
 
 @Service(Service.Level.PROJECT)
 class ZigBuiltinService(private val project: Project) {
