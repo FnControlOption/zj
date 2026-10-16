@@ -33,19 +33,17 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCallOrBuiltinCall, ZigPa
         if (call == null) {
             return null
         }
-        val candidates = mutableSetOf<Triple<List<ZigFnParam>, List<ZigValue?>, Boolean>>()
+        val candidates = mutableSetOf<Pair<List<ZigFunctionParamInfo>, Boolean>>()
         when (call) {
             is ZigCall -> mapCalledFuncAndSelfArg(call) blk@{ function, selfArg ->
                 val functionType = function.typeOf as? ZigFunctionType ?: return@blk ZigVoidValue
                 val functionInfo = ZigFunctionInfo.of(null, functionType.function, functionType.genericParams)
                 var params = functionInfo.params
-                var paramTypes = functionInfo.paramTypes
                 val hasVarargs = functionInfo.hasVarargs
                 if (selfArg != null) {
                     params = params.subList(1, params.size)
-                    paramTypes = paramTypes.subList(1, paramTypes.size)
                 }
-                candidates.add(Triple(params, paramTypes, hasVarargs))
+                candidates.add(Pair(params, hasVarargs))
                 ZigVoidValue
             }
             is ZigBuiltinCall -> {
@@ -53,12 +51,11 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCallOrBuiltinCall, ZigPa
                 val builtin = ZigBuiltinFunctionsService.getBuiltinFnProto(call.project, name) ?: return null
                 val functionInfo = ZigFunctionInfo.of(null, builtin, emptyMap())
                 val params = functionInfo.params
-                val paramTypes = functionInfo.paramTypes
                 val hasVarargs = functionInfo.hasVarargs
-                candidates.add(Triple(params, paramTypes, hasVarargs))
+                candidates.add(Pair(params, hasVarargs))
             }
         }
-        val infoItems = candidates.map { (params, paramTypes, hasVarargs) ->
+        val infoItems = candidates.map { (params, hasVarargs) ->
             if (params.isEmpty() && !hasVarargs) {
                 return@map Item("<no parameters>", emptyList(), null)
             }
@@ -70,7 +67,7 @@ class ZigParameterInfoHandler : ParameterInfoHandler<ZigCallOrBuiltinCall, ZigPa
                         append(", ")
                     }
                     val start = length
-                    append(getParameterText(params[i], paramTypes[i]))
+                    params[i].appendText(this)
                     val end = length
                     paramRanges.add(start to end)
                 }

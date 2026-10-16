@@ -52,16 +52,35 @@ class ZigCompletionContributor : CompletionContributor() {
     }
 }
 
+class ZigFunctionParamInfo(
+    val param: ZigFnParam,
+    val type: ZigValue?,
+) {
+    fun appendText(builder: StringBuilder) {
+        val name = param.name
+        if (name != null) {
+            builder.append(name)
+            builder.append(": ")
+        }
+        if (param.isAnytype) {
+            assert(type == null)
+            builder.append("anytype")
+        } else if (type != null) {
+            builder.append(type.toPlainText())
+        } else {
+            builder.append('_')
+        }
+    }
+}
+
 class ZigFunctionInfo(
-    val params: List<ZigFnParam>,
-    val paramTypes: List<ZigValue?>,
+    val params: List<ZigFunctionParamInfo>,
     val hasVarargs: Boolean,
     val isMethod: Boolean,
 ) {
     companion object {
         fun unknown() = ZigFunctionInfo(
             params = emptyList(),
-            paramTypes = emptyList(),
             hasVarargs = true,
             isMethod = false,
         )
@@ -80,21 +99,22 @@ class ZigFunctionInfo(
             functionElement: ZigFnOrBuiltinFnDeclOrProto,
             genericParams: Map<SmartPsiElementPointer<ZigFnParam>, ZigValue?>,
         ): ZigFunctionInfo {
-            val (params, paramTypes) = functionElement.parameters.map { param ->
-                param to param.typeElement?.expression?.let {
+            val params = functionElement.parameters.map { param ->
+                val type = param.typeElement?.expression?.let {
                     val initialValue = ZigAnalyzer.resolveValue(it)
                     ZigAnalyzer.substituteGenericParams(initialValue, genericParams)
                 }
-            }.unzip()
+                ZigFunctionParamInfo(param, type)
+            }.toList()
             // TODO: allow `self: anytype` parameter?
             val isMethod = run {
                 if (originalDecl == null) return@run false
-                val receiverType = getFunctionReceiverType(paramTypes) ?: return@run false
+                val receiverType = getFunctionReceiverType(params) ?: return@run false
                 if (receiverType !is ZigPsiContainerType) return@run false
                 receiverType.container.dereference() == originalDecl.parent
             }
             val hasVarargs = functionElement.hasVarargs
-            return ZigFunctionInfo(params, paramTypes, hasVarargs, isMethod)
+            return ZigFunctionInfo(params, hasVarargs, isMethod)
         }
     }
 }
@@ -193,8 +213,8 @@ private object FieldInitInsertHandler : InsertHandler<LookupElement> {
     }
 }
 
-private fun getFunctionReceiverType(paramTypes: List<ZigValue?>): ZigValue? {
-    val type = paramTypes.firstOrNull() ?: return null
+private fun getFunctionReceiverType(params: List<ZigFunctionParamInfo>): ZigValue? {
+    val type = params.firstOrNull()?.type ?: return null
     return when (type) {
         is ZigPointerType if type.size == ZigPointerSize.ONE -> type.child
         is ZigOptionalType -> when (val child = type.child) {
@@ -206,8 +226,7 @@ private fun getFunctionReceiverType(paramTypes: List<ZigValue?>): ZigValue? {
 }
 
 private fun getFunctionTailText(
-    params: List<ZigFnParam>,
-    paramTypes: List<ZigValue?>,
+    params: List<ZigFunctionParamInfo>,
     hasVarargs: Boolean,
 ): String {
     return buildString {
@@ -216,7 +235,7 @@ private fun getFunctionTailText(
             if (i > 0) {
                 append(", ")
             }
-            append(getParameterText(params[i], paramTypes[i]))
+            params[i].appendText(this)
         }
         if (hasVarargs) {
             if (params.isNotEmpty()) {
@@ -225,24 +244,6 @@ private fun getFunctionTailText(
             append("...")
         }
         append(')')
-    }
-}
-
-internal fun getParameterText(param: ZigFnParam, type: ZigValue?): String {
-    return buildString {
-        val name = param.name
-        if (name != null) {
-            append(name)
-            append(": ")
-        }
-        if (param.isAnytype) {
-            assert(type == null)
-            append("anytype")
-        } else if (type != null) {
-            append(type.toPlainText())
-        } else {
-            append('_')
-        }
     }
 }
 
@@ -342,13 +343,12 @@ private fun fillIdentifierVariants(element: ZigIdentifier, result: CompletionRes
             is ZigFunctionType -> {
                 val functionInfo = ZigFunctionInfo.of(candidate, type.function, type.genericParams)
                 val params = functionInfo.params
-                val paramTypes = functionInfo.paramTypes
                 val hasVarargs = functionInfo.hasVarargs
                 val isMethod = functionInfo.isMethod
                 variants.add(
                     buildLookupElement(candidate, name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING)
                         .withIcon(if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function)
-                        .withTailText(getFunctionTailText(params, paramTypes, hasVarargs))
+                        .withTailText(getFunctionTailText(params, hasVarargs))
                         .withTypeText(getFunctionTypeText(type))
                         .withInsertHandler(FunctionInsertHandler(params.isNotEmpty() || hasVarargs))
                 )
@@ -508,7 +508,6 @@ private fun fillFieldAccessVariants(
                 is ZigFunctionType -> {
                     val functionInfo = ZigFunctionInfo.of(member, type.function, containerType.genericParams)
                     var params = functionInfo.params
-                    var paramTypes = functionInfo.paramTypes
                     val hasVarargs = functionInfo.hasVarargs
                     val isMethod = functionInfo.isMethod
                     if (isInstance) {
@@ -516,12 +515,11 @@ private fun fillFieldAccessVariants(
                             continue
                         }
                         params = params.subList(1, params.size)
-                        paramTypes = paramTypes.subList(1, paramTypes.size)
                     }
                     variants.add(
                         buildLookupElement(member, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
                             .withIcon(if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function)
-                            .withTailText(getFunctionTailText(params, paramTypes, hasVarargs))
+                            .withTailText(getFunctionTailText(params, hasVarargs))
                             .withTypeText(getFunctionTypeText(type))
                             .withInsertHandler(FunctionInsertHandler(params.isNotEmpty() || hasVarargs))
                     )
@@ -652,13 +650,12 @@ private fun fillEnumLiteralVariants(
                     // TODO: check if return type can coerce to original type
                     val functionInfo = ZigFunctionInfo.of(member, type.function, containerType.genericParams)
                     val params = functionInfo.params
-                    val paramTypes = functionInfo.paramTypes
                     val hasVarargs = functionInfo.hasVarargs
                     val isMethod = functionInfo.isMethod
                     variants.add(
                         buildLookupElement(member, name, ZigIdQuoteBehavior.EAGERLY_UNQUOTE)
                             .withIcon(if (isMethod) AllIcons.Nodes.Method else AllIcons.Nodes.Function)
-                            .withTailText(getFunctionTailText(params, paramTypes, hasVarargs))
+                            .withTailText(getFunctionTailText(params, hasVarargs))
                             .withTypeText(getFunctionTypeText(type))
                             .withInsertHandler(FunctionInsertHandler(params.isNotEmpty() || hasVarargs))
                     )
@@ -710,12 +707,11 @@ private fun fillBuiltinCallVariants(element: ZigBuiltinCall, result: CompletionR
         val name = builtin.builtinElement.text
         val functionInfo = ZigFunctionInfo.of(null, builtin, emptyMap())
         val params = functionInfo.params
-        val paramTypes = functionInfo.paramTypes
         val hasVarargs = functionInfo.hasVarargs
         variants.add(
             LookupElementBuilder.create(builtin, name)
                 .withIcon(AllIcons.Nodes.Function)
-                .withTailText(getFunctionTailText(params, paramTypes, hasVarargs))
+                .withTailText(getFunctionTailText(params, hasVarargs))
                 .withTypeText(getFunctionTypeText(builtin, emptyMap()))
                 .withInsertHandler(FunctionInsertHandler(params.isNotEmpty() || hasVarargs))
         )
