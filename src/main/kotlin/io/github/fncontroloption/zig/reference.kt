@@ -317,8 +317,8 @@ internal fun identifierReferenceCandidates(element: PsiElement): Sequence<ZigNam
                 is ZigContainer -> parent.members.filterIsInstance<ZigNamedContainerDecl>()
 
                 is ZigFnOrBuiltinFnDeclOrProto
-                    if (child in parent.parameters || child === parent.returnTypeElement || child === parent.body) ->
-                        parent.parameters.takeWhile { it !== child }
+                    if (child in parent.parameters || child === parent.returnTypeElement || child === parent.body)
+                    -> parent.parameters.takeWhile { it !== child }
 
                 is ZigBlock ->
                     child.siblings(forward = false, withSelf = false)

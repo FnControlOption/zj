@@ -171,13 +171,6 @@ class ZigModulesProjectService(private val project: Project) {
         return modulesResult.stdout
     }
 
-    /* TODO: delete
-    private fun findBuildZigFile(): VirtualFile? {
-        val rootManager = ProjectRootManager.getInstance(project)
-        return rootManager.contentRoots.firstNotNullOfOrNull { it.findFile("build.zig") }
-    }
-     */
-
     fun getRootSourceVirtualFile(module: ZigModule): VirtualFile? {
         val projectPath = cachedFetchSettings?.projectPath ?: return null
         val sourcePathString = module.rootSourceFile ?: return null
