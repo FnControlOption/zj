@@ -6,10 +6,9 @@ import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.util.text.Strings
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiRecursiveElementVisitor
+import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.util.elementType
 import com.intellij.psi.util.parents
-import com.intellij.psi.util.siblings
 
 class ZigUnusedAnnotator : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
@@ -17,6 +16,171 @@ class ZigUnusedAnnotator : Annotator, DumbAware {
     }
 }
 
+private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
+    when (element) {
+        is ZigBlock -> {
+            annotateUnusedLabel(element, "block", holder)
+            annotateUnusedVariables(element, holder)
+        }
+        is ZigFnDecl -> {
+            annotateUnusedParameters(element, holder)
+        }
+        is ZigIf -> {
+            annotateUnusedCaptures(
+                payload = element.thenPayload,
+                bodies = listOfNotNull(element.thenElement.innerElement),
+                holder = holder
+            )
+            annotateUnusedCaptures(
+                payload = element.elsePayload,
+                bodies = listOfNotNull(element.elseElement?.innerElement),
+                holder = holder
+            )
+        }
+        is ZigWhile -> {
+            annotateUnusedLabel(element, "while loop", holder)
+            annotateUnusedCaptures(
+                payload = element.thenPayload,
+                bodies = listOfNotNull(element.whileContinueExpr?.innerElement, element.thenElement.innerElement),
+                holder = holder,
+            )
+            annotateUnusedCaptures(
+                payload = element.elsePayload,
+                bodies = listOfNotNull(element.elseElement?.innerElement),
+                holder = holder
+            )
+        }
+        is ZigFor -> {
+            annotateUnusedLabel(element, "for loop", holder)
+            annotateUnusedCaptures(
+                payload = element.payload,
+                bodies = listOfNotNull(element.thenElement.innerElement),
+                holder = holder
+            )
+        }
+        is ZigSwitch -> {
+            annotateUnusedLabel(element, "switch", holder)
+        }
+        is ZigSwitchProng -> {
+            annotateUnusedCaptures(element.payload, listOfNotNull(element.body), holder)
+        }
+        is ZigCatch -> {
+            annotateUnusedCaptures(element.payload, listOfNotNull(element.rightOperand), holder)
+        }
+    }
+}
+
+private fun annotateUnusedLabel(labelable: ZigLabelable, kind: String, holder: AnnotationHolder) {
+    val identifier = labelable.labelDecl?.identifierElement ?: return
+    val name = parseZigIdentifier(identifier) ?: return
+    val traverser = SyntaxTraverser.psiTraverser(labelable).expand { it !is ZigContainerExpression }
+    for (child in traverser) {
+        if (child is ZigLabelRef && name == parseZigIdentifier(child.identifierElement)) {
+            return
+        }
+    }
+    holder.newAnnotation(HighlightSeverity.ERROR, "Unused $kind label")
+        // TODO: .problemGroup {}
+        .range(identifier)
+        .create()
+}
+
+private class DeclarationInfo(val identifier: PsiElement, val kind: String)
+
+private fun findUsedDeclarations(
+    element: PsiElement?,
+    declarations: Map<String, DeclarationInfo>,
+    used: MutableSet<String>,
+) {
+    if (element == null || used.size == declarations.size) {
+        return
+    }
+    for (child in SyntaxTraverser.psiTraverser(element)) {
+        if (child is ZigIdentifier) {
+            if (child.textMatches("_")) continue
+            val name = parseZigIdentifier(child) ?: continue
+            if (name in declarations) {
+                used.add(name)
+                if (used.size == declarations.size) {
+                    return
+                }
+            }
+        }
+    }
+}
+
+private fun createUnusedAnnotations(
+    declarations: Map<String, DeclarationInfo>,
+    used: Set<String>,
+    holder: AnnotationHolder,
+) {
+    if (used.size == declarations.size) {
+        return
+    }
+    for ((name, info) in declarations) {
+        if (name in used) {
+            continue
+        }
+        holder.newAnnotation(HighlightSeverity.ERROR, "Unused ${info.kind}")
+            // TODO: .problemGroup {}
+            .range(info.identifier)
+            // TODO: .newFix().registerFix()
+            .create()
+    }
+}
+
+private fun annotateUnusedVariables(block: ZigBlock, holder: AnnotationHolder) {
+    val declarations = mutableMapOf<String, DeclarationInfo>()
+    val used = mutableSetOf<String>()
+    for (statement in block.statements) {
+        findUsedDeclarations(statement, declarations, used)
+        for (variable in ZigBlock.statementToVarDecls(statement)) {
+            val identifier = variable.nameIdentifier ?: continue
+            if (identifier.textMatches("_")) continue
+            val name = parseZigIdentifier(identifier) ?: continue
+            val kind = when (variable.mutability) {
+                ZigMutability.CONST -> "local constant"
+                ZigMutability.VAR -> "local variable"
+            }
+            declarations.putIfAbsent(name, DeclarationInfo(identifier, kind))
+        }
+    }
+    createUnusedAnnotations(declarations, used, holder)
+}
+
+private fun annotateUnusedParameters(function: ZigFnDecl, holder: AnnotationHolder) {
+    val declarations = mutableMapOf<String, DeclarationInfo>()
+    val used = mutableSetOf<String>()
+    val body = function.body ?: return
+    for (parameter in function.parameters) {
+        findUsedDeclarations(parameter, declarations, used)
+        val identifier = parameter.nameIdentifier ?: continue
+        if (identifier.textMatches("_")) continue
+        val name = parseZigIdentifier(identifier) ?: continue
+        declarations.putIfAbsent(name, DeclarationInfo(identifier, "function parameter"))
+    }
+    findUsedDeclarations(function.returnTypeElement, declarations, used)
+    findUsedDeclarations(body, declarations, used)
+    createUnusedAnnotations(declarations, used, holder)
+}
+
+private fun annotateUnusedCaptures(payload: ZigPayload?, bodies: List<ZigElement>, holder: AnnotationHolder) {
+    if (payload == null || bodies.isEmpty()) return
+    val declarations = mutableMapOf<String, DeclarationInfo>()
+    val used = mutableSetOf<String>()
+    for (item in payload.items) {
+        val identifier = item.nameIdentifier ?: continue
+        if (identifier.textMatches("_")) continue
+        val name = parseZigIdentifier(identifier) ?: continue
+        declarations.putIfAbsent(name, DeclarationInfo(identifier, "capture"))
+    }
+    for (body in bodies) {
+        findUsedDeclarations(body, declarations, used)
+    }
+    createUnusedAnnotations(declarations, used, holder)
+}
+
+/* TODO: delete
 private class UnusedVisitor : PsiRecursiveElementVisitor() {
     val allNamed = mutableMapOf<PsiElement, String>()
     val usedNamed = mutableSetOf<PsiElement>()
@@ -107,6 +271,7 @@ private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
             .create()
     }
 }
+*/
 
 class ZigUnderscoreIdentifierAnnotator : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
@@ -215,18 +380,7 @@ class ZigRedeclarationsAnnotator : Annotator, DumbAware {
 private fun annotateRedeclarations(element: PsiElement, holder: AnnotationHolder) {
     val decls = when (element) {
         is ZigFnOrBuiltinFnDeclOrProto -> element.parameters
-        is ZigBlock -> element.firstChild.siblings().flatMap { statement ->
-            when (statement) {
-                is ZigVarDecl -> sequenceOf(statement)
-                is ZigAssignDestructure -> statement.variables.filterIsInstance<ZigVarProto>()
-                is ZigComptime -> when (val inner = statement.innerElement) {
-                    is ZigVarDecl -> sequenceOf(inner)
-                    is ZigAssignDestructure -> inner.variables.filterIsInstance<ZigVarProto>()
-                    else -> emptySequence()
-                }
-                else -> emptySequence()
-            }
-        }
+        is ZigBlock -> element.statements.flatMap { ZigBlock.statementToVarDecls(it) }
         is ZigFor -> element.payload?.items ?: return
         is ZigSwitchProng -> element.payload?.items ?: return
         else -> return

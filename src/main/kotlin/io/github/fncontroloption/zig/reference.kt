@@ -316,20 +316,14 @@ internal fun identifierReferenceCandidates(element: PsiElement): Sequence<ZigNam
             val sequence = when (parent) {
                 is ZigContainer -> parent.members.filterIsInstance<ZigNamedContainerDecl>()
 
-                is ZigFnOrBuiltinFnDeclOrProto -> parent.parameters.takeWhile { it !== child }
+                is ZigFnOrBuiltinFnDeclOrProto
+                    if (child in parent.parameters || child === parent.returnTypeElement || child === parent.body) ->
+                        parent.parameters.takeWhile { it !== child }
 
-                is ZigBlock -> child.siblings(forward = false, withSelf = false).flatMap { statement ->
-                    when (statement) {
-                        is ZigVarDecl -> sequenceOf(statement)
-                        is ZigAssignDestructure -> statement.variables.filterIsInstance<ZigVarProto>()
-                        is ZigComptime -> when (val inner = statement.innerElement) {
-                            is ZigVarDecl -> sequenceOf(inner)
-                            is ZigAssignDestructure -> inner.variables.filterIsInstance<ZigVarProto>()
-                            else -> emptySequence()
-                        }
-                        else -> emptySequence()
-                    }
-                }
+                is ZigBlock ->
+                    child.siblings(forward = false, withSelf = false)
+                        .filterIsInstance<ZigElement>()
+                        .flatMap { ZigBlock.statementToVarDecls(it) }
 
                 is ZigThenElement -> parent.payload?.items
 

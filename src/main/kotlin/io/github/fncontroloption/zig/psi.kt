@@ -388,6 +388,21 @@ class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
                 .siblings()
                 .filterIsInstance<ZigElement>()
                 .filter { it !is ZigLabelDecl }
+
+    companion object {
+        fun statementToVarDecls(statement: ZigElement): Sequence<ZigVarDeclOrProto> {
+            return when (statement) {
+                is ZigVarDecl -> sequenceOf(statement)
+                is ZigAssignDestructure -> statement.variables.filterIsInstance<ZigVarProto>()
+                is ZigComptime -> when (val inner = statement.innerElement) {
+                    is ZigVarDecl -> sequenceOf(inner)
+                    is ZigAssignDestructure -> inner.variables.filterIsInstance<ZigVarProto>()
+                    else -> emptySequence()
+                }
+                else -> emptySequence()
+            }
+        }
+    }
 }
 
 class ZigBoolAnd(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
@@ -605,8 +620,11 @@ class ZigElseElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
             else -> null
         }
 
+    val innerElement: ZigElement?
+        get() = findChildByClass(ZigElement::class.java)
+
     val expression: ZigExpression?
-        get() = findChildByClass(ZigExpression::class.java)
+        get() = innerElement as? ZigExpression
 }
 
 class ZigElsePayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
@@ -1266,11 +1284,17 @@ class ZigSwitchProng(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val payload: ZigSwitchPayload?
         get() = findChildByClass(ZigSwitchPayload::class.java)
 
-    val expression: ZigExpression?
+    val arrowTokenElement: PsiElement?
+        get() = findChildByType(ZigTokenType.EQUAL_ANGLE_BRACKET_RIGHT)
+
+    val body: ZigElement?
         get() =
-            lastChild
-                .siblings(forward = false)
-                .firstNotNullOfOrNull { it as? ZigExpression }
+            arrowTokenElement
+                ?.siblings(forward = true, withSelf = false)
+                ?.firstNotNullOfOrNull { it as? ZigExpression }
+
+    val expression: ZigExpression?
+        get() = body as? ZigExpression
 }
 
 class ZigSwitchRange(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
@@ -1312,8 +1336,11 @@ class ZigThenElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
             else -> null
         }
 
+    val innerElement: ZigElement?
+        get() = findChildByClass(ZigElement::class.java)
+
     val expression: ZigExpression?
-        get() = findChildByClass(ZigExpression::class.java)
+        get() = innerElement as? ZigExpression
 }
 
 class ZigThenPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
@@ -1462,7 +1489,10 @@ class ZigWhile(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop {
         get() = findChildByClass(ZigElsePayload::class.java)
 }
 
+// TODO: rename to ZigWhileContinueElement
 class ZigWhileContinueExpr(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val innerElement: ZigElement?
+        get() = findChildByClass(ZigElement::class.java)
 }
 
 sealed class LightZigElement(manager: PsiManager) : LightElement(manager, ZigLanguage), ZigElement {
