@@ -3,33 +3,29 @@ package io.github.fncontroloption.zig
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.ExternalAnnotator
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.DumbAware
-import com.intellij.openapi.projectRoots.Sdk
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.toNioPathOrNull
 import com.intellij.psi.PsiFile
 import java.nio.file.Path
 
-class ZigAstCheckAnnotator :
-    ExternalAnnotator<ZigAstCheckAnnotator.Info, List<ZigExe.Message>>(),
+abstract class ZigExternalAnnotator :
+    ExternalAnnotator<ZigExternalAnnotator.Info, List<ZigExe.Message>>(),
     DumbAware {
 
-    class Info(val sdk: Sdk, val path: Path)
+    class Info(val project: Project, val path: Path)
 
-    override fun collectInformation(psiFile: PsiFile): Info? {
-        val sdk = ProjectRootManager.getInstance(psiFile.project).projectSdk ?: return null
-        val path = psiFile.viewProvider.virtualFile.toNioPathOrNull() ?: return null
-        return Info(sdk, path)
+    override fun collectInformation(psiFile: PsiFile, editor: Editor, hasErrors: Boolean): Info? {
+        val virtualFile = psiFile.virtualFile ?: return null
+        if (FileDocumentManager.getInstance().isFileModified(virtualFile)) return null
+        val path = virtualFile.toNioPathOrNull() ?: return null
+        return Info(psiFile.project, path)
     }
 
-    override fun doAnnotate(collectedInfo: Info): List<ZigExe.Message>? {
-        val sdk = collectedInfo.sdk
-        val exe = ZigExe.find(sdk) ?: return null
-        val path = collectedInfo.path.toString()
-        val result = exe.run("ast-check", "--color", "off", path)
-        if (result.success) return null
-        return result.errorMessages.values.singleOrNull()
-    }
+    abstract override fun doAnnotate(collectedInfo: Info): List<ZigExe.Message>?
 
     override fun apply(psiFile: PsiFile, annotationResult: List<ZigExe.Message>, holder: AnnotationHolder) {
         val contents = psiFile.viewProvider.contents
@@ -45,6 +41,17 @@ class ZigAstCheckAnnotator :
                 .range(element)
                 .create()
         }
+    }
+}
+
+class ZigAstCheckAnnotator : ZigExternalAnnotator() {
+    override fun doAnnotate(collectedInfo: Info): List<ZigExe.Message>? {
+        val sdk = ProjectRootManager.getInstance(collectedInfo.project).projectSdk ?: return null
+        val exe = ZigExe.find(sdk) ?: return null
+        val path = collectedInfo.path.toString()
+        val result = exe.run("ast-check", "--color", "off", path)
+        if (result.success) return null
+        return result.errorMessages.values.singleOrNull()
     }
 }
 
