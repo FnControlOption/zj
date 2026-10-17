@@ -6,58 +6,42 @@ import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.projectRoots.Sdk
 import com.intellij.openapi.roots.ProjectRootManager
-import com.intellij.openapi.util.text.Strings
 import com.intellij.openapi.vfs.toNioPathOrNull
 import com.intellij.psi.PsiFile
 import java.nio.file.Path
 
-private val MESSAGE_REGEX = """\s*(.*):(\d+):(\d+): (error|note): (.*)\s*""".toRegex()
-
 class ZigAstCheckAnnotator :
-    ExternalAnnotator<ZigAstCheckAnnotator.Info, List<ZigAstCheckAnnotator.Result>>(),
+    ExternalAnnotator<ZigAstCheckAnnotator.Info, List<ZigExe.Message>>(),
     DumbAware {
 
-    class Info(val sdk: Sdk, val path: Path, val contents: CharSequence)
-
-    class Result(val index: Int, val severity: HighlightSeverity, val message: String)
+    class Info(val sdk: Sdk, val path: Path)
 
     override fun collectInformation(psiFile: PsiFile): Info? {
         val sdk = ProjectRootManager.getInstance(psiFile.project).projectSdk ?: return null
         val path = psiFile.viewProvider.virtualFile.toNioPathOrNull() ?: return null
-        val contents = psiFile.viewProvider.contents
-        return Info(sdk, path, contents)
+        return Info(sdk, path)
     }
 
-    override fun doAnnotate(collectedInfo: Info): List<Result>? {
+    override fun doAnnotate(collectedInfo: Info): List<ZigExe.Message>? {
         val sdk = collectedInfo.sdk
         val exe = ZigExe.find(sdk) ?: return null
         val path = collectedInfo.path.toString()
-        val contents = collectedInfo.contents
         val result = exe.run("ast-check", "--color", "off", path)
         if (result.success) return null
-        val annotateResults = mutableListOf<Result>()
-        for (line in result.stderr.lineSequence()) {
-            // TODO: handle multiline message, f.e. duplicate struct member @"foo\nbar"
-            val match = MESSAGE_REGEX.matchEntire(line) ?: continue
-            val line = match.groupValues[2].toInt() - 1
-            val column = match.groupValues[3].toInt() - 1
-            val severity = when (match.groupValues[4]) {
-                "error" -> HighlightSeverity.ERROR
-                "note" -> HighlightSeverity.WEAK_WARNING
-                else -> continue
-            }
-            val message = Strings.capitalize(match.groupValues[5])
-            val index = lineAndColumnToIndex(contents, line, column) ?: continue
-            annotateResults.add(Result(index, severity, message))
-        }
-        return annotateResults
+        return result.errorMessages.values.singleOrNull()
     }
 
-    override fun apply(psiFile: PsiFile, annotationResult: List<Result>, holder: AnnotationHolder) {
+    override fun apply(psiFile: PsiFile, annotationResult: List<ZigExe.Message>, holder: AnnotationHolder) {
+        val contents = psiFile.viewProvider.contents
         for (result in annotationResult) {
-            val element = psiFile.findElementAt(result.index) ?: continue
+            val index = lineAndColumnToIndex(contents, result.line, result.column) ?: continue
+            val element = psiFile.findElementAt(index) ?: continue
+            val severity = when (result.kind) {
+                ZigExe.Message.Kind.ERROR -> HighlightSeverity.ERROR
+                ZigExe.Message.Kind.NOTE -> HighlightSeverity.WEAK_WARNING
+            }
             holder
-                .newAnnotation(result.severity, result.message)
+                .newAnnotation(severity, result.text)
                 .range(element)
                 .create()
         }

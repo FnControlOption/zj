@@ -17,6 +17,7 @@ import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.roots.ui.configuration.SdkPopupFactory
 import com.intellij.openapi.util.NlsContexts.TabTitle
 import com.intellij.openapi.util.SystemInfoRt
+import com.intellij.openapi.util.text.Strings
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.findDirectory
 import com.intellij.openapi.wm.ToolWindowId
@@ -116,6 +117,15 @@ private fun getPossibleZigExePaths(sdkHome: String): Array<Path> {
 }
 
 class ZigExe(val path: Path) {
+    class Message(
+        val line: Int,
+        val column: Int,
+        val kind: Kind,
+        val text: String,
+    ) {
+        enum class Kind { ERROR, NOTE }
+    }
+
     class Result(
         val exe: Path,
         val stdout: String,
@@ -129,6 +139,30 @@ class ZigExe(val path: Path) {
             if (stderr.isNotEmpty()) {
                 log.error(exe.toString(), stderr)
             }
+        }
+
+        val errorMessages: Map<String, List<Message>> by lazy {
+            val result = mutableMapOf<String, MutableList<Message>>()
+            for (line in stderr.lineSequence()) {
+                // TODO: handle multiline message, f.e. duplicate struct member @"foo\nbar"
+                val match = MESSAGE_REGEX.matchEntire(line) ?: continue
+                val path = match.groupValues[1]
+                val line = match.groupValues[2].toInt() - 1
+                val column = match.groupValues[3].toInt() - 1
+                val kind = when (match.groupValues[4]) {
+                    "error" -> Message.Kind.ERROR
+                    "note" -> Message.Kind.NOTE
+                    else -> throw IllegalStateException()
+                }
+                val text = Strings.capitalize(match.groupValues[5])
+                val messages = result.getOrPut(path) { mutableListOf() }
+                messages.add(Message(line, column, kind, text))
+            }
+            result
+        }
+
+        companion object {
+            private val MESSAGE_REGEX = """\s*(.*):(\d+):(\d+): (error|note): (.*)\s*""".toRegex()
         }
     }
 
