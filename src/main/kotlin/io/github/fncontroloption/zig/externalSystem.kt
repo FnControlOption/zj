@@ -21,6 +21,18 @@ class ZigExternalSystemProjectAware(
     private val project: Project,
     private val projectPath: Path,
 ) : ExternalSystemProjectAware {
+    companion object {
+        fun register(project: Project) {
+            val projectPath = findZigProjectPath(project) ?: return
+            val projectAware = ZigExternalSystemProjectAware(project, projectPath)
+            val projectTracker = ExternalSystemProjectTracker.getInstance(project)
+            projectTracker.register(projectAware)
+            projectTracker.activate(projectAware.projectId)
+            projectTracker.markDirty(projectAware.projectId)
+            projectTracker.scheduleProjectRefresh()
+        }
+    }
+
     override val projectId = ExternalSystemProjectId(ZIG_SYSTEM_ID, projectPath.toString())
 
     override val settingsFiles: Set<String>

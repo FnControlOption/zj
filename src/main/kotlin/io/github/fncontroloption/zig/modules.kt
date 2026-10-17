@@ -7,7 +7,6 @@ import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.extensions.PluginId
-import com.intellij.openapi.externalSystem.autoimport.ExternalSystemProjectTracker
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.projectRoots.Sdk
@@ -22,6 +21,8 @@ import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.psi.PsiManager
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.util.concurrency.annotations.RequiresReadLock
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -30,6 +31,11 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.exists
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
+
+fun findZigProjectPath(project: Project): Path? {
+    val buildFile = findBuildZigFile(project) ?: return null
+    return buildFile.parent?.toNioPathOrNull()
+}
 
 private fun findBuildZigFile(project: Project): VirtualFile? {
     val rootManager = ProjectRootManager.getInstance(project)
@@ -42,16 +48,10 @@ class ZigModulesProjectActivity : ProjectActivity {
         appService.copyPrintModulesFile()
 
         // TODO: detect deletion/creation of build.zig
-        val buildFile = findBuildZigFile(project) ?: return
-        val projectPath = buildFile.parent?.toNioPathOrNull() ?: return
-        val projectAware = ZigExternalSystemProjectAware(project, projectPath)
-        val projectTracker = ExternalSystemProjectTracker.getInstance(project)
-        projectTracker.register(projectAware)
-        projectTracker.activate(projectAware.projectId)
-        projectTracker.markDirty(projectAware.projectId)
-        projectTracker.scheduleProjectRefresh()
+        ZigExternalSystemProjectAware.register(project)
 
         project.workspaceModel.eventLog.collect {
+            val projectPath = findZigProjectPath(project) ?: return@collect
             val projectService = project.service<ZigModulesProjectService>()
             projectService.fetchAndLoadModules(projectPath)
         }
@@ -96,10 +96,12 @@ data class ZigModule(
 )
 
 @Service(Service.Level.PROJECT)
-class ZigModulesProjectService(private val project: Project) {
+class ZigModulesProjectService(
+    private val project: Project,
+    private val coroutineScope: CoroutineScope,
+) {
     private data class FetchSettings(
         val sdk: Sdk?,
-        val buildArgs: List<String>,
         val projectPath: Path,
     )
 
@@ -120,14 +122,13 @@ class ZigModulesProjectService(private val project: Project) {
 
     private suspend fun fetchModules(projectPath: Path): Boolean {
         val sdk = ProjectRootManager.getInstance(project).projectSdk
-        val buildArgs = emptyList<String>() // TODO
-        val currentFetchSettings = FetchSettings(sdk, buildArgs, projectPath)
+        val currentFetchSettings = FetchSettings(sdk, projectPath)
         if (cachedFetchSettings != currentFetchSettings) {
             cachedFetchSettings = null
             cachedModules = null
             if (sdk != null) {
                 cachedFetchSettings = currentFetchSettings
-                fetchModulesWithSdk(sdk, buildArgs, projectPath)
+                fetchModulesWithSdk(sdk, projectPath)
                 rootFileToModule.clear()
                 fileImports.clear()
                 return true
@@ -136,9 +137,9 @@ class ZigModulesProjectService(private val project: Project) {
         return false
     }
 
-    private suspend fun fetchModulesWithSdk(sdk: Sdk, buildArgs: List<String>, projectPath: Path) {
+    private suspend fun fetchModulesWithSdk(sdk: Sdk, projectPath: Path) {
         val exe = ZigExe.find(sdk) ?: return
-        val configPath = getConfigPath(exe, buildArgs, projectPath) ?: return
+        val configPath = getConfigPath(exe, projectPath) ?: return
         val modulesText = getModulesJsonText(exe, configPath) ?: return
 
         val modules = Json.decodeFromString<List<ZigModule>>(modulesText)
@@ -148,11 +149,12 @@ class ZigModulesProjectService(private val project: Project) {
         projectDir?.refresh(false, true)
     }
 
-    private suspend fun getConfigPath(exe: ZigExe, buildArgs: List<String>, projectPath: Path): String? {
+    private suspend fun getConfigPath(exe: ZigExe, projectPath: Path): String? {
+        val buildOptions = project.service<ZigSettings>().buildOptions
         val args = buildList {
             add("build")
             add("--print-configuration-path")
-            addAll(buildArgs)
+            addAll(buildOptions)
             add("--build-file")
             add(projectPath.resolve("build.zig").toString())
         }
@@ -284,6 +286,12 @@ class ZigModulesProjectService(private val project: Project) {
         }
         modificationTracker.incModificationCount()
         DaemonCodeAnalyzer.getInstance(project).restart("ZigModulesProjectService.processVfsChange")
+    }
+
+    fun fetchAndLoadModulesAsync(projectPath: Path) {
+        coroutineScope.launch {
+            fetchAndLoadModules(projectPath)
+        }
     }
 
     suspend fun fetchAndLoadModules(projectPath: Path): Boolean {
