@@ -115,24 +115,24 @@ private fun getPossibleZigExePaths(sdkHome: String): Array<Path> {
     )
 }
 
-class ZigExeResult(
-    val exe: Path,
-    val stdout: String,
-    val stderr: String,
-    val exitCode: Int?,
-) {
-    val success: Boolean
-        get() = exitCode == 0
+class ZigExe(val path: Path) {
+    class Result(
+        val exe: Path,
+        val stdout: String,
+        val stderr: String,
+        val exitCode: Int?,
+    ) {
+        val success: Boolean
+            get() = exitCode == 0
 
-    fun logErrors() {
-        if (stderr.isNotEmpty()) {
-            log.error(exe.toString(), stderr)
+        fun logErrors() {
+            if (stderr.isNotEmpty()) {
+                log.error(exe.toString(), stderr)
+            }
         }
     }
-}
 
-class ZigExe(val path: Path) {
-    fun run(vararg args: String): ZigExeResult {
+    fun run(vararg args: String): Result {
         val processHandler = OSProcessHandler(
             GeneralCommandLine()
                 .withExePath(path.toString())
@@ -146,14 +146,14 @@ class ZigExe(val path: Path) {
         val exitCode = processHandler.exitCode
         val stdout = processListener.output.stdout
         val stderr = processListener.output.stderr
-        return ZigExeResult(path, stdout, stderr, exitCode)
+        return Result(path, stdout, stderr, exitCode)
     }
 
     suspend fun runInToolWindow(
         project: Project,
         @TabTitle title: String,
         args: List<String>,
-    ): ZigExeResult {
+    ): Result {
         val processHandler = OSProcessHandler(
             GeneralCommandLine()
                 .withExePath(path.toString())
@@ -179,7 +179,7 @@ class ZigExe(val path: Path) {
         }
         val stdout = processListener.output.stdout
         val stderr = processListener.output.stderr
-        return ZigExeResult(path, stdout, stderr, exitCode)
+        return Result(path, stdout, stderr, exitCode)
     }
 
     companion object {
