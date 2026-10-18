@@ -104,6 +104,7 @@
     <fileBasedIndex implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierIndex"/>
     <referencesSearch implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierReferencesSearch"/>
     <vfs.asyncListenerBackgroundable implementation="io.github.fncontroloption.zig.ZigModulesAsyncFileListener"/>
+    <directoryIndexExcludePolicy implementation="io.github.fncontroloption.zig.ZigDirectoryIndexExcludePolicy"/>
     <!--
     <fileType name="Simple File" implementationClass="org.intellij.sdk.language.SimpleFileType" fieldName="INSTANCE"
               language="Simple" extensions="simple"/>
