@@ -3,14 +3,20 @@ package io.github.fncontroloption.zig
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.ExternalAnnotator
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.toNioPathOrNull
 import com.intellij.psi.PsiFile
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.file.Path
+import kotlin.time.Duration.Companion.milliseconds
 
 abstract class ZigExternalAnnotator :
     ExternalAnnotator<ZigExternalAnnotator.Info, List<ZigExe.Message>>(),
@@ -46,12 +52,55 @@ abstract class ZigExternalAnnotator :
 
 class ZigAstCheckAnnotator : ZigExternalAnnotator() {
     override fun doAnnotate(collectedInfo: Info): List<ZigExe.Message>? {
-        val sdk = ProjectRootManager.getInstance(collectedInfo.project).projectSdk ?: return null
+        val path = collectedInfo.path
+        val project = collectedInfo.project
+        val settings = project.service<ZigSettings>()
+        if (!settings.runAstCheck) {
+            return null
+        }
+        val sdk = ProjectRootManager.getInstance(project).projectSdk ?: return null
         val exe = ZigExe.find(sdk) ?: return null
-        val path = collectedInfo.path.toString()
-        val result = exe.run("ast-check", "--color", "off", path)
+        val result = exe.run("ast-check", "--color", "off", path.toString())
         if (result.success) return null
-        return result.errorMessages.values.singleOrNull()
+        return result.errorMessages[path.toString()].orEmpty()
+    }
+}
+
+class ZigBuildAnnotator : ZigExternalAnnotator() {
+    override fun doAnnotate(collectedInfo: Info): List<ZigExe.Message> {
+        val path = collectedInfo.path
+        val project = collectedInfo.project
+        val buildService = project.service<ZigBuildProjectService>()
+        val fetchJob = buildService.fetchProjectAsync()
+        runBlocking {
+            var fetchResult: Unit? = null
+            while (fetchResult == null) {
+                ProgressManager.checkCanceled()
+                fetchResult = withTimeoutOrNull(100.milliseconds) {
+                    fetchJob.join()
+                }
+            }
+        }
+        val fetchErrors = buildService.errorMessages
+        if (fetchErrors.isNotEmpty()) {
+            return fetchErrors[path.toString()].orEmpty()
+        }
+        val settings = project.service<ZigSettings>()
+        if (!settings.buildOnSave) {
+            return emptyList()
+        }
+        val buildWatcher = project.service<ZigBuildWatcher>()
+        if (buildWatcher.isOutdated) {
+            val startJob = buildWatcher.startAsync()
+            runBlocking {
+                startJob.join()
+                while (buildWatcher.isOutdated) {
+                    ProgressManager.checkCanceled()
+                    delay(100.milliseconds)
+                }
+            }
+        }
+        return buildWatcher.messages[path.toString()].orEmpty()
     }
 }
 

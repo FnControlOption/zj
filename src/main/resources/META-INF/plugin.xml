@@ -58,6 +58,7 @@
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigAmbiguousReferenceAnnotator"/>
     <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigLabelRedefinitionAnnotator"/>
     <externalAnnotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigAstCheckAnnotator"/>
+    <externalAnnotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigBuildAnnotator"/>
     <completion.contributor language="ZIG"
                             implementationClass="io.github.fncontroloption.zig.ZigCompletionContributor"/>
     <lang.findUsagesProvider language="ZIG"
@@ -100,11 +101,15 @@
     <postStartupActivity implementation="io.github.fncontroloption.zig.ZigBuiltinProjectActivity"/>
     <postStartupActivity implementation="io.github.fncontroloption.zig.ZigBuiltinFunctionsProjectActivity"/>
     <postStartupActivity implementation="io.github.fncontroloption.zig.ZigModulesProjectActivity"/>
+    <postStartupActivity implementation="io.github.fncontroloption.zig.ZigBuildProjectActivity"/>
+    <postStartupActivity implementation="io.github.fncontroloption.zig.ZigExternalSystemProjectActivity"/>
     <lang.namesValidator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigNamesValidator"/>
     <fileBasedIndex implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierIndex"/>
     <referencesSearch implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierReferencesSearch"/>
     <vfs.asyncListenerBackgroundable implementation="io.github.fncontroloption.zig.ZigModulesAsyncFileListener"/>
     <directoryIndexExcludePolicy implementation="io.github.fncontroloption.zig.ZigDirectoryIndexExcludePolicy"/>
+    <toolWindow id="Zig" anchor="bottom" icon="/icons/toolWindow.svg"
+                factoryClass="io.github.fncontroloption.zig.ZigToolWindowFactory"/>
     <!--
     <fileType name="Simple File" implementationClass="org.intellij.sdk.language.SimpleFileType" fieldName="INSTANCE"
               language="Simple" extensions="simple"/>

@@ -2,6 +2,7 @@ package io.github.fncontroloption.zig
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.*
 import com.intellij.psi.util.parents
 import com.intellij.psi.util.siblings
@@ -165,6 +166,7 @@ class ZigImportReference(element: ZigStringLiteral) : ZigFileReference(element) 
                 val file = ZigAnalyzer.findBuiltinFile(myElement) ?: return emptySequence()
                 sequenceOf(PsiElementResolveResult(file))
             }
+            /* TODO: delete
             "root" -> {
                 val project = myElement.project
                 val virtualFile = myElement.containingFile?.originalFile?.virtualFile ?: return emptySequence()
@@ -181,17 +183,33 @@ class ZigImportReference(element: ZigStringLiteral) : ZigFileReference(element) 
                     .mapNotNull { psiManager.findFile(it) }
                     .map { PsiElementResolveResult(it) }
             }
+             */
             else -> {
                 val project = myElement.project
                 val virtualFile = myElement.containingFile?.originalFile?.virtualFile ?: return emptySequence()
+                val buildService = project.service<ZigBuildProjectService>()
+                val projectPath = buildService.fetchSettings?.projectPath ?: return emptySequence()
                 val psiManager = PsiManager.getInstance(project)
                 val modulesService = project.service<ZigModulesProjectService>()
-                modulesService.getFileModules(virtualFile)
-                    .asSequence()
-                    .mapNotNull { modulesService.modules[it] }
-                    .mapNotNull { it.importTable[text] }
-                    .mapNotNull { modulesService.modules[it] }
-                    .mapNotNull { modulesService.getRootSourceVirtualFile(it) }
+                val importedModules = when (text) {
+                    "root" -> {
+                        modulesService.getFileRootModules(virtualFile)
+                            .asSequence()
+                            .mapNotNull { modulesService.modules[it] }
+                            .ifEmpty { modulesService.modules.values.asSequence().filter { it.isRootModule } }
+                    }
+                    else -> {
+                        modulesService.getFileModules(virtualFile)
+                            .asSequence()
+                            .mapNotNull { modulesService.modules[it] }
+                            .mapNotNull { it.importTable[text] }
+                            .mapNotNull { modulesService.modules[it] }
+                    }
+                }
+                importedModules
+                    .mapNotNull { it.rootSourceFile }
+                    .mapNotNull { projectPath.resolve(it) }
+                    .mapNotNull { VirtualFileManager.getInstance().findFileByNioPath(it) }
                     .mapNotNull { psiManager.findFile(it) }
                     .map { PsiElementResolveResult(it) }
             }
