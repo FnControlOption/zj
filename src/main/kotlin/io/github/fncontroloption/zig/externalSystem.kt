@@ -1,10 +1,12 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.externalSystem.autoimport.*
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.util.EventDispatcher
@@ -61,6 +63,8 @@ class ZigExternalSystemProjectAware(
     override fun reloadProject(context: ExternalSystemProjectReloadContext) {
         project.service<ZigExternalSystemProjectService>().coroutineScope.launch {
             dispatcher.multicaster.onProjectReloadStart()
+
+            edtWriteAction { FileDocumentManager.getInstance().saveAllDocuments() }
 
             val buildService = project.service<ZigBuildProjectService>()
             buildService.resetFetchSettings()
