@@ -1,26 +1,28 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.codeInsight.daemon.ProjectSdkSetupValidator
-import com.intellij.execution.RunContentExecutor
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.CapturingProcessAdapter
 import com.intellij.execution.process.OSProcessHandler
+import com.intellij.execution.process.ProcessListener
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.edtWriteAction
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.projectRoots.*
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.roots.ui.configuration.SdkPopupFactory
-import com.intellij.openapi.util.NlsContexts.TabTitle
 import com.intellij.openapi.util.SystemInfoRt
+import com.intellij.openapi.util.text.Strings
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.findDirectory
-import com.intellij.openapi.wm.ToolWindowId
 import com.intellij.openapi.wm.ToolWindowManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jdom.Element
 import java.nio.file.Path
 import kotlin.io.path.Path
@@ -115,24 +117,61 @@ private fun getPossibleZigExePaths(sdkHome: String): Array<Path> {
     )
 }
 
-class ZigExeResult(
-    val exe: Path,
-    val stdout: String,
-    val stderr: String,
-    val exitCode: Int?,
-) {
-    val success: Boolean
-        get() = exitCode == 0
+data class ZigExe(val path: Path) {
+    class Message(
+        val line: Int,
+        val column: Int,
+        val kind: Kind,
+        val text: String,
+    ) {
+        enum class Kind { ERROR, NOTE }
 
-    fun logErrors() {
-        if (stderr.isNotEmpty()) {
-            log.error(exe.toString(), stderr)
+        companion object {
+            private val MESSAGE_REGEX = """\s*(.*):(\d+):(\d+): (error|note): (.*)\s*""".toRegex()
+
+            fun parseAll(lines: Sequence<String>): Map<String, List<Message>> {
+                val result = mutableMapOf<String, MutableList<Message>>()
+                for (line in lines) {
+                    // TODO: handle multiline message, f.e. duplicate struct member @"foo\nbar"
+                    val match = MESSAGE_REGEX.matchEntire(line) ?: continue
+                    val path = match.groupValues[1]
+                    val line = match.groupValues[2].toInt() - 1
+                    val column = match.groupValues[3].toInt() - 1
+                    val kind = when (match.groupValues[4]) {
+                        "error" -> Message.Kind.ERROR
+                        "note" -> Message.Kind.NOTE
+                        else -> throw IllegalStateException()
+                    }
+                    val text = Strings.capitalize(match.groupValues[5])
+                    val messages = result.getOrPut(path) { mutableListOf() }
+                    messages.add(Message(line, column, kind, text))
+                }
+                return result
+            }
         }
     }
-}
 
-class ZigExe(val path: Path) {
-    fun run(vararg args: String): ZigExeResult {
+    class Result(
+        val exe: Path,
+        val stdout: String,
+        val stderr: String,
+        val exitCode: Int?,
+    ) {
+        val success: Boolean
+            get() = exitCode == 0
+
+        fun logErrors() {
+            if (stderr.isNotEmpty()) {
+                log.error(exe.toString(), stderr)
+            }
+        }
+
+        val errorMessages: Map<String, List<Message>> by lazy {
+            Message.parseAll(stderr.lineSequence())
+        }
+    }
+
+    fun run(vararg args: String): Result {
         val processHandler = OSProcessHandler(
             GeneralCommandLine()
                 .withExePath(path.toString())
@@ -146,40 +185,64 @@ class ZigExe(val path: Path) {
         val exitCode = processHandler.exitCode
         val stdout = processListener.output.stdout
         val stderr = processListener.output.stderr
-        return ZigExeResult(path, stdout, stderr, exitCode)
+        return Result(path, stdout, stderr, exitCode)
     }
 
     suspend fun runInToolWindow(
         project: Project,
-        @TabTitle title: String,
         args: List<String>,
-    ): ZigExeResult {
-        val processHandler = OSProcessHandler(
+        processListener: ProcessListener,
+        mostlySilent: Boolean,
+    ): OSProcessHandler {
+        val commandLine =
             GeneralCommandLine()
                 .withExePath(path.toString())
                 .withParameters(args)
                 .withCharset(Charsets.UTF_8)
-        )
-        val processListener = CapturingProcessAdapter()
+
+        val processHandler =
+            if (mostlySilent)
+                OSProcessHandler.Silent(commandLine)
+            else
+                OSProcessHandler(commandLine)
+
         processHandler.addProcessListener(processListener)
-        edtWriteAction {
-            RunContentExecutor(project, processHandler)
-                .withActivateToolWindow(false)
-                .withTitle(title)
-                .run()
+
+        withContext(Dispatchers.EDT) {
+            val console = getZigBuildConsole(project)
+            console?.attachToProcess(processHandler)
+            processHandler.startNotify()
         }
-        processHandler.waitFor()
+
+        return processHandler
+    }
+
+    suspend fun runInToolWindowAndWait(
+        project: Project,
+        args: List<String>,
+    ): Result {
+        val processListener = CapturingProcessAdapter()
+        val processHandler = runInToolWindow(project, args, processListener, mostlySilent = false)
+        try {
+            while (!processHandler.waitFor(100)) {
+                ProgressManager.checkCanceled()
+            }
+        } finally {
+            if (!processHandler.isProcessTerminated) {
+                processHandler.destroyProcess()
+            }
+        }
         val exitCode = processHandler.exitCode
         if (exitCode != 0) {
-            edtWriteAction {
+            withContext(Dispatchers.EDT) {
                 val toolWindowManager = ToolWindowManager.getInstance(project)
-                val toolWindow = toolWindowManager.getToolWindow(ToolWindowId.RUN)
+                val toolWindow = toolWindowManager.getToolWindow("Zig")
                 toolWindow?.activate(null)
             }
         }
         val stdout = processListener.output.stdout
         val stderr = processListener.output.stderr
-        return ZigExeResult(path, stdout, stderr, exitCode)
+        return Result(path, stdout, stderr, exitCode)
     }
 
     companion object {

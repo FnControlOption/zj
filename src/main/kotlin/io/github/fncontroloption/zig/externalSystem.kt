@@ -1,11 +1,14 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.externalSystem.autoimport.*
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.util.EventDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -16,6 +19,13 @@ val ZIG_SYSTEM_ID = ProjectSystemId("ZIG")
 
 @Service(Service.Level.PROJECT)
 private class ZigExternalSystemProjectService(val coroutineScope: CoroutineScope)
+
+class ZigExternalSystemProjectActivity : ProjectActivity {
+    override suspend fun execute(project: Project) {
+        // TODO: detect deletion/creation of build.zig
+        ZigExternalSystemProjectAware.register(project)
+    }
+}
 
 class ZigExternalSystemProjectAware(
     private val project: Project,
@@ -28,8 +38,6 @@ class ZigExternalSystemProjectAware(
             val projectTracker = ExternalSystemProjectTracker.getInstance(project)
             projectTracker.register(projectAware)
             projectTracker.activate(projectAware.projectId)
-            projectTracker.markDirty(projectAware.projectId)
-            projectTracker.scheduleProjectRefresh()
         }
     }
 
@@ -55,13 +63,20 @@ class ZigExternalSystemProjectAware(
     override fun reloadProject(context: ExternalSystemProjectReloadContext) {
         project.service<ZigExternalSystemProjectService>().coroutineScope.launch {
             dispatcher.multicaster.onProjectReloadStart()
-            val projectService = project.service<ZigModulesProjectService>()
-            projectService.resetFetchSettings()
-            val status = when (projectService.fetchAndLoadModules(projectPath)) {
-                true -> ExternalSystemRefreshStatus.SUCCESS
-                false -> ExternalSystemRefreshStatus.FAILURE
-            }
-            dispatcher.multicaster.onProjectReloadFinish(status)
+
+            edtWriteAction { FileDocumentManager.getInstance().saveAllDocuments() }
+
+            val buildService = project.service<ZigBuildProjectService>()
+            buildService.resetFetchSettings()
+            buildService.fetchProjectAsync().join()
+
+            val buildWatcher = project.service<ZigBuildWatcher>()
+            buildWatcher.startAsync().join()
+
+            val modulesService = project.service<ZigModulesProjectService>()
+            modulesService.reloadModulesAsync().join()
+
+            dispatcher.multicaster.onProjectReloadFinish(ExternalSystemRefreshStatus.SUCCESS)
         }
     }
 }

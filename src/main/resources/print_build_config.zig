@@ -90,6 +90,19 @@ fn modulesAsJsonValue(self: *const Self) !json.Value {
     return .{ .array = root };
 }
 
+fn configAsJsonValue(self: *const Self) !json.Value {
+    var steps: json.Array = .init(self.arena);
+    for (self.configuration.steps) |*step| {
+        const name = step.name.slice(self.configuration);
+        try steps.append(.{ .string = name });
+    }
+
+    var root: json.ObjectMap = .empty;
+    try root.put(self.arena, "steps", .{ .array = steps });
+    try root.put(self.arena, "modules", try self.modulesAsJsonValue());
+    return .{ .object = root };
+}
+
 pub fn main(init: std.process.Init) !void {
     const io = init.io;
     const arena = init.arena.allocator();
@@ -112,11 +125,11 @@ pub fn main(init: std.process.Init) !void {
         try self.loadStep(step);
     }
     try self.sortModules();
-    const modules = try self.modulesAsJsonValue();
+    const config = try self.configAsJsonValue();
 
     var stdout_buffer: [1024]u8 = undefined;
     var stdout_writer = std.Io.File.stdout().writer(io, &stdout_buffer);
     const stdout = &stdout_writer.interface;
-    try stdout.print("{f}", .{json.fmt(modules, .{ .whitespace = .minified })});
+    try stdout.print("{f}", .{json.fmt(config, .{ .whitespace = .minified })});
     try stdout.flush();
 }
