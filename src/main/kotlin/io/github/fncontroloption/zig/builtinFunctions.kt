@@ -8,10 +8,13 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.util.SimpleModificationTracker
+import com.intellij.openapi.util.text.HtmlBuilder
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.vfs.findPsiFile
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.util.concurrency.annotations.RequiresReadLock
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
 import java.io.InputStream
 
 class ZigBuiltinFunctionsProjectActivity : ProjectActivity, DumbAware {
@@ -78,11 +81,32 @@ private fun parseBuiltinsFromLangref(project: Project, stream: InputStream): Map
             val virtualFile = LightVirtualFile(fileName, ZigBuiltinFnProtoLanguage, fileText)
             virtualFile.isWritable = false
             val psiFile = virtualFile.findPsiFile(project)!!
-            val element = psiFile.lastChild as ZigBuiltinFnProto
-            builtinMap[element.builtinElement.text] = element
+            val psiElement = psiFile.lastChild as ZigBuiltinFnProto
+            psiElement.doc = getBuiltinDoc(element.nextElementSibling())
+            builtinMap[psiElement.builtinElement.text] = psiElement
         }
         element = element.nextElementSibling()
     }
 
     return builtinMap
+}
+
+private fun getBuiltinDoc(sibling: Element?): HtmlChunk {
+    val builder = HtmlBuilder()
+    var sibling = sibling
+    while (sibling != null && sibling.tagName() != "h2" && sibling.tagName() != "h3") {
+        updateBuiltinDocLinks(sibling)
+        builder.appendRaw(sibling.outerHtml())
+        sibling = sibling.nextElementSibling()
+    }
+    return builder.toFragment()
+}
+
+private fun updateBuiltinDocLinks(element: Element) {
+    for (link in element.select("a[href]")) {
+        val href = link.attr("href")
+        if (href.startsWith('#')) {
+            link.attr("href", "https://ziglang.org/documentation/0.17.0/$href")
+        }
+    }
 }

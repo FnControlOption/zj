@@ -10,6 +10,7 @@ import com.intellij.lang.Language
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Iconable
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.psi.*
 import com.intellij.psi.impl.light.LightElement
 import com.intellij.psi.stubs.StubElement
@@ -767,6 +768,8 @@ class ZigFnProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigFnDeclOrProto, 
 
 class ZigBuiltinFnProto(node: ASTNode) :
     ASTWrapperPsiElement(node), ZigFnOrBuiltinFnDeclOrProto, ZigNavigatableElement {
+
+    var doc: HtmlChunk = HtmlChunk.empty()
 
     val builtinElement: PsiElement
         get() = findNotNullChildByType(ZigTokenType.BUILTIN)

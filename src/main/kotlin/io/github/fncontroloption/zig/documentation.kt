@@ -134,10 +134,8 @@ private class ZigPsiDocumentationTarget(
         }
 
         val doc = findDoc(element)
-        if (doc != null) {
-            HtmlChunk.raw(convertMarkdownToHtml(doc))
-                .wrapWith(DocumentationMarkup.CONTENT_ELEMENT)
-                .appendTo(sb)
+        if (!doc.isEmpty) {
+            doc.wrapWith(DocumentationMarkup.CONTENT_ELEMENT).appendTo(sb)
         }
 
         return sb.toString()
@@ -220,7 +218,10 @@ private fun getDefinition(element: ZigNavigatableElement): String? {
     }
 }
 
-private fun findDoc(element: ZigNavigatableElement): String? {
+private fun findDoc(element: ZigNavigatableElement): HtmlChunk {
+    if (element is ZigBuiltinFnProto) {
+        return element.doc
+    }
     if (element is ZigFile) {
         return findFileDoc(element)
     }
@@ -241,13 +242,13 @@ private fun findDoc(element: ZigNavigatableElement): String? {
         prev = prev.prevSibling
     }
     if (list.isEmpty()) {
-        return null
+        return HtmlChunk.empty()
     }
     list.reverse()
-    return list.joinToString("")
+    return HtmlChunk.raw(convertMarkdownToHtml(list.joinToString("")))
 }
 
-private fun findFileDoc(element: ZigFile): String? {
+private fun findFileDoc(element: ZigFile): HtmlChunk {
     val list = mutableListOf<String>()
     var child = element.firstChild
     while (true) {
@@ -265,9 +266,9 @@ private fun findFileDoc(element: ZigFile): String? {
         child = child.nextSibling
     }
     if (list.isEmpty()) {
-        return null
+        return HtmlChunk.empty()
     }
-    return list.joinToString("")
+    return HtmlChunk.raw(convertMarkdownToHtml(list.joinToString("")))
 }
 
 /**
