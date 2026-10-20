@@ -360,6 +360,7 @@ data class ZigUnknown private constructor(override val typeOf: ZigValue) : ZigVa
 
         val TYPE = ZigValue.intern(ZigUnknown(ZigTypeType))
         val VALUE = ZigValue.intern(ZigUnknown(TYPE))
+        val USIZE = ZigValue.intern(ZigUnknown(ZigUsizeType))
 
         private const val DEBUG = false
     }
@@ -1240,7 +1241,7 @@ data class ZigLazyTagNameValue private constructor(val value: ZigValue) : ZigVal
         null,
         ZigMutability.CONST,
         ZigArrayType.of(
-            ZigUnknown.of(ZigUsizeType),
+            ZigUnknown.USIZE,
             ZigIntValue.of(ZigComptimeIntType, 0),
             ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8)
         )
@@ -1455,7 +1456,7 @@ private fun getBuiltinFieldPlace(mutability: ZigMutability?, value: ZigValue, na
             ZigPointerSize.C -> null
 
             ZigPointerSize.SLICE -> when (name) {
-                "len" -> ZigPlace.Single.of(mutability, ZigUnknown.of(ZigUsizeType))
+                "len" -> ZigPlace.Single.of(mutability, ZigUnknown.USIZE)
                 "ptr" -> ZigPlace.Single.of(mutability, ZigUnknown.of(type.with(size = ZigPointerSize.MANY)))
                 else -> null
             }
@@ -2495,7 +2496,7 @@ private fun computeListInit(element: ZigListInit): ZigValue {
 
 private fun computeSlice(element: ZigSlice): ZigPlace {
     // TODO: if the indexes are non-comptime, return a slice instead of an array of unknown length
-    val length = ZigUnknown.of(ZigUsizeType)
+    val length = ZigUnknown.USIZE
     val sentinel = element.sentinelElement?.let { resolveValue(it.expression) }
     return resolvePlace(element.sliced).mapType { mutabilityOfSliced, typeOfSliced ->
         val (mutability, childType) = when (typeOfSliced) {
@@ -2643,7 +2644,7 @@ private fun computeStringExpression(element: ZigStringExpression): ZigValue {
     if (value != null) {
         return ZigStringLiteralValue.of(value)
     }
-    val length = ZigUnknown.of(ZigUsizeType)
+    val length = ZigUnknown.USIZE
     val u8 = ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8)
     val array = ZigArrayType.of(length, ZigIntValue.of(ZigComptimeIntType, 0), u8)
     val pointer = ZigPointerType.of(ZigPointerSize.ONE, null, ZigMutability.CONST, array)
@@ -2976,7 +2977,7 @@ private fun computeForPayload(payloadElement: ZigForPayload, payloadItem: ZigPay
         return if (payloadItem.isPointer) {
             ZigPlace.UNKNOWN
         } else {
-            ZigPlace.Single.of(null, ZigUnknown.of(ZigUsizeType))
+            ZigPlace.Single.of(null, ZigUnknown.USIZE)
         }
     }
     if (inputElement !is ZigExpression) {
@@ -3229,7 +3230,7 @@ private fun inferAddressOf(
                 ZigPointerSize.ONE -> type.child
 
                 ZigPointerSize.SLICE -> {
-                    val length = ZigUnknown.of(ZigUsizeType)
+                    val length = ZigUnknown.USIZE
                     ZigArrayType.of(length, null, type.child)
                 }
 
@@ -3368,6 +3369,24 @@ private fun inferCallArg(
             val paramIndex = if (isMethod) argIndex + 1 else argIndex
             val paramElement = functionElement.parameters.elementAtOrNull(paramIndex)
                 ?: return@blk ZigUnknown.TYPE
+            if (paramIndex == 0
+                && paramElement.isAnytype
+                && functionElement is ZigFnDecl
+                && functionElement.name == "initComptime"
+                && functionElement.containingFile.name == "static_string_map.zig"
+                && functionElement.containingFile.containingDirectory?.name == "std"
+            ) {
+                val unboundParams = findUnboundGenericParams(functionElement)
+                val vParam = unboundParams.keys.mapNotNull { it.dereference() }.firstOrNull { it.name == "V" }
+                    ?: return@blk ZigUnknown.TYPE
+                val genericVType = ZigAnalyzer.createGenericParameterValue(vParam)
+                    ?: return@blk ZigUnknown.TYPE
+                val vType = substituteGenericParams(genericVType, functionType.genericParams)
+                val u8 = ZigFixedIntType.of(ZigSignedness.UNSIGNED, 8)
+                val slice = ZigPointerType.of(ZigPointerSize.SLICE, null, ZigMutability.CONST, u8)
+                val tuple = ZigTupleType.of(LightZigTuple(functionElement.manager, listOf(slice, vType)))
+                return@blk ZigArrayType.of(ZigUnknown.USIZE, null, tuple)
+            }
             val value = resolveValue(paramElement.typeElement?.expression, ZigTypeType)
             val genericParams = computeGenericParams(functionType, arguments)
             substituteGenericParams(value, genericParams)
