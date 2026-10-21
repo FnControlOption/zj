@@ -108,6 +108,7 @@
     <fileBasedIndex implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierIndex"/>
     <referencesSearch implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierReferencesSearch"/>
     <vfs.asyncListenerBackgroundable implementation="io.github.fncontroloption.zig.ZigModulesAsyncFileListener"/>
+    <vfs.asyncListenerBackgroundable implementation="io.github.fncontroloption.zig.ZigExternalSystemAsyncFileListener"/>
     <directoryIndexExcludePolicy implementation="io.github.fncontroloption.zig.ZigDirectoryIndexExcludePolicy"/>
     <toolWindow id="Zig" anchor="bottom" icon="/icons/toolWindow.svg"
                 factoryClass="io.github.fncontroloption.zig.ZigToolWindowFactory"/>
