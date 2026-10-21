@@ -2,15 +2,16 @@ package io.github.fncontroloption.zig
 
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.richcopy.HtmlSyntaxInfoUtil
-import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.RecursionManager
 import com.intellij.openapi.util.text.HtmlBuilder
 import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.util.text.Strings
-import com.intellij.openapi.vfs.findDirectory
-import com.intellij.openapi.vfs.findFile
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
 import com.intellij.psi.util.*
 import com.intellij.util.containers.Interner
@@ -179,31 +180,27 @@ object ZigAnalyzer {
         return null
     }
 
-    fun findStdFile(originalElement: PsiElement, path: String): ZigFile? {
-        val project = originalElement.project
-        val projectRoots = ProjectRootManager.getInstance(project).contentRoots.asSequence()
-        val projectLibStds = projectRoots.mapNotNull { it.findDirectory("lib/std") }
+    fun findZigLibFile(project: Project, module: Module?, relPath: String): VirtualFile? {
+        val contentRoots =
+            if (module != null)
+                ModuleRootManager.getInstance(module).contentRoots
+            else
+                ProjectRootManager.getInstance(project).contentRoots
 
-        val originalFile = originalElement.containingFile?.originalFile?.virtualFile
-        val enumerator = run {
-            if (originalFile != null) {
-                val module = ModuleUtilCore.findModuleForFile(originalFile, project)
-                if (module != null) {
-                    return@run OrderEnumerator.orderEntries(module)
-                }
-            }
-            OrderEnumerator.orderEntries(project)
-        }
-        val sdkRoots = enumerator.sdkOnly().sourceRoots.asSequence()
+        val libDirs = contentRoots.mapNotNull { it.findChild("lib") }.filter { it.isValid && it.isDirectory }
 
-        val psiManager = PsiManager.getInstance(project)
-        for (root in projectLibStds + sdkRoots) {
-            val virtualFile = root.findFile(path)
-            if (virtualFile != null) {
-                val psiFile = psiManager.findFile(virtualFile)
-                if (psiFile is ZigFile) {
-                    return psiFile
-                }
+        val orderEnumerator =
+            if (module != null)
+                OrderEnumerator.orderEntries(module)
+            else
+                OrderEnumerator.orderEntries(project)
+
+        val sdkRoots = orderEnumerator.sdkOnly().sourceRoots.asSequence()
+
+        for (root in libDirs + sdkRoots) {
+            val virtualFile = root.findFileByRelativePath(relPath)
+            if (virtualFile != null && virtualFile.isValid && !virtualFile.isDirectory) {
+                return virtualFile
             }
         }
         return null

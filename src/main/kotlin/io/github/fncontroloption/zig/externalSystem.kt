@@ -12,8 +12,6 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.vfs.AsyncFileListener
-import com.intellij.openapi.vfs.findFileOrDirectory
-import com.intellij.openapi.vfs.isFile
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.openapi.vfs.toNioPathOrNull
 import com.intellij.platform.backend.workspace.workspaceModel
@@ -87,7 +85,10 @@ class ZigExternalSystemProjectService(
             rootManager
                 .contentRoots
                 .asSequence()
-                .filter { it.findFileOrDirectory("build.zig")?.isFile == true }
+                .filter {
+                    val buildFile = it.findChild("build.zig")
+                    buildFile != null && buildFile.isValid && !buildFile.isDirectory
+                }
                 .firstNotNullOfOrNull { it.toNioPathOrNull() }
     }
 }

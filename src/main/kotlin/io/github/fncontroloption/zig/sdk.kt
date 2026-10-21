@@ -22,7 +22,6 @@ import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.openapi.util.text.Strings
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.vfs.findDirectory
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.backend.workspace.workspaceModel
 import kotlinx.coroutines.Dispatchers
@@ -68,14 +67,14 @@ class ZigSdkType : SdkType("ZigSdk") {
     }
 
     override fun setupSdkPaths(sdk: Sdk) {
-        val std = sdk.homeDirectory?.findDirectory("lib/std")
-        if (std == null) {
-            log.error("Cannot find std directory")
+        val lib = sdk.homeDirectory?.findChild("lib")
+        if (lib == null || !lib.isValid || !lib.isDirectory) {
+            log.error("Cannot find lib directory")
             return
         }
         val modificator = sdk.sdkModificator
-        modificator.addRoot(std, OrderRootType.CLASSES)
-        modificator.addRoot(std, OrderRootType.SOURCES)
+        modificator.addRoot(lib, OrderRootType.CLASSES)
+        modificator.addRoot(lib, OrderRootType.SOURCES)
         ApplicationManager.getApplication().invokeAndWait {
             ApplicationManager.getApplication().runWriteAction {
                 modificator.commitChanges()

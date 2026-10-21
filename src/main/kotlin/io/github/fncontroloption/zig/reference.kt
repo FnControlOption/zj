@@ -1,6 +1,7 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.openapi.components.service
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.*
@@ -159,8 +160,13 @@ class ZigImportReference(element: ZigStringLiteral) : ZigFileReference(element) 
         }
         return when (text) {
             "std" -> {
-                val file = ZigAnalyzer.findStdFile(myElement, "std.zig") ?: return emptySequence()
-                sequenceOf(PsiElementResolveResult(file))
+                val project = myElement.project
+                val virtualFile = myElement.containingFile?.originalFile?.virtualFile
+                val module = virtualFile?.let { ModuleUtilCore.findModuleForFile(it, project) }
+                val stdFile = ZigAnalyzer.findZigLibFile(project, module, "std/std.zig") ?: return emptySequence()
+                val psiManager = PsiManager.getInstance(project)
+                val stdPsiFile = psiManager.findFile(stdFile) ?: return emptySequence()
+                sequenceOf(PsiElementResolveResult(stdPsiFile))
             }
             "builtin" -> {
                 val file = ZigAnalyzer.findBuiltinFile(myElement) ?: return emptySequence()
