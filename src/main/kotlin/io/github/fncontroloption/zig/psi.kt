@@ -964,6 +964,11 @@ class ZigListInit(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
 
     val initItems: Sequence<ZigListInitItem>
         get() = firstChild.siblings().filterIsInstance<ZigListInitItem>()
+
+    fun getFieldExpression(name: String): ZigExpression? {
+        val item = initItems.firstOrNull { parseZigIdentifier(it.fieldNameIdentifier) == name }
+        return item?.expression
+    }
 }
 
 class ZigListInitItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {

@@ -70,23 +70,113 @@ class ZigModulesProjectService(
                 is ZigBuildProjectService.FetchResult.Err -> return@combine
                 is ZigBuildProjectService.FetchResult.Ok -> fetchResult.buildConfig
             }
-            cachedModules = buildConfig.modules.associateBy { it.index }
             if (projectPath == null) return@combine
             withBackgroundProgress(project, "Loading Zig modules\u2026") {
                 smartReadAction(project) {
-                    loadModules(projectPath, buildConfig)
+                    val modules = buildConfig.modules + getBuildFileModules(projectPath)
+                    cachedModules = modules.associateBy { it.index }
+                    findRootModulesAndFileImports(projectPath, modules)
                 }
             }
         }.launchIn(coroutineScope)
     }
 
+    @RequiresReadLock
+    private fun getBuildFileModules(projectPath: Path): List<ZigBuildConfig.Module> {
+        val configurer = ZigAnalyzer.findZigLibFile(project, null, "compiler/configurer.zig")
+        val configurerImportTable = mutableMapOf<String, Int>()
+        val configurerModule = configurer?.toNioPathOrNull()?.let{
+            ZigBuildConfig.Module(
+                index = -1,
+                isRootModule = true,
+                rootSourceFile = it.toString(),
+                importTable = configurerImportTable,
+            )
+        }
+
+        val buildRootToDeps = mutableMapOf<Path, Map<String, Path>>()
+        followBuildFileGraph(projectPath, projectPath, buildRootToDeps)
+
+        var moduleIndex = -2
+        val buildRootToModule = mutableMapOf<Path, ZigBuildConfig.Module>()
+        val root = getBuildFileModule(projectPath, buildRootToDeps, buildRootToModule) { moduleIndex-- }
+        configurerImportTable["@build"] = root.index
+
+        return listOfNotNull(configurerModule) + buildRootToModule.values
+    }
+
+    @RequiresReadLock
+    private fun followBuildFileGraph(
+        projectPath: Path,
+        buildRoot: Path,
+        buildRootToDeps: MutableMap<Path, Map<String, Path>>,
+    ) {
+        if (buildRoot in buildRootToDeps) return
+        val deps = getBuildFileDependencies(projectPath, buildRoot)
+        buildRootToDeps[buildRoot] = deps
+        for (depPath in deps.values) {
+            followBuildFileGraph(projectPath, depPath, buildRootToDeps)
+        }
+    }
+
+    @RequiresReadLock
+    private fun getBuildFileDependencies(projectPath: Path, buildRoot: Path): Map<String, Path> {
+        val zonPath = buildRoot.resolve("build.zig.zon")
+        val zonVFile = VirtualFileManager.getInstance().findFileByNioPath(zonPath) ?: return emptyMap()
+        val zonFile = PsiManager.getInstance(project).findFile(zonVFile) ?: return emptyMap()
+        if (zonFile !is ZonFile) return emptyMap()
+        val root = zonFile.expression as? ZigListInit ?: return emptyMap()
+        val dependencies = root.getFieldExpression("dependencies") as? ZigListInit ?: return emptyMap()
+        val result = mutableMapOf<String, Path>()
+        for (item in dependencies.initItems) {
+            val name = parseZigIdentifier(item.fieldNameIdentifier) ?: continue
+            val dep = item.expression as? ZigListInit ?: continue
+            val pathExpr = dep.getFieldExpression("path")
+            if (pathExpr != null) {
+                if (pathExpr !is ZigStringExpression) continue
+                val path = pathExpr.value ?: continue
+                result[name] = buildRoot.resolve(path).normalize()
+            } else {
+                val hashExpr = dep.getFieldExpression("hash") as? ZigStringExpression ?: continue
+                val hash = hashExpr.value ?: continue
+                result[name] = projectPath.resolve("zig-pkg").resolve(hash)
+            }
+        }
+        return result
+    }
+
+    private fun getBuildFileModule(
+        buildRoot: Path,
+        buildRootToDeps: Map<Path, Map<String, Path>>,
+        buildRootToModule: MutableMap<Path, ZigBuildConfig.Module>,
+        generateModuleIndex: () -> Int,
+    ): ZigBuildConfig.Module {
+        var module = buildRootToModule[buildRoot]
+        if (module != null) {
+            return module
+        }
+        val importTable = mutableMapOf<String, Int>()
+        module = ZigBuildConfig.Module(
+            index = generateModuleIndex(),
+            isRootModule = false,
+            rootSourceFile = buildRoot.resolve("build.zig").toString(),
+            importTable = importTable,
+        )
+        buildRootToModule[buildRoot] = module
+        for ((depName, depPath) in buildRootToDeps[buildRoot].orEmpty()) {
+            val depModule = getBuildFileModule(depPath, buildRootToDeps, buildRootToModule, generateModuleIndex)
+            importTable[depName] = depModule.index
+        }
+        return module
+    }
+
     val modificationTracker = SimpleModificationTracker()
 
     @RequiresReadLock
-    private fun loadModules(projectPath: Path, buildConfig: ZigBuildConfig) {
+    private fun findRootModulesAndFileImports(projectPath: Path, modules: Collection<ZigBuildConfig.Module>) {
         val rootFileToModule = mutableMapOf<Path, Int>()
         val fileImports = mutableMapOf<Path, MutableSet<Path>>()
-        for (module in buildConfig.modules) {
+        for (module in modules) {
             val rootFile = module.rootSourceFile ?: continue
             val rootPath = projectPath.resolve(rootFile) ?: continue
             rootFileToModule[rootPath] = module.index
