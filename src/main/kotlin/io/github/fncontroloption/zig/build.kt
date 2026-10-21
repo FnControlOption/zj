@@ -18,10 +18,7 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.psi.util.PsiModificationTracker
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -53,9 +50,6 @@ data class ZigBuildConfig(
 
 class ZigBuildProjectActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
-        val appService = ApplicationManager.getApplication().service<ZigBuildAppService>()
-        appService.copyPrintBuildConfigProgramAsync()
-
         val projectService = project.service<ZigBuildProjectService>()
         projectService.fetchProjectAsync()
 
@@ -70,35 +64,18 @@ class ZigBuildProjectActivity : ProjectActivity {
 }
 
 @Service(Service.Level.APP)
-class ZigBuildAppService(private val coroutineScope: CoroutineScope) {
-    val printBuildConfigProgramPath: Path by lazy {
+class ZigBuildAppService(coroutineScope: CoroutineScope) {
+    val printBuildConfigProgramPath = coroutineScope.async {
         val pluginId = PluginId.getId("io.github.fncontroloption.zig")
         val pluginDescriptor = PluginManagerCore.getPlugin(pluginId)!!
-        pluginDescriptor.pluginPath.resolve("print_build_config.zig")
-    }
-
-    @Volatile
-    private var copyJob: Job? = null
-
-    fun copyPrintBuildConfigProgramAsync(): Job {
-        var job = copyJob
-        if (job != null) {
-            return job
-        }
-        job = coroutineScope.launch(Dispatchers.IO) {
-            copyPrintBuildConfigProgram()
-        }
-        copyJob = job
-        return job
-    }
-
-    private fun copyPrintBuildConfigProgram() {
-        val outputPath = printBuildConfigProgramPath
-        val inputStream = javaClass.classLoader.getResourceAsStream("print_build_config.zig")!!
+        val outputPath = pluginDescriptor.pluginPath.resolve("print_build_config.zig")
+        val classLoader = ZigBuildAppService::class.java.classLoader
+        val inputStream = classLoader.getResourceAsStream("print_build_config.zig")!!
         val inputText = inputStream.reader().use { it.readText() }
         if (!outputPath.exists() || outputPath.readText() != inputText) {
             outputPath.writeText(inputText)
         }
+        outputPath
     }
 }
 
@@ -187,9 +164,8 @@ class ZigBuildProjectService(
 
     private suspend fun getConfig(fetchSettings: FetchSettings, configPath: String): ZigBuildConfig? {
         val appService = ApplicationManager.getApplication().service<ZigBuildAppService>()
-        appService.copyPrintBuildConfigProgramAsync().join()
-        val printBuildConfigProgramPath = appService.printBuildConfigProgramPath.toString()
-        val configResult = fetchSettings.zigExe.run("run", printBuildConfigProgramPath, "--", configPath)
+        val programPath = appService.printBuildConfigProgramPath.await().toString()
+        val configResult = fetchSettings.zigExe.run("run", programPath, "--", configPath)
         configResult.logErrors()
         if (!configResult.success) return null
         return Json.decodeFromString<ZigBuildConfig>(configResult.stdout)
