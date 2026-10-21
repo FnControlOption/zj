@@ -187,8 +187,8 @@ class ZigImportReference(element: ZigStringLiteral) : ZigFileReference(element) 
             else -> {
                 val project = myElement.project
                 val virtualFile = myElement.containingFile?.originalFile?.virtualFile ?: return emptySequence()
-                val buildService = project.service<ZigBuildProjectService>()
-                val projectPath = buildService.fetchSettings?.projectPath ?: return emptySequence()
+                val projectService = project.service<ZigExternalSystemProjectService>()
+                val projectPath = projectService.projectPath.value ?: return emptySequence()
                 val psiManager = PsiManager.getInstance(project)
                 val modulesService = project.service<ZigModulesProjectService>()
                 val importedModules = when (text) {

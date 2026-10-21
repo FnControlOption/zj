@@ -34,7 +34,8 @@ class ZigExternalSystemProjectActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
         project.workspaceModel.eventLog.collect {
             for (project in ProjectManager.getInstance().openProjects) {
-                project.service<ZigExternalSystemProjectService>().updateProjectPath()
+                val projectService = project.service<ZigExternalSystemProjectService>()
+                projectService.updateProjectPath()
             }
         }
     }
@@ -45,7 +46,13 @@ class ZigExternalSystemAsyncFileListener : AsyncFileListener {
         return object : AsyncFileListener.ChangeApplier {
             override fun afterVfsChange() {
                 for (project in ProjectManager.getInstance().openProjects) {
-                    project.service<ZigExternalSystemProjectService>().updateProjectPath()
+                    val projectService = project.service<ZigExternalSystemProjectService>()
+                    projectService.updateProjectPath()
+
+                    val settings = project.service<ZigSettings>()
+                    if (settings.buildOnSave) {
+                        ExternalSystemProjectTracker.getInstance(project).scheduleProjectRefresh()
+                    }
                 }
             }
         }
@@ -69,6 +76,8 @@ class ZigExternalSystemProjectService(
             val newProjectAware = ZigExternalSystemProjectAware(project, path)
             projectTracker.register(newProjectAware)
             projectTracker.activate(newProjectAware.projectId)
+            projectTracker.markDirty(newProjectAware.projectId)
+            projectTracker.scheduleProjectRefresh()
             newProjectAware
         }.launchIn(coroutineScope)
     }
@@ -112,15 +121,7 @@ class ZigExternalSystemProjectAware(
 
             edtWriteAction { FileDocumentManager.getInstance().saveAllDocuments() }
 
-            val buildService = project.service<ZigBuildProjectService>()
-            buildService.resetFetchSettings()
-            buildService.fetchProjectAsync().join()
-
-            val buildWatcher = project.service<ZigBuildWatcher>()
-            buildWatcher.startAsync().join()
-
-            val modulesService = project.service<ZigModulesProjectService>()
-            modulesService.reloadModulesAsync().join()
+            project.service<ZigBuildProjectService>().restartFetch()
 
             dispatcher.multicaster.onProjectReloadFinish(ExternalSystemRefreshStatus.SUCCESS)
         }

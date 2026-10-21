@@ -8,6 +8,9 @@ import com.intellij.openapi.project.Project
 import com.intellij.ui.RawCommandLineEditor
 import com.intellij.ui.dsl.builder.*
 import com.intellij.util.execution.ParametersListUtil
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Service(Service.Level.PROJECT)
 @State(name = "ZigSettings", storages = [Storage("zig.xml")])
@@ -73,15 +76,8 @@ class ZigSettingsConfigurable(private val project: Project) : BoundConfigurable(
 
     override fun apply() {
         super.apply()
-
-        val buildService = project.service<ZigBuildProjectService>()
-        buildService.resetFetchSettings()
-        buildService.fetchProjectAsync()
-
-        val buildWatcher = project.service<ZigBuildWatcher>()
-        buildWatcher.startAsync()
-
-        val modulesService = project.service<ZigModulesProjectService>()
-        modulesService.reloadModulesAsync()
+        CoroutineScope(Dispatchers.Default).launch {
+            project.service<ZigBuildProjectService>().restartFetch()
+        }
     }
 }
