@@ -166,24 +166,6 @@ class ZigImportReference(element: ZigStringLiteral) : ZigFileReference(element) 
                 val file = ZigAnalyzer.findBuiltinFile(myElement) ?: return emptySequence()
                 sequenceOf(PsiElementResolveResult(file))
             }
-            /* TODO: delete
-            "root" -> {
-                val project = myElement.project
-                val virtualFile = myElement.containingFile?.originalFile?.virtualFile ?: return emptySequence()
-                val psiManager = PsiManager.getInstance(project)
-                val modulesService = project.service<ZigModulesProjectService>()
-                val rootIndexes = modulesService.getFileRootModules(virtualFile)
-                val rootModules = if (rootIndexes.isNotEmpty()) {
-                    rootIndexes.asSequence().mapNotNull { modulesService.modules[it] }
-                } else {
-                    modulesService.modules.values.asSequence().filter { it.isRootModule }
-                }
-                rootModules
-                    .mapNotNull { modulesService.getRootSourceVirtualFile(it) }
-                    .mapNotNull { psiManager.findFile(it) }
-                    .map { PsiElementResolveResult(it) }
-            }
-             */
             else -> {
                 val project = myElement.project
                 val virtualFile = myElement.containingFile?.originalFile?.virtualFile ?: return emptySequence()

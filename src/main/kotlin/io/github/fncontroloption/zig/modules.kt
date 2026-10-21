@@ -27,18 +27,6 @@ import kotlinx.coroutines.launch
 import java.nio.file.Path
 import kotlin.coroutines.cancellation.CancellationException
 
-/* TODO: delete
-fun findZigProjectPath(project: Project): Path? {
-    val buildFile = findBuildZigFile(project) ?: return null
-    return buildFile.parent?.toNioPathOrNull()
-}
-
-private fun findBuildZigFile(project: Project): VirtualFile? {
-    val rootManager = ProjectRootManager.getInstance(project)
-    return rootManager.contentRoots.firstNotNullOfOrNull { it.findFile("build.zig") }
-}
- */
-
 class ZigModulesProjectActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
         project.service<ZigModulesProjectService>()
@@ -53,65 +41,6 @@ class ZigModulesProjectService(
     private val daemonCodeAnalyzer = DaemonCodeAnalyzer.getInstance(project)
     private val projectPathFlow = project.service<ZigExternalSystemProjectService>().projectPath
     private val deferredFetchFlow = project.service<ZigBuildProjectService>().deferredFetch
-
-    /* TODO: delete
-    fun resetFetchSettings() {
-        cachedFetchSettings = null
-    }
-
-    private suspend fun fetchModules(projectPath: Path): Boolean {
-        val sdk = ProjectRootManager.getInstance(project).projectSdk
-        val currentFetchSettings = FetchSettings(sdk, projectPath)
-        if (cachedFetchSettings != currentFetchSettings) {
-            cachedFetchSettings = null
-            cachedModules = null
-            if (sdk != null) {
-                cachedFetchSettings = currentFetchSettings
-                fetchModulesWithSdk(sdk, projectPath)
-                rootFileToModule.clear()
-                fileImports.clear()
-                return true
-            }
-        }
-        return false
-    }
-
-    private suspend fun fetchModulesWithSdk(sdk: Sdk, projectPath: Path) {
-        val exe = ZigExe.find(sdk) ?: return
-        val configPath = getConfigPath(exe, projectPath) ?: return
-        val modulesText = getModulesJsonText(exe, configPath) ?: return
-
-        val modules = Json.decodeFromString<List<ZigModule>>(modulesText)
-        cachedModules = modules.associateBy { it.index }
-
-        val projectDir = VirtualFileManager.getInstance().findFileByNioPath(projectPath)
-        projectDir?.refresh(false, true)
-    }
-
-    private suspend fun getConfigPath(exe: ZigExe, projectPath: Path): String? {
-        val buildOptions = project.service<ZigSettings>().buildOptions
-        val args = buildList {
-            add("build")
-            add("--print-configuration-path")
-            addAll(buildOptions)
-            add("--build-file")
-            add(projectPath.resolve("build.zig").toString())
-        }
-        val printResult = exe.runInToolWindow(project, "Zig", args)
-        printResult.logErrors()
-        if (!printResult.success) return null
-        return printResult.stdout.trimEnd()
-    }
-
-    private fun getModulesJsonText(exe: ZigExe, configPath: String): String? {
-        val appService = ApplicationManager.getApplication().service<ZigModulesAppService>()
-        val printModulesPath = appService.printModulesFilePath.toString()
-        val modulesResult = exe.run("run", printModulesPath, "--", configPath)
-        modulesResult.logErrors()
-        if (!modulesResult.success) return null
-        return modulesResult.stdout
-    }
-     */
 
     @Volatile
     private var cachedModules: Map<Int, ZigBuildConfig.Module> = emptyMap()
@@ -150,56 +79,6 @@ class ZigModulesProjectService(
             }
         }.launchIn(coroutineScope)
     }
-
-    /* TODO: delete
-    @Volatile
-    private var cachedFetchJob: Job? = null
-
-    @Volatile
-    private var reloadJob: Job? = null
-
-    @Synchronized
-    fun reloadModulesAsync(): Job {
-        val buildService = project.service<ZigBuildProjectService>()
-        val fetchJob = buildService.fetchProjectAsync()
-        var job = reloadJob
-        if (job != null) {
-            if (fetchJob == cachedFetchJob) {
-                return job
-            }
-            job.cancel()
-        }
-        cachedFetchJob = fetchJob
-        cachedModules = emptyMap()
-        cachedRootFileToModule = emptyMap()
-        cachedFileImports = emptyMap()
-        job = coroutineScope.launch(Dispatchers.IO) {
-            fetchJob.join()
-            reloadModules()
-        }
-        reloadJob = job
-        return job
-    }
-
-    private suspend fun reloadModules() {
-        val buildService = project.service<ZigBuildProjectService>()
-        val buildConfig = buildService.config ?: return
-        cachedModules = buildConfig.modules.associateBy { it.index }
-        val projectPath = buildService.fetchSettings?.projectPath ?: return
-        withBackgroundProgress(project, "Loading Zig modules\u2026") {
-            smartReadAction(project) {
-                loadModules(projectPath)
-            }
-        }
-    }
-
-    fun getRootSourceVirtualFile(module: ZigModule): VirtualFile? {
-        val projectPath = cachedFetchSettings?.projectPath ?: return null
-        val sourcePathString = module.rootSourceFile ?: return null
-        val sourcePath = projectPath.resolve(sourcePathString)
-        return VirtualFileManager.getInstance().findFileByNioPath(sourcePath)
-    }
-     */
 
     val modificationTracker = SimpleModificationTracker()
 

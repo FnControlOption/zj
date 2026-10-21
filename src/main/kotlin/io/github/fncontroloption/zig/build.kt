@@ -100,60 +100,6 @@ class ZigBuildProjectService(
         fetchRestartFlow.emit(Unit)
     }
 
-    /* TODO: delete
-    @Volatile
-    private var cachedConfig: ZigBuildConfig? = null
-
-    val config: ZigBuildConfig?
-        get() = cachedConfig
-
-    @Volatile
-    private var cachedErrorMessages: Map<String, List<ZigExe.Message>> = emptyMap()
-
-    val errorMessages: Map<String, List<ZigExe.Message>>
-        get() = cachedErrorMessages
-
-    data class FetchSettings(val projectPath: Path, val zigExe: ZigExe)
-
-    @Volatile
-    private var cachedFetchSettings: FetchSettings? = null
-
-    val fetchSettings: FetchSettings?
-        get() = cachedFetchSettings
-
-    fun resetFetchSettings() {
-        cachedFetchSettings = null
-    }
-
-    @Volatile
-    private var fetchJob: Job? = null
-
-    @Synchronized
-    fun fetchProjectAsync(): Job {
-        val projectPath = findZigProjectPath(project)
-        val sdk = ProjectRootManager.getInstance(project).projectSdk
-        val zigExe = sdk?.let { ZigExe.find(it) }
-        val fetchSettings = if (projectPath != null && zigExe != null) FetchSettings(projectPath, zigExe) else null
-        var job = fetchJob
-        if (job != null) {
-            if (fetchSettings == cachedFetchSettings) {
-                return job
-            }
-            job.cancel()
-        }
-        cachedFetchSettings = fetchSettings
-        cachedConfig = null
-        cachedErrorMessages = emptyMap()
-        job = coroutineScope.launch(Dispatchers.IO) {
-            if (fetchSettings != null) {
-                fetchProject(fetchSettings)
-            }
-        }
-        fetchJob = job
-        return job
-    }
-     */
-
     private suspend fun fetchProject(projectPath: Path?, exePath: Path?): FetchResult {
         if (projectPath == null || exePath == null) return FetchResult.None
         val fetchResult = getBuildConfig(projectPath, exePath)
@@ -232,37 +178,6 @@ class ZigBuildWatcher(
         cachedProcessHandler.value?.destroyProcess()
     }
 
-    /* TODO: delete
-    @Volatile
-    private var cachedFetchJob: Job? = null
-
-    @Volatile
-    private var startJob: Job? = null
-
-    @Synchronized
-    fun startAsync(): Job {
-        val buildService = project.service<ZigBuildProjectService>()
-        val fetchJob = buildService.fetchProjectAsync()
-        var job = startJob
-        if (job != null && cachedProcessHandler?.isProcessTerminated != true) {
-            if (fetchJob == cachedFetchJob) {
-                return job
-            }
-            job.cancel()
-        }
-        cachedFetchJob = fetchJob
-        cachedProcessHandler?.destroyProcess()
-        cachedProcessHandler = null
-        snapshot = null
-        job = coroutineScope.launch(Dispatchers.IO) {
-            fetchJob.join()
-            start()
-        }
-        startJob = job
-        return job
-    }
-    */
-
     private suspend fun start(projectPath: Path, exePath: Path): ProcessHandler? {
         val settings = project.service<ZigSettings>()
         if (!settings.buildOnSave) {
@@ -277,25 +192,6 @@ class ZigBuildWatcher(
         }
         return ZigExe(exePath).runInToolWindow(project, args, Listener(), mostlySilent = true)
     }
-
-    /* TODO: delete
-    private val psiModificationTracker = PsiModificationTracker.getInstance(project).forLanguage(ZigLanguage)
-
-    inner class Snapshot(val messages: Map<String, List<ZigExe.Message>>) {
-        private val stamp = psiModificationTracker.modificationCount
-        val isOutdated: Boolean
-            get() = stamp < psiModificationTracker.modificationCount
-    }
-
-    @Volatile
-    private var snapshot: Snapshot? = null
-
-    val messages: Map<String, List<ZigExe.Message>>
-        get() = snapshot?.messages.orEmpty()
-
-    val isOutdated: Boolean
-        get() = snapshot?.isOutdated ?: true
-     */
 
     @Volatile
     var messages: Map<String, List<ZigExe.Message>> = emptyMap()
