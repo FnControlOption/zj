@@ -12,9 +12,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.toNioPathOrNull
 import com.intellij.psi.PsiFile
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.*
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -71,35 +69,35 @@ class ZigBuildAnnotator : ZigExternalAnnotator() {
         val path = collectedInfo.path
         val project = collectedInfo.project
         val buildService = project.service<ZigBuildProjectService>()
-        val fetchJob = buildService.fetchProjectAsync()
-        runBlocking {
-            var fetchResult: Unit? = null
-            while (fetchResult == null) {
-                ProgressManager.checkCanceled()
+        val deferredFetch = buildService.deferredFetch.value
+        var fetchResult: ZigBuildProjectService.FetchResult? = null
+        while (fetchResult == null) {
+            ProgressManager.checkCanceled()
+            runBlocking {
                 fetchResult = withTimeoutOrNull(100.milliseconds) {
-                    fetchJob.join()
+                    try {
+                        deferredFetch.await()
+                    } catch (e: CancellationException) {
+                        if (!currentCoroutineContext().isActive) throw e
+                        ZigBuildProjectService.FetchResult.None
+                    }
                 }
             }
         }
-        val fetchErrors = buildService.errorMessages
-        if (fetchErrors.isNotEmpty()) {
-            return fetchErrors[path.toString()].orEmpty()
+        when (fetchResult) {
+            ZigBuildProjectService.FetchResult.None -> {
+                return emptyList()
+            }
+            is ZigBuildProjectService.FetchResult.Err -> {
+                return fetchResult.errorMessages[path.toString()].orEmpty()
+            }
+            is ZigBuildProjectService.FetchResult.Ok -> {}
         }
         val settings = project.service<ZigSettings>()
         if (!settings.buildOnSave) {
             return emptyList()
         }
         val buildWatcher = project.service<ZigBuildWatcher>()
-        if (buildWatcher.isOutdated) {
-            val startJob = buildWatcher.startAsync()
-            runBlocking {
-                startJob.join()
-                while (buildWatcher.isOutdated) {
-                    ProgressManager.checkCanceled()
-                    delay(100.milliseconds)
-                }
-            }
-        }
         return buildWatcher.messages[path.toString()].orEmpty()
     }
 }
