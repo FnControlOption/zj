@@ -7,6 +7,8 @@ import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.process.ProcessListener
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
@@ -16,12 +18,16 @@ import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.roots.ui.configuration.SdkPopupFactory
+import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.openapi.util.text.Strings
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.findDirectory
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.platform.backend.workspace.workspaceModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import org.jdom.Element
 import java.nio.file.Path
@@ -246,7 +252,8 @@ data class ZigExe(val path: Path) {
     }
 
     companion object {
-        fun find(sdk: Sdk): ZigExe? {
+        fun find(sdk: Sdk?): ZigExe? {
+            if (sdk == null) return null
             if (sdk.sdkType !is ZigSdkType) return null
             val sdkHome = sdk.homePath ?: return null
             return find(sdkHome)
@@ -260,5 +267,23 @@ data class ZigExe(val path: Path) {
             }
             return null
         }
+    }
+}
+
+class ZigExeProjectActivity : ProjectActivity {
+    override suspend fun execute(project: Project) {
+        project.workspaceModel.eventLog.collect {
+            project.service<ZigExeService>().updateExePath()
+        }
+    }
+}
+
+@Service(Service.Level.PROJECT)
+class ZigExeService(project: Project) {
+    private val rootManager = ProjectRootManager.getInstance(project)
+    private val exePathMutable = MutableStateFlow<Path?>(null)
+    val exePath = exePathMutable.asStateFlow()
+    fun updateExePath() {
+        exePathMutable.value = ZigExe.find(rootManager.projectSdk)?.path
     }
 }

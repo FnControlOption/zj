@@ -103,6 +103,7 @@
     <postStartupActivity implementation="io.github.fncontroloption.zig.ZigModulesProjectActivity"/>
     <postStartupActivity implementation="io.github.fncontroloption.zig.ZigBuildProjectActivity"/>
     <postStartupActivity implementation="io.github.fncontroloption.zig.ZigExternalSystemProjectActivity"/>
+    <postStartupActivity implementation="io.github.fncontroloption.zig.ZigExeProjectActivity"/>
     <lang.namesValidator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigNamesValidator"/>
     <fileBasedIndex implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierIndex"/>
     <referencesSearch implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierReferencesSearch"/>
