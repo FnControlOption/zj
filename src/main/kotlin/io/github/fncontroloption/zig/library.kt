@@ -4,6 +4,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.AdditionalLibraryRootsProvider
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.roots.SyntheticLibrary
 import com.intellij.openapi.vfs.VirtualFile
 
@@ -14,7 +15,18 @@ class ZigLibraryRootsProvider : AdditionalLibraryRootsProvider() {
         if (builtinFile != null) {
             libraries.add(ZigSyntheticLibrary("builtin", listOf(builtinFile), emptyList(), emptySet()))
         }
+        for (root in ProjectRootManager.getInstance(project).contentRoots) {
+            val pkg = root.findChild("zig-pkg") ?: continue
+            if (!pkg.isValid || !pkg.isDirectory) continue
+            for (child in pkg.children) {
+                libraries.add(ZigSyntheticLibrary(child.name, listOf(child), emptyList(), emptySet()))
+            }
+        }
         return libraries
+    }
+
+    override fun getRootsToWatch(project: Project): Collection<VirtualFile> {
+        return ProjectRootManager.getInstance(project).contentRoots.mapNotNull { it.findChild("zig-pkg") }
     }
 }
 
