@@ -206,8 +206,7 @@ object ZigAnalyzer {
         return null
     }
 
-    fun findBuiltinFile(originalElement: PsiElement): ZigFile? {
-        val project = originalElement.project
+    fun findBuiltinFile(project: Project): ZigFile? {
         val virtualFile = ZigBuiltinService.getBuiltinFile(project) ?: return null
         val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
         return psiFile as? ZigFile

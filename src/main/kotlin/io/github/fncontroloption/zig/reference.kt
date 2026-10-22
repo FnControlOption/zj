@@ -158,9 +158,9 @@ class ZigImportReference(element: ZigStringLiteral) : ZigFileReference(element) 
         if (text.endsWith(".zig") || text.endsWith(".zon")) {
             return super.resolveSequence(text)
         }
+        val project = myElement.project
         return when (text) {
             "std" -> {
-                val project = myElement.project
                 val virtualFile = myElement.containingFile?.originalFile?.virtualFile
                 val module = virtualFile?.let { ModuleUtilCore.findModuleForFile(it, project) }
                 val stdFile = ZigAnalyzer.findZigLibFile(project, module, "std/std.zig") ?: return emptySequence()
@@ -169,11 +169,10 @@ class ZigImportReference(element: ZigStringLiteral) : ZigFileReference(element) 
                 sequenceOf(PsiElementResolveResult(stdPsiFile))
             }
             "builtin" -> {
-                val file = ZigAnalyzer.findBuiltinFile(myElement) ?: return emptySequence()
+                val file = ZigAnalyzer.findBuiltinFile(project) ?: return emptySequence()
                 sequenceOf(PsiElementResolveResult(file))
             }
             else -> {
-                val project = myElement.project
                 val virtualFile = myElement.containingFile?.originalFile?.virtualFile ?: return emptySequence()
                 val projectService = project.service<ZigExternalSystemProjectService>()
                 val projectPath = projectService.projectPath.value ?: return emptySequence()
