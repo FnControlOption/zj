@@ -85,7 +85,7 @@ class ZigModulesProjectService(
     private fun getBuildFileModules(projectPath: Path): List<ZigBuildConfig.Module> {
         val configurer = ZigAnalyzer.findZigLibFile(project, null, "compiler/configurer.zig")
         val configurerImportTable = mutableMapOf<String, Int>()
-        val configurerModule = configurer?.toNioPathOrNull()?.let{
+        val configurerModule = configurer?.toNioPathOrNull()?.let {
             ZigBuildConfig.Module(
                 index = -1,
                 isRootModule = true,
@@ -219,6 +219,11 @@ class ZigModulesProjectService(
             imports.add(otherPath)
             followImports(otherPath, fileImports)
         }
+    }
+
+    fun getModuleFromRootFile(path: Path): ZigBuildConfig.Module? {
+        val moduleIndex = cachedRootFileToModule[path] ?: return null
+        return cachedModules[moduleIndex]
     }
 
     fun getFileModules(virtualFile: VirtualFile): Set<Int> {

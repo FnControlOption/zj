@@ -106,7 +106,9 @@
     <postStartupActivity implementation="io.github.fncontroloption.zig.ZigExeProjectActivity"/>
     <lang.namesValidator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigNamesValidator"/>
     <fileBasedIndex implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierIndex"/>
+    <fileBasedIndex implementation="io.github.fncontroloption.zig.ZigStringLiteralIndex"/>
     <referencesSearch implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierReferencesSearch"/>
+    <referencesSearch implementation="io.github.fncontroloption.zig.ZigModuleReferencesSearch"/>
     <vfs.asyncListenerBackgroundable implementation="io.github.fncontroloption.zig.ZigModulesAsyncFileListener"/>
     <vfs.asyncListenerBackgroundable implementation="io.github.fncontroloption.zig.ZigExternalSystemAsyncFileListener"/>
     <directoryIndexExcludePolicy implementation="io.github.fncontroloption.zig.ZigDirectoryIndexExcludePolicy"/>

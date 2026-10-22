@@ -1,6 +1,8 @@
 package io.github.fncontroloption.zig
 
 import com.intellij.openapi.application.QueryExecutorBase
+import com.intellij.openapi.components.service
+import com.intellij.openapi.vfs.toNioPathOrNull
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiReference
 import com.intellij.psi.SyntaxTraverser
@@ -15,12 +17,14 @@ import com.intellij.util.io.EnumeratorStringDescriptor
 val ZIG_ESCAPED_IDENTIFIER_INDEX_NAME =
     ID.create<String, Void?>("io.github.fncontroloption.zig.ZigEscapedIdentifierIndex")
 
+const val ZIG_ESCAPED_IDENTIFIER_INDEX_VERSION = 5
+
 class ZigEscapedIdentifierIndex : ScalarIndexExtension<String>() {
     override fun getName() = ZIG_ESCAPED_IDENTIFIER_INDEX_NAME
     override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(ZigFileType)
     override fun dependsOnFileContent() = true
     override fun getKeyDescriptor() = EnumeratorStringDescriptor.INSTANCE!!
-    override fun getVersion() = 5
+    override fun getVersion() = ZIG_ESCAPED_IDENTIFIER_INDEX_VERSION
     override fun getIndexer() = DataIndexer<String, Void?, FileContent> { content ->
         val result = mutableMapOf<String, Void?>()
         val lexer = ZigLexerAdapter()
@@ -72,5 +76,74 @@ class ZigEscapedIdentifierReferencesSearch : QueryExecutorBase<PsiReference, Ref
                 }
             }
         }
+    }
+}
+
+val ZIG_STRING_LITERAL_INDEX_NAME =
+    ID.create<String, Void?>("io.github.fncontroloption.zig.ZigStringLiteralIndex")
+
+const val ZIG_STRING_LITERAL_INDEX_VERSION = 0
+
+class ZigStringLiteralIndex : ScalarIndexExtension<String>() {
+    override fun getName() = ZIG_STRING_LITERAL_INDEX_NAME
+    override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(ZigFileType)
+    override fun dependsOnFileContent() = true
+    override fun getKeyDescriptor() = EnumeratorStringDescriptor.INSTANCE!!
+    override fun getVersion() = ZIG_STRING_LITERAL_INDEX_VERSION
+    override fun getIndexer() = DataIndexer<String, Void?, FileContent> { content ->
+        val result = mutableMapOf<String, Void?>()
+        val lexer = ZigLexerAdapter()
+        lexer.start(content.contentAsText)
+        while (lexer.tokenType != null) {
+            if (lexer.tokenType === ZigTokenType.STRING_LITERAL) {
+                val value = ZigStringLiteralParser.parse(lexer.tokenSequence)
+                if (value != null) {
+                    result[value] = null
+                }
+            }
+            // TODO: handle multiline string literal?
+            lexer.advance()
+        }
+        result
+    }
+}
+
+class ZigModuleReferencesSearch : QueryExecutorBase<PsiReference, ReferencesSearch.SearchParameters>(true) {
+    override fun processQuery(
+        queryParameters: ReferencesSearch.SearchParameters,
+        consumer: Processor<in PsiReference>
+    ) {
+        val project = queryParameters.project
+        val target = queryParameters.elementToSearch as? ZigFile ?: return
+        val targetPath = target.virtualFile?.toNioPathOrNull() ?: return
+
+        val modulesService = project.service<ZigModulesProjectService>()
+        val module = modulesService.getModuleFromRootFile(targetPath) ?: return
+
+        val virtualFiles = when (val scope = queryParameters.effectiveSearchScope) {
+            is GlobalSearchScope -> {
+                val fileBasedIndex = FileBasedIndex.getInstance()
+                modulesService.modules.values
+                    .asSequence()
+                    .flatMap { it.importTable.asSequence() }
+                    .filter { (_, importIndex) -> importIndex == module.index }
+                    .map { (importName, _) -> importName }
+                    .distinct()
+                    .flatMap { fileBasedIndex.getContainingFiles(ZIG_STRING_LITERAL_INDEX_NAME, it, scope) }
+                    .distinct()
+            }
+            is LocalSearchScope -> scope.virtualFiles.asSequence()
+            else -> return
+        }
+
+        val psiManager = PsiManager.getInstance(project)
+        virtualFiles
+            .mapNotNull { psiManager.findFile(it) }
+            .filterIsInstance<ZigFile>()
+            .flatMap { SyntaxTraverser.psiTraverser(it) }
+            .filterIsInstance<ZigStringLiteral>()
+            .flatMap { it.references.asSequence() }
+            .filter { it.isReferenceTo(target) }
+            .forEach(consumer::process)
     }
 }
