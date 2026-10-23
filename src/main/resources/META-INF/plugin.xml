@@ -1,7 +1,7 @@
 <idea-plugin>
 
   <!-- Unique id for this plugin. Must stay constant for the life of the plugin. -->
-  <id>io.github.fncontroloption.zig</id>
+  <id>io.github.fncontroloption.zj</id>
 
   <!-- Text to display as name on Settings | Plugin page -->
   <name>ZJ</name>
@@ -36,86 +36,86 @@
   <vendor url="https://github.com/FnControlOption">fn ⌃ ⌥</vendor>
 
   <extensions defaultExtensionNs="com.intellij">
-    <fileType name="ZIG" implementationClass="io.github.fncontroloption.zig.ZigFileType" fieldName="INSTANCE"
+    <fileType name="ZIG" implementationClass="io.github.fncontroloption.zj.ZigFileType" fieldName="INSTANCE"
               language="ZIG" extensions="zig"/>
-    <fileType name="ZON" implementationClass="io.github.fncontroloption.zig.ZonFileType" fieldName="INSTANCE"
+    <fileType name="ZON" implementationClass="io.github.fncontroloption.zj.ZonFileType" fieldName="INSTANCE"
               language="ZON" extensions="zon"/>
-    <lang.parserDefinition language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigParserDefinition"/>
-    <lang.parserDefinition language="ZON" implementationClass="io.github.fncontroloption.zig.ZonParserDefinition"/>
+    <lang.parserDefinition language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigParserDefinition"/>
+    <lang.parserDefinition language="ZON" implementationClass="io.github.fncontroloption.zj.ZonParserDefinition"/>
     <lang.parserDefinition language="ZIG_BUILTIN_FN_PROTO"
-                           implementationClass="io.github.fncontroloption.zig.ZigBuiltinFnProtoParserDefinition"/>
+                           implementationClass="io.github.fncontroloption.zj.ZigBuiltinFnProtoParserDefinition"/>
     <lang.syntaxHighlighterFactory language="ZIG"
-                                   implementationClass="io.github.fncontroloption.zig.ZigSyntaxHighlighterFactory"/>
-    <colorSettingsPage implementation="io.github.fncontroloption.zig.ZigColorSettingsPage"/>
-    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigHighlightAnnotator"/>
-    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigUnusedAnnotator"/>
-    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigUnderscoreIdentifierAnnotator"/>
-    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigUndeclaredIdentifierAnnotator"/>
-    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigUndeclaredLabelAnnotator"/>
-    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigDuplicateMembersAnnotator"/>
-    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigRedeclarationsAnnotator"/>
-    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigShadowAnnotator"/>
-    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigAmbiguousReferenceAnnotator"/>
-    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigLabelRedefinitionAnnotator"/>
-    <externalAnnotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigAstCheckAnnotator"/>
-    <externalAnnotator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigBuildAnnotator"/>
+                                   implementationClass="io.github.fncontroloption.zj.ZigSyntaxHighlighterFactory"/>
+    <colorSettingsPage implementation="io.github.fncontroloption.zj.ZigColorSettingsPage"/>
+    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigHighlightAnnotator"/>
+    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigUnusedAnnotator"/>
+    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigUnderscoreIdentifierAnnotator"/>
+    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigUndeclaredIdentifierAnnotator"/>
+    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigUndeclaredLabelAnnotator"/>
+    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigDuplicateMembersAnnotator"/>
+    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigRedeclarationsAnnotator"/>
+    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigShadowAnnotator"/>
+    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigAmbiguousReferenceAnnotator"/>
+    <annotator language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigLabelRedefinitionAnnotator"/>
+    <externalAnnotator language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigAstCheckAnnotator"/>
+    <externalAnnotator language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigBuildAnnotator"/>
     <completion.contributor language="ZIG"
-                            implementationClass="io.github.fncontroloption.zig.ZigCompletionContributor"/>
+                            implementationClass="io.github.fncontroloption.zj.ZigCompletionContributor"/>
     <lang.findUsagesProvider language="ZIG"
-                             implementationClass="io.github.fncontroloption.zig.ZigFindUsagesProvider"/>
-    <lang.foldingBuilder language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigFoldingBuilder"/>
-    <gotoSymbolContributor implementation="io.github.fncontroloption.zig.ZigChooseByNameContributor"/>
+                             implementationClass="io.github.fncontroloption.zj.ZigFindUsagesProvider"/>
+    <lang.foldingBuilder language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigFoldingBuilder"/>
+    <gotoSymbolContributor implementation="io.github.fncontroloption.zj.ZigChooseByNameContributor"/>
     <lang.psiStructureViewFactory language="ZIG"
-                                  implementationClass="io.github.fncontroloption.zig.ZigStructureViewFactory"/>
-    <lang.formatter language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigFormattingModelBuilder"/>
-    <codeStyleSettingsProvider implementation="io.github.fncontroloption.zig.ZigCodeStyleSettingsProvider"/>
-    <langCodeStyleSettingsProvider implementation="io.github.fncontroloption.zig.ZigLanguageCodeStyleSettingsProvider"/>
-    <lang.commenter language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigCommenter"/>
+                                  implementationClass="io.github.fncontroloption.zj.ZigStructureViewFactory"/>
+    <lang.formatter language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigFormattingModelBuilder"/>
+    <codeStyleSettingsProvider implementation="io.github.fncontroloption.zj.ZigCodeStyleSettingsProvider"/>
+    <langCodeStyleSettingsProvider implementation="io.github.fncontroloption.zj.ZigLanguageCodeStyleSettingsProvider"/>
+    <lang.commenter language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigCommenter"/>
     <platform.backend.documentation.psiTargetProvider
-            implementation="io.github.fncontroloption.zig.ZigPsiDocumentationTargetProvider"/>
+            implementation="io.github.fncontroloption.zj.ZigPsiDocumentationTargetProvider"/>
     <platform.backend.documentation.linkHandler
-            implementation="io.github.fncontroloption.zig.ZigPsiDocumentationLinkHandler"/>
-    <spellchecker.support language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigSpellcheckingStrategy"/>
-    <lang.braceMatcher language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigBraceMatcher"/>
-    <lang.quoteHandler language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigQuoteHandler"/>
+            implementation="io.github.fncontroloption.zj.ZigPsiDocumentationLinkHandler"/>
+    <spellchecker.support language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigSpellcheckingStrategy"/>
+    <lang.braceMatcher language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigBraceMatcher"/>
+    <lang.quoteHandler language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigQuoteHandler"/>
     <projectConfigurable parentId="language"
-                         instance="io.github.fncontroloption.zig.ZigSettingsConfigurable"
-                         id="io.github.fncontroloption.zig.ZigSettingsConfigurable"
+                         instance="io.github.fncontroloption.zj.ZigSettingsConfigurable"
+                         id="io.github.fncontroloption.zj.ZigSettingsConfigurable"
                          displayName="Zig"/>
     <!--
     <notificationGroup id="Zig" displayType="STICKY_BALLOON" hideFromSettings="true"/>
     -->
-    <breadcrumbsInfoProvider implementation="io.github.fncontroloption.zig.ZigBreadcrumbsProvider"/>
-    <languageStubDefinition language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigStubDefinition"/>
-    <stubElementRegistryExtension implementation="io.github.fncontroloption.zig.ZigStubRegistryExtension"/>
-    <stubIndex implementation="io.github.fncontroloption.zig.ZigContainerFieldStubIndex"/>
-    <stubIndex implementation="io.github.fncontroloption.zig.ZigFnDeclStubIndex"/>
-    <stubIndex implementation="io.github.fncontroloption.zig.ZigVarDeclStubIndex"/>
-    <sdkType implementation="io.github.fncontroloption.zig.ZigSdkType"/>
-    <projectSdkSetupValidator implementation="io.github.fncontroloption.zig.ZigProjectSdkSetupValidator"/>
-    <typedHandler implementation="io.github.fncontroloption.zig.ZigAutoPopupHandler" id="zigAuto" />
-    <refactoring.elementListenerProvider implementation="io.github.fncontroloption.zig.ZigRefactoringListenerProvider"/>
-    <codeInsight.parameterInfo language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigParameterInfoHandler"/>
-    <codeInsight.typeInfo language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigExpressionTypeProvider"/>
-    <additionalLibraryRootsProvider implementation="io.github.fncontroloption.zig.ZigLibraryRootsProvider"/>
-    <postStartupActivity implementation="io.github.fncontroloption.zig.ZigBuiltinProjectActivity"/>
-    <postStartupActivity implementation="io.github.fncontroloption.zig.ZigBuiltinFunctionsProjectActivity"/>
-    <postStartupActivity implementation="io.github.fncontroloption.zig.ZigModulesProjectActivity"/>
-    <postStartupActivity implementation="io.github.fncontroloption.zig.ZigBuildProjectActivity"/>
-    <postStartupActivity implementation="io.github.fncontroloption.zig.ZigExternalSystemProjectActivity"/>
-    <postStartupActivity implementation="io.github.fncontroloption.zig.ZigExeProjectActivity"/>
-    <lang.namesValidator language="ZIG" implementationClass="io.github.fncontroloption.zig.ZigNamesValidator"/>
-    <fileBasedIndex implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierIndex"/>
-    <fileBasedIndex implementation="io.github.fncontroloption.zig.ZigStringLiteralIndex"/>
-    <referencesSearch implementation="io.github.fncontroloption.zig.ZigEscapedIdentifierReferencesSearch"/>
-    <referencesSearch implementation="io.github.fncontroloption.zig.ZigModuleReferencesSearch"/>
-    <vfs.asyncListenerBackgroundable implementation="io.github.fncontroloption.zig.ZigModulesAsyncFileListener"/>
-    <vfs.asyncListenerBackgroundable implementation="io.github.fncontroloption.zig.ZigExternalSystemAsyncFileListener"/>
-    <directoryIndexExcludePolicy implementation="io.github.fncontroloption.zig.ZigDirectoryIndexExcludePolicy"/>
+    <breadcrumbsInfoProvider implementation="io.github.fncontroloption.zj.ZigBreadcrumbsProvider"/>
+    <languageStubDefinition language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigStubDefinition"/>
+    <stubElementRegistryExtension implementation="io.github.fncontroloption.zj.ZigStubRegistryExtension"/>
+    <stubIndex implementation="io.github.fncontroloption.zj.ZigContainerFieldStubIndex"/>
+    <stubIndex implementation="io.github.fncontroloption.zj.ZigFnDeclStubIndex"/>
+    <stubIndex implementation="io.github.fncontroloption.zj.ZigVarDeclStubIndex"/>
+    <sdkType implementation="io.github.fncontroloption.zj.ZigSdkType"/>
+    <projectSdkSetupValidator implementation="io.github.fncontroloption.zj.ZigProjectSdkSetupValidator"/>
+    <typedHandler implementation="io.github.fncontroloption.zj.ZigAutoPopupHandler" id="zigAuto" />
+    <refactoring.elementListenerProvider implementation="io.github.fncontroloption.zj.ZigRefactoringListenerProvider"/>
+    <codeInsight.parameterInfo language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigParameterInfoHandler"/>
+    <codeInsight.typeInfo language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigExpressionTypeProvider"/>
+    <additionalLibraryRootsProvider implementation="io.github.fncontroloption.zj.ZigLibraryRootsProvider"/>
+    <postStartupActivity implementation="io.github.fncontroloption.zj.ZigBuiltinProjectActivity"/>
+    <postStartupActivity implementation="io.github.fncontroloption.zj.ZigBuiltinFunctionsProjectActivity"/>
+    <postStartupActivity implementation="io.github.fncontroloption.zj.ZigModulesProjectActivity"/>
+    <postStartupActivity implementation="io.github.fncontroloption.zj.ZigBuildProjectActivity"/>
+    <postStartupActivity implementation="io.github.fncontroloption.zj.ZigExternalSystemProjectActivity"/>
+    <postStartupActivity implementation="io.github.fncontroloption.zj.ZigExeProjectActivity"/>
+    <lang.namesValidator language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigNamesValidator"/>
+    <fileBasedIndex implementation="io.github.fncontroloption.zj.ZigEscapedIdentifierIndex"/>
+    <fileBasedIndex implementation="io.github.fncontroloption.zj.ZigStringLiteralIndex"/>
+    <referencesSearch implementation="io.github.fncontroloption.zj.ZigEscapedIdentifierReferencesSearch"/>
+    <referencesSearch implementation="io.github.fncontroloption.zj.ZigModuleReferencesSearch"/>
+    <vfs.asyncListenerBackgroundable implementation="io.github.fncontroloption.zj.ZigModulesAsyncFileListener"/>
+    <vfs.asyncListenerBackgroundable implementation="io.github.fncontroloption.zj.ZigExternalSystemAsyncFileListener"/>
+    <directoryIndexExcludePolicy implementation="io.github.fncontroloption.zj.ZigDirectoryIndexExcludePolicy"/>
     <toolWindow id="Zig" anchor="bottom" icon="/icons/toolWindow.svg"
-                factoryClass="io.github.fncontroloption.zig.ZigToolWindowFactory"/>
-    <macro implementation="io.github.fncontroloption.zig.ZigBuildOptionsMacro"/>
-    <configurationType implementation="io.github.fncontroloption.zig.ZigRunConfigurationType"/>
+                factoryClass="io.github.fncontroloption.zj.ZigToolWindowFactory"/>
+    <macro implementation="io.github.fncontroloption.zj.ZigBuildOptionsMacro"/>
+    <configurationType implementation="io.github.fncontroloption.zj.ZigRunConfigurationType"/>
     <!--
     <fileType name="Simple File" implementationClass="org.intellij.sdk.language.SimpleFileType" fieldName="INSTANCE"
               language="Simple" extensions="simple"/>
