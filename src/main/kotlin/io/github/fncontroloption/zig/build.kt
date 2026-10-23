@@ -120,8 +120,10 @@ class ZigBuildProjectService(
             add("build")
             add("--print-configuration-path")
             addAll(settings.buildOptions)
-            add("--build-file")
-            add(projectPath.resolve("build.zig").toString())
+            if (!contains("--build-file")) {
+                add("--build-file")
+                add(projectPath.resolve("build.zig").toString())
+            }
         }
         val printResult = ZigExe(exePath).runInToolWindowAndWait(project, args)
         printResult.logErrors()
@@ -186,9 +188,10 @@ class ZigBuildWatcher(
         val args = buildList {
             add("build")
             addAll(settings.buildArgsOnSave)
-            addAll(settings.buildOptions)
-            add("--build-file")
-            add(projectPath.resolve("build.zig").toString())
+            if (!contains("--build-file")) {
+                add("--build-file")
+                add(projectPath.resolve("build.zig").toString())
+            }
         }
         return ZigExe(exePath).runInToolWindow(project, args, Listener(), mostlySilent = true)
     }

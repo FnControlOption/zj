@@ -115,6 +115,7 @@
     <toolWindow id="Zig" anchor="bottom" icon="/icons/toolWindow.svg"
                 factoryClass="io.github.fncontroloption.zig.ZigToolWindowFactory"/>
     <macro implementation="io.github.fncontroloption.zig.ZigBuildOptionsMacro"/>
+    <configurationType implementation="io.github.fncontroloption.zig.ZigRunConfigurationType"/>
     <!--
     <fileType name="Simple File" implementationClass="org.intellij.sdk.language.SimpleFileType" fieldName="INSTANCE"
               language="Simple" extensions="simple"/>
