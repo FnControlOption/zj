@@ -169,7 +169,12 @@ object ZigAnalyzer {
 
     fun createGenericParameterValue(param: ZigFnParam): ZigGenericParameterValue? {
         if (param.isAnytype) {
-            return ZigAnytypeParameterValue.of(param.createSmartPointer())
+            val paramPointer = param.createSmartPointer()
+            val value = ZigAnytypeParameterValue.of(paramPointer)
+            if (param.isComptime) {
+                return ZigComptimeParameterValue.of(value.typeOf, paramPointer)
+            }
+            return value
         }
         val typeElement = param.typeElement?.expression ?: return null
         val type = resolveValue(typeElement, ZigTypeType)
