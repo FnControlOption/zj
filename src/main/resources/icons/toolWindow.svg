@@ -1,21 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 153 140">
-<g fill="#6C707E">
-	<g>
-		<polygon points="46,22 28,44 19,30"/>
-		<polygon points="46,22 33,33 28,44 22,44 22,95 31,95 20,100 12,117 0,117 0,22" shape-rendering="crispEdges"/>
-		<polygon points="31,95 12,117 4,106"/>
-	</g>
-	<g>
-		<polygon points="56,22 62,36 37,44"/>
-		<polygon points="56,22 111,22 111,44 37,44 56,32" shape-rendering="crispEdges"/>
-		<polygon points="116,95 97,117 90,104"/>
-		<polygon points="116,95 100,104 97,117 42,117 42,95" shape-rendering="crispEdges"/>
-		<polygon points="150,0 52,117 3,140 101,22"/>
-	</g>
-	<g>
-		<polygon points="141,22 140,40 122,45"/>
-		<polygon points="153,22 153,117 106,117 120,105 125,95 131,95 131,45 122,45 132,36 141,22" shape-rendering="crispEdges"/>
-		<polygon points="125,95 130,110 106,117"/>
-	</g>
-</g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 153 140" fill="#6C707E"><g>
+	<polygon points="3,140 102,22 150,0 51,118"/>
+	<polygon points="56,22 102,22 102,44 37,44 56,35" shape-rendering="crispEdges"/>
+	<polygon points="56,22 65,39 37,44"/>
+	<polygon points="97,118 51,118 51,96 116,96 97,105" shape-rendering="crispEdges"/>
+	<polygon points="97,118 88,101 116,96"/>
+</g><g>
+	<polygon points="0,22 47,22 28,31 28,44 22,44 22,96 30.6,96 12.1,105 12.1,118 0,118" shape-rendering="crispEdges"/>
+	<polygon points="47,22 28,44 12.1,31"/>
+	<polygon points="30.6,96 12.1,118 0,105"/>
+</g><g>
+	<polygon points="153,118 106,118 125,109 125,96 131,96 131,44 122.4,44 140.9,35 140.9,22 153,22" shape-rendering="crispEdges"/>
+	<polygon points="106,118 125,96 140.9,109"/>
+	<polygon points="122.4,44 140.9,22 153,35"/>
+</g><g>
+</g></svg>
