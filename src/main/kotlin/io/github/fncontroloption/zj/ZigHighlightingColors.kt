@@ -1,6 +1,5 @@
 package io.github.fncontroloption.zj
 
-import com.intellij.ide.highlighter.JavaHighlightingColors
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.colors.TextAttributesKey
@@ -36,7 +35,7 @@ object ZigHighlightingColors {
     val LOCAL_VARIABLE = TextAttributesKey.createTextAttributesKey("ZIG_LOCAL_VARIABLE", DefaultLanguageHighlighterColors.LOCAL_VARIABLE)
     val REASSIGNED_LOCAL_VARIABLE = TextAttributesKey.createTextAttributesKey("ZIG_REASSIGNED_LOCAL_VARIABLE", DefaultLanguageHighlighterColors.REASSIGNED_LOCAL_VARIABLE)
     val PARAMETER = TextAttributesKey.createTextAttributesKey("ZIG_PARAMETER", DefaultLanguageHighlighterColors.PARAMETER)
-    val COMPTIME_PARAMETER = TextAttributesKey.createTextAttributesKey("ZIG_COMPTIME_PARAMETER", JavaHighlightingColors.TYPE_PARAMETER_NAME_ATTRIBUTES)
+    val COMPTIME_PARAMETER = TextAttributesKey.createTextAttributesKey("ZIG_COMPTIME_PARAMETER", DefaultLanguageHighlighterColors.PARAMETER)
     val ERROR_NAME = TextAttributesKey.createTextAttributesKey("ZIG_ERROR_NAME", DefaultLanguageHighlighterColors.PREDEFINED_SYMBOL)
 
     // @formatter:on
