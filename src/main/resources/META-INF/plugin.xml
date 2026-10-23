@@ -4,7 +4,7 @@
   <id>io.github.fncontroloption.zig</id>
 
   <!-- Text to display as name on Settings | Plugin page -->
-  <name>Zig Syntax Highlighter</name>
+  <name>ZJ</name>
 
   <!-- Product and plugin compatibility requirements -->
   <depends>com.intellij.modules.platform</depends>

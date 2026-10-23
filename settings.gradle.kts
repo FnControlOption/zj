@@ -1,6 +1,6 @@
 import org.jetbrains.intellij.platform.gradle.extensions.intellijPlatform
 
-rootProject.name = "intellij-zig"
+rootProject.name = "zj"
 
 pluginManagement {
     plugins {
