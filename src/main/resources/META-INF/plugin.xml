@@ -8,6 +8,7 @@
 
   <!-- Product and plugin compatibility requirements -->
   <depends>com.intellij.modules.platform</depends>
+  <incompatible-with>com.falsepattern.zigbrains</incompatible-with>
 
   <!-- Text to display as description on Settings | Plugin page -->
   <!--
