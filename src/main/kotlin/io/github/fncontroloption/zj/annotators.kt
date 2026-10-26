@@ -575,3 +575,71 @@ private fun annotateLabelRedefinition(element: PsiElement, holder: AnnotationHol
         return
     }
 }
+
+class X : Annotator {
+    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+        if (element !is ZigSwitch) {
+            return
+        }
+        val items = mutableSetOf<ZigValue>()
+        var hasElse = false
+        var severity = HighlightSeverity.ERROR
+        for (prong in element.prongs) {
+            if (prong.isElse) {
+                hasElse = true
+                severity = HighlightSeverity.INFORMATION
+                continue
+            }
+            for (item in prong.items) {
+                items.add(ZigAnalyzer.resolveValue(item.expression))
+            }
+        }
+        val condition = ZigAnalyzer.resolveValue(element.conditionElement.expression)
+        val remaining = mutableSetOf<String>()
+        when (val conditionType = condition.typeOf) {
+            is ZigBoolType -> {
+                if (ZigTrueValue !in items) {
+                    remaining.add("true")
+                }
+                if (ZigFalseValue !in items) {
+                    remaining.add("false")
+                }
+            }
+            is ZigContainerType -> when (conditionType.containerKind) {
+                ZigContainerKind.ENUM -> return // TODO
+                ZigContainerKind.UNION -> return // TODO
+                else -> return
+            }
+            is ZigErrorSetType -> return // TODO
+            else -> return
+        }
+        if (remaining.isEmpty()) {
+            return
+        }
+        var builder = holder.newAnnotation(severity, "'switch' must handle all possibilities")
+        builder = builder.range(element.switchTokenElement)
+        if (!hasElse) {
+            builder = builder.newFix(Z(element)).range(element.textRange).registerFix()
+        }
+        builder = builder.newFix(Y(element, remaining)).range(element.textRange).registerFix()
+        builder.create()
+    }
+}
+
+private class Z(element: ZigSwitch) : PsiUpdateModCommandAction<ZigSwitch>(element) {
+    override fun getFamilyName() = "Add else prong"
+    override fun invoke(context: ActionContext, element: ZigSwitch, updater: ModPsiUpdater) {
+        val project = element.project
+        val range = createZigSwitchProngs(project, setOf("else"))
+        element.addProngs(range)
+    }
+}
+
+private class Y(element: ZigSwitch, val remaining: Collection<String>) : PsiUpdateModCommandAction<ZigSwitch>(element) {
+    override fun getFamilyName() = "Add remaining prongs"
+    override fun invoke(context: ActionContext, element: ZigSwitch, updater: ModPsiUpdater) {
+        val project = element.project
+        val range = createZigSwitchProngs(project, remaining)
+        element.addProngs(range)
+    }
+}

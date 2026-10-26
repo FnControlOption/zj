@@ -1277,11 +1277,30 @@ class ZigSuspend(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigSwitch(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
+    val switchTokenElement: PsiElement
+        get() = findNotNullChildByType(ZigTokenType.KEYWORD_SWITCH)
+
     val conditionElement: ZigConditionElement
         get() = findNotNullChildByClass(ZigConditionElement::class.java)
 
+    val leftBraceElement: PsiElement?
+        get() = findChildByType(ZigTokenType.L_BRACE)
+
     val prongs: Sequence<ZigSwitchProng>
         get() = firstChild.siblings().filterIsInstance<ZigSwitchProng>()
+
+    fun addProngs(range: Pair<ZigSwitchProng, ZigSwitchProng>) {
+        val (first, last) = range
+        val brace = leftBraceElement ?: TODO()
+        val newline = PsiParserFacade.getInstance(project).createWhiteSpaceFromText("\n")
+        val comma = createZigComma(project)
+        if (prongs.none()) {
+            addAfter(newline, brace)
+        }
+        addAfter(comma, brace)
+        addRangeAfter(first, last, brace)
+        addAfter(newline, brace)
+    }
 }
 
 class ZigSwitchItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
@@ -1830,10 +1849,34 @@ fun createZigDiscard(project: Project, name: String): ZigAssign {
 }
 
 fun createZigSemicolon(project: Project): PsiElement {
-    val text = "const dummy = 42;"
+    val file = createZigFile(project, ";")
+    val error = file.firstChild as PsiErrorElement
+    val semicolon = error.firstChild
+    assert(semicolon.elementType === ZigTokenType.SEMICOLON)
+    return semicolon
+}
+
+fun createZigSwitchProngs(project: Project, items: Collection<String>): Pair<ZigSwitchProng, ZigSwitchProng> {
+    require(items.isNotEmpty())
+    val text = buildString {
+        append("const dummy = switch (undefined) {\n")
+        for (item in items) {
+            append("$item => @panic(\"TODO\"),\n")
+        }
+        append("};")
+    }
     val file = createZigFile(project, text)
     val varDecl = file.members.first() as ZigVarDecl
-    val semicolon = varDecl.nextSibling!!
-    assert(semicolon.elementType === ZigTokenType.SEMICOLON)
+    val switch = varDecl.initializer as ZigSwitch
+    val prongs = switch.prongs.toList()
+    check(prongs.isNotEmpty())
+    return Pair(prongs.first(), prongs.last())
+}
+
+fun createZigComma(project: Project): PsiElement {
+    val file = createZigFile(project, ",")
+    val error = file.firstChild as PsiErrorElement
+    val semicolon = error.firstChild
+    assert(semicolon.elementType === ZigTokenType.COMMA)
     return semicolon
 }

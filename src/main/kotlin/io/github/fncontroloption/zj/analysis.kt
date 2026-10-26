@@ -51,7 +51,7 @@ private val PRIMITIVE_VALUES = mapOf(
 )
 
 object ZigAnalyzer {
-    fun resolveValue(element: ZigExpression): ZigValue {
+    fun resolveValue(element: ZigExpression?): ZigValue {
         return io.github.fncontroloption.zj.resolveValue(element)
     }
 
