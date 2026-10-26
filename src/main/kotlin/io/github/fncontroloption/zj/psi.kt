@@ -383,12 +383,39 @@ class ZigBitXor(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
 }
 
 class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
+    val leftBraceElement: PsiElement
+        get() = findNotNullChildByType(ZigTokenType.L_BRACE)
+
     val statements: Sequence<ZigElement>
         get() =
             firstChild
                 .siblings()
                 .filterIsInstance<ZigElement>()
                 .filter { it !is ZigLabelDecl }
+
+    fun addStatementFirst(statement: ZigElement) {
+        val brace = leftBraceElement
+        val newline = PsiParserFacade.getInstance(project).createWhiteSpaceFromText("\n")
+        val semicolon = createZigSemicolon(project)
+        if (statements.none()) {
+            addAfter(newline, brace)
+        }
+        addAfter(semicolon, brace)
+        addAfter(statement, brace)
+        addAfter(newline, brace)
+    }
+
+    fun addStatementAfter(statement: ZigElement, anchor: ZigElement) {
+        val newline = PsiParserFacade.getInstance(project).createWhiteSpaceFromText("\n")
+        var semicolon = anchor.nextSibling?.takeIf { it.elementType === ZigTokenType.SEMICOLON }
+        if (semicolon == null) {
+            semicolon = createZigSemicolon(project)
+            semicolon = addAfter(semicolon, anchor)
+        }
+        addAfter(semicolon, semicolon)
+        addAfter(statement, semicolon)
+        addAfter(newline, semicolon)
+    }
 
     companion object {
         fun statementToVarDecls(statement: ZigElement): Sequence<ZigVarDeclOrProto> {
@@ -1788,4 +1815,25 @@ private inline fun addVisibilityIcon(
         return IconManager.getInstance().createRowIcon(baseIcon, visibility())
     }
     return baseIcon
+}
+
+fun createZigDiscard(project: Project, name: String): ZigAssign {
+    val text = buildString {
+        append("const dummy = { _ = ")
+        renderZigIdentifier(name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING, this)
+        append("; };")
+    }
+    val file = createZigFile(project, text)
+    val varDecl = file.members.first() as ZigVarDecl
+    val block = varDecl.initializer as ZigBlock
+    return block.statements.single() as ZigAssign
+}
+
+fun createZigSemicolon(project: Project): PsiElement {
+    val text = "const dummy = 42;"
+    val file = createZigFile(project, text)
+    val varDecl = file.members.first() as ZigVarDecl
+    val semicolon = varDecl.nextSibling!!
+    assert(semicolon.elementType === ZigTokenType.SEMICOLON)
+    return semicolon
 }

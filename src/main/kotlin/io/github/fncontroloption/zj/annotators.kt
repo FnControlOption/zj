@@ -1,8 +1,13 @@
+@file:Suppress("UnstableApiUsage")
+
 package io.github.fncontroloption.zj
 
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.modcommand.ActionContext
+import com.intellij.modcommand.ModPsiUpdater
+import com.intellij.modcommand.PsiUpdateModCommandAction
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.util.text.Strings
 import com.intellij.psi.PsiElement
@@ -85,7 +90,47 @@ private fun annotateUnusedLabel(labelable: ZigLabelable, kind: String, holder: A
         .create()
 }
 
-private class DeclarationInfo(val identifier: PsiElement, val kind: String)
+private class DeclarationInfo(
+    val fix: UnusedFix<*>,
+    val identifier: PsiElement,
+    val kind: String,
+)
+
+private sealed class UnusedFix<E : ZigNameIdentifierOwner>(element: E) : PsiUpdateModCommandAction<E>(element) {
+    override fun getFamilyName() = "Assign to '_'"
+}
+
+private class UnusedVariableFix(element: ZigVarDeclOrProto) : UnusedFix<ZigVarDeclOrProto>(element) {
+    override fun invoke(context: ActionContext, element: ZigVarDeclOrProto, updater: ModPsiUpdater) {
+        val name = element.name ?: return
+        val statement = when (element) {
+            is ZigVarDecl -> element
+            is ZigVarProto -> element.containingAssignDestructure
+        }
+        val block = statement.parent as ZigBlock
+        val project = element.project
+        val discard = createZigDiscard(project, name)
+        block.addStatementAfter(discard, statement)
+    }
+}
+
+private class UnusedParameterFix(element: ZigFnParam) : UnusedFix<ZigFnParam>(element) {
+    override fun invoke(context: ActionContext, element: ZigFnParam, updater: ModPsiUpdater) {
+        val name = element.name ?: return
+        val function = element.containingFunction
+        val body = function.body ?: return
+        val project = element.project
+        val discard = createZigDiscard(project, name)
+        body.addStatementFirst(discard)
+    }
+}
+
+private class UnusedCaptureFix(element: ZigPayloadItem) : UnusedFix<ZigPayloadItem>(element) {
+    override fun invoke(context: ActionContext, element: ZigPayloadItem, updater: ModPsiUpdater) {
+        val payload = element.containingPayload
+        // TODO: add discard to beginning of then/else body
+    }
+}
 
 private fun findUsedDeclarations(
     element: PsiElement?,
@@ -124,7 +169,7 @@ private fun createUnusedAnnotations(
         holder.newAnnotation(HighlightSeverity.ERROR, "Unused ${info.kind}")
             // TODO: .problemGroup {}
             .range(info.identifier)
-            // TODO: .newFix().registerFix()
+            .withFix(info.fix)
             .create()
     }
 }
@@ -142,7 +187,8 @@ private fun annotateUnusedVariables(block: ZigBlock, holder: AnnotationHolder) {
                 ZigMutability.CONST -> "local constant"
                 ZigMutability.VAR -> "local variable"
             }
-            declarations.putIfAbsent(name, DeclarationInfo(identifier, kind))
+            val fix = UnusedVariableFix(variable)
+            declarations.putIfAbsent(name, DeclarationInfo(fix, identifier, kind))
         }
     }
     createUnusedAnnotations(declarations, used, holder)
@@ -157,7 +203,8 @@ private fun annotateUnusedParameters(function: ZigFnDecl, holder: AnnotationHold
         val identifier = parameter.nameIdentifier ?: continue
         if (identifier.textMatches("_")) continue
         val name = parseZigIdentifier(identifier) ?: continue
-        declarations.putIfAbsent(name, DeclarationInfo(identifier, "function parameter"))
+        val fix = UnusedParameterFix(parameter)
+        declarations.putIfAbsent(name, DeclarationInfo(fix, identifier, "function parameter"))
     }
     findUsedDeclarations(function.returnTypeElement, declarations, used)
     findUsedDeclarations(body, declarations, used)
@@ -172,7 +219,8 @@ private fun annotateUnusedCaptures(payload: ZigPayload?, bodies: List<ZigElement
         val identifier = item.nameIdentifier ?: continue
         if (identifier.textMatches("_")) continue
         val name = parseZigIdentifier(identifier) ?: continue
-        declarations.putIfAbsent(name, DeclarationInfo(identifier, "capture"))
+        val fix = UnusedCaptureFix(item)
+        declarations.putIfAbsent(name, DeclarationInfo(fix, identifier, "capture"))
     }
     for (body in bodies) {
         findUsedDeclarations(body, declarations, used)
