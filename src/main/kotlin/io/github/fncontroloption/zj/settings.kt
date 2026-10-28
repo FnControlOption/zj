@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 class ZigSettings(private val project: Project) : SimplePersistentStateComponent<ZigSettings.State>(State()) {
     class State : BaseState() {
         var buildOptions by string()
-        var buildOnSave by property(true)
+        var buildOnSave by property(false)
         var buildArgsOnSave by string("check --watch $${ZIG_BUILD_OPTIONS_MACRO_NAME}$")
         var runAstCheck by property(false)
     }
