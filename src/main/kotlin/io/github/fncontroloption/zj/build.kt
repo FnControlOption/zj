@@ -15,6 +15,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.platform.ide.progress.withBackgroundProgress
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.SerialName
@@ -116,7 +117,22 @@ class ZigBuildProjectService(
 
     private suspend fun getBuildConfig(projectPath: Path, exePath: Path): FetchResult {
         val settings = project.service<ZigSettings>()
-        val args = buildList {
+        val fetchArgs = buildList {
+            add("build")
+            add("--fetch")
+            addAll(settings.buildOptions)
+            if (!contains("--build-file")) {
+                add("--build-file")
+                add(projectPath.resolve("build.zig").toString())
+            }
+        }
+        val fetchResult = withBackgroundProgress(project, "Fetching dependencies\u2026") {
+            ZigExe(exePath).runInToolWindowAndWait(project, ZigToolWindowTab.FETCH, fetchArgs)
+        }
+        if (!fetchResult.success) {
+            return FetchResult.Err(fetchResult.errorMessages)
+        }
+        val printArgs = buildList {
             add("build")
             add("--print-configuration-path")
             addAll(settings.buildOptions)
@@ -125,8 +141,9 @@ class ZigBuildProjectService(
                 add(projectPath.resolve("build.zig").toString())
             }
         }
-        val printResult = ZigExe(exePath).runInToolWindowAndWait(project, args)
-        printResult.logErrors()
+        val printResult = withBackgroundProgress(project, "Loading build configuration\u2026") {
+            ZigExe(exePath).runInToolWindowAndWait(project, ZigToolWindowTab.BUILD, printArgs)
+        }
         if (!printResult.success) {
             return FetchResult.Err(printResult.errorMessages)
         }
@@ -193,7 +210,13 @@ class ZigBuildWatcher(
                 add(projectPath.resolve("build.zig").toString())
             }
         }
-        return ZigExe(exePath).runInToolWindow(project, args, Listener(), mostlySilent = true)
+        return ZigExe(exePath).runInToolWindow(
+            project = project,
+            tab = ZigToolWindowTab.BUILD,
+            args = args,
+            processListener = Listener(),
+            mostlySilent = true,
+        )
     }
 
     @Volatile
