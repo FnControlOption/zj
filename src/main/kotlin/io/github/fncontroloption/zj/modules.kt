@@ -71,7 +71,7 @@ class ZigModulesProjectService(
                 is ZigBuildProjectService.FetchResult.Ok -> fetchResult.buildConfig
             }
             if (projectPath == null) return@combine
-            withBackgroundProgress(project, "Loading Zig modules\u2026") {
+            withBackgroundProgress(project, "Loading modules\u2026") {
                 smartReadAction(project) {
                     val modules = buildConfig.modules + getBuildFileModules(projectPath)
                     cachedModules = modules.associateBy { it.index }

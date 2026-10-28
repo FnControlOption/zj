@@ -2,7 +2,9 @@ package io.github.fncontroloption.zj
 
 import com.intellij.codeInsight.daemon.ProjectSdkSetupValidator
 import com.intellij.execution.configurations.GeneralCommandLine
+import com.intellij.execution.configurations.PtyCommandLine
 import com.intellij.execution.process.CapturingProcessAdapter
+import com.intellij.execution.process.KillableColoredProcessHandler
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.process.ProcessListener
 import com.intellij.openapi.application.ApplicationManager
@@ -22,7 +24,6 @@ import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.openapi.util.text.Strings
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.backend.workspace.workspaceModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -195,28 +196,41 @@ data class ZigExe(val path: Path) {
 
     suspend fun runInToolWindow(
         project: Project,
+        tab: ZigToolWindowTab,
         args: List<String>,
         processListener: ProcessListener,
         mostlySilent: Boolean,
     ): OSProcessHandler {
         val commandLine =
-            GeneralCommandLine()
-                .withExePath(path.toString())
-                .withParameters(args)
-                .withCharset(Charsets.UTF_8)
+            if (tab.allowsAnsiEscapes)
+                PtyCommandLine()
+                    .withConsoleMode(false)
+                    .withExePath(path.toString())
+                    .withParameters(args)
+            else
+                GeneralCommandLine()
+                    .withExePath(path.toString())
+                    .withParameters(args)
 
         val processHandler =
-            if (mostlySilent)
-                OSProcessHandler.Silent(commandLine)
+            if (tab.allowsAnsiEscapes)
+                if (mostlySilent)
+                    KillableColoredProcessHandler.Silent(commandLine).apply { setShouldKillProcessSoftly(false) }
+                else
+                    KillableColoredProcessHandler(commandLine).apply { setShouldKillProcessSoftly(false) }
             else
-                OSProcessHandler(commandLine)
+                if (mostlySilent)
+                    OSProcessHandler.Silent(commandLine)
+                else
+                    OSProcessHandler(commandLine)
 
         processHandler.addProcessListener(processListener)
 
         withContext(Dispatchers.EDT) {
-            val console = getZigBuildConsole(project)
+            val console = getZigToolWindowConsole(project, tab)
             console?.attachToProcess(processHandler)
             processHandler.startNotify()
+            activateZigToolWindow(project, tab)
         }
 
         return processHandler
@@ -224,10 +238,11 @@ data class ZigExe(val path: Path) {
 
     suspend fun runInToolWindowAndWait(
         project: Project,
+        tab: ZigToolWindowTab,
         args: List<String>,
     ): Result {
         val processListener = CapturingProcessAdapter()
-        val processHandler = runInToolWindow(project, args, processListener, mostlySilent = false)
+        val processHandler = runInToolWindow(project, tab, args, processListener, mostlySilent = false)
         try {
             while (!processHandler.waitFor(100)) {
                 ProgressManager.checkCanceled()
@@ -238,13 +253,6 @@ data class ZigExe(val path: Path) {
             }
         }
         val exitCode = processHandler.exitCode
-        if (exitCode != 0) {
-            withContext(Dispatchers.EDT) {
-                val toolWindowManager = ToolWindowManager.getInstance(project)
-                val toolWindow = toolWindowManager.getToolWindow("Zig")
-                toolWindow?.activate(null)
-            }
-        }
         val stdout = processListener.output.stdout
         val stderr = processListener.output.stderr
         return Result(path, stdout, stderr, exitCode)
