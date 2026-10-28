@@ -20,9 +20,9 @@ dependencies {
   intellijPlatform {
     intellijIdea("2025.3.6.1")
     bundledPlugin("com.intellij.java")
+    bundledPlugin("org.jetbrains.kotlin")
 
     testFramework(TestFrameworkType.Platform)
-    testFramework(TestFrameworkType.Plugin.Java)
   }
 
   testImplementation("junit:junit:4.13.2")
