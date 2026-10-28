@@ -73,11 +73,14 @@ private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
 private fun annotateUnusedLabel(labelable: ZigLabelable, kind: String, holder: AnnotationHolder) {
     val identifier = labelable.labelDecl?.identifierElement ?: return
     val name = parseZigIdentifier(identifier) ?: return
-    val traverser = SyntaxTraverser.psiTraverser(labelable).expand { it !is ZigContainerExpression }
-    for (child in traverser) {
-        if (child is ZigLabelRef && name == parseZigIdentifier(child.identifierElement)) {
-            return
-        }
+    val used =
+        SyntaxTraverser
+            .psiTraverser(labelable)
+            .expand { it !is ZigContainer }
+            .filterIsInstance<ZigLabelRef>()
+            .any { name == parseZigIdentifier(it.identifierElement) }
+    if (used) {
+        return
     }
     holder.newAnnotation(HighlightSeverity.ERROR, "Unused $kind label")
         // TODO: .problemGroup {}

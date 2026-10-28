@@ -17,6 +17,7 @@ import com.intellij.psi.stubs.StubElement
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.elementType
 import com.intellij.psi.util.findParentInFile
+import com.intellij.psi.util.parents
 import com.intellij.psi.util.siblings
 import com.intellij.ui.IconManager
 import com.intellij.util.BitUtil
@@ -383,12 +384,18 @@ class ZigBitXor(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
 }
 
 class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
+    val leftBraceElement: PsiElement
+        get() = firstChild.siblings().first { it.elementType == ZigTokenType.L_BRACE }
+
     val statements: Sequence<ZigElement>
         get() =
             firstChild
                 .siblings()
                 .filterIsInstance<ZigElement>()
                 .filter { it !is ZigLabelDecl }
+
+    val rightBraceElement: PsiElement?
+        get() = lastChild.siblings(forward = false).firstOrNull { it.elementType == ZigTokenType.R_BRACE }
 
     companion object {
         fun statementToVarDecls(statement: ZigElement): Sequence<ZigVarDeclOrProto> {
@@ -418,10 +425,31 @@ class ZigBoolOr(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
         get() = ZigTokenType.KEYWORD_OR
 }
 
-class ZigBreak(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
+sealed interface ZigBreakOrContinue : ZigExpression {
+    val referencedLabelable: ZigLabelable?
+        get() {
+            val labelRef = labelRef
+            return if (labelRef != null) {
+                val label = parseZigIdentifier(labelRef.identifierElement) ?: return null
+                parents(withSelf = false)
+                    .takeWhile { it !is ZigContainer }
+                    .filterIsInstance<ZigLabelable>()
+                    .firstOrNull { label == parseZigIdentifier(it.labelDecl?.identifierElement) }
+            } else {
+                parents(withSelf = false)
+                    .takeWhile { it !is ZigContainer }
+                    .filterIsInstance<ZigThenElement>()
+                    .map { it.parent }
+                    .filterIsInstance<ZigLoop>()
+                    .firstOrNull()
+            }
+        }
+
     val labelRef: ZigLabelRef?
         get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigLabelRef }
+}
 
+class ZigBreak(node: ASTNode) : ASTWrapperPsiElement(node), ZigBreakOrContinue {
     val breakOperand: ZigExpression?
         get() =
             lastChild
@@ -592,10 +620,7 @@ class ZigContainerFieldImpl : ZigStubPsiElement<ZigContainerFieldStub>, ZigConta
     }
 }
 
-class ZigContinue(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
-    val labelRef: ZigLabelRef?
-        get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigLabelRef }
-
+class ZigContinue(node: ASTNode) : ASTWrapperPsiElement(node), ZigBreakOrContinue {
     val continueOperand: ZigExpression?
         get() =
             lastChild
@@ -721,7 +746,10 @@ sealed interface ZigFnOrBuiltinFnDeclOrProto : ZigElement {
     val body: ZigBlock?
 }
 
-sealed interface ZigFnDeclOrProto : ZigFnOrBuiltinFnDeclOrProto
+sealed interface ZigFnDeclOrProto : ZigFnOrBuiltinFnDeclOrProto {
+    val fnTokenElement: PsiElement
+        get() = firstChild.siblings().first { it.elementType == ZigTokenType.KEYWORD_FN }
+}
 
 class ZigFnDecl : ZigStubPsiElement<ZigFnDeclStub>, ZigFnDeclOrProto, ZigNamedContainerDecl {
     constructor(stub: ZigFnDeclStub) : super(stub, ZigElementType.FN_DECL)
@@ -798,6 +826,9 @@ class ZigBuiltinFnProto(node: ASTNode) :
 }
 
 class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop {
+    val forTokenElement: PsiElement
+        get() = firstChild.siblings().first { it.elementType == ZigTokenType.KEYWORD_FOR }
+
     val inputs: Sequence<ZigForInput>
         get() = firstChild.siblings().filterIsInstance<ZigForInput>()
 
@@ -1250,6 +1281,9 @@ class ZigSuspend(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigSwitch(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
+    val switchTokenElement: PsiElement
+        get() = firstChild.siblings().first { it.elementType == ZigTokenType.KEYWORD_SWITCH }
+
     val conditionElement: ZigConditionElement
         get() = findNotNullChildByClass(ZigConditionElement::class.java)
 
@@ -1484,6 +1518,9 @@ class ZigVarProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto
 }
 
 class ZigWhile(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop {
+    val whileTokenElement: PsiElement
+        get() = firstChild.siblings().first { it.elementType == ZigTokenType.KEYWORD_WHILE }
+
     val conditionElement: ZigConditionElement
         get() = findNotNullChildByClass(ZigConditionElement::class.java)
 

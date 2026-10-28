@@ -1849,7 +1849,7 @@ private fun computeFunctionReturnValue(
         val functionBodyElement = (functionElement as? ZigFnDecl)?.body
         if (functionBodyElement != null) {
             val genericParams = computeGenericParams(type, arguments)
-            val traverser = SyntaxTraverser.psiTraverser(functionBodyElement).expand { it !is ZigContainerExpression }
+            val traverser = SyntaxTraverser.psiTraverser(functionBodyElement).expand { it !is ZigContainer }
             val values = traverser
                 .asSequence()
                 .filterIsInstance<ZigReturn>()
@@ -1964,12 +1964,13 @@ private fun computeValuesFromLabeledBreaks(element: ZigLabelable): Sequence<ZigV
 }
 
 private fun getLabeledBreaksFor(element: ZigLabelable): Sequence<ZigBreak> {
-    val labelDecl = element.labelDecl ?: return emptySequence()
-    val labelName = parseZigIdentifier(labelDecl.identifierElement) ?: return emptySequence()
-    val traverser = SyntaxTraverser.psiTraverser(element).expand { it !is ZigContainerExpression }
-    return traverser.asSequence().filterIsInstance<ZigBreak>().filter {
-        labelName == parseZigIdentifier(it.labelRef?.identifierElement)
-    }
+    val label = parseZigIdentifier(element.labelDecl?.identifierElement) ?: return emptySequence()
+    return SyntaxTraverser
+        .psiTraverser(element)
+        .expand { it !is ZigContainer }
+        .asSequence()
+        .filterIsInstance<ZigBreak>()
+        .filter { label == parseZigIdentifier(it.labelRef?.identifierElement) }
 }
 
 private fun computeValuesFromUnlabeledBreaks(loop: ZigLoop): Sequence<ZigValue> {
@@ -1977,14 +1978,22 @@ private fun computeValuesFromUnlabeledBreaks(loop: ZigLoop): Sequence<ZigValue> 
 }
 
 private fun getUnlabeledBreaksFor(loop: ZigLoop): Sequence<ZigBreak> {
-    val traverser = SyntaxTraverser.psiTraverser(loop.thenElement).expand { descendant ->
-        when (descendant) {
-            is ZigContainerExpression -> false
-            is ZigThenElement -> descendant.parent == loop || descendant.parent !is ZigLoop
-            else -> true
+    return SyntaxTraverser
+        .psiTraverser(loop.thenElement)
+        .expand { descendant ->
+            when (descendant) {
+                is ZigContainer -> false
+                is ZigThenElement -> when (descendant.parent) {
+                    loop -> true
+                    is ZigLoop -> false
+                    else -> true
+                }
+                else -> true
+            }
         }
-    }
-    return traverser.asSequence().filterIsInstance<ZigBreak>().filter { it.labelRef == null }
+        .asSequence()
+        .filterIsInstance<ZigBreak>()
+        .filter { it.labelRef == null }
 }
 
 private fun resolveBreakValue(element: ZigBreak): ZigValue {
@@ -3269,30 +3278,7 @@ private fun inferBreak(
     if (parentElement.breakOperand !== childElement) {
         return ZigUnknown.TYPE
     }
-    val labelElement = parentElement.labelRef?.identifierElement
-    val breakable = if (labelElement != null) {
-        val label = parseZigIdentifier(labelElement)
-            ?: return ZigUnknown.TYPE
-        parentElement.parents(withSelf = false).firstNotNullOfOrNull {
-            when (it) {
-                is ZigLabelable if label == parseZigIdentifier(it.labelDecl?.identifierElement) -> it
-                else -> null
-            }
-        }
-    } else {
-        var foundThenElemAsChild = false
-        parentElement.parents(withSelf = false).firstNotNullOfOrNull { current ->
-            if (foundThenElemAsChild && current is ZigLoop) {
-                current
-            } else {
-                foundThenElemAsChild = current is ZigThenElement
-                null
-            }
-        }
-    }
-    if (breakable == null) {
-        return ZigUnknown.TYPE
-    }
+    val breakable = parentElement.referencedLabelable ?: return ZigUnknown.TYPE
     val types = mutableSetOf<ZigValue>()
     types += inferResultType(breakable)
     var breakElements = getLabeledBreaksFor(breakable)
@@ -3313,11 +3299,7 @@ private fun inferContinue(
     if (parentElement.continueOperand !== childElement) {
         return ZigUnknown.TYPE
     }
-    val label = parseZigIdentifier(parentElement.labelRef?.identifierElement)
-        ?: return ZigUnknown.TYPE
-    val labelable = parentElement.findParentInFile {
-        it is ZigLabelable && label == parseZigIdentifier(it.labelDecl?.identifierElement)
-    }
+    val labelable = parentElement.referencedLabelable
     if (labelable !is ZigSwitch) {
         return ZigUnknown.TYPE
     }
