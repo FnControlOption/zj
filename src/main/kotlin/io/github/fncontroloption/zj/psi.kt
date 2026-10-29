@@ -958,24 +958,30 @@ class ZigIdentifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
     override fun getReferences() = arrayOf(ZigIdentifierReference(this))
 }
 
-class ZigIf(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
+sealed interface ZigIf : ZigElement {
     val conditionElement: ZigConditionElement
-        get() = findNotNullChildByClass(ZigConditionElement::class.java)
+        get() = firstChild.siblings().filterIsInstance<ZigConditionElement>().first()
 
     val thenPayload: ZigThenPayload?
-        get() = findChildByClass(ZigThenPayload::class.java)
+        get() = firstChild.siblings().filterIsInstance<ZigThenPayload>().firstOrNull()
 
     val thenElement: ZigThenElement
-        get() = findNotNullChildByClass(ZigThenElement::class.java)
+        get() = firstChild.siblings().filterIsInstance<ZigThenElement>().first()
 
     val elseTokenElement: PsiElement?
-        get() = findChildByType(ZigTokenType.KEYWORD_ELSE)
+        get() = lastChild.siblings(forward = false).firstOrNull { it.elementType == ZigTokenType.KEYWORD_ELSE }
 
     val elsePayload: ZigElsePayload?
-        get() = findChildByClass(ZigElsePayload::class.java)
+        get() = lastChild.siblings(forward = false).filterIsInstance<ZigElsePayload>().firstOrNull()
 
     val elseElement: ZigElseElement?
-        get() = findChildByClass(ZigElseElement::class.java)
+        get() = lastChild.siblings(forward = false).filterIsInstance<ZigElseElement>().firstOrNull()
+}
+
+class ZigIfExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigIf, ZigExpression {
+}
+
+class ZigIfStatement(node: ASTNode) : ASTWrapperPsiElement(node), ZigIf {
 }
 
 class ZigLabelDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigNameIdentifierOwner {

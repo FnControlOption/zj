@@ -1243,8 +1243,8 @@ class ZigParser : PsiParser {
             }
             if (builder.tokenType === ZigTokenType.SEMICOLON) {
                 thenMarker.done(ZigElementType.THEN)
-                ifMarker.done(ZigElementType.IF)
                 builder.advanceLexer()
+                ifMarker.done(ZigElementType.IF_STATEMENT)
                 return ifMarker
             }
             elseRequired = true
@@ -1258,7 +1258,7 @@ class ZigParser : PsiParser {
         } else if (elseRequired) {
             builder.mark().error("Expected ';' or 'else' after statement")
         }
-        ifMarker.done(ZigElementType.IF)
+        ifMarker.done(ZigElementType.IF_STATEMENT)
         return ifMarker
     }
 
@@ -1356,7 +1356,7 @@ class ZigParser : PsiParser {
             tryBody(builder)
             elseMarker.done(ZigElementType.ELSE)
         }
-        marker.done(ZigElementType.IF)
+        marker.done(ZigElementType.IF_EXPRESSION)
         return marker
     }
 
