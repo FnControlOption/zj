@@ -106,13 +106,7 @@ sealed interface ZigLabelable : ZigElement {
         get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigLabelDecl }
 }
 
-sealed interface ZigLoop : ZigLabelable {
-    val thenElement: ZigThenElement
-        get() = firstChild.siblings().firstNotNullOf { it as? ZigThenElement }
-
-    val elseElement: ZigElseElement?
-        get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigElseElement }
-}
+sealed interface ZigLoop : ZigLabelable, ZigIfOrLoop
 
 sealed interface ZigModifier : ZigElement {
     val expression: ZigExpression?
@@ -442,7 +436,7 @@ sealed interface ZigBreakOrContinue : ZigExpression {
                 parents(withSelf = false)
                     .takeWhile { it !is ZigContainer }
                     .filterIsInstance<ZigThenElement>()
-                    .map { it.parent }
+                    .map { it.containingIfOrLoop }
                     .filterIsInstance<ZigLoop>()
                     .firstOrNull()
             }
@@ -659,11 +653,14 @@ class ZigDiv(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression {
 }
 
 class ZigElseElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val containingIfOrLoop: ZigIfOrLoop
+        get() = parent as ZigIfOrLoop
+
     val payload: ZigElsePayload?
-        get() = when (val parent = parent) {
-            is ZigIf -> parent.elsePayload
-            is ZigWhile -> parent.elsePayload
-            else -> null
+        get() = when (val ifOrLoop = containingIfOrLoop) {
+            is ZigIf -> ifOrLoop.elsePayload
+            is ZigWhile -> ifOrLoop.elsePayload
+            is ZigFor -> null
         }
 
     val clause: ZigClause?
@@ -674,11 +671,8 @@ class ZigElseElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigElsePayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
-    val containingIf: ZigIf?
-        get() = parent as? ZigIf
-
-    val containingWhile: ZigWhile?
-        get() = parent as? ZigWhile
+    val containingIfOrWhile: ZigIfOrWhile
+        get() = parent as ZigIfOrWhile
 }
 
 class ZigEnumLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
@@ -956,25 +950,29 @@ class ZigIdentifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
     override fun getReferences() = arrayOf(ZigIdentifierReference(this))
 }
 
-sealed interface ZigIf : ZigElement {
+sealed interface ZigIfOrLoop : ZigElement {
+    val thenElement: ZigThenElement
+        get() = firstChild.siblings().filterIsInstance<ZigThenElement>().first()
+
+    val elseElement: ZigElseElement?
+        get() = lastChild.siblings(forward = false).filterIsInstance<ZigElseElement>().firstOrNull()
+}
+
+sealed interface ZigIfOrWhile : ZigIfOrLoop {
     val conditionElement: ZigConditionElement
         get() = firstChild.siblings().filterIsInstance<ZigConditionElement>().first()
 
     val thenPayload: ZigThenPayload?
         get() = firstChild.siblings().filterIsInstance<ZigThenPayload>().firstOrNull()
 
-    val thenElement: ZigThenElement
-        get() = firstChild.siblings().filterIsInstance<ZigThenElement>().first()
-
     val elseTokenElement: PsiElement?
         get() = lastChild.siblings(forward = false).firstOrNull { it.elementType == ZigTokenType.KEYWORD_ELSE }
 
     val elsePayload: ZigElsePayload?
         get() = lastChild.siblings(forward = false).filterIsInstance<ZigElsePayload>().firstOrNull()
-
-    val elseElement: ZigElseElement?
-        get() = lastChild.siblings(forward = false).filterIsInstance<ZigElseElement>().firstOrNull()
 }
+
+sealed interface ZigIf : ZigIfOrWhile
 
 class ZigIfExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigIf, ZigExpression {
 }
@@ -1413,12 +1411,14 @@ class ZigTestDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainerDecl 
 }
 
 class ZigThenElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val containingIfOrLoop: ZigIfOrLoop
+        get() = parent as ZigIfOrLoop
+
     val payload: ZigPayload?
-        get() = when (val parent = parent) {
-            is ZigIf -> parent.thenPayload
-            is ZigWhile -> parent.thenPayload
-            is ZigFor -> parent.payload
-            else -> null
+        get() = when (val ifOrLoop = containingIfOrLoop) {
+            is ZigIf -> ifOrLoop.thenPayload
+            is ZigWhile -> ifOrLoop.thenPayload
+            is ZigFor -> ifOrLoop.payload
         }
 
     val clause: ZigClause?
@@ -1429,11 +1429,8 @@ class ZigThenElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigThenPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
-    val containingIf: ZigIf?
-        get() = parent as? ZigIf
-
-    val containingWhile: ZigWhile?
-        get() = parent as? ZigWhile
+    val containingIfOrWhile: ZigIfOrWhile
+        get() = parent as ZigIfOrWhile
 }
 
 class ZigTry(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpression
@@ -1560,21 +1557,12 @@ class ZigVarProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto
     }
 }
 
-sealed interface ZigWhile : ZigLoop {
+sealed interface ZigWhile : ZigLoop, ZigIfOrWhile {
     val whileTokenElement: PsiElement
         get() = firstChild.siblings().first { it.elementType == ZigTokenType.KEYWORD_WHILE }
 
-    val conditionElement: ZigConditionElement
-        get() = firstChild.siblings().filterIsInstance<ZigConditionElement>().first()
-
-    val thenPayload: ZigThenPayload?
-        get() = firstChild.siblings().filterIsInstance<ZigThenPayload>().firstOrNull()
-
     val continueClauseElement: ZigWhileContinueClauseElement?
         get() = firstChild.siblings().filterIsInstance<ZigWhileContinueClauseElement>().firstOrNull()
-
-    val elsePayload: ZigElsePayload?
-        get() = firstChild.siblings().filterIsInstance<ZigElsePayload>().firstOrNull()
 }
 
 class ZigWhileExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigWhile, ZigExpression {

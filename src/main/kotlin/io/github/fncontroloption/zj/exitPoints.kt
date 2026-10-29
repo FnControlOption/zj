@@ -160,10 +160,10 @@ private class ZigLabelableExitPointsHandler(
                     .expand { descendant ->
                         when (descendant) {
                             is ZigContainer -> false
-                            is ZigThenElement -> when (descendant.parent) {
+                            is ZigThenElement -> when (descendant.containingIfOrLoop) {
                                 labelable -> true
                                 is ZigLoop -> false
-                                else -> true
+                                is ZigIf -> true
                             }
                             else -> true
                         }

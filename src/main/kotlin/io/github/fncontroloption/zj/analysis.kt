@@ -1983,10 +1983,10 @@ private fun getUnlabeledBreaksFor(loop: ZigLoop): Sequence<ZigBreak> {
         .expand { descendant ->
             when (descendant) {
                 is ZigContainer -> false
-                is ZigThenElement -> when (descendant.parent) {
+                is ZigThenElement -> when (descendant.containingIfOrLoop) {
                     loop -> true
                     is ZigLoop -> false
-                    else -> true
+                    is ZigIf -> true
                 }
                 else -> true
             }
@@ -2754,10 +2754,8 @@ private fun computePayloadItem(target: ZigPayloadItem): ZigPlace {
 }
 
 private fun computeThenPayload(payloadElement: ZigThenPayload): ZigPlace {
-    val conditionElement =
-        payloadElement.containingIf?.conditionElement?.expression
-            ?: payloadElement.containingWhile?.conditionElement?.expression
-            ?: return ZigPlace.UNKNOWN
+    val conditionElement = payloadElement.containingIfOrWhile.conditionElement.expression
+        ?: return ZigPlace.UNKNOWN
     return resolvePlace(conditionElement).mapType { mutability, typeOfCondition ->
         when (typeOfCondition) {
             is ZigOptionalType -> ZigPlace.Single.of(mutability, ZigUnknown.of(typeOfCondition.child))
@@ -2768,10 +2766,8 @@ private fun computeThenPayload(payloadElement: ZigThenPayload): ZigPlace {
 }
 
 private fun computeElsePayload(payloadElement: ZigElsePayload): ZigPlace {
-    val conditionElement =
-        payloadElement.containingIf?.conditionElement?.expression
-            ?: payloadElement.containingWhile?.conditionElement?.expression
-            ?: return ZigPlace.UNKNOWN
+    val conditionElement = payloadElement.containingIfOrWhile.conditionElement.expression
+        ?: return ZigPlace.UNKNOWN
     return resolvePlace(conditionElement).mapType { mutability, typeOfCondition ->
         when (typeOfCondition) {
             is ZigErrorUnionType -> ZigPlace.Single.of(mutability, ZigUnknown.of(typeOfCondition.errorSet))
@@ -3163,14 +3159,13 @@ private fun inferThen(
     if (parentElement.expression !== childElement) {
         return ZigUnknown.TYPE
     }
-    val grandparentElement = parentElement.parent
-    if (grandparentElement !is ZigExpression) {
-        return ZigUnknown.TYPE
-    }
+    val ifOrLoop = parentElement.containingIfOrLoop
     val types = mutableSetOf<ZigValue>()
-    types += inferResultType(grandparentElement)
-    if (grandparentElement is ZigIf) {
-        types += resolveValue(grandparentElement.elseElement?.expression).typeOf
+    if (ifOrLoop is ZigExpression) {
+        types += inferResultType(ifOrLoop)
+    }
+    if (ifOrLoop is ZigIf) {
+        types += resolveValue(ifOrLoop.elseElement?.expression).typeOf
     }
     return ZigMultiValue.from(types, ZigTypeType)
 }
@@ -3182,14 +3177,13 @@ private fun inferElse(
     if (parentElement.expression !== childElement) {
         return ZigUnknown.TYPE
     }
-    val grandparentElement = parentElement.parent
-    if (grandparentElement !is ZigExpression) {
-        return ZigUnknown.TYPE
-    }
+    val ifOrLoop = parentElement.containingIfOrLoop
     val types = mutableSetOf<ZigValue>()
-    types += inferResultType(grandparentElement)
-    if (grandparentElement is ZigIf) {
-        types += resolveValue(grandparentElement.thenElement.expression).typeOf
+    if (ifOrLoop is ZigExpression) {
+        types += inferResultType(ifOrLoop)
+    }
+    if (ifOrLoop is ZigIf) {
+        types += resolveValue(ifOrLoop.thenElement.expression).typeOf
     }
     return ZigMultiValue.from(types, ZigTypeType)
 }
