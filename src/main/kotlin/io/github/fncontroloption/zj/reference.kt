@@ -328,7 +328,7 @@ internal fun identifierReferenceCandidates(element: PsiElement): Sequence<ZigNam
 
                 is ZigBlock ->
                     child.siblings(forward = false, withSelf = false)
-                        .filterIsInstance<ZigElement>()
+                        .filterIsInstance<ZigStatement>()
                         .flatMap { ZigBlock.statementToVarDecls(it) }
 
                 is ZigThenElement -> parent.payload?.items
