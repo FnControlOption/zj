@@ -339,7 +339,7 @@ internal fun identifierReferenceCandidates(element: PsiElement): Sequence<ZigNam
 
                 is ZigCatch if child !== parent.leftOperand -> parent.payload?.items
 
-                is ZigWhile if child === parent.whileContinueExpr -> parent.thenPayload?.items
+                is ZigWhile if child === parent.continueClauseElement -> parent.thenPayload?.items
 
                 else -> null
             }

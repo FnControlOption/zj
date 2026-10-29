@@ -1910,7 +1910,7 @@ ZigFile:Errors2.zig(0,3371)
       PsiWhiteSpace(' ')(2440,2441)
       PsiElement(:)(':')(2441,2442)
       PsiWhiteSpace(' ')(2442,2443)
-      ZigWhileContinueExpr(WHILE_CONTINUE_EXPR)(2443,2445)
+      ZigWhileContinueClauseElement(WHILE_CONTINUE_CLAUSE)(2443,2445)
         PsiElement(()('(')(2443,2444)
         PsiErrorElement:Expected expression or assignment(2444,2444)
           <empty list>

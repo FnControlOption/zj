@@ -142,7 +142,7 @@ class ZigElementType(debugName: String) : IElementType(debugName, ZigLanguage) {
         val VAR_DECL = ZigElementType("VAR_DECL")
         val VAR_PROTO = ZigElementType("VAR_PROTO")
         val WHILE = ZigElementType("WHILE")
-        val WHILE_CONTINUE_EXPR = ZigElementType("WHILE_CONTINUE_EXPR")
+        val WHILE_CONTINUE_CLAUSE = ZigElementType("WHILE_CONTINUE_CLAUSE")
 
         val TYPE = ZigElementType("TYPE")
         val CONDITION = ZigElementType("CONDITION")
@@ -284,7 +284,7 @@ class ZigElementType(debugName: String) : IElementType(debugName, ZigLanguage) {
                 VAR_DECL -> ZigVarDecl(node)
                 VAR_PROTO -> ZigVarProto(node)
                 WHILE -> ZigWhile(node)
-                WHILE_CONTINUE_EXPR -> ZigWhileContinueExpr(node)
+                WHILE_CONTINUE_CLAUSE -> ZigWhileContinueClauseElement(node)
 
                 TYPE -> ZigTypeElement(node)
                 CONDITION -> ZigConditionElement(node)

@@ -187,11 +187,11 @@ class ZigParser : PsiParser {
         if (blockExpr != null) {
             return blockExpr
         }
-        // Otherwise, require semicolon after expression
-        val assignExpr = parseAssignExpr(builder)
-        if (assignExpr != null) {
+        // Otherwise, require semicolon after clause
+        val assignClause = parseAssignClause(builder)
+        if (assignClause != null) {
             expectToken(builder, ZigTokenType.SEMICOLON)
-            return assignExpr
+            return assignClause
         }
         return null
     }
@@ -1165,9 +1165,9 @@ class ZigParser : PsiParser {
                     return marker
                 }
                 if (isBlockLevel) {
-                    tryVarAssignExpr(builder)
+                    tryVarAssignClause(builder)
                 } else {
-                    tryAssignExpr(builder)
+                    tryAssignClause(builder)
                 }
                 marker.done(ZigElementType.COMPTIME)
                 expectToken(builder, ZigTokenType.SEMICOLON)
@@ -1214,16 +1214,16 @@ class ZigParser : PsiParser {
         if (labeledStatement != null) {
             return labeledStatement
         }
-        val expr = if (isBlockLevel) {
-            parseVarAssignExpr(builder)
+        val clause = if (isBlockLevel) {
+            parseVarAssignClause(builder)
         } else {
-            parseAssignExpr(builder)
+            parseAssignClause(builder)
         }
-        if (expr == null) {
+        if (clause == null) {
             return null
         }
         expectToken(builder, ZigTokenType.SEMICOLON)
-        return expr
+        return clause
     }
 
     private fun assertIfStatement(builder: PsiBuilder): PsiBuilder.Marker {
@@ -1235,7 +1235,7 @@ class ZigParser : PsiParser {
         var elseRequired = false
         val thenMarker = builder.mark()
         if (parseBlockExpr(builder) == null) {
-            if (parseAssignExpr(builder) == null) {
+            if (parseAssignClause(builder) == null) {
                 builder.mark().error("Expected block or assignment")
             }
             if (builder.tokenType === ZigTokenType.SEMICOLON) {
@@ -1290,22 +1290,22 @@ class ZigParser : PsiParser {
         return null
     }
 
-    private fun tryVarAssignExpr(builder: PsiBuilder): PsiBuilder.Marker? {
-        val statement = parseVarAssignExpr(builder)
-        if (statement == null) {
+    private fun tryVarAssignClause(builder: PsiBuilder): PsiBuilder.Marker? {
+        val clause = parseVarAssignClause(builder)
+        if (clause == null) {
             builder.mark().error("Expected expression or var decl")
         }
         return null
     }
 
-    private fun parseVarAssignExpr(builder: PsiBuilder): PsiBuilder.Marker? {
-        val statement = builder.mark()
+    private fun parseVarAssignClause(builder: PsiBuilder): PsiBuilder.Marker? {
+        val clause = builder.mark()
         val scratch = mutableListOf<PsiBuilder.Marker>()
 
         while (!builder.eof()) {
             val variable = parseVarDeclProto(builder) ?: parseExpr(builder)
             if (variable == null) {
-                statement.rollbackTo()
+                clause.rollbackTo()
                 return null
             }
             scratch.add(variable)
@@ -1319,8 +1319,8 @@ class ZigParser : PsiParser {
         if (scratch.size > 1 || scratch[0].tokenType === ZigElementType.VAR_PROTO) {
             expectToken(builder, ZigTokenType.EQUAL)
         } else if (!eatToken(builder, ZigTokenType.EQUAL)) {
-            statement.drop()
-            return finishAssignExpr(builder, scratch[0])
+            clause.drop()
+            return finishAssignClause(builder, scratch[0])
         }
 
         tryExpr(builder)
@@ -1328,14 +1328,14 @@ class ZigParser : PsiParser {
         if (scratch.size == 1) {
             if (scratch[0].tokenType === ZigElementType.VAR_PROTO) {
                 scratch[0].drop()
-                statement.done(ZigElementType.VAR_DECL)
+                clause.done(ZigElementType.VAR_DECL)
             } else {
-                statement.done(ZigElementType.ASSIGN)
+                clause.done(ZigElementType.ASSIGN)
             }
         } else {
-            statement.done(ZigElementType.ASSIGN_DESTRUCTURE)
+            clause.done(ZigElementType.ASSIGN_DESTRUCTURE)
         }
-        return statement
+        return clause
     }
 
     private fun assertIf(builder: PsiBuilder, tryBody: (PsiBuilder) -> PsiBuilder.Marker?): PsiBuilder.Marker {
@@ -1399,12 +1399,12 @@ class ZigParser : PsiParser {
         Pair(ZigTokenType.EQUAL, ZigElementType.ASSIGN),
     )
 
-    private fun parseAssignExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parseAssignClause(builder: PsiBuilder): PsiBuilder.Marker? {
         val expr = parseExpr(builder) ?: return null
-        return finishAssignExpr(builder, expr)
+        return finishAssignClause(builder, expr)
     }
 
-    private fun parseSingleAssignExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parseSingleAssignClause(builder: PsiBuilder): PsiBuilder.Marker? {
         val lhs = parseExpr(builder) ?: return null
         val assignType = assignTable[builder.tokenType] ?: return lhs
         val assign = lhs.precede()
@@ -1414,17 +1414,17 @@ class ZigParser : PsiParser {
         return assign
     }
 
-    private fun tryAssignExpr(builder: PsiBuilder): PsiBuilder.Marker? {
-        val expr = parseAssignExpr(builder)
-        if (expr == null) {
+    private fun tryAssignClause(builder: PsiBuilder): PsiBuilder.Marker? {
+        val clause = parseAssignClause(builder)
+        if (clause == null) {
             builder.mark().error("Expected expression or assignment")
         }
-        return expr
+        return clause
     }
 
-    private fun finishAssignExpr(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker {
+    private fun finishAssignClause(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker {
         if (builder.tokenType === ZigTokenType.COMMA) {
-            return finishAssignDestructureExpr(builder, lhs)
+            return finishAssignDestructure(builder, lhs)
         }
         val assignType = assignTable[builder.tokenType] ?: return lhs
         val assign = lhs.precede()
@@ -1434,7 +1434,7 @@ class ZigParser : PsiParser {
         return assign
     }
 
-    private fun finishAssignDestructureExpr(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker {
+    private fun finishAssignDestructure(builder: PsiBuilder, lhs: PsiBuilder.Marker): PsiBuilder.Marker {
         val assign = lhs.precede()
         // TODO: use parseUntil
         while (eatToken(builder, ZigTokenType.COMMA)) {
@@ -1506,16 +1506,16 @@ class ZigParser : PsiParser {
         }
         expectToken(builder, ZigTokenType.EQUAL_ANGLE_BRACKET_RIGHT)
         parsePtrIndexPayload(builder, ZigElementType.SWITCH_PAYLOAD)
-        var expr: PsiBuilder.Marker? = null
+        var clause: PsiBuilder.Marker? = null
         parseUntil(builder, ZigTokenType.COMMA) {
-            if (expr == null) {
-                expr = parseSingleAssignExpr(builder)
-                expr != null
+            if (clause == null) {
+                clause = parseSingleAssignClause(builder)
+                clause != null
             } else {
                 false
             }
         }
-        if (expr == null) {
+        if (clause == null) {
             builder.mark().error("Expected expression or assignment")
         }
         marker.done(ZigElementType.SWITCH_PRONG)
@@ -1627,7 +1627,7 @@ class ZigParser : PsiParser {
         var elseRequired = false
         val thenMarker = builder.mark()
         if (parseBlockExpr(builder) == null) {
-            if (parseAssignExpr(builder) == null) {
+            if (parseAssignClause(builder) == null) {
                 builder.mark().error("Expected block or assignment")
             }
             if (builder.tokenType === ZigTokenType.SEMICOLON) {
@@ -1744,7 +1744,7 @@ class ZigParser : PsiParser {
         var elseRequired = false
         val thenMarker = builder.mark()
         if (parseBlockExpr(builder) == null) {
-            if (parseAssignExpr(builder) == null) {
+            if (parseAssignClause(builder) == null) {
                 builder.mark().error("Expected block or assignment")
             }
             if (builder.tokenType === ZigTokenType.SEMICOLON) {
@@ -1778,11 +1778,11 @@ class ZigParser : PsiParser {
         }
         tryCondition(builder)
         parsePtrPayload(builder, ZigElementType.THEN_PAYLOAD)
-        parseWhileContinueExpr(builder)
+        parseWhileContinueClause(builder)
         return whileMarker
     }
 
-    private fun parseWhileContinueExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parseWhileContinueClause(builder: PsiBuilder): PsiBuilder.Marker? {
         if (!eatToken(builder, ZigTokenType.COLON)) {
             return null
         }
@@ -1791,20 +1791,20 @@ class ZigParser : PsiParser {
             marker.drop()
             return null
         }
-        var expr: PsiBuilder.Marker? = null
+        var clause: PsiBuilder.Marker? = null
         parseEnclosed(builder, ZigTokenType.R_PAREN) {
-            if (expr == null) {
-                expr = parseAssignExpr(builder)
-                expr != null
+            if (clause == null) {
+                clause = parseAssignClause(builder)
+                clause != null
             } else {
                 false
             }
         }
-        if (expr == null) {
+        if (clause == null) {
             builder.mark().error("Expected expression or assignment")
         }
         expectToken(builder, ZigTokenType.R_PAREN)
-        marker.done(ZigElementType.WHILE_CONTINUE_EXPR)
+        marker.done(ZigElementType.WHILE_CONTINUE_CLAUSE)
         return marker
     }
 

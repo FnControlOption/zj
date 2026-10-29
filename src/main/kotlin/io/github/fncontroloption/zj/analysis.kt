@@ -2429,7 +2429,7 @@ private fun computePointerTypeExpression(element: ZigPointerTypeExpression): Zig
 }
 
 private fun computeComptime(element: ZigComptime): ZigValue {
-    return resolveValue(element.innerElement as? ZigExpression)
+    return resolveValue(element.clause as? ZigExpression)
 }
 
 private fun computeAddressOf(element: ZigAddressOf): ZigPlace {
@@ -3312,7 +3312,7 @@ private fun inferComptime(
     parentElement: ZigComptime,
     childElement: ZigExpression,
 ): ZigValue {
-    if (parentElement.innerElement !== childElement) {
+    if (parentElement.clause !== childElement) {
         return ZigUnknown.TYPE
     }
     return inferResultType(parentElement)
