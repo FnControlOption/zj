@@ -44,9 +44,15 @@ sealed interface ZigNamedElement : ZigNavigatableElement, PsiNamedElement
 
 sealed interface ZigNameIdentifierOwner : ZigNamedElement, PsiNameIdentifierOwner
 
-sealed interface ZigStatement : ZigElement
+sealed interface ZigStatement : ZigElement {
+    val containingBlock: ZigBlock?
+        get() = parent as? ZigBlock
+}
 
-sealed interface ZigClause : ZigElement
+sealed interface ZigClause : ZigElement {
+    val containingStatement: ZigClauseStatement?
+        get() = parent as? ZigClauseStatement
+}
 
 sealed interface ZigExpression : ZigClause
 
@@ -116,6 +122,8 @@ sealed interface ZigModifier : ZigElement {
 sealed interface ZigPayload : ZigElement {
     val items: Sequence<ZigPayloadItem>
         get() = firstChild.siblings().filterIsInstance<ZigPayloadItem>()
+
+    val clause: ZigClause?
 }
 
 enum class ZigContainerKind { STRUCT, OPAQUE, ENUM, UNION }
@@ -391,6 +399,22 @@ class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable, ZigExp
     val rightBraceElement: PsiElement?
         get() = lastChild.siblings(forward = false).firstOrNull { it.elementType == ZigTokenType.R_BRACE }
 
+    fun addStatementFirst(statement: ZigStatement) {
+        val newline = PsiParserFacade.getInstance(project).createWhiteSpaceFromText("\n")
+        val brace = leftBraceElement
+        if (!textContains('\n')) {
+            addAfter(newline, brace)
+        }
+        addAfter(statement, brace)
+        addAfter(newline, brace)
+    }
+
+    fun addStatementAfter(statement: ZigStatement, anchor: ZigStatement) {
+        val newline = PsiParserFacade.getInstance(project).createWhiteSpaceFromText("\n")
+        addAfter(statement, anchor)
+        addAfter(newline, anchor)
+    }
+
     companion object {
         fun statementToVarDecls(statement: ZigStatement): Sequence<ZigVarDeclOrProto> {
             return when (statement) {
@@ -516,6 +540,9 @@ class ZigCatch(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression 
 class ZigCatchPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
     val containingCatch: ZigCatch
         get() = parent as ZigCatch
+
+    override val clause: ZigClause?
+        get() = containingCatch.rightOperand
 }
 
 class ZigCharLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
@@ -673,6 +700,9 @@ class ZigElseElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigElsePayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
     val containingIfOrWhile: ZigIfOrWhile
         get() = parent as ZigIfOrWhile
+
+    override val clause: ZigClause?
+        get() = containingIfOrWhile.elseElement?.clause
 }
 
 class ZigEnumLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
@@ -864,6 +894,9 @@ class ZigForInput(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigForPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
     val containingFor: ZigFor
         get() = parent as ZigFor
+
+    override val clause: ZigClause?
+        get() = containingFor.thenElement.clause
 }
 
 class ZigForRange(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
@@ -1340,6 +1373,9 @@ class ZigSwitchItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigSwitchPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
     val containingSwitchProng: ZigSwitchProng
         get() = parent as ZigSwitchProng
+
+    override val clause: ZigClause?
+        get() = containingSwitchProng.clause
 }
 
 class ZigSwitchProng(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
@@ -1367,14 +1403,14 @@ class ZigSwitchProng(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
     val arrowTokenElement: PsiElement?
         get() = findChildByType(ZigTokenType.EQUAL_ANGLE_BRACKET_RIGHT)
 
-    val body: ZigClause?
+    val clause: ZigClause?
         get() =
             arrowTokenElement
                 ?.siblings(forward = true, withSelf = false)
                 ?.firstNotNullOfOrNull { it as? ZigClause }
 
     val expression: ZigExpression?
-        get() = body as? ZigExpression
+        get() = clause as? ZigExpression
 }
 
 class ZigSwitchRange(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
@@ -1431,6 +1467,9 @@ class ZigThenElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 class ZigThenPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
     val containingIfOrWhile: ZigIfOrWhile
         get() = parent as ZigIfOrWhile
+
+    override val clause: ZigClause?
+        get() = containingIfOrWhile.thenElement.clause
 }
 
 class ZigTry(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpression
@@ -1458,6 +1497,8 @@ class ZigUnwrapOptional(node: ASTNode) : ASTWrapperPsiElement(node), ZigPostfixE
 enum class ZigMutability { CONST, VAR }
 
 sealed interface ZigVarDeclOrProto : ZigNameIdentifierOwner {
+    val containingClause: ZigClause
+
     val isLocal: Boolean
 
     val mutabilityElement: PsiElement
@@ -1480,6 +1521,9 @@ class ZigVarDecl : ZigStubPsiElement<ZigVarDeclStub>, ZigVarDeclOrProto, ZigName
 
     override val container: ZigContainer?
         get() = parent as? ZigContainer
+
+    override val containingClause: ZigVarDecl
+        get() = this
 
     override val isLocal: Boolean
         get() = findParentInFile { it is ZigBlock || it is ZigContainer } is ZigBlock
@@ -1531,6 +1575,9 @@ class ZigVarDecl : ZigStubPsiElement<ZigVarDeclStub>, ZigVarDeclOrProto, ZigName
 class ZigVarProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto {
     val containingAssignDestructure: ZigAssignDestructure
         get() = parent as ZigAssignDestructure
+
+    override val containingClause: ZigAssignDestructure
+        get() = containingAssignDestructure
 
     override val isLocal: Boolean
         get() = true
@@ -1861,4 +1908,16 @@ private inline fun addVisibilityIcon(
         return IconManager.getInstance().createRowIcon(baseIcon, visibility())
     }
     return baseIcon
+}
+
+fun createZigDiscard(project: Project, name: String): ZigStatement {
+    val text = buildString {
+        append("const dummy = { _ = ")
+        renderZigIdentifier(name, ZigIdQuoteBehavior.PRESERVE_WHEN_SHADOWING, this)
+        append("; };")
+    }
+    val file = createZigFile(project, text)
+    val varDecl = file.members.first() as ZigVarDecl
+    val block = varDecl.initializer as ZigBlock
+    return block.statements.single()
 }
