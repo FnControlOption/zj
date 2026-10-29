@@ -1621,7 +1621,7 @@ class ZigParser : PsiParser {
             tryBody(builder)
             elseMarker.done(ZigElementType.ELSE)
         }
-        forMarker.done(ZigElementType.FOR)
+        forMarker.done(ZigElementType.FOR_EXPRESSION)
         return forMarker
     }
 
@@ -1635,8 +1635,8 @@ class ZigParser : PsiParser {
             }
             if (builder.tokenType === ZigTokenType.SEMICOLON) {
                 thenMarker.done(ZigElementType.THEN)
-                forMarker.done(ZigElementType.FOR)
                 builder.advanceLexer()
+                forMarker.done(ZigElementType.FOR_STATEMENT)
                 return forMarker
             }
             elseRequired = true
@@ -1649,7 +1649,7 @@ class ZigParser : PsiParser {
         } else if (elseRequired) {
             builder.mark().error("Expected ';' or 'else' after statement")
         }
-        forMarker.done(ZigElementType.FOR)
+        forMarker.done(ZigElementType.FOR_STATEMENT)
         return forMarker
     }
 
@@ -1738,7 +1738,7 @@ class ZigParser : PsiParser {
             tryBody(builder)
             elseMarker.done(ZigElementType.ELSE)
         }
-        whileMarker.done(ZigElementType.WHILE)
+        whileMarker.done(ZigElementType.WHILE_EXPRESSION)
         return whileMarker
     }
 
@@ -1752,8 +1752,8 @@ class ZigParser : PsiParser {
             }
             if (builder.tokenType === ZigTokenType.SEMICOLON) {
                 thenMarker.done(ZigElementType.THEN)
-                whileMarker.done(ZigElementType.WHILE)
                 builder.advanceLexer()
+                whileMarker.done(ZigElementType.WHILE_STATEMENT)
                 return whileMarker
             }
             elseRequired = true
@@ -1767,7 +1767,7 @@ class ZigParser : PsiParser {
         } else if (elseRequired) {
             builder.mark().error("Expected ';' or 'else' after statement")
         }
-        whileMarker.done(ZigElementType.WHILE)
+        whileMarker.done(ZigElementType.WHILE_STATEMENT)
         return whileMarker
     }
 

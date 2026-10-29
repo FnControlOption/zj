@@ -847,7 +847,7 @@ class ZigBuiltinFnProto(node: ASTNode) :
     override fun canNavigateToSource() = false
 }
 
-class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop, ZigExpression {
+sealed interface ZigFor : ZigLoop {
     val forTokenElement: PsiElement
         get() = firstChild.siblings().first { it.elementType == ZigTokenType.KEYWORD_FOR }
 
@@ -855,7 +855,13 @@ class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop, ZigExpression
         get() = firstChild.siblings().filterIsInstance<ZigForInput>()
 
     val payload: ZigForPayload?
-        get() = findChildByClass(ZigForPayload::class.java)
+        get() = firstChild.siblings().filterIsInstance<ZigForPayload>().firstOrNull()
+}
+
+class ZigForExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigFor, ZigExpression {
+}
+
+class ZigForStatement(node: ASTNode) : ASTWrapperPsiElement(node), ZigFor {
 }
 
 class ZigForInput(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
@@ -1550,21 +1556,27 @@ class ZigVarProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto
     }
 }
 
-class ZigWhile(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop, ZigExpression {
+sealed interface ZigWhile : ZigLoop {
     val whileTokenElement: PsiElement
         get() = firstChild.siblings().first { it.elementType == ZigTokenType.KEYWORD_WHILE }
 
     val conditionElement: ZigConditionElement
-        get() = findNotNullChildByClass(ZigConditionElement::class.java)
+        get() = firstChild.siblings().filterIsInstance<ZigConditionElement>().first()
 
     val thenPayload: ZigThenPayload?
-        get() = findChildByClass(ZigThenPayload::class.java)
+        get() = firstChild.siblings().filterIsInstance<ZigThenPayload>().firstOrNull()
 
     val continueClauseElement: ZigWhileContinueClauseElement?
-        get() = findChildByClass(ZigWhileContinueClauseElement::class.java)
+        get() = firstChild.siblings().filterIsInstance<ZigWhileContinueClauseElement>().firstOrNull()
 
     val elsePayload: ZigElsePayload?
-        get() = findChildByClass(ZigElsePayload::class.java)
+        get() = firstChild.siblings().filterIsInstance<ZigElsePayload>().firstOrNull()
+}
+
+class ZigWhileExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigWhile, ZigExpression {
+}
+
+class ZigWhileStatement(node: ASTNode) : ASTWrapperPsiElement(node), ZigWhile {
 }
 
 class ZigWhileContinueClauseElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
