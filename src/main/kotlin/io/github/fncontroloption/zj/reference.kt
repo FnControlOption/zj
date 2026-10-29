@@ -178,19 +178,20 @@ class ZigImportReference(element: ZigStringLiteral) : ZigFileReference(element) 
                 val projectPath = projectService.projectPath.value ?: return emptySequence()
                 val psiManager = PsiManager.getInstance(project)
                 val modulesService = project.service<ZigModulesProjectService>()
+                val modulesCache = modulesService.cache.value
                 val importedModules = when (text) {
                     "root" -> {
-                        modulesService.getFileRootModules(virtualFile)
+                        modulesCache.getFileRootModules(virtualFile)
                             .asSequence()
-                            .mapNotNull { modulesService.modules[it] }
-                            .ifEmpty { modulesService.modules.values.asSequence().filter { it.isRootModule } }
+                            .mapNotNull { modulesCache.idToModule[it] }
+                            .ifEmpty { modulesCache.idToModule.values.asSequence().filter { it.isRootModule } }
                     }
                     else -> {
-                        modulesService.getFileModules(virtualFile)
+                        modulesCache.getFileModules(virtualFile)
                             .asSequence()
-                            .mapNotNull { modulesService.modules[it] }
+                            .mapNotNull { modulesCache.idToModule[it] }
                             .mapNotNull { it.importTable[text] }
-                            .mapNotNull { modulesService.modules[it] }
+                            .mapNotNull { modulesCache.idToModule[it] }
                     }
                 }
                 importedModules

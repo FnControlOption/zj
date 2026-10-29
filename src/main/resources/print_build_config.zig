@@ -77,7 +77,7 @@ fn modulesAsJsonValue(self: *const Self) !json.Value {
         }
 
         var module_object: json.ObjectMap = .empty;
-        try module_object.put(self.arena, "index", .{ .integer = @backingInt(module_index) });
+        try module_object.put(self.arena, "id", .{ .integer = @backingInt(module_index) });
         try module_object.put(self.arena, "is_root_module", .{ .bool = is_root_module });
         if (root_source_file) |path| {
             try module_object.put(self.arena, "root_source_file", .{ .string = path });

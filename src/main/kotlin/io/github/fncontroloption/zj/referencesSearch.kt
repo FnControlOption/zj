@@ -118,15 +118,17 @@ class ZigModuleReferencesSearch : QueryExecutorBase<PsiReference, ReferencesSear
         val targetPath = target.virtualFile?.toNioPathOrNull() ?: return
 
         val modulesService = project.service<ZigModulesProjectService>()
-        val module = modulesService.getModuleFromRootFile(targetPath) ?: return
+        val modulesCache = modulesService.cache.value
+        val moduleId = modulesCache.rootFileToId[targetPath] ?: return
+        val module = modulesCache.idToModule[moduleId] ?: return
 
         val virtualFiles = when (val scope = queryParameters.effectiveSearchScope) {
             is GlobalSearchScope -> {
                 val fileBasedIndex = FileBasedIndex.getInstance()
-                modulesService.modules.values
+                modulesCache.idToModule.values
                     .asSequence()
                     .flatMap { it.importTable.asSequence() }
-                    .filter { (_, importIndex) -> importIndex == module.index }
+                    .filter { (_, importId) -> importId == module.id }
                     .map { (importName, _) -> importName }
                     .distinct()
                     .flatMap { fileBasedIndex.getContainingFiles(ZIG_STRING_LITERAL_INDEX_NAME, it, scope) }

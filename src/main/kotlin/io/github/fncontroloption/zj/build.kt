@@ -34,7 +34,7 @@ data class ZigBuildConfig(
 ) {
     @Serializable
     data class Module(
-        val index: Int,
+        val id: Id,
 
         @SerialName("is_root_module")
         val isRootModule: Boolean,
@@ -43,8 +43,12 @@ data class ZigBuildConfig(
         val rootSourceFile: String?,
 
         @SerialName("import_table")
-        val importTable: Map<String, Int>,
-    )
+        val importTable: Map<String, Id>,
+    ) {
+        @Serializable
+        @JvmInline
+        value class Id(val raw: Int)
+    }
 }
 
 class ZigBuildProjectActivity : ProjectActivity {

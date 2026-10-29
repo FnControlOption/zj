@@ -20,8 +20,7 @@ import com.intellij.psi.SyntaxTraverser
 import com.intellij.util.concurrency.annotations.RequiresReadLock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.nio.file.Path
@@ -42,23 +41,21 @@ class ZigModulesProjectService(
     private val projectPathFlow = project.service<ZigExternalSystemProjectService>().projectPath
     private val deferredFetchFlow = project.service<ZigBuildProjectService>().deferredFetch
 
-    @Volatile
-    private var cachedModules: Map<Int, ZigBuildConfig.Module> = emptyMap()
-
-    val modules: Map<Int, ZigBuildConfig.Module>
-        get() = cachedModules
-
-    @Volatile
-    private var cachedRootFileToModule: Map<Path, Int> = emptyMap()
-
-    @Volatile
-    private var cachedFileImports: Map<Path, MutableSet<Path>> = emptyMap()
+    private val cachedIdToModule = MutableStateFlow<Map<ZigBuildConfig.Module.Id, ZigBuildConfig.Module>>(emptyMap())
+    private val cachedRootFileToId = MutableStateFlow<Map<Path, ZigBuildConfig.Module.Id>>(emptyMap())
+    private val cachedFileImports = MutableStateFlow<Map<Path, Set<Path>>>(emptyMap())
+    val cache =
+        combine(cachedRootFileToId, cachedFileImports, ::Pair)
+            .combine(cachedIdToModule) { (rootFileToId, fileImports), idToModule ->
+                Cache(idToModule, rootFileToId, fileImports)
+            }
+            .stateIn(coroutineScope, SharingStarted.Eagerly, Cache(emptyMap(), emptyMap(), emptyMap()))
 
     init {
         combine(projectPathFlow, deferredFetchFlow) { projectPath, deferredFetch ->
-            cachedModules = emptyMap()
-            cachedRootFileToModule = emptyMap()
-            cachedFileImports = emptyMap()
+            cachedIdToModule.value = emptyMap()
+            cachedRootFileToId.value = emptyMap()
+            cachedFileImports.value = emptyMap()
             val fetchResult = try {
                 deferredFetch.await()
             } catch (e: CancellationException) {
@@ -74,7 +71,7 @@ class ZigModulesProjectService(
             withBackgroundProgress(project, "Loading modules\u2026") {
                 smartReadAction(project) {
                     val modules = buildConfig.modules + getBuildFileModules(projectPath)
-                    cachedModules = modules.associateBy { it.index }
+                    cachedIdToModule.value = modules.associateBy { it.id }
                     findRootModulesAndFileImports(projectPath, modules)
                 }
             }
@@ -84,10 +81,10 @@ class ZigModulesProjectService(
     @RequiresReadLock
     private fun getBuildFileModules(projectPath: Path): List<ZigBuildConfig.Module> {
         val configurer = ZigAnalyzer.findZigLibFile(project, null, "compiler/configurer.zig")
-        val configurerImportTable = mutableMapOf<String, Int>()
+        val configurerImportTable = mutableMapOf<String, ZigBuildConfig.Module.Id>()
         val configurerModule = configurer?.toNioPathOrNull()?.let {
             ZigBuildConfig.Module(
-                index = -1,
+                id = ZigBuildConfig.Module.Id(-1),
                 isRootModule = true,
                 rootSourceFile = it.toString(),
                 importTable = configurerImportTable,
@@ -97,10 +94,12 @@ class ZigModulesProjectService(
         val buildRootToDeps = mutableMapOf<Path, Map<String, Path>>()
         followBuildFileGraph(projectPath, projectPath, buildRootToDeps)
 
-        var moduleIndex = -2
+        var rawModuleId = -2
         val buildRootToModule = mutableMapOf<Path, ZigBuildConfig.Module>()
-        val root = getBuildFileModule(projectPath, buildRootToDeps, buildRootToModule) { moduleIndex-- }
-        configurerImportTable["@build"] = root.index
+        val root = getBuildFileModule(projectPath, buildRootToDeps, buildRootToModule) {
+            ZigBuildConfig.Module.Id(rawModuleId--)
+        }
+        configurerImportTable["@build"] = root.id
 
         return listOfNotNull(configurerModule) + buildRootToModule.values
     }
@@ -149,23 +148,23 @@ class ZigModulesProjectService(
         buildRoot: Path,
         buildRootToDeps: Map<Path, Map<String, Path>>,
         buildRootToModule: MutableMap<Path, ZigBuildConfig.Module>,
-        generateModuleIndex: () -> Int,
+        generateModuleId: () -> ZigBuildConfig.Module.Id,
     ): ZigBuildConfig.Module {
         var module = buildRootToModule[buildRoot]
         if (module != null) {
             return module
         }
-        val importTable = mutableMapOf<String, Int>()
+        val importTable = mutableMapOf<String, ZigBuildConfig.Module.Id>()
         module = ZigBuildConfig.Module(
-            index = generateModuleIndex(),
+            id = generateModuleId(),
             isRootModule = false,
             rootSourceFile = buildRoot.resolve("build.zig").toString(),
             importTable = importTable,
         )
         buildRootToModule[buildRoot] = module
         for ((depName, depPath) in buildRootToDeps[buildRoot].orEmpty()) {
-            val depModule = getBuildFileModule(depPath, buildRootToDeps, buildRootToModule, generateModuleIndex)
-            importTable[depName] = depModule.index
+            val depModule = getBuildFileModule(depPath, buildRootToDeps, buildRootToModule, generateModuleId)
+            importTable[depName] = depModule.id
         }
         return module
     }
@@ -174,22 +173,22 @@ class ZigModulesProjectService(
 
     @RequiresReadLock
     private fun findRootModulesAndFileImports(projectPath: Path, modules: Collection<ZigBuildConfig.Module>) {
-        val rootFileToModule = mutableMapOf<Path, Int>()
-        val fileImports = mutableMapOf<Path, MutableSet<Path>>()
+        val rootFileToId = mutableMapOf<Path, ZigBuildConfig.Module.Id>()
+        val fileImports = mutableMapOf<Path, Set<Path>>()
         for (module in modules) {
             val rootFile = module.rootSourceFile ?: continue
             val rootPath = projectPath.resolve(rootFile) ?: continue
-            rootFileToModule[rootPath] = module.index
+            rootFileToId[rootPath] = module.id
             followImports(rootPath, fileImports)
         }
-        cachedRootFileToModule = rootFileToModule
-        cachedFileImports = fileImports
+        cachedRootFileToId.value = rootFileToId
+        cachedFileImports.value = fileImports
         modificationTracker.incModificationCount()
         daemonCodeAnalyzer.restart("ZigModulesProjectService.loadModules")
     }
 
     @RequiresReadLock
-    private fun followImports(path: Path, fileImports: MutableMap<Path, MutableSet<Path>>) {
+    private fun followImports(path: Path, fileImports: MutableMap<Path, Set<Path>>) {
         if (fileImports.containsKey(path)) return
         val virtualFile = VirtualFileManager.getInstance().findFileByNioPath(path) ?: return
         val psiFile = PsiManager.getInstance(project).findFile(virtualFile) ?: return
@@ -221,58 +220,9 @@ class ZigModulesProjectService(
         }
     }
 
-    fun getModuleFromRootFile(path: Path): ZigBuildConfig.Module? {
-        val moduleIndex = cachedRootFileToModule[path] ?: return null
-        return cachedModules[moduleIndex]
-    }
-
-    fun getFileModules(virtualFile: VirtualFile): Set<Int> {
-        val path = virtualFile.toNioPathOrNull() ?: return emptySet()
-        val result = mutableSetOf<Int>()
-        findFileModules(path, mutableSetOf(), result)
-        return result
-    }
-
-    private fun findFileModules(path: Path, visited: MutableSet<Path>, result: MutableSet<Int>) {
-        if (path in visited) return
-        visited.add(path)
-        val module = cachedRootFileToModule[path]
-        if (module != null) {
-            result.add(module)
-            return
-        }
-        for ((otherPath, otherImports) in cachedFileImports) {
-            if (path in otherImports) {
-                findFileModules(otherPath, visited, result)
-            }
-        }
-    }
-
-    fun getFileRootModules(virtualFile: VirtualFile): Set<Int> {
-        val visited = mutableSetOf<Int>()
-        val roots = mutableSetOf<Int>()
-        for (moduleIndex in getFileModules(virtualFile)) {
-            val module = cachedModules[moduleIndex] ?: continue
-            findRootModules(module, visited, roots)
-        }
-        return roots
-    }
-
-    private fun findRootModules(module: ZigBuildConfig.Module, visited: MutableSet<Int>, roots: MutableSet<Int>) {
-        if (module.index in visited) return
-        visited.add(module.index)
-        if (module.isRootModule) roots.add(module.index)
-        for (otherModule in cachedModules.values) {
-            if (otherModule.index in visited) continue
-            if (otherModule.importTable.containsValue(module.index)) {
-                findRootModules(otherModule, visited, roots)
-            }
-        }
-    }
-
     @RequiresReadLock
     private fun processVfsChange(fileActions: Map<Path, ZigModulesAsyncFileListener.Action>) {
-        val fileImports = cachedFileImports.toMutableMap()
+        val fileImports = cachedFileImports.value.toMutableMap()
         for ((path, action) in fileActions) {
             when (action) {
                 ZigModulesAsyncFileListener.Action.CREATE,
@@ -285,7 +235,7 @@ class ZigModulesProjectService(
                 }
             }
         }
-        cachedFileImports = fileImports
+        cachedFileImports.value = fileImports
         modificationTracker.incModificationCount()
         daemonCodeAnalyzer.restart("ZigModulesProjectService.processVfsChange")
     }
@@ -294,6 +244,64 @@ class ZigModulesProjectService(
         coroutineScope.launch {
             smartReadAction(project) {
                 processVfsChange(fileActions)
+            }
+        }
+    }
+
+    class Cache(
+        val idToModule: Map<ZigBuildConfig.Module.Id, ZigBuildConfig.Module>,
+        val rootFileToId: Map<Path, ZigBuildConfig.Module.Id>,
+        val fileImports: Map<Path, Set<Path>>,
+    ) {
+        fun getFileModules(virtualFile: VirtualFile): Set<ZigBuildConfig.Module.Id> {
+            val path = virtualFile.toNioPathOrNull() ?: return emptySet()
+            val result = mutableSetOf<ZigBuildConfig.Module.Id>()
+            findFileModules(path, mutableSetOf(), result)
+            return result
+        }
+
+        private fun findFileModules(
+            path: Path,
+            visited: MutableSet<Path>,
+            result: MutableSet<ZigBuildConfig.Module.Id>,
+        ) {
+            if (path in visited) return
+            visited.add(path)
+            val module = rootFileToId[path]
+            if (module != null) {
+                result.add(module)
+                return
+            }
+            for ((otherPath, otherImports) in fileImports) {
+                if (path in otherImports) {
+                    findFileModules(otherPath, visited, result)
+                }
+            }
+        }
+
+        fun getFileRootModules(virtualFile: VirtualFile): Set<ZigBuildConfig.Module.Id> {
+            val visited = mutableSetOf<ZigBuildConfig.Module.Id>()
+            val roots = mutableSetOf<ZigBuildConfig.Module.Id>()
+            for (moduleId in getFileModules(virtualFile)) {
+                val module = idToModule[moduleId] ?: continue
+                findRootModules(module, visited, roots)
+            }
+            return roots
+        }
+
+        private fun findRootModules(
+            module: ZigBuildConfig.Module,
+            visited: MutableSet<ZigBuildConfig.Module.Id>,
+            roots: MutableSet<ZigBuildConfig.Module.Id>,
+        ) {
+            if (module.id in visited) return
+            visited.add(module.id)
+            if (module.isRootModule) roots.add(module.id)
+            for (otherModule in idToModule.values) {
+                if (otherModule.id in visited) continue
+                if (otherModule.importTable.containsValue(module.id)) {
+                    findRootModules(otherModule, visited, roots)
+                }
             }
         }
     }
