@@ -1406,7 +1406,7 @@ private fun computeValueUncached(element: ZigExpression): ZigValue {
         is ZigAnyframeLiteral,
         is ZigAnyframeType,
         is ZigAsm,
-        is ZigNosuspend,
+        is ZigNosuspendExpression,
         is ZigResume -> ZigUnknown.VALUE
     }
 }

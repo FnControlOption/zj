@@ -1055,7 +1055,7 @@ class ZigParser : PsiParser {
                 val expr = builder.mark()
                 builder.advanceLexer()
                 tryExpr(builder)
-                expr.done(ZigElementType.NOSUSPEND)
+                expr.done(ZigElementType.NOSUSPEND_EXPRESSION)
                 return expr
             }
             ZigTokenType.KEYWORD_RESUME -> {
@@ -1177,7 +1177,7 @@ class ZigParser : PsiParser {
                 val marker = builder.mark()
                 builder.advanceLexer()
                 tryBlockExprStatement(builder)
-                marker.done(ZigElementType.NOSUSPEND)
+                marker.done(ZigElementType.NOSUSPEND_STATEMENT)
                 return marker
             }
             ZigTokenType.KEYWORD_SUSPEND -> {

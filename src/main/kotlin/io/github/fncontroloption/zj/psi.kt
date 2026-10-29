@@ -1080,7 +1080,12 @@ class ZigNegation(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpressi
 
 class ZigNegationWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigPrefixExpression
 
-class ZigNosuspend(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
+sealed interface ZigNosuspend : ZigElement
+
+class ZigNosuspendExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigNosuspend, ZigExpression {
+}
+
+class ZigNosuspendStatement(node: ASTNode) : ASTWrapperPsiElement(node), ZigNosuspend {
 }
 
 class ZigNumberLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
