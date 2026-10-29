@@ -46,11 +46,6 @@ class ZigExternalSystemAsyncFileListener : AsyncFileListener {
                 for (project in ProjectManager.getInstance().openProjects) {
                     val projectService = project.service<ZigExternalSystemProjectService>()
                     projectService.updateProjectPath()
-
-                    val settings = project.service<ZigSettings>()
-                    if (settings.buildOnSave) {
-                        ExternalSystemProjectTracker.getInstance(project).scheduleProjectRefresh()
-                    }
                 }
             }
         }

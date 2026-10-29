@@ -6,7 +6,10 @@ import com.intellij.openapi.components.*
 import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.project.Project
 import com.intellij.ui.RawCommandLineEditor
-import com.intellij.ui.dsl.builder.*
+import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.bindSelected
+import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.builder.toNonNullableProperty
 import com.intellij.util.execution.ParametersListUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,24 +20,12 @@ import kotlinx.coroutines.launch
 class ZigSettings(private val project: Project) : SimplePersistentStateComponent<ZigSettings.State>(State()) {
     class State : BaseState() {
         var buildOptions by string()
-        var buildOnSave by property(false)
-        var buildArgsOnSave by string("check --watch $${ZIG_BUILD_OPTIONS_MACRO_NAME}$")
         var runAstCheck by property(false)
     }
 
     val buildOptions: List<String>
         get() {
             val original = state.buildOptions ?: return emptyList()
-            val expanded = ProgramParametersUtil.expandPathAndMacros(original, null, project)
-            return ParametersListUtil.parse(expanded)
-        }
-
-    val buildOnSave: Boolean
-        get() = state.buildOnSave
-
-    val buildArgsOnSave: List<String>
-        get() {
-            val original = state.buildArgsOnSave ?: return emptyList()
             val expanded = ProgramParametersUtil.expandPathAndMacros(original, null, project)
             return ParametersListUtil.parse(expanded)
         }
@@ -64,16 +55,6 @@ class ZigSettingsConfigurable(private val project: Project) : BoundConfigurable(
                     { editor, value -> editor.editorField.text = value },
                     state::buildOptions.toNonNullableProperty("")
                 )
-        }
-        row {
-            val buildOnSave = checkBox("Build on save:").bindSelected(state::buildOnSave)
-            val buildArgsOnSave = expandableTextField()
-            MacrosDialog.addMacroSupport(buildArgsOnSave.component, MacrosDialog.Filters.ALL) { false }
-            buildArgsOnSave
-                .enabledIf(buildOnSave.selected)
-                .comment("Specify arguments to pass to '<b>zig build</b>' on save")
-                .align(AlignX.FILL)
-                .bindText(state::buildArgsOnSave.toNonNullableProperty(""))
         }
         row {
             checkBox("<html>Run '<b>zig ast-check</b>' on save</html>")

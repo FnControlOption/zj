@@ -93,12 +93,7 @@ class ZigBuildAnnotator : ZigExternalAnnotator() {
             }
             is ZigBuildProjectService.FetchResult.Ok -> {}
         }
-        val settings = project.service<ZigSettings>()
-        if (!settings.buildOnSave) {
-            return emptyList()
-        }
-        val buildWatcher = project.service<ZigBuildWatcher>()
-        return buildWatcher.messages[path.toString()].orEmpty()
+        return emptyList() // TODO
     }
 }
 
