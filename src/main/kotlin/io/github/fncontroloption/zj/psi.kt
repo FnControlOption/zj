@@ -407,7 +407,7 @@ class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
                     is ZigAssignDestructure -> clause.variables.filterIsInstance<ZigVarProto>()
                     else -> emptySequence()
                 }
-                is ZigComptime -> when (val clause = statement.clause) {
+                is ZigComptimeStatement -> when (val clause = statement.clause) {
                     is ZigVarDecl -> sequenceOf(clause)
                     is ZigAssignDestructure -> clause.variables.filterIsInstance<ZigVarProto>()
                     else -> emptySequence()
@@ -534,10 +534,14 @@ class ZigClauseStatement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement
         get() = findNotNullChildByClass(ZigClause::class.java)
 }
 
-class ZigComptime(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainerDecl, ZigExpression {
-    override val container: ZigContainer?
-        get() = parent as? ZigContainer
+sealed interface ZigComptime : ZigElement
 
+class ZigComptimeExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigComptime, ZigExpression {
+    val expression: ZigExpression?
+        get() = findChildByClass(ZigExpression::class.java)
+}
+
+class ZigComptimeStatement(node: ASTNode) : ASTWrapperPsiElement(node), ZigComptime {
     val clause: ZigClause?
         get() = findChildByClass(ZigClause::class.java)
 }
@@ -556,6 +560,14 @@ class ZigContainerArg(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 
     val expression: ZigExpression?
         get() = findChildByClass(ZigExpression::class.java)
+}
+
+class ZigContainerComptimeBlockElement(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainerDecl, ZigComptime {
+    override val container: ZigContainer
+        get() = parent as ZigContainer
+
+    val block: ZigBlock?
+        get() = findChildByClass(ZigBlock::class.java)
 }
 
 class ZigContainerExpression(node: ASTNode) :

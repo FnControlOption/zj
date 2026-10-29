@@ -1349,7 +1349,7 @@ private fun computeValueUncached(element: ZigExpression): ZigValue {
         is ZigErrorUnion -> computeErrorUnion(element)
         is ZigArrayTypeExpression -> computeArrayTypeExpression(element)
         is ZigPointerTypeExpression -> computePointerTypeExpression(element)
-        is ZigComptime -> computeComptime(element)
+        is ZigComptimeExpression -> computeComptimeExpression(element)
         is ZigIf -> computeIf(element)
         is ZigCatch -> computeCatch(element)
         is ZigOrelse -> computeOrelse(element)
@@ -2021,7 +2021,7 @@ private fun inferResultType(childElement: ZigExpression): ZigValue {
         is ZigReturn -> inferReturn(parentElement, childElement)
         is ZigBreak -> inferBreak(parentElement, childElement)
         is ZigContinue -> inferContinue(parentElement, childElement)
-        is ZigComptime -> inferComptime(parentElement, childElement)
+        is ZigComptimeExpression -> inferComptimeExpression(parentElement, childElement)
         is ZigCall -> inferCall(parentElement, childElement)
         is ZigCallArg -> inferCallArg(parentElement, childElement)
         else -> ZigUnknown.TYPE
@@ -2148,7 +2148,7 @@ private fun createContainerHtmlChunkStartingFrom(
             // TODO: `test` -> `test_{0,1,etc.}`, `test "foo"` -> `test.foo`, `test foo` -> `decltest.foo`
             createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "test")
         }
-        is ZigComptime if parent is ZigContainer -> {
+        is ZigContainerComptimeBlockElement -> {
             createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "comptime")
         }
         is ZigVarDecl if parent is ZigContainer -> {
@@ -2428,8 +2428,8 @@ private fun computePointerTypeExpression(element: ZigPointerTypeExpression): Zig
     return child.mapValue { ZigPointerType.of(size, sentinel, mutability, it) }
 }
 
-private fun computeComptime(element: ZigComptime): ZigValue {
-    return resolveValue(element.clause as? ZigExpression)
+private fun computeComptimeExpression(element: ZigComptimeExpression): ZigValue {
+    return resolveValue(element.expression)
 }
 
 private fun computeAddressOf(element: ZigAddressOf): ZigPlace {
@@ -3308,11 +3308,11 @@ private fun inferContinue(
     return resolveValue(conditionElement).typeOf
 }
 
-private fun inferComptime(
-    parentElement: ZigComptime,
+private fun inferComptimeExpression(
+    parentElement: ZigComptimeExpression,
     childElement: ZigExpression,
 ): ZigValue {
-    if (parentElement.clause !== childElement) {
+    if (parentElement.expression !== childElement) {
         return ZigUnknown.TYPE
     }
     return inferResultType(parentElement)

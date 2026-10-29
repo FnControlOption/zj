@@ -85,7 +85,7 @@ class ZigParser : PsiParser {
 
     private fun parseContainerMember(builder: PsiBuilder): PsiBuilder.Marker? {
         return parseTestDecl(builder)
-            ?: parseComptimeBlock(builder)
+            ?: parseContainerComptimeBlock(builder)
             ?: parseVarDecl(builder)
             ?: parseFnDecl(builder)
             ?: parseContainerField(builder)
@@ -449,14 +449,14 @@ class ZigParser : PsiParser {
         return decl
     }
 
-    private fun parseComptimeBlock(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parseContainerComptimeBlock(builder: PsiBuilder): PsiBuilder.Marker? {
         val comptime = builder.mark()
         if (!eatToken(builder, ZigTokenType.KEYWORD_COMPTIME)) {
             comptime.rollbackTo()
             return null
         }
         parseBlock(builder, allowLabel = false)
-        comptime.done(ZigElementType.COMPTIME)
+        comptime.done(ZigElementType.CONTAINER_COMPTIME_BLOCK)
         return comptime
     }
 
@@ -819,7 +819,7 @@ class ZigParser : PsiParser {
                 val marker = builder.mark()
                 builder.advanceLexer()
                 tryTypeExpr(builder)
-                marker.done(ZigElementType.COMPTIME)
+                marker.done(ZigElementType.COMPTIME_EXPRESSION)
                 return marker
             }
             ZigTokenType.MULTILINE_STRING_LITERAL_LINE -> {
@@ -1048,7 +1048,7 @@ class ZigParser : PsiParser {
                 val expr = builder.mark()
                 builder.advanceLexer()
                 tryExpr(builder)
-                expr.done(ZigElementType.COMPTIME)
+                expr.done(ZigElementType.COMPTIME_EXPRESSION)
                 return expr
             }
             ZigTokenType.KEYWORD_NOSUSPEND -> {
@@ -1161,7 +1161,7 @@ class ZigParser : PsiParser {
                 val marker = builder.mark()
                 builder.advanceLexer()
                 if (parseBlockExpr(builder) != null) {
-                    marker.done(ZigElementType.COMPTIME)
+                    marker.done(ZigElementType.COMPTIME_STATEMENT)
                     return marker
                 }
                 if (isBlockLevel) {
@@ -1169,8 +1169,8 @@ class ZigParser : PsiParser {
                 } else {
                     tryAssignClause(builder)
                 }
-                marker.done(ZigElementType.COMPTIME)
                 expectToken(builder, ZigTokenType.SEMICOLON)
+                marker.done(ZigElementType.COMPTIME_STATEMENT)
                 return marker
             }
             ZigTokenType.KEYWORD_NOSUSPEND -> {
