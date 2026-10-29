@@ -1349,7 +1349,7 @@ private fun computeValueUncached(element: ZigExpression): ZigValue {
         is ZigErrorUnion -> computeErrorUnion(element)
         is ZigArrayTypeExpression -> computeArrayTypeExpression(element)
         is ZigPointerTypeExpression -> computePointerTypeExpression(element)
-        is ZigComptime -> computeComptime(element)
+        is ZigComptimeExpression -> computeComptimeExpression(element)
         is ZigIf -> computeIf(element)
         is ZigCatch -> computeCatch(element)
         is ZigOrelse -> computeOrelse(element)
@@ -1406,7 +1406,7 @@ private fun computeValueUncached(element: ZigExpression): ZigValue {
         is ZigAnyframeLiteral,
         is ZigAnyframeType,
         is ZigAsm,
-        is ZigNosuspend,
+        is ZigNosuspendExpression,
         is ZigResume -> ZigUnknown.VALUE
     }
 }
@@ -2021,7 +2021,7 @@ private fun inferResultType(childElement: ZigExpression): ZigValue {
         is ZigReturn -> inferReturn(parentElement, childElement)
         is ZigBreak -> inferBreak(parentElement, childElement)
         is ZigContinue -> inferContinue(parentElement, childElement)
-        is ZigComptime -> inferComptime(parentElement, childElement)
+        is ZigComptimeExpression -> inferComptimeExpression(parentElement, childElement)
         is ZigCall -> inferCall(parentElement, childElement)
         is ZigCallArg -> inferCallArg(parentElement, childElement)
         else -> ZigUnknown.TYPE
@@ -2148,7 +2148,7 @@ private fun createContainerHtmlChunkStartingFrom(
             // TODO: `test` -> `test_{0,1,etc.}`, `test "foo"` -> `test.foo`, `test foo` -> `decltest.foo`
             createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "test")
         }
-        is ZigComptime if parent is ZigContainer -> {
+        is ZigContainerComptimeBlockElement -> {
             createStyledHtmlChunk(ZigHighlightingColors.KEYWORD, "comptime")
         }
         is ZigVarDecl if parent is ZigContainer -> {
@@ -2428,8 +2428,8 @@ private fun computePointerTypeExpression(element: ZigPointerTypeExpression): Zig
     return child.mapValue { ZigPointerType.of(size, sentinel, mutability, it) }
 }
 
-private fun computeComptime(element: ZigComptime): ZigValue {
-    return resolveValue(element.innerElement as? ZigExpression)
+private fun computeComptimeExpression(element: ZigComptimeExpression): ZigValue {
+    return resolveValue(element.expression)
 }
 
 private fun computeAddressOf(element: ZigAddressOf): ZigPlace {
@@ -3145,7 +3145,10 @@ private fun inferSwitchProng(
         return ZigUnknown.TYPE
     }
     val types = mutableSetOf<ZigValue>()
-    types += inferResultType(parentElement.containingSwitch)
+    val containingSwitch = parentElement.containingSwitch
+    if (containingSwitch is ZigExpression) {
+        types += inferResultType(containingSwitch)
+    }
     types +=
         parentElement.containingSwitch.prongs
             .filter { it !== parentElement }
@@ -3280,7 +3283,9 @@ private fun inferBreak(
     }
     val breakable = parentElement.referencedLabelable ?: return ZigUnknown.TYPE
     val types = mutableSetOf<ZigValue>()
-    types += inferResultType(breakable)
+    if (breakable is ZigExpression) {
+        types += inferResultType(breakable)
+    }
     var breakElements = getLabeledBreaksFor(breakable)
     if (breakable is ZigLoop) {
         breakElements += getUnlabeledBreaksFor(breakable)
@@ -3308,11 +3313,11 @@ private fun inferContinue(
     return resolveValue(conditionElement).typeOf
 }
 
-private fun inferComptime(
-    parentElement: ZigComptime,
+private fun inferComptimeExpression(
+    parentElement: ZigComptimeExpression,
     childElement: ZigExpression,
 ): ZigValue {
-    if (parentElement.innerElement !== childElement) {
+    if (parentElement.expression !== childElement) {
         return ZigUnknown.TYPE
     }
     return inferResultType(parentElement)

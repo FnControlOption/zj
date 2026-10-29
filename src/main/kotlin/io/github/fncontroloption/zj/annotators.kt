@@ -28,12 +28,12 @@ private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
         is ZigIf -> {
             annotateUnusedCaptures(
                 payload = element.thenPayload,
-                bodies = listOfNotNull(element.thenElement.innerElement),
+                bodies = listOfNotNull(element.thenElement.clause),
                 holder = holder
             )
             annotateUnusedCaptures(
                 payload = element.elsePayload,
-                bodies = listOfNotNull(element.elseElement?.innerElement),
+                bodies = listOfNotNull(element.elseElement?.clause),
                 holder = holder
             )
         }
@@ -41,12 +41,12 @@ private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
             annotateUnusedLabel(element, "while loop", holder)
             annotateUnusedCaptures(
                 payload = element.thenPayload,
-                bodies = listOfNotNull(element.whileContinueExpr?.innerElement, element.thenElement.innerElement),
+                bodies = listOfNotNull(element.continueClauseElement?.clause, element.thenElement.clause),
                 holder = holder,
             )
             annotateUnusedCaptures(
                 payload = element.elsePayload,
-                bodies = listOfNotNull(element.elseElement?.innerElement),
+                bodies = listOfNotNull(element.elseElement?.clause),
                 holder = holder
             )
         }
@@ -54,7 +54,7 @@ private fun annotateUnused(element: PsiElement, holder: AnnotationHolder) {
             annotateUnusedLabel(element, "for loop", holder)
             annotateUnusedCaptures(
                 payload = element.payload,
-                bodies = listOfNotNull(element.thenElement.innerElement),
+                bodies = listOfNotNull(element.thenElement.clause),
                 holder = holder
             )
         }

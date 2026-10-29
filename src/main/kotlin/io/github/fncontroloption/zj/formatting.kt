@@ -76,7 +76,7 @@ class ZigFormattingBlock(
                 }
             }
 
-            is ZigAssignElement -> {
+            is ZigAssignClause -> {
                 var indent = Indent.getNoneIndent()
                 for (child in myNode.children()) {
                     addChild(blocks, child, indent)
@@ -291,7 +291,7 @@ class ZigFormattingBlock(
                 }
             }
 
-            is ZigAssignElement,
+            is ZigAssignClause,
             is ZigCatch,
             is ZigBinaryExpression, is ZigFieldAccess,
             is ZigArrayAccess, is ZigArrayTypeExpression -> indent = Indent.getNormalIndent()
