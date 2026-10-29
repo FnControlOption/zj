@@ -1214,16 +1214,19 @@ class ZigParser : PsiParser {
         if (labeledStatement != null) {
             return labeledStatement
         }
+        val statement = builder.mark()
         val clause = if (isBlockLevel) {
             parseVarAssignClause(builder)
         } else {
             parseAssignClause(builder)
         }
         if (clause == null) {
+            statement.drop()
             return null
         }
         expectToken(builder, ZigTokenType.SEMICOLON)
-        return clause
+        statement.done(ZigElementType.CLAUSE_STATEMENT)
+        return statement
     }
 
     private fun assertIfStatement(builder: PsiBuilder): PsiBuilder.Marker {

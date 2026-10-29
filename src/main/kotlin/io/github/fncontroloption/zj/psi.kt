@@ -402,8 +402,11 @@ class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
     companion object {
         fun statementToVarDecls(statement: ZigElement): Sequence<ZigVarDeclOrProto> {
             return when (statement) {
-                is ZigVarDecl -> sequenceOf(statement)
-                is ZigAssignDestructure -> statement.variables.filterIsInstance<ZigVarProto>()
+                is ZigClauseStatement -> when (val clause = statement.clause) {
+                    is ZigVarDecl -> sequenceOf(clause)
+                    is ZigAssignDestructure -> clause.variables.filterIsInstance<ZigVarProto>()
+                    else -> emptySequence()
+                }
                 is ZigComptime -> when (val clause = statement.clause) {
                     is ZigVarDecl -> sequenceOf(clause)
                     is ZigAssignDestructure -> clause.variables.filterIsInstance<ZigVarProto>()
@@ -524,6 +527,11 @@ class ZigCatchPayload(node: ASTNode) : ASTWrapperPsiElement(node), ZigPayload {
 }
 
 class ZigCharLiteral(node: ASTNode) : ASTWrapperPsiElement(node), ZigExpression {
+}
+
+class ZigClauseStatement(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+    val clause: ZigClause
+        get() = findNotNullChildByClass(ZigClause::class.java)
 }
 
 class ZigComptime(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainerDecl, ZigExpression {
