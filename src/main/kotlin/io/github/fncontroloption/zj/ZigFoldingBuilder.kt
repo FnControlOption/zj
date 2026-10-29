@@ -17,7 +17,8 @@ private val BRACE_ENCLOSED = TokenSet.create(
     ZigElementType.CONTAINER_EXPRESSION,
     ZigElementType.ERROR_SET,
     ZigElementType.LIST_INIT,
-    ZigElementType.SWITCH,
+    ZigElementType.SWITCH_EXPRESSION,
+    ZigElementType.SWITCH_STATEMENT,
 )
 
 private val BLOCKS_COLLAPSED_BY_DEFAULT = TokenSet.create(

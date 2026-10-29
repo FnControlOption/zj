@@ -99,7 +99,7 @@ sealed interface ZigAssignClause : ZigClause {
                 .firstNotNullOfOrNull { it as? ZigExpression }
 }
 
-sealed interface ZigLabelable : ZigExpression {
+sealed interface ZigLabelable : ZigElement {
     val labelDecl: ZigLabelDecl?
         get() = firstChild.siblings().firstNotNullOfOrNull { it as? ZigLabelDecl }
 }
@@ -385,7 +385,7 @@ class ZigBitXor(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpression
         get() = ZigTokenType.CARET
 }
 
-class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
+class ZigBlock(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable, ZigExpression {
     val leftBraceElement: PsiElement
         get() = firstChild.siblings().first { it.elementType == ZigTokenType.L_BRACE }
 
@@ -847,7 +847,7 @@ class ZigBuiltinFnProto(node: ASTNode) :
     override fun canNavigateToSource() = false
 }
 
-class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop {
+class ZigFor(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop, ZigExpression {
     val forTokenElement: PsiElement
         get() = firstChild.siblings().first { it.elementType == ZigTokenType.KEYWORD_FOR }
 
@@ -1307,15 +1307,18 @@ class ZigSubWrap(node: ASTNode) : ASTWrapperPsiElement(node), ZigBinaryExpressio
 class ZigSuspend(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
-class ZigSwitch(node: ASTNode) : ASTWrapperPsiElement(node), ZigLabelable {
+sealed interface ZigSwitch : ZigLabelable {
     val switchTokenElement: PsiElement
         get() = firstChild.siblings().first { it.elementType == ZigTokenType.KEYWORD_SWITCH }
 
     val conditionElement: ZigConditionElement
-        get() = findNotNullChildByClass(ZigConditionElement::class.java)
+        get() = firstChild.siblings().filterIsInstance<ZigConditionElement>().first()
 
     val prongs: Sequence<ZigSwitchProng>
         get() = firstChild.siblings().filterIsInstance<ZigSwitchProng>()
+}
+
+class ZigSwitchExpression(node: ASTNode) : ASTWrapperPsiElement(node), ZigSwitch, ZigExpression {
 }
 
 class ZigSwitchItem(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
@@ -1367,6 +1370,9 @@ class ZigSwitchProng(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 }
 
 class ZigSwitchRange(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
+}
+
+class ZigSwitchStatement(node: ASTNode) : ASTWrapperPsiElement(node), ZigSwitch {
 }
 
 class ZigTestDecl(node: ASTNode) : ASTWrapperPsiElement(node), ZigContainerDecl {
@@ -1544,7 +1550,7 @@ class ZigVarProto(node: ASTNode) : ASTWrapperPsiElement(node), ZigVarDeclOrProto
     }
 }
 
-class ZigWhile(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop {
+class ZigWhile(node: ASTNode) : ASTWrapperPsiElement(node), ZigLoop, ZigExpression {
     val whileTokenElement: PsiElement
         get() = firstChild.siblings().first { it.elementType == ZigTokenType.KEYWORD_WHILE }
 

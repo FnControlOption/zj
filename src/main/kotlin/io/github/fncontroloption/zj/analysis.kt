@@ -3145,7 +3145,10 @@ private fun inferSwitchProng(
         return ZigUnknown.TYPE
     }
     val types = mutableSetOf<ZigValue>()
-    types += inferResultType(parentElement.containingSwitch)
+    val containingSwitch = parentElement.containingSwitch
+    if (containingSwitch is ZigExpression) {
+        types += inferResultType(containingSwitch)
+    }
     types +=
         parentElement.containingSwitch.prongs
             .filter { it !== parentElement }
@@ -3280,7 +3283,9 @@ private fun inferBreak(
     }
     val breakable = parentElement.referencedLabelable ?: return ZigUnknown.TYPE
     val types = mutableSetOf<ZigValue>()
-    types += inferResultType(breakable)
+    if (breakable is ZigExpression) {
+        types += inferResultType(breakable)
+    }
     var breakElements = getLabeledBreaksFor(breakable)
     if (breakable is ZigLoop) {
         breakElements += getUnlabeledBreaksFor(breakable)

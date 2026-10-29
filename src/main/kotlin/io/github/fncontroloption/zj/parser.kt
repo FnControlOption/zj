@@ -1263,7 +1263,7 @@ class ZigParser : PsiParser {
     }
 
     private fun parseLabeledStatement(builder: PsiBuilder): PsiBuilder.Marker? {
-        val statement = parseBlockExpr(builder) ?: parseLoopStatement(builder) ?: parseSwitchExpr(builder)
+        val statement = parseBlockExpr(builder) ?: parseLoopStatement(builder) ?: parseSwitchStatement(builder)
         if (statement != null) {
             return statement
         }
@@ -1465,7 +1465,7 @@ class ZigParser : PsiParser {
         return null
     }
 
-    private fun parseSwitchExpr(builder: PsiBuilder): PsiBuilder.Marker? {
+    private fun parseSwitchStatement(builder: PsiBuilder): PsiBuilder.Marker? {
         val marker = builder.mark()
         parseLabelDecl(builder)
         if (!eatToken(builder, ZigTokenType.KEYWORD_SWITCH)) {
@@ -1473,7 +1473,7 @@ class ZigParser : PsiParser {
             return null
         }
         trySwitchSuffix(builder)
-        marker.done(ZigElementType.SWITCH)
+        marker.done(ZigElementType.SWITCH_STATEMENT)
         return marker
     }
 
@@ -1483,7 +1483,7 @@ class ZigParser : PsiParser {
         assert(builder.tokenType === ZigTokenType.KEYWORD_SWITCH)
         builder.advanceLexer()
         trySwitchSuffix(builder)
-        marker.done(ZigElementType.SWITCH)
+        marker.done(ZigElementType.SWITCH_EXPRESSION)
         return marker
     }
 
