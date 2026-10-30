@@ -401,10 +401,10 @@ class ZigParser : PsiParser {
             }
             type.done(ZigElementType.TYPE)
         }
-        decl.done(ZigElementType.FN_PARAM)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_PAREN) {
             builder.mark().error("Expected ',' after parameter")
         }
+        decl.done(ZigElementType.FN_PARAM)
         return decl
     }
 
@@ -497,7 +497,6 @@ class ZigParser : PsiParser {
         if (eatToken(builder, ZigTokenType.EQUAL)) {
             tryExpr(builder)
         }
-        field.done(ZigElementType.CONTAINER_FIELD)
         if (!eatToken(builder, ZigTokenType.COMMA)) {
             val terminator = when (containerType) {
                 null -> null
@@ -507,6 +506,7 @@ class ZigParser : PsiParser {
                 builder.mark().error("Expected ',' after field")
             }
         }
+        field.done(ZigElementType.CONTAINER_FIELD)
         return field
     }
 
@@ -684,10 +684,10 @@ class ZigParser : PsiParser {
     private fun parseCallArg(builder: PsiBuilder): PsiBuilder.Marker? {
         val expr = parseExpr(builder) ?: return null
         val arg = expr.precede()
-        arg.done(ZigElementType.CALL_ARG)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_PAREN) {
             builder.mark().error("Expected ',' after argument")
         }
+        arg.done(ZigElementType.CALL_ARG)
         return arg
     }
 
@@ -1136,10 +1136,10 @@ class ZigParser : PsiParser {
             entry.rollbackTo()
             return null
         }
-        entry.done(ZigElementType.LIST_INIT_ITEM)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_BRACE) {
             builder.mark().error("Expected ',' after initializer")
         }
+        entry.done(ZigElementType.LIST_INIT_ITEM)
         return entry
     }
 
@@ -1521,10 +1521,10 @@ class ZigParser : PsiParser {
         if (clause == null) {
             builder.mark().error("Expected expression or assignment")
         }
-        marker.done(ZigElementType.SWITCH_PRONG)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_BRACE) {
             builder.mark().error("Expected ',' after switch prong")
         }
+        marker.done(ZigElementType.SWITCH_PRONG)
         return marker
     }
 
@@ -1539,10 +1539,10 @@ class ZigParser : PsiParser {
             tryExpr(builder)
             start.precede().done(ZigElementType.SWITCH_RANGE)
         }
-        marker.done(ZigElementType.SWITCH_ITEM)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.EQUAL_ANGLE_BRACKET_RIGHT) {
             builder.mark().error("Expected ',' after switch item")
         }
+        marker.done(ZigElementType.SWITCH_ITEM)
         return marker
     }
 
@@ -1720,10 +1720,10 @@ class ZigParser : PsiParser {
             parseExpr(builder)
             start.precede().done(ZigElementType.FOR_RANGE)
         }
-        input.done(ZigElementType.FOR_INPUT)
         if (!eatToken(builder, ZigTokenType.COMMA) && builder.tokenType !== ZigTokenType.R_PAREN) {
             builder.mark().error("Expected ',' after for operand")
         }
+        input.done(ZigElementType.FOR_INPUT)
         return input
     }
 

@@ -175,12 +175,8 @@ class ZigFormattingBlock(
                 }
             }
 
-            is ZigBuiltinCall,
-            is ZigCall -> {
-                val hasTrailingComma = when (element) {
-                    is ZigBuiltinCall -> element.hasTrailingComma
-                    is ZigCall -> element.hasTrailingComma
-                }
+            is ZigCallOrBuiltinCall -> {
+                val hasTrailingComma = element.hasTrailingComma
                 var indent = Indent.getNoneIndent()
                 for (child in myNode.children()) {
                     when (child.elementType) {

@@ -554,8 +554,10 @@ sealed interface ZigCallOrBuiltinCall : ZigExpression {
         get() =
             lastChild
                 .siblings(forward = false)
-                .firstOrNull { it is ZigCallArg || it.elementType === ZigTokenType.COMMA }
-                ?.elementType === ZigTokenType.COMMA
+                .filterIsInstance<ZigCallArg>()
+                .firstOrNull()
+                ?.hasTrailingComma
+                ?: false
 }
 
 class ZigBuiltinCall : ZigStubPsiElement<ZigBuiltinCallStub>, ZigCallOrBuiltinCall {
@@ -587,6 +589,9 @@ class ZigCallArg(node: ASTNode) : ASTWrapperPsiElement(node), ZigElement {
 
     val expression: ZigExpression
         get() = findNotNullChildByClass(ZigExpression::class.java)
+
+    val hasTrailingComma: Boolean
+        get() = lastChild?.elementType === ZigTokenType.COMMA
 }
 
 class ZigCallconvModifier(node: ASTNode) : ASTWrapperPsiElement(node), ZigModifier
