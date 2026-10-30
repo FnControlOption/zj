@@ -104,13 +104,14 @@
     <postStartupActivity implementation="io.github.fncontroloption.zj.ZigBuildProjectActivity"/>
     <postStartupActivity implementation="io.github.fncontroloption.zj.ZigExternalSystemProjectActivity"/>
     <postStartupActivity implementation="io.github.fncontroloption.zj.ZigExeProjectActivity"/>
+    <postStartupActivity implementation="io.github.fncontroloption.zj.ZigProjectPathActivity"/>
     <lang.namesValidator language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigNamesValidator"/>
     <fileBasedIndex implementation="io.github.fncontroloption.zj.ZigEscapedIdentifierIndex"/>
     <fileBasedIndex implementation="io.github.fncontroloption.zj.ZigStringLiteralIndex"/>
     <referencesSearch implementation="io.github.fncontroloption.zj.ZigEscapedIdentifierReferencesSearch"/>
     <referencesSearch implementation="io.github.fncontroloption.zj.ZigModuleReferencesSearch"/>
     <vfs.asyncListenerBackgroundable implementation="io.github.fncontroloption.zj.ZigModulesAsyncFileListener"/>
-    <vfs.asyncListenerBackgroundable implementation="io.github.fncontroloption.zj.ZigExternalSystemAsyncFileListener"/>
+    <vfs.asyncListenerBackgroundable implementation="io.github.fncontroloption.zj.ZigProjectPathFileListener"/>
     <directoryIndexExcludePolicy implementation="io.github.fncontroloption.zj.ZigDirectoryIndexExcludePolicy"/>
     <toolWindow id="Zig" anchor="bottom" icon="/icons/toolWindow.svg"
                 factoryClass="io.github.fncontroloption.zj.ZigToolWindowFactory"/>

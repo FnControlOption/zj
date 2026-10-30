@@ -79,7 +79,7 @@ class ZigBuildProjectService(
         data class Err(val errorMessages: Map<String, List<ZigExe.Message>>) : FetchResult
     }
 
-    private val projectPathFlow = project.service<ZigExternalSystemProjectService>().projectPath
+    private val projectPathFlow = project.service<ZigProjectPathService>().projectPath
     private val exePathFlow = project.service<ZigExeService>().exePath
     private val fetchRestartFlow = MutableSharedFlow<Unit>()
     private val initialFetch: Deferred<FetchResult> = CompletableDeferred(FetchResult.None)

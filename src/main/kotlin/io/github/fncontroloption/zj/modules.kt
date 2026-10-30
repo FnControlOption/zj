@@ -38,7 +38,7 @@ class ZigModulesProjectService(
     private val coroutineScope: CoroutineScope,
 ) {
     private val daemonCodeAnalyzer = DaemonCodeAnalyzer.getInstance(project)
-    private val projectPathFlow = project.service<ZigExternalSystemProjectService>().projectPath
+    private val projectPathFlow = project.service<ZigProjectPathService>().projectPath
     private val deferredFetchFlow = project.service<ZigBuildProjectService>().deferredFetch
 
     private val cachedIdToModule = MutableStateFlow<Map<ZigBuildConfig.Module.Id, ZigBuildConfig.Module>>(emptyMap())

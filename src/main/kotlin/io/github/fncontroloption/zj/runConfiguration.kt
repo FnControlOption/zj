@@ -59,7 +59,7 @@ class ZigRunConfiguration(project: Project, factory: ConfigurationFactory, name:
     override fun getConfigurationEditor() = ZigRunConfigurationSettingsEditor()
 
     override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState? {
-        val projectService = project.service<ZigExternalSystemProjectService>()
+        val projectService = project.service<ZigProjectPathService>()
         val projectPath = projectService.projectPath.value ?: return null
 
         val exeService = project.service<ZigExeService>()

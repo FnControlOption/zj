@@ -8,18 +8,10 @@ import com.intellij.openapi.externalSystem.autoimport.*
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.ProjectManager
-import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.startup.ProjectActivity
-import com.intellij.openapi.vfs.AsyncFileListener
-import com.intellij.openapi.vfs.newvfs.events.VFileEvent
-import com.intellij.openapi.vfs.toNioPathOrNull
-import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.util.EventDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.launch
@@ -30,25 +22,7 @@ val ZIG_SYSTEM_ID = ProjectSystemId("ZIG")
 
 class ZigExternalSystemProjectActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
-        project.workspaceModel.eventLog.collect {
-            for (project in ProjectManager.getInstance().openProjects) {
-                val projectService = project.service<ZigExternalSystemProjectService>()
-                projectService.updateProjectPath()
-            }
-        }
-    }
-}
-
-class ZigExternalSystemAsyncFileListener : AsyncFileListener {
-    override fun prepareChange(events: List<VFileEvent>): AsyncFileListener.ChangeApplier {
-        return object : AsyncFileListener.ChangeApplier {
-            override fun afterVfsChange() {
-                for (project in ProjectManager.getInstance().openProjects) {
-                    val projectService = project.service<ZigExternalSystemProjectService>()
-                    projectService.updateProjectPath()
-                }
-            }
-        }
+        project.service<ZigExternalSystemProjectService>()
     }
 }
 
@@ -57,13 +31,11 @@ class ZigExternalSystemProjectService(
     private val project: Project,
     coroutineScope: CoroutineScope,
 ) {
-    private val rootManager = ProjectRootManager.getInstance(project)
     private val projectTracker = ExternalSystemProjectTracker.getInstance(project)
-    private var projectPathMutable = MutableStateFlow<Path?>(null)
-    val projectPath = projectPathMutable.asStateFlow()
+    private val projectPathFlow = project.service<ZigProjectPathService>().projectPath
 
     init {
-        projectPath.runningFold(null as ZigExternalSystemProjectAware?) { oldProjectAware, path ->
+        projectPathFlow.runningFold(null as ZigExternalSystemProjectAware?) { oldProjectAware, path ->
             oldProjectAware?.let { projectTracker.remove(it.projectId) }
             if (path == null) return@runningFold null
             val newProjectAware = ZigExternalSystemProjectAware(project, path)
@@ -73,18 +45,6 @@ class ZigExternalSystemProjectService(
             projectTracker.scheduleProjectRefresh()
             newProjectAware
         }.launchIn(coroutineScope)
-    }
-
-    fun updateProjectPath() {
-        projectPathMutable.value =
-            rootManager
-                .contentRoots
-                .asSequence()
-                .filter {
-                    val buildFile = it.findChild("build.zig")
-                    buildFile != null && buildFile.isValid && !buildFile.isDirectory
-                }
-                .firstNotNullOfOrNull { it.toNioPathOrNull() }
     }
 }
 
