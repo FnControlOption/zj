@@ -16,7 +16,6 @@ import com.intellij.openapi.vfs.newvfs.events.*
 import com.intellij.openapi.vfs.toNioPathOrNull
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.psi.PsiManager
-import com.intellij.psi.SyntaxTraverser
 import com.intellij.util.concurrency.annotations.RequiresReadLock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.currentCoroutineContext
@@ -190,30 +189,10 @@ class ZigModulesProjectService(
     @RequiresReadLock
     private fun followImports(path: Path, fileImports: MutableMap<Path, Set<Path>>) {
         if (fileImports.containsKey(path)) return
-        val virtualFile = VirtualFileManager.getInstance().findFileByNioPath(path) ?: return
-        val psiFile = PsiManager.getInstance(project).findFile(virtualFile) ?: return
-        if (psiFile !is ZigFile) return
         val imports = mutableSetOf<Path>()
         fileImports[path] = imports
-        val targets = when (val stubTree = psiFile.stubTree) {
-            null -> {
-                SyntaxTraverser.psiTraverser(psiFile)
-                    .asSequence()
-                    .filterIsInstance<ZigBuiltinCall>()
-                    .filter { it.builtinElement.textMatches("@import") }
-                    .mapNotNull { it.arguments.firstOrNull() }
-                    .filterIsInstance<ZigStringExpression>()
-                    .mapNotNull { it.value }
-            }
-            else -> {
-                stubTree.plainList
-                    .asSequence()
-                    .filterIsInstance<ZigImportStub>()
-                    .mapNotNull { it.target }
-            }
-        }
-        for (target in targets) {
-            if (!target.endsWith(".zig")) continue
+        val file = ZigFile.fromNioPath(project, path) ?: return
+        for (target in file.pathImports) {
             val otherPath = path.resolveSibling(target).normalize()
             imports.add(otherPath)
             followImports(otherPath, fileImports)

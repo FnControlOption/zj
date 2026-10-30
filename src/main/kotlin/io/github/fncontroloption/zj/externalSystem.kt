@@ -2,6 +2,7 @@ package io.github.fncontroloption.zj
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.edtWriteAction
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.externalSystem.autoimport.*
@@ -15,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.nio.file.Path
 import java.util.*
 
@@ -56,11 +58,15 @@ class ZigExternalSystemProjectAware(
 
     override val settingsFiles: Set<String>
         get() {
-            val result = mutableSetOf(
-                projectPath.resolve("build.zig").toString(),
-                projectPath.resolve("build.zig.zon").toString(),
-            )
-            // TODO: follow build.zig imports
+            val zig = projectPath.resolve("build.zig")
+            val zon = projectPath.resolve("build.zig.zon")
+            val referencedPaths =
+                runBlocking { readAction { ZigFile.getReferencedPaths(project, zig) } }
+            val result = mutableSetOf<String>()
+            result.add(zon.toString())
+            for (path in referencedPaths) {
+                result.add(path.toString())
+            }
             return result
         }
 

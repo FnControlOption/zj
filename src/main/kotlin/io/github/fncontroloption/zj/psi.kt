@@ -11,6 +11,7 @@ import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Iconable
 import com.intellij.openapi.util.text.HtmlChunk
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.*
 import com.intellij.psi.impl.light.LightElement
 import com.intellij.psi.stubs.StubElement
@@ -22,6 +23,7 @@ import com.intellij.psi.util.siblings
 import com.intellij.ui.IconManager
 import com.intellij.util.BitUtil
 import com.intellij.util.IncorrectOperationException
+import java.nio.file.Path
 import javax.swing.Icon
 
 sealed interface ZigElement : PsiElement
@@ -166,10 +168,70 @@ class ZigFile(
     override val members: Sequence<ZigContainerMember>
         get() = firstChild?.siblings()?.filterIsInstance<ZigContainerMember>() ?: emptySequence()
 
+    val imports: Sequence<String>
+        get() = when (val stubTree = stubTree) {
+            null -> {
+                SyntaxTraverser
+                    .psiTraverser(this)
+                    .asSequence()
+                    .filterIsInstance<ZigBuiltinCall>()
+                    .filter { it.builtinElement.textMatches("@import") }
+                    .mapNotNull { it.arguments.firstOrNull() }
+                    .filterIsInstance<ZigStringExpression>()
+                    .mapNotNull { it.value }
+            }
+            else -> {
+                stubTree
+                    .plainList
+                    .asSequence()
+                    .filterIsInstance<ZigImportStub>()
+                    .mapNotNull { it.target }
+            }
+        }
+
+    val pathImports: Sequence<String>
+        get() = imports.filter { it.endsWith(".zig") || it.endsWith(".zon") }
+
+    val embedFiles: Sequence<String>
+        get() =
+            // TODO: add stubs for `@embedFile`?
+            SyntaxTraverser
+                .psiTraverser(this)
+                .asSequence()
+                .filterIsInstance<ZigBuiltinCall>()
+                .filter { it.builtinElement.textMatches("@embedFile") }
+                .mapNotNull { it.arguments.firstOrNull() }
+                .filterIsInstance<ZigStringExpression>()
+                .mapNotNull { it.value }
+
     override fun getPresentation(): ItemPresentation = super<PsiFileBase>.presentation!!
 
     override fun getFileType() = ZigFileType
     override fun toString() = "ZigFile:$name"
+
+    companion object {
+        fun fromNioPath(project: Project, path: Path): ZigFile? {
+            val virtualFile = VirtualFileManager.getInstance().findFileByNioPath(path) ?: return null
+            val psiFile = PsiManager.getInstance(project).findFile(virtualFile) ?: return null
+            return psiFile as? ZigFile
+        }
+
+        fun getReferencedPaths(project: Project, path: Path): Set<Path> {
+            val result = mutableSetOf<Path>()
+            followReferencedPaths(project, path, result)
+            return result
+        }
+
+        private fun followReferencedPaths(project: Project, path: Path, result: MutableSet<Path>) {
+            if (path in result) return
+            result.add(path)
+            val file = fromNioPath(project, path) ?: return
+            for (target in file.pathImports + file.embedFiles) {
+                val otherPath = path.resolveSibling(target).normalize()
+                followReferencedPaths(project, otherPath, result)
+            }
+        }
+    }
 }
 
 class ZonFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, ZonLanguage) {
