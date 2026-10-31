@@ -147,8 +147,11 @@ const foo = bar(
 const foo = bar(
 \\Foo
 \\Bar
+//
 ,
-baz,
+baz
+//
+,
 );
 
 const foo = bar(
@@ -205,3 +208,46 @@ bar: Bar =
 \\Bar
 ,
 };
+
+const Foo = struct {
+bar: Bar =
+baz
+//
+,
+};
+
+const foo = bar(baz and
+qux);
+
+const foo = bar(
+baz and
+qux,
+);
+
+const foo = bar and
+baz;
+
+const foo =
+bar and
+baz;
+
+const foo =
+bar
+.baz;
+
+test {
+if (foo and
+bar)
+{}
+}
+
+const foo = bar(
+baz +
+qux,
+);
+
+const foo = bar(
+\\Foo
+,
+\\Bar
+);

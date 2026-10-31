@@ -4,7 +4,9 @@ import com.intellij.formatting.*
 import com.intellij.lang.ASTNode
 import com.intellij.lang.tree.util.children
 import com.intellij.lang.tree.util.siblings
+import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.TokenType
+import com.intellij.psi.util.parents
 import com.intellij.psi.util.siblings
 import com.intellij.formatting.Block as FormattingBlock
 import com.intellij.psi.formatter.common.AbstractBlock as AbstractFormattingBlock
@@ -102,11 +104,19 @@ class ZigFormattingBlock(
                     is ZigFieldAccess -> element.leftOperand
                 }
                 val leftNode = leftOperand.node
+                var rightIndent = Indent.getNormalIndent()
+                if (element is ZigBinaryExpression) {
+                    val root = element.parents(withSelf = true).takeWhile { it is ZigBinaryExpression }.last()
+                    val rootPrev = root.prevSibling
+                    if (rootPrev is PsiWhiteSpace && rootPrev.textContains('\n')) {
+                        rightIndent = Indent.getNoneIndent()
+                    }
+                }
                 var indent = Indent.getNoneIndent()
                 for (child in myNode.children()) {
                     addChild(blocks, child, indent)
                     if (child === leftNode) {
-                        indent = Indent.getNormalIndent()
+                        indent = rightIndent
                     }
                 }
             }
