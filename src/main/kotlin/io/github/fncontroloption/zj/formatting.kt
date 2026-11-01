@@ -39,25 +39,6 @@ class ZigFormattingBlock(
         TokenType.WHITE_SPACE -> {}
 
         ZigElementType.MULTILINE_STRING_LITERAL -> {
-            var indent = Indent.getNormalIndent()
-            when (myNode.psi) {
-                is ZigListInitItem -> {
-                    // The LIST_INIT_ITEM will already be indented, so we don't
-                    // need to add an indent here.
-                    indent = Indent.getNoneIndent()
-                }
-
-                is ZigCallArg -> {
-                    val hasTrailingComma = when (val parent = myNode.treeParent.psi) {
-                        is ZigBuiltinCall -> parent.hasTrailingComma
-                        is ZigCall -> parent.hasTrailingComma
-                        else -> false
-                    }
-                    if (hasTrailingComma) {
-                        indent = Indent.getNoneIndent()
-                    }
-                }
-            }
             val wrap = Wrap.createWrap(WrapType.ALWAYS, true)
             blocks.addLast(ZigFormattingBlock(child, indent, wrap = wrap))
         }
@@ -163,6 +144,7 @@ class ZigFormattingBlock(
                 }
             }
 
+            is ZigCallOrBuiltinCall,
             is ZigFnDecl,
             is ZigFnProto,
             is ZigFor,
@@ -173,28 +155,6 @@ class ZigFormattingBlock(
                         ZigTokenType.L_PAREN -> {
                             addChild(blocks, child, indent)
                             indent = Indent.getNormalIndent()
-                        }
-
-                        ZigTokenType.R_PAREN -> {
-                            indent = Indent.getNoneIndent()
-                            addChild(blocks, child, indent)
-                        }
-
-                        else -> addChild(blocks, child, indent)
-                    }
-                }
-            }
-
-            is ZigCallOrBuiltinCall -> {
-                val hasTrailingComma = element.hasTrailingComma
-                var indent = Indent.getNoneIndent()
-                for (child in myNode.children()) {
-                    when (child.elementType) {
-                        ZigTokenType.L_PAREN -> {
-                            addChild(blocks, child, indent)
-                            if (hasTrailingComma) {
-                                indent = Indent.getNormalIndent()
-                            }
                         }
 
                         ZigTokenType.R_PAREN -> {

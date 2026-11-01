@@ -251,3 +251,46 @@ const foo = bar(
 ,
 \\Bar
 );
+
+const foo = bar(
+\\Foo
+//
+, &.{
+//
+});
+
+const foo = bar(
+\\Foo
+//
+,
+//
+&.{
+//
+});
+
+const foo = bar(
+//
+&.{
+//
+}, baz);
+
+const foo = bar(
+\\Foo
+, &.{
+//
+}, baz);
+
+const foo = bar(
+\\Foo
+,
+&.{
+//
+},
+baz,
+);
+
+const foo = bar(&.{
+//
+}, &.{
+//
+});
