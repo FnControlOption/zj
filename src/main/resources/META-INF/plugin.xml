@@ -11,17 +11,12 @@
   <incompatible-with>com.falsepattern.zigbrains</incompatible-with>
 
   <!-- Text to display as description on Settings | Plugin page -->
-  <!--
   <description>
     <![CDATA[
-      Demonstrates how to add custom language support to an IntelliJ Platform-based IDE. <br>Defines a new language,
-      <i>Simple language</i> with support for syntax highlighting, annotations, code completion, and other features.
-      <br>
-      See the
-      <a href="https://plugins.jetbrains.com/docs/intellij/custom-language-support-tutorial.html">Custom
-      Language Tutorial</a> for more information.
+      Adds Zig language support to IntelliJ Platform-based IDEs
     ]]>
   </description>
+  <!--
   <change-notes>
     <![CDATA[
       <ul>
