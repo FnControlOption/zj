@@ -1,4 +1,5 @@
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 
 plugins {
   id("java")
@@ -26,4 +27,10 @@ dependencies {
   }
 
   testImplementation("junit:junit:4.13.2")
+}
+
+kotlin {
+  compilerOptions {
+    jvmDefault = JvmDefaultMode.NO_COMPATIBILITY
+  }
 }
