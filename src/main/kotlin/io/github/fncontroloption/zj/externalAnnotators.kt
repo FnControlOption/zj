@@ -58,7 +58,7 @@ class ZigAstCheckAnnotator : ZigExternalAnnotator() {
         }
         val sdk = ProjectRootManager.getInstance(project).projectSdk ?: return null
         val exe = ZigExe.find(sdk) ?: return null
-        val result = exe.run("ast-check", "--color", "off", path.toString())
+        val result = runBlocking { exe.run("ast-check", "--color", "off", path.toString()) }
         if (result.success) return null
         return result.errorMessages[path.toString()].orEmpty()
     }

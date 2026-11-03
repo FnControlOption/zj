@@ -25,6 +25,8 @@ import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.openapi.util.text.Strings
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.backend.workspace.workspaceModel
+import com.intellij.platform.ide.progress.ModalTaskOwner
+import com.intellij.platform.ide.progress.runWithModalProgressBlocking
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -61,7 +63,9 @@ class ZigSdkType : SdkType("ZigSdk") {
 
     override fun getVersionString(sdkHome: String): String? {
         val exe = ZigExe.find(sdkHome) ?: return null
-        val result = exe.run("version")
+        val result = runWithModalProgressBlocking(ModalTaskOwner.guess(), "Getting Zig version") {
+            exe.run("version")
+        }
         result.logErrors()
         if (!result.success) return null
         return result.stdout.trimEnd()
@@ -177,7 +181,8 @@ data class ZigExe(val path: Path) {
         }
     }
 
-    fun run(vararg args: String): Result {
+    @Suppress("RedundantSuspendModifier")
+    suspend fun run(vararg args: String): Result {
         val processHandler = OSProcessHandler(
             GeneralCommandLine()
                 .withExePath(path.toString())

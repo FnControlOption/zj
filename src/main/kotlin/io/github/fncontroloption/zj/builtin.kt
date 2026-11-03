@@ -31,7 +31,7 @@ class ZigBuiltinService(private val project: Project) {
     val builtinFile: VirtualFile?
         get() = cachedBuiltinFile
 
-    fun updateCachedBuiltinFile() {
+    suspend fun updateCachedBuiltinFile() {
         val currentSdk = ProjectRootManager.getInstance(project).projectSdk
         if (cachedSdk == null || cachedSdk != currentSdk) {
             cachedSdk = null
