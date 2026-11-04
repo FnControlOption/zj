@@ -26,7 +26,6 @@ import com.intellij.openapi.util.text.Strings
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.platform.ide.progress.ModalTaskOwner
-import com.intellij.platform.ide.progress.runWithModalProgressBlocking
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +35,8 @@ import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.io.path.exists
 import kotlin.io.path.isExecutable
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 private val log = Logger.getInstance(ZigSdkType::class.java)
 
@@ -63,9 +64,7 @@ class ZigSdkType : SdkType("ZigSdk") {
 
     override fun getVersionString(sdkHome: String): String? {
         val exe = ZigExe.find(sdkHome) ?: return null
-        val result = runWithModalProgressBlocking(ModalTaskOwner.guess(), "Getting Zig version") {
-            exe.run("version")
-        }
+        val result = runBlocking { exe.run("version", timeout = 10.milliseconds) }
         result.logErrors()
         if (!result.success) return null
         return result.stdout.trimEnd()
@@ -182,7 +181,7 @@ data class ZigExe(val path: Path) {
     }
 
     @Suppress("RedundantSuspendModifier")
-    suspend fun run(vararg args: String): Result {
+    suspend fun run(vararg args: String, timeout: Duration? = null): Result {
         val processHandler = OSProcessHandler(
             GeneralCommandLine()
                 .withExePath(path.toString())
@@ -192,7 +191,11 @@ data class ZigExe(val path: Path) {
         val processListener = CapturingProcessAdapter()
         processHandler.addProcessListener(processListener)
         processHandler.startNotify()
-        processHandler.waitFor()
+        if (timeout != null) {
+            processHandler.waitFor(timeout.inWholeMilliseconds)
+        } else {
+            processHandler.waitFor()
+        }
         val exitCode = processHandler.exitCode
         val stdout = processListener.output.stdout
         val stderr = processListener.output.stderr
