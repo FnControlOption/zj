@@ -125,7 +125,7 @@ class ZigBuildProjectService(
             }
         }
         val fetchResult = withBackgroundProgress(project, "Fetching dependencies\u2026") {
-            ZigExe(exePath).runInToolWindowAndWait(project, ZigToolWindowTab.FETCH, fetchArgs)
+            ZigExe(exePath).runInToolWindowAndWait(project, ZigToolWindowTab.FETCH, fetchArgs, projectPath)
         }
         if (!fetchResult.success) {
             return FetchResult.Err(fetchResult.errorMessages)
@@ -140,7 +140,7 @@ class ZigBuildProjectService(
             }
         }
         val printResult = withBackgroundProgress(project, "Loading build configuration\u2026") {
-            ZigExe(exePath).runInToolWindowAndWait(project, ZigToolWindowTab.BUILD, printArgs)
+            ZigExe(exePath).runInToolWindowAndWait(project, ZigToolWindowTab.BUILD, printArgs, projectPath)
         }
         if (!printResult.success) {
             return FetchResult.Err(printResult.errorMessages)

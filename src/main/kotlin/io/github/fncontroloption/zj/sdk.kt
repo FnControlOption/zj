@@ -203,6 +203,7 @@ data class ZigExe(val path: Path) {
         project: Project,
         tab: ZigToolWindowTab,
         args: List<String>,
+        workingDirectory: Path?,
         processListener: ProcessListener,
         mostlySilent: Boolean,
     ): OSProcessHandler {
@@ -212,10 +213,12 @@ data class ZigExe(val path: Path) {
                     .withConsoleMode(false)
                     .withExePath(path.toString())
                     .withParameters(args)
+                    .withWorkingDirectory(workingDirectory)
             else
                 GeneralCommandLine()
                     .withExePath(path.toString())
                     .withParameters(args)
+                    .withWorkingDirectory(workingDirectory)
 
         val processHandler =
             if (tab.allowsAnsiEscapes)
@@ -245,9 +248,10 @@ data class ZigExe(val path: Path) {
         project: Project,
         tab: ZigToolWindowTab,
         args: List<String>,
+        workingDirectory: Path?,
     ): Result {
         val processListener = CapturingProcessAdapter()
-        val processHandler = runInToolWindow(project, tab, args, processListener, mostlySilent = false)
+        val processHandler = runInToolWindow(project, tab, args, workingDirectory, processListener, false)
         try {
             while (!processHandler.waitFor(100)) {
                 ProgressManager.checkCanceled()
