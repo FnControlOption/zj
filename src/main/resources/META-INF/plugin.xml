@@ -88,6 +88,7 @@
     <stubIndex implementation="io.github.fncontroloption.zj.ZigVarDeclStubIndex"/>
     <sdkType implementation="io.github.fncontroloption.zj.ZigSdkType"/>
     <projectSdkSetupValidator implementation="io.github.fncontroloption.zj.ZigProjectSdkSetupValidator"/>
+    <sdkDownload implementation="io.github.fncontroloption.zj.ZigSdkDownload"/>
     <typedHandler implementation="io.github.fncontroloption.zj.ZigAutoPopupHandler" id="zigAuto" />
     <refactoring.elementListenerProvider implementation="io.github.fncontroloption.zj.ZigRefactoringListenerProvider"/>
     <codeInsight.parameterInfo language="ZIG" implementationClass="io.github.fncontroloption.zj.ZigParameterInfoHandler"/>
