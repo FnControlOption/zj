@@ -32,7 +32,7 @@ I don't vibecode, but I do use AI to ask questions about the IntelliJ Platform A
 
 Unless otherwise specified, everything in this repository is licensed under Apache 2.0.
 
-- Zig logo: CC BY 4.0
+- Zig logo: CC BY-SA 4.0
 - Zig language reference: MIT
 
 ### Alternatives
