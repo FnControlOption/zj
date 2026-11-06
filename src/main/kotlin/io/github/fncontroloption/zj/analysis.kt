@@ -4,8 +4,9 @@ import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.richcopy.HtmlSyntaxInfoUtil
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.roots.ModuleRootManager
-import com.intellij.openapi.roots.OrderEnumerator
+import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.RecursionManager
 import com.intellij.openapi.util.text.HtmlBuilder
@@ -13,7 +14,10 @@ import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.util.text.Strings
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
-import com.intellij.psi.util.*
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.PsiModificationTracker
+import com.intellij.psi.util.findParentOfType
 import com.intellij.util.containers.Interner
 import org.jsoup.Jsoup
 
@@ -188,19 +192,19 @@ object ZigAnalyzer {
     fun findZigLibFile(project: Project, module: Module?, relPath: String): VirtualFile? {
         val contentRoots =
             if (module != null)
-                ModuleRootManager.getInstance(module).contentRoots
+                ModuleRootManager.getInstance(module).contentRoots.asSequence()
             else
-                ProjectRootManager.getInstance(project).contentRoots
+                sequenceOf(project.guessProjectDir()).filterNotNull()
 
         val libDirs = contentRoots.mapNotNull { it.findChild("lib") }.filter { it.isValid && it.isDirectory }
 
-        val orderEnumerator =
+        val sdk =
             if (module != null)
-                OrderEnumerator.orderEntries(module)
+                ModuleRootManager.getInstance(module).sdk
             else
-                OrderEnumerator.orderEntries(project)
+                ProjectRootManager.getInstance(project).projectSdk
 
-        val sdkRoots = orderEnumerator.sdkOnly().sourceRoots.asSequence()
+        val sdkRoots = sdk?.rootProvider?.getFiles(OrderRootType.SOURCES)?.asSequence().orEmpty()
 
         for (root in libDirs + sdkRoots) {
             val virtualFile = root.findFileByRelativePath(relPath)
