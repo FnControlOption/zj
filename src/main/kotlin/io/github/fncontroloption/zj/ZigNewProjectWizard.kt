@@ -3,6 +3,8 @@
 package io.github.fncontroloption.zj
 
 import com.intellij.CommonBundle
+import com.intellij.execution.RunManager
+import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.ide.highlighter.ModuleFileType
 import com.intellij.ide.util.projectWizard.WizardContext
 import com.intellij.ide.wizard.AbstractNewProjectWizardStep
@@ -11,6 +13,7 @@ import com.intellij.ide.wizard.NewProjectWizardChainStep.Companion.nextStep
 import com.intellij.ide.wizard.NewProjectWizardStep
 import com.intellij.ide.wizard.language.LanguageGeneratorNewProjectWizard
 import com.intellij.ide.wizard.runAfterOpened
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ApplicationNamesInfo
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.diagnostic.Logger
@@ -57,6 +60,11 @@ pub fn build(b: *std.Build) void '{'
     '}');
 
     b.installArtifact(exe);
+
+    const run_exe = b.addRunArtifact(exe);
+
+    const run_step = b.step("run", "Run the application");
+    run_step.dependOn(&run_exe.step);
 '}'
 """
 
@@ -99,6 +107,15 @@ private class ZigNewProjectWizardStep(parent: NewProjectWizardStep) : AbstractNe
                     .withOpenMode(FileEditorOpenMode.DEFAULT)
                     .withRequestFocus(true)
             FileEditorManager.getInstance(project).requestOpenFile(buildFile, request)
+        }
+        runAfterOpened(project) { project ->
+            ApplicationManager.getApplication().invokeLater({
+                val runManager = RunManager.getInstance(project)
+                val runConfigType = runConfigurationType<ZigRunConfigurationType>()
+                val runConfigSettings = runManager.createConfiguration("Run", runConfigType)
+                runManager.addConfiguration(runConfigSettings)
+                runManager.selectedConfiguration = runConfigSettings
+            }, project.disposed)
         }
     }
 }
