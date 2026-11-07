@@ -1,7 +1,7 @@
 package io.github.fncontroloption.zj
 
-import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.ide.impl.ProjectUtil
+import com.intellij.ide.impl.toOpenProjectTask
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.toNioPathOrNull
@@ -19,15 +19,10 @@ class ZigProjectOpenProcessor : ProjectOpenProcessor() {
 
     override suspend fun openProjectAsync(
         virtualFile: VirtualFile,
-        projectToClose: Project?,
-        forceOpenInNewFrame: Boolean,
+        projectOpenOptions: ProjectOpenOptions
     ): Project? {
         val path = virtualFile.parent.toNioPathOrNull() ?: return null
-        val options =
-            OpenProjectTask
-                .build()
-                .withProjectToClose(projectToClose)
-                .withForceOpenInNewFrame(forceOpenInNewFrame)
+        val options = projectOpenOptions.toOpenProjectTask()
         return ProjectUtil.openOrImportAsync(path, options)
     }
 }

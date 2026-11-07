@@ -6,7 +6,7 @@ import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileDocumentManager
-import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.checkCanceled
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
@@ -70,10 +70,10 @@ class ZigBuildAnnotator : ZigExternalAnnotator() {
         val project = collectedInfo.project
         val buildService = project.service<ZigBuildProjectService>()
         val deferredFetch = buildService.deferredFetch.value
-        var fetchResult: ZigBuildProjectService.FetchResult? = null
-        while (fetchResult == null) {
-            ProgressManager.checkCanceled()
-            runBlocking {
+        val fetchResult = runBlocking {
+            var fetchResult: ZigBuildProjectService.FetchResult? = null
+            while (fetchResult == null) {
+                checkCanceled()
                 fetchResult = withTimeoutOrNull(100.milliseconds) {
                     try {
                         deferredFetch.await()
@@ -83,6 +83,7 @@ class ZigBuildAnnotator : ZigExternalAnnotator() {
                     }
                 }
             }
+            fetchResult
         }
         when (fetchResult) {
             ZigBuildProjectService.FetchResult.None -> {

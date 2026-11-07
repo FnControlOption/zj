@@ -28,7 +28,6 @@ import javax.swing.Icon
 
 sealed interface ZigElement : PsiElement
 
-@Suppress("UnstableApiUsage")
 sealed class ZigStubPsiElement<T : StubElement<*>> : StubBasedPsiElementBase<T>, StubBasedPsiElement<T>, ZigElement {
     constructor(stub: T, nodeType: IElementType) : super(stub, nodeType)
     constructor(node: ASTNode) : super(node)

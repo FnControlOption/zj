@@ -19,10 +19,11 @@ sourceSets {
 
 dependencies {
   intellijPlatform {
-    intellijIdea("2025.3.6.1")
+    intellijIdea("2026.3")
     bundledPlugin("com.intellij.gradle")
     bundledPlugin("com.intellij.java")
     bundledPlugin("org.jetbrains.kotlin")
+    bundledModule("intellij.spellchecker")
 
     testFramework(TestFrameworkType.Platform)
   }

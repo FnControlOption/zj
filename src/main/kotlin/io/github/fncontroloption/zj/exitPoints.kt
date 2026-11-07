@@ -21,7 +21,7 @@ private fun isNoreturnBuiltinCall(builtinCall: ZigBuiltinCall): Boolean {
 
 /**
  * @see com.intellij.codeInsight.highlighting.HighlightExitPointsHandlerFactory
- * @see org.jetbrains.kotlin.idea.base.highlighting.AbstractKotlinHighlightExitPointsHandlerFactory
+ * @see org.jetbrains.kotlin.idea.highlighting.AbstractKotlinHighlightExitPointsHandlerFactory
  */
 class ZigHighlightExitPointsHandlerFactory : HighlightUsagesHandlerFactoryBase(), DumbAware {
     override fun createHighlightUsagesHandler(

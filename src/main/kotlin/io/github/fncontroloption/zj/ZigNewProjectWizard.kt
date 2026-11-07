@@ -3,7 +3,6 @@
 package io.github.fncontroloption.zj
 
 import com.intellij.CommonBundle
-import com.intellij.ide.IdeBundle
 import com.intellij.ide.highlighter.ModuleFileType
 import com.intellij.ide.util.projectWizard.WizardContext
 import com.intellij.ide.wizard.AbstractNewProjectWizardStep
@@ -12,12 +11,13 @@ import com.intellij.ide.wizard.NewProjectWizardChainStep.Companion.nextStep
 import com.intellij.ide.wizard.NewProjectWizardStep
 import com.intellij.ide.wizard.language.LanguageGeneratorNewProjectWizard
 import com.intellij.ide.wizard.runAfterOpened
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ApplicationNamesInfo
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorOpenMode
+import com.intellij.openapi.fileEditor.FileEditorOpenRequest
 import com.intellij.openapi.module.GeneralModuleType
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.observable.properties.ObservableMutableProperty
@@ -93,9 +93,12 @@ private class ZigNewProjectWizardStep(parent: NewProjectWizardStep) : AbstractNe
             build
         }
         runAfterOpened(project) { project ->
-            ApplicationManager.getApplication().invokeLater({
-                FileEditorManager.getInstance(project).openFile(buildFile, true)
-            }, project.disposed)
+            val request =
+                FileEditorOpenRequest
+                    .defaults()
+                    .withOpenMode(FileEditorOpenMode.DEFAULT)
+                    .withRequestFocus(true)
+            FileEditorManager.getInstance(project).requestOpenFile(buildFile, request)
         }
     }
 }
@@ -218,7 +221,7 @@ private class IntelliJModuleNewProjectWizardStep(parent: NewProjectWizardStep, v
             if (promptUser) {
                 val ide = ApplicationNamesInfo.getInstance().fullProductName
                 val message = "$promptPrefix'$dir'\ndoes not exist. It will be created by $ide."
-                val answer = Messages.showOkCancelDialog(message, "Directory Does Not Exist", IdeBundle.message("button.create"), IdeBundle.message("button.cancel"), Messages.getQuestionIcon())
+                val answer = Messages.showOkCancelDialog(message, "Directory Does Not Exist", "&Create", "&Cancel", Messages.getQuestionIcon())
                 if (answer != Messages.OK) {
                     return false
                 }
@@ -229,7 +232,7 @@ private class IntelliJModuleNewProjectWizardStep(parent: NewProjectWizardStep, v
             }
             catch (e: IOException) {
                 Logger.getInstance(this::class.java).warn(e)
-                Messages.showErrorDialog(IdeBundle.message("error.failed.to.create.directory", dir), CommonBundle.getErrorTitle())
+                Messages.showErrorDialog("Failed to create directory \"$dir\"", CommonBundle.getErrorTitle())
                 return false
             }
         }

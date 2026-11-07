@@ -12,7 +12,7 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
-import com.intellij.terminal.TerminalExecutionConsole
+import com.intellij.terminal.TerminalExecutionConsoleBuilder
 import com.intellij.ui.content.ContentFactory
 
 private val ZIG_CONSOLE_KEY = Key.create<ConsoleView>("ZIG_CONSOLE_KEY")
@@ -50,7 +50,7 @@ class ZigToolWindowFactory : ToolWindowFactory, DumbAware {
     private fun addToolWindowTab(project: Project, toolWindow: ToolWindow, tab: ZigToolWindowTab) {
         val console =
             if (tab.allowsAnsiEscapes)
-                TerminalExecutionConsole(project, null)
+                TerminalExecutionConsoleBuilder(project).build()
             else
                 TextConsoleBuilderFactory.getInstance().createBuilder(project).console
 

@@ -1,6 +1,7 @@
 package io.github.fncontroloption.zj
 
 import com.intellij.execution.util.ProgramParametersUtil
+import com.intellij.ide.macro.CommonMacroFilters
 import com.intellij.ide.macro.MacrosDialog
 import com.intellij.openapi.components.*
 import com.intellij.openapi.options.BoundConfigurable
@@ -40,7 +41,7 @@ class ZigSettingsConfigurable(private val project: Project) : BoundConfigurable(
     override fun createPanel() = panel {
         row("Build options:") {
             val editor = RawCommandLineEditor()
-            MacrosDialog.addMacroSupport(editor.editorField, MacrosDialog.Filters.ALL) { false }
+            MacrosDialog.addMacroSupport(editor.editorField, CommonMacroFilters.ALL) { false }
             cell(editor)
                 .comment(
                     listOf(

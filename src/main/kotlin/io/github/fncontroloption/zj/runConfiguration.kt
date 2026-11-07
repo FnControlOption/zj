@@ -13,7 +13,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NotNullLazyValue
-import com.intellij.terminal.TerminalExecutionConsole
+import com.intellij.terminal.TerminalExecutionConsoleBuilder
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.util.execution.ParametersListUtil
@@ -38,8 +38,8 @@ class ZigRunConfigurationOptions : LocatableRunConfigurationOptions() {
     var passParentEnvs by property(true)
 }
 
-class ZigRunConfigurationSettingsEditor : SettingsEditor<ZigRunConfiguration>() {
-    private val commonProgramParameters = object : CommonProgramParametersPanel() {
+class ZigRunConfigurationSettingsEditor(project: Project) : SettingsEditor<ZigRunConfiguration>() {
+    private val commonProgramParameters = object : CommonProgramParametersPanel(true, project) {
         override fun isMacroSupportEnabled() = true
     }
 
@@ -62,7 +62,7 @@ class ZigRunConfiguration(project: Project, factory: ConfigurationFactory, name:
 
     override fun getOptions() = super.getOptions() as ZigRunConfigurationOptions
 
-    override fun getConfigurationEditor() = ZigRunConfigurationSettingsEditor()
+    override fun getConfigurationEditor() = ZigRunConfigurationSettingsEditor(project)
 
     override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState? {
         val projectService = project.service<ZigProjectPathService>()
@@ -97,7 +97,7 @@ class ZigRunConfiguration(project: Project, factory: ConfigurationFactory, name:
 
         return object : CommandLineState(environment) {
             override fun createConsole(executor: Executor) =
-                TerminalExecutionConsole(project, null)
+                TerminalExecutionConsoleBuilder(project).build()
 
             override fun startProcess(): ProcessHandler {
                 val processHandler =

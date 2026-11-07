@@ -67,7 +67,7 @@ private val log = Logger.getInstance(ZigSdkType::class.java)
 
 class ZigSdkType : SdkType("ZigSdk") {
 
-    @Suppress("OVERRIDE_DEPRECATION")
+    @Suppress("OVERRIDE_DEPRECATION", "REMOVAL")
     override fun suggestHomePath() = null
 
     override fun suggestHomePath(path: Path) = null
@@ -161,6 +161,7 @@ class ZigSdkDownload : SdkDownload {
             OS.macOS -> "macos"
             OS.Linux -> "linux"
             OS.FreeBSD -> "freebsd"
+            OS.OHOS -> null
             OS.Other -> null
         }
 
@@ -173,6 +174,7 @@ class ZigSdkDownload : SdkDownload {
     override fun supportsDownload(sdkTypeId: SdkTypeId) =
         sdkTypeId is ZigSdkType
 
+    /* TODO
     override fun pickSdk(
         sdkTypeId: SdkTypeId,
         sdkModel: SdkModel,
@@ -188,6 +190,7 @@ class ZigSdkDownload : SdkDownload {
         val (version, location) = dialog.selectVersionAndLocation() ?: return null
         return ZigSdkDownloadTask(arch, os, version, packageType, location)
     }
+     */
 
     override fun showDownloadUI(
         sdkTypeId: SdkTypeId,

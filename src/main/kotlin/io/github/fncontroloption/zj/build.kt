@@ -1,14 +1,14 @@
 package io.github.fncontroloption.zj
 
-import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
-import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
+import com.intellij.util.io.createParentDirectories
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -55,9 +55,8 @@ class ZigBuildProjectActivity : ProjectActivity {
 @Service(Service.Level.APP)
 class ZigBuildAppService(coroutineScope: CoroutineScope) {
     val printBuildConfigProgramPath = coroutineScope.async {
-        val pluginId = PluginId.getId("io.github.fncontroloption.zj")
-        val pluginDescriptor = PluginManagerCore.getPlugin(pluginId)!!
-        val outputPath = pluginDescriptor.pluginPath.resolve("print_build_config.zig")
+        val outputPath = PathManager.getPluginsDir().resolve("zj", "print_build_config.zig")
+        outputPath.createParentDirectories()
         val classLoader = ZigBuildAppService::class.java.classLoader
         val inputStream = classLoader.getResourceAsStream("print_build_config.zig")!!
         val inputText = inputStream.reader().use { it.readText() }

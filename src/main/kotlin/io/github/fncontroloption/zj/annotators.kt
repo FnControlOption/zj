@@ -1,5 +1,3 @@
-@file:Suppress("UnstableApiUsage")
-
 package io.github.fncontroloption.zj
 
 import com.intellij.lang.annotation.AnnotationHolder
