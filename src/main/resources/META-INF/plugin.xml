@@ -121,6 +121,7 @@
     <highlightUsagesHandlerFactory implementation="io.github.fncontroloption.zj.ZigHighlightExitPointsHandlerFactory"/>
     <projectOpenProcessor implementation="io.github.fncontroloption.zj.ZigProjectOpenProcessor"/>
     <newProjectWizard.languageGenerator implementation="io.github.fncontroloption.zj.ZigNewProjectWizard"/>
+    <projectTaskRunner implementation="io.github.fncontroloption.zj.ZigProjectTaskRunner"/>
     <!--
     <fileType name="Simple File" implementationClass="org.intellij.sdk.language.SimpleFileType" fieldName="INSTANCE"
               language="Simple" extensions="simple"/>
