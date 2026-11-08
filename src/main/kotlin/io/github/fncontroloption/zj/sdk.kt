@@ -104,7 +104,7 @@ class ZigSdkType : SdkType("ZigSdk") {
         val modificator = sdk.sdkModificator
         modificator.addRoot(lib, OrderRootType.CLASSES)
         modificator.addRoot(lib, OrderRootType.SOURCES)
-        ApplicationManager.getApplication().invokeAndWait {
+        ApplicationManager.getApplication().invokeLater {
             ApplicationManager.getApplication().runWriteAction {
                 modificator.commitChanges()
             }
