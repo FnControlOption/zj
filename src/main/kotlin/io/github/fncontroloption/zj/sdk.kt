@@ -19,7 +19,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.checkCanceled
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectBundle
 import com.intellij.openapi.projectRoots.*
@@ -494,7 +494,7 @@ data class ZigExe(val path: Path) {
         val processHandler = runInToolWindow(project, tab, args, workingDirectory, processListener, false)
         try {
             while (!processHandler.waitFor(100)) {
-                ProgressManager.checkCanceled()
+                checkCanceled()
             }
         } finally {
             if (!processHandler.isProcessTerminated) {
