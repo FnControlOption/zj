@@ -89,9 +89,9 @@ class ZigSdkType : SdkType("ZigSdk") {
 
     override fun getVersionString(sdkHome: String): String? {
         val exe = ZigExe.find(sdkHome) ?: return null
-        val result = runBlocking { exe.run("version", timeout = 10.milliseconds) }
+        val result = runBlocking { exe.run("version", timeout = 50.milliseconds) }
         result.logErrors()
-        if (!result.success) return null
+        if (!result.success) return "" // TODO: try to detect Zig version without running `zig version`
         return result.stdout.trimEnd()
     }
 
