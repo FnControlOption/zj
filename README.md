@@ -14,11 +14,15 @@ Adds Zig language support to IntelliJ Platform-based IDEs. Written from scratch.
 -   Find Usages, with support for [string identifiers](https://ziglang.org/documentation/0.17.0/#String-Identifier-Syntax)
 -   Go to Declaration
 -   Go to Symbol, implemented with [stub indexes](https://plugins.jetbrains.com/docs/intellij/stub-indexes.html) to make it fast
--   Some support for imported modules, [with similar limitations as ZLS](https://github.com/zigtools/zls/issues/3277)
+
+### Partially implemented
+
+-   Module imports, including `build.zig` imports declared in `build.zig.zon`
+-   [Peer type resolution](https://ziglang.org/documentation/master/#Peer-Type-Resolution)
+-   Error annotations, such as redeclared variables
 
 ### Not (yet) implemented
 
--   Full error reporting
 -   Inlay hints
 -   Debugging
 -   Comptime interpreter
